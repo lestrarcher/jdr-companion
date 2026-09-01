@@ -1,0 +1,23 @@
+# Environnement
+.env
+.env.local
+.env.*.local
+
+# Angular
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+
+# Symfony
+backend/vendor/
+backend/var/
+backend/.phpunit.result.cache
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Système
+.DS_Store
+Thumbs.db
