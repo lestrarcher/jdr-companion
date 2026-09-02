@@ -1,0 +1,77 @@
+<section
+  class="memorial-panel"
+  aria-labelledby="memorial-title"
+>
+  <header class="memorial-header">
+    <div>
+      <span class="memorial-eyebrow">
+        Ceux que la Brume a pris
+      </span>
+
+      <h2 id="memorial-title">
+        In memoriam
+      </h2>
+    </div>
+
+    <span class="header-cross" aria-hidden="true">
+      †
+    </span>
+  </header>
+
+  <div class="memorial-viewport">
+    @for (entry of [activeEntry()]; track entry.name) {
+      <article
+        class="memorial-entry"
+        [attr.aria-label]="'Mémorial de ' + entry.name"
+      >
+        @if (entry.imageUrl) {
+          <div class="memorial-visual memorial-portrait">
+            <img
+              [src]="entry.imageUrl"
+              [alt]="entry.imageAlt || ('Portrait de ' + entry.name)"
+            />
+
+            <span class="portrait-cross" aria-hidden="true">
+              †
+            </span>
+          </div>
+        } @else {
+          <div
+            class="memorial-visual memorial-tombstone"
+            aria-hidden="true"
+          >
+            <span class="tombstone-cross">†</span>
+
+            <span class="tombstone-name">
+              {{ entry.name }}
+            </span>
+          </div>
+        }
+
+        <div class="memorial-copy">
+          <span class="memorial-role">
+            {{ entry.role }}
+          </span>
+
+          <h3>{{ entry.name }}</h3>
+
+          <p>{{ entry.epitaph }}</p>
+
+          <span class="death-day">
+            {{ entry.deathDay }}
+          </span>
+        </div>
+      </article>
+    }
+  </div>
+
+  <footer class="memorial-footer">
+    <span class="memorial-line" aria-hidden="true"></span>
+
+    <span class="memorial-counter">
+      {{ activeIndex() + 1 }}
+      /
+      {{ memorialEntries.length }}
+    </span>
+  </footer>
+</section>

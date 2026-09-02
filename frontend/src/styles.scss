@@ -1,1 +1,50 @@
 /* You can add global styles to this file, and also import other style files */
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  background: #111;
+}
+
+:root {
+  --color-background: #080d12;
+  --color-panel: rgba(14, 20, 26, 0.92);
+  --color-panel-light: rgba(27, 36, 43, 0.9);
+
+  --color-text: #e7e4de;
+  --color-text-muted: #9ba5ab;
+
+  --color-gold: #b99a66;
+  --color-gold-light: #ddc28e;
+  --color-border: rgba(185, 154, 102, 0.38);
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  color: var(--color-text);
+  background: var(--color-background);
+  font-family: Georgia, 'Times New Roman', serif;
+}

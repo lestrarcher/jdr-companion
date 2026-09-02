@@ -1,0 +1,22 @@
+<footer
+  class="tip-bar"
+  [attr.data-category]="currentTip().category"
+>
+  <div class="tip-stage" aria-live="polite">
+    @for (tip of tips; track tip.text; let index = $index) {
+      <article
+        class="tip-slide"
+        [class.tip-slide-active]="index === currentIndex()"
+        [attr.aria-hidden]="index !== currentIndex()"
+      >
+        <div class="tip-content">
+          <span class="tip-label">
+            {{ tip.label }}
+          </span>
+
+          <p>{{ tip.text }}</p>
+        </div>
+      </article>
+    }
+  </div>
+</footer>

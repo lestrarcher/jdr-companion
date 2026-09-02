@@ -1,0 +1,152 @@
+:host {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  padding: 1.5rem 2rem;
+}
+
+figure {
+  position: relative;
+  width: min(100%, 60rem);
+  margin: 0;
+  overflow: hidden;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(31, 27, 36, 0.96),
+      rgba(5, 8, 18, 0.98)
+    );
+
+  border: 1px solid rgba(211, 171, 82, 0.75);
+
+  box-shadow:
+    0 0 0 3px rgba(7, 9, 18, 0.95),
+    0 0 0 4px rgba(184, 140, 54, 0.35),
+    0 18px 45px rgba(0, 0, 0, 0.75),
+    0 0 30px rgba(26, 18, 53, 0.65);
+
+  isolation: isolate;
+}
+
+/*
+ * Seconde ligne dorée à l’intérieur du cadre.
+ */
+figure::before {
+  position: absolute;
+  inset: 5px;
+  z-index: 3;
+
+  border: 1px solid rgba(221, 185, 104, 0.3);
+
+  content: '';
+  pointer-events: none;
+}
+
+/*
+ * Léger éclat autour du cadre.
+ */
+figure::after {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+
+  box-shadow:
+    inset 0 0 18px rgba(0, 0, 0, 0.8),
+    inset 0 0 2px rgba(255, 222, 151, 0.45);
+
+  content: '';
+  pointer-events: none;
+}
+
+.image-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+
+  background:
+    radial-gradient(
+      circle at center,
+      rgba(25, 25, 42, 0.9),
+      rgba(3, 5, 12, 1)
+    );
+}
+
+.media-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+
+  object-fit: contain;
+  object-position: center;
+
+  filter:
+    contrast(1.03)
+    saturate(0.94);
+}
+
+figcaption {
+  position: relative;
+  z-index: 2;
+
+  padding: 1rem 2rem 1.15rem;
+
+  border-top: 1px solid rgba(211, 171, 82, 0.4);
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(19, 20, 36, 0.96),
+      rgba(4, 7, 16, 0.98)
+    );
+
+  text-align: center;
+}
+
+figcaption h2,
+figcaption .media-title {
+  margin: 0;
+
+  color: #f3ede2;
+
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.65rem, 2vw, 2.25rem);
+  font-weight: 500;
+  letter-spacing: 0.025em;
+  line-height: 1.1;
+
+  text-shadow:
+    0 2px 3px rgba(0, 0, 0, 0.95),
+    0 0 12px rgba(226, 187, 104, 0.15);
+}
+
+figcaption p,
+figcaption .media-subtitle {
+  margin: 0.5rem 0 0;
+
+  color: #d9b967;
+
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  line-height: 1.4;
+  text-transform: uppercase;
+
+  text-shadow: 0 2px 3px rgba(0, 0, 0, 0.9);
+}
+
+@media (max-height: 850px) {
+  :host {
+    padding-block: 1rem;
+  }
+
+  figure {
+    width: min(100%, 52rem);
+  }
+
+  figcaption {
+    padding-block: 0.75rem 0.9rem;
+  }
+}

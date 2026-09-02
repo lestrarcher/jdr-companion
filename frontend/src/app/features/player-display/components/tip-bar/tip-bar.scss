@@ -1,0 +1,161 @@
+:host {
+  display: block;
+}
+
+.tip-bar {
+  position: relative;
+
+  display: grid;
+  place-items: center;
+
+  width: 100%;
+  min-height: 6.25rem;
+
+  padding: 0.75rem 4rem;
+  box-sizing: border-box;
+
+  /*
+   * Le fond noir inférieur est désormais géré
+   * par player-display.
+   */
+  background: transparent;
+
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 1),
+    0 0 14px rgba(0, 0, 0, 0.9);
+}
+
+/*
+ * Séparation très fine avec le reste de l’écran.
+ */
+.tip-bar::after {
+  position: absolute;
+  top: 0;
+  right: 10%;
+  left: 10%;
+
+  height: 1px;
+
+  background:
+    linear-gradient(
+      to right,
+      transparent,
+      rgba(221, 194, 142, 0.4),
+      transparent
+    );
+
+  content: '';
+  pointer-events: none;
+}
+
+.tip-stage {
+  position: relative;
+
+  width: min(100%, 80rem);
+  height: 4.75rem;
+  min-width: 0;
+}
+
+.tip-slide {
+  position: absolute;
+  inset: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 100%;
+
+  opacity: 0;
+  transform: translateY(0.45rem);
+
+  transition:
+    opacity 700ms ease,
+    transform 700ms ease;
+
+  pointer-events: none;
+}
+
+.tip-slide-active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.tip-symbol {
+  display: grid;
+  flex: 0 0 2.4rem;
+  place-items: center;
+
+  width: 2.4rem;
+  height: 2.4rem;
+
+  color: #dfbd68;
+
+  font-size: 1.4rem;
+  line-height: 1;
+  text-align: center;
+
+  filter:
+    drop-shadow(0 0 6px rgba(221, 194, 142, 0.45))
+    drop-shadow(0 2px 4px rgba(0, 0, 0, 1));
+}
+
+.tip-content {
+  min-width: 0;
+  max-width: 72rem;
+
+  text-align: center;
+}
+
+.tip-label {
+  color: #dcb860;
+
+  font-family: Arial, sans-serif;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  line-height: 1;
+  text-transform: uppercase;
+
+  text-shadow:
+    0 2px 3px rgba(0, 0, 0, 1),
+    0 0 10px rgba(0, 0, 0, 0.85);
+}
+
+.tip-content p {
+  margin: 0.48rem 0 0;
+
+  color: #e5dfd6;
+
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.05rem;
+  font-style: italic;
+  line-height: 1.35;
+
+  text-wrap: balance;
+
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 1),
+    0 0 14px rgba(0, 0, 0, 0.9);
+}
+
+@media (max-width: 1400px) {
+  .tip-bar {
+    min-height: 5.75rem;
+    padding-inline: 2rem;
+  }
+
+  .tip-stage {
+    height: 4.5rem;
+  }
+
+  .tip-content p {
+    font-size: 0.95rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tip-slide {
+    transition: none;
+  }
+}

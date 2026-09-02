@@ -1,0 +1,29 @@
+<section
+  class="main-display"
+  [class.main-display-active]="displayedMedia !== null"
+  aria-live="polite"
+>
+  @if (displayedMedia; as media) {
+    <figure class="media-figure">
+      <div class="image-frame">
+        <img
+          class="media-image"
+          [src]="media.source"
+          [alt]="media.alt"
+        />
+
+        @if (media.title || media.subtitle) {
+          <figcaption class="media-caption">
+            @if (media.title) {
+              <h1>{{ media.title }}</h1>
+            }
+
+            @if (media.subtitle) {
+              <p>{{ media.subtitle }}</p>
+            }
+          </figcaption>
+        }
+      </div>
+    </figure>
+  }
+</section>

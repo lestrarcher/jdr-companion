@@ -1,0 +1,58 @@
+<section class="quests-panel" aria-labelledby="quests-title">
+  <header class="quests-header">
+    <p class="quests-eyebrow">Journal</p>
+
+    <div class="quests-title-row">
+      <span class="title-ornament" aria-hidden="true">◆</span>
+      <h2 id="quests-title">Quêtes</h2>
+      <span class="title-ornament" aria-hidden="true">◆</span>
+    </div>
+  </header>
+
+  <div class="quests-viewport">
+    <div
+      class="quests-track"
+      [style.--quest-scroll-duration]="scrollDuration"
+    >
+      <div class="quests-set">
+        @for (quest of quests; track quest.title) {
+          <article class="quest-sign">
+            <p class="quest-category">
+              {{ quest.category }}
+            </p>
+
+            <h3 class="quest-title">
+              {{ quest.title }}
+            </h3>
+
+            <p class="quest-description">
+              {{ quest.objective }}
+            </p>
+          </article>
+        }
+      </div>
+
+      <!--
+        Copie uniquement visuelle permettant une boucle continue.
+        Elle est ignorée par les lecteurs d’écran.
+      -->
+      <div class="quests-set" aria-hidden="true">
+        @for (quest of quests; track quest.title) {
+          <article class="quest-sign">
+            <p class="quest-category">
+              {{ quest.category }}
+            </p>
+
+            <h3 class="quest-title">
+              {{ quest.title }}
+            </h3>
+
+            <p class="quest-description">
+              {{ quest.objective }}
+            </p>
+          </article>
+        }
+      </div>
+    </div>
+  </div>
+</section>

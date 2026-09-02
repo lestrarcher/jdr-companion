@@ -1,0 +1,321 @@
+:host {
+  display: block;
+  min-width: 0;
+  min-height: 0;
+}
+
+.memorial-panel {
+  position: relative;
+
+  display: grid;
+  grid-template-rows: auto auto auto;
+
+  width: 100%;
+  min-width: 0;
+
+  padding: 1.2rem 0.25rem 0.4rem;
+  box-sizing: border-box;
+
+  color: #e7e1d8;
+
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.95),
+    0 0 12px rgba(0, 0, 0, 0.78);
+}
+
+/* En-tête */
+
+.memorial-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 0.5rem 0.85rem;
+
+  border-bottom: 1px solid rgba(211, 177, 101, 0.3);
+}
+
+.memorial-eyebrow,
+.memorial-role,
+.death-day,
+.memorial-counter {
+  color: #d6b45f;
+
+  font-family: Arial, sans-serif;
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.memorial-header h2 {
+  margin: 0.28rem 0 0;
+
+  color: #e8e2da;
+
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.55rem;
+  font-weight: 500;
+  letter-spacing: 0.045em;
+  line-height: 1;
+
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 1),
+    0 0 14px rgba(0, 0, 0, 0.9);
+}
+
+.header-cross {
+  color: rgba(215, 181, 99, 0.72);
+
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.8rem;
+
+  filter:
+    drop-shadow(0 0 6px rgba(215, 181, 99, 0.25))
+    drop-shadow(0 2px 3px rgba(0, 0, 0, 1));
+}
+
+/* Zone animée */
+
+.memorial-viewport {
+  display: grid;
+  min-height: 10rem;
+  overflow: hidden;
+
+  padding: 0.85rem 0.3rem 0;
+}
+
+.memorial-entry {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr);
+  gap: 1rem;
+  align-items: center;
+
+  min-width: 0;
+
+  animation: memorial-reveal 900ms ease both;
+}
+
+/* Portrait ou tombe */
+
+.memorial-visual {
+  position: relative;
+
+  display: grid;
+  place-items: center;
+
+  width: 7rem;
+  height: 8.75rem;
+  overflow: hidden;
+
+  border: 1px solid rgba(201, 166, 89, 0.62);
+  border-radius: 3.5rem 3.5rem 0.3rem 0.3rem;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(66, 70, 75, 0.88),
+      rgba(11, 14, 20, 0.98)
+    );
+
+  box-shadow:
+    0 0 0 3px rgba(4, 6, 12, 0.88),
+    0 0 0 4px rgba(179, 142, 66, 0.22),
+    0 8px 18px rgba(0, 0, 0, 0.5),
+    inset 0 0 20px rgba(0, 0, 0, 0.65);
+}
+
+.memorial-visual::before {
+  position: absolute;
+  inset: 0.3rem;
+  z-index: 2;
+
+  border: 1px solid rgba(222, 192, 125, 0.22);
+  border-radius: 3rem 3rem 0.18rem 0.18rem;
+
+  content: '';
+  pointer-events: none;
+}
+
+/* Portrait présent */
+
+.memorial-portrait img {
+  display: block;
+
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+  object-position: center;
+
+  filter:
+    brightness(0.9)
+    contrast(1.04);
+}
+
+.portrait-cross {
+  position: absolute;
+  right: 0.65rem;
+  bottom: 0.4rem;
+  z-index: 3;
+
+  color: rgba(224, 193, 121, 0.72);
+  font-size: 0.9rem;
+
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 1);
+}
+
+/* Aucun portrait : pierre tombale */
+
+.memorial-tombstone {
+  grid-template-rows: auto auto;
+  align-content: center;
+  gap: 0.8rem;
+
+  padding: 1rem 0.7rem;
+  box-sizing: border-box;
+
+  background:
+    radial-gradient(
+      circle at 50% 27%,
+      rgba(190, 193, 190, 0.18),
+      transparent 26%
+    ),
+    repeating-linear-gradient(
+      105deg,
+      transparent 0,
+      transparent 13px,
+      rgba(255, 255, 255, 0.018) 14px,
+      transparent 15px
+    ),
+    linear-gradient(
+      145deg,
+      rgba(79, 84, 87, 0.92),
+      rgba(19, 23, 27, 0.98)
+    );
+
+  filter: grayscale(0.75);
+}
+
+.tombstone-cross {
+  color: rgba(224, 219, 203, 0.74);
+
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.65rem;
+  line-height: 1;
+}
+
+.tombstone-name {
+  max-width: 100%;
+
+  color: rgba(235, 230, 216, 0.86);
+
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.055em;
+  line-height: 1.15;
+  text-align: center;
+
+  overflow-wrap: anywhere;
+
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 1),
+    0 0 7px rgba(0, 0, 0, 0.8);
+}
+
+/* Informations */
+
+.memorial-copy {
+  min-width: 0;
+}
+
+.memorial-role {
+  display: inline-block;
+
+  padding: 0.25rem 0.42rem;
+
+  border: 1px solid rgba(211, 174, 88, 0.38);
+
+  background: rgba(5, 7, 13, 0.58);
+
+  font-size: 0.46rem;
+}
+
+.memorial-copy h3 {
+  margin: 0.55rem 0 0;
+
+  color: #eee7de;
+
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.4rem;
+  font-weight: 500;
+  line-height: 1.05;
+
+  text-shadow:
+    0 2px 3px rgba(0, 0, 0, 1),
+    0 0 12px rgba(0, 0, 0, 0.88);
+}
+
+.memorial-copy p {
+  margin: 0.55rem 0 0.8rem;
+
+  color: rgba(202, 206, 207, 0.78);
+
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 0.78rem;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.death-day {
+  color: rgba(174, 186, 193, 0.72);
+  font-size: 0.47rem;
+}
+
+/* Pied et compteur */
+
+.memorial-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+
+  padding: 0.35rem 0.5rem 0;
+}
+
+.memorial-line {
+  flex: 1;
+  height: 1px;
+
+  background:
+    linear-gradient(
+      to right,
+      transparent,
+      rgba(205, 168, 82, 0.36)
+    );
+}
+
+.memorial-counter {
+  color: rgba(204, 211, 215, 0.66);
+  font-size: 0.46rem;
+}
+
+@keyframes memorial-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(0.7rem);
+    filter: blur(3px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .memorial-entry {
+    animation: none;
+  }
+}

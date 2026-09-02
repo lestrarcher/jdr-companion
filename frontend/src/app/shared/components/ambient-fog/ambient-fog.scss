@@ -1,0 +1,173 @@
+:host {
+  display: contents;
+}
+
+.ambient-fog {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+
+  pointer-events: none;
+}
+
+.fog-layer {
+  position: absolute;
+  left: 0;
+
+  /*
+   * Trois écrans de largeur permettent d’avoir
+   * suffisamment de matière pendant l’animation.
+   */
+  display: flex;
+  width: 300%;
+
+  will-change: transform;
+
+  span {
+    display: block;
+    flex: 0 0 36%;
+    width: 36%;
+    height: 100%;
+
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+
+    /*
+     * Les bords gauche et droit de chaque texture
+     * deviennent progressivement transparents.
+     */
+    -webkit-mask-image:
+      linear-gradient(
+        to right,
+        transparent 0%,
+        #000 10%,
+        #000 90%,
+        transparent 100%
+      );
+
+    mask-image:
+      linear-gradient(
+        to right,
+        transparent 0%,
+        #000 10%,
+        #000 90%,
+        transparent 100%
+      );
+
+    /*
+     * Le mode screen aide les zones claires de la brume
+     * à se fondre dans le décor sans ajouter un rectangle noir.
+     */
+    mix-blend-mode: screen;
+  }
+
+  /*
+   * Chaque image chevauche légèrement la suivante.
+   * Les deux zones transparentes se mélangent.
+   */
+  span:not(:last-child) {
+    margin-right: -4%;
+  }
+}
+
+.fog-layer--back {
+  top: -12%;
+
+  height: 105%;
+  opacity: 0.3;
+
+  animation: fog-drift-left 30s linear infinite;
+
+  span {
+    background-image: url('/assets/effects/fog-1.png');
+  }
+}
+
+.fog-layer--middle {
+  top: -8%;
+
+  height: 112%;
+  opacity: 0.42;
+
+  animation: fog-drift-right 20s linear infinite;
+
+  span {
+    background-image: url('/assets/effects/fog-2.png');
+  }
+}
+
+.fog-layer--front {
+  top: 30%;
+
+  height: 90%;
+  opacity: 0.8;
+
+  filter: blur(2px);
+
+  /*
+   * Fait disparaître les limites haute et basse
+   * de cette nappe de brouillard.
+   */
+  -webkit-mask-image:
+    linear-gradient(
+      to bottom,
+      transparent 0%,
+      #000 18%,
+      #000 78%,
+      transparent 100%
+    );
+
+  mask-image:
+    linear-gradient(
+      to bottom,
+      transparent 0%,
+      #000 18%,
+      #000 78%,
+      transparent 100%
+    );
+
+  animation: fog-drift-left 14s linear infinite;
+
+  span {
+    background-image: url('/assets/effects/fog-1.png');
+  }
+}
+
+/*
+ * 32 % correspond à la distance séparant le début
+ * de deux copies :
+ *
+ * largeur d’une copie : 36 %
+ * chevauchement :        4 %
+ * déplacement :         32 %
+ */
+@keyframes fog-drift-left {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-32%);
+  }
+}
+
+@keyframes fog-drift-right {
+  from {
+    transform: translateX(-32%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fog-layer {
+    animation-play-state: paused;
+  }
+}
