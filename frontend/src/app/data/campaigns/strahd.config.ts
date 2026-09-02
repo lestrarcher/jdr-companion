@@ -237,11 +237,303 @@ export const STRAHD_CAMPAIGN: CampaignConfig = {
     },
   ],
 
+  players: [
+    {
+      id: 'player-hailee',
+      displayName: 'Joueur de Hailee',
+      characterId: 'character-hailee',
+      accessToken: 'demo-hailee',
+    },
+    {
+      id: 'player-fry',
+      displayName: 'Yannick',
+      characterId: 'character-fry',
+      accessToken: 'demo-fry',
+    },
+    {
+      id: 'player-ireena',
+      displayName: 'PNJ',
+      characterId: 'character-ireena',
+      accessToken: 'demo-ireena',
+    },
+    {
+      id: 'player-guts',
+      displayName: 'Julien',
+      characterId: 'character-guts',
+      accessToken: 'demo-guts',
+    },
+  ],
+
+  characters: [
+    {
+      id: 'character-hailee',
+      name: 'Hailee',
+      type: 'pc',
+      className: 'Clerc du domaine de la Lumière',
+      level: 6,
+
+      hitDice: [
+        {
+          die: 'd8',
+          current: 6,
+          maximum: 6,
+          id: 'hailee-hit-dice',
+        },
+      ],
+
+      hitPoints: {
+        current: 38,
+        maximum: 38,
+        temporary: 0,
+      },
+
+      resources: [
+        {
+          id: 'hailee-channel-divinity',
+          name: 'Conduit divin',
+          shortName: 'Conduit divin',
+          category: 'class-feature',
+          resetPeriod: 'short-rest',
+          currentValue: 2,
+          maximumValue: 2,
+          displayOrder: 10,
+        },
+        {
+          id: 'hailee-spell-slot-1',
+          name: 'Emplacements de sorts de niveau 1',
+          shortName: 'Sorts niveau 1',
+          category: 'spell-slot',
+          resetPeriod: 'long-rest',
+          currentValue: 4,
+          maximumValue: 4,
+          level: 1,
+          displayOrder: 20,
+        },
+        {
+          id: 'hailee-spell-slot-2',
+          name: 'Emplacements de sorts de niveau 2',
+          shortName: 'Sorts niveau 2',
+          category: 'spell-slot',
+          resetPeriod: 'long-rest',
+          currentValue: 3,
+          maximumValue: 3,
+          level: 2,
+          displayOrder: 30,
+        },
+        {
+          id: 'hailee-spell-slot-3',
+          name: 'Emplacements de sorts de niveau 3',
+          shortName: 'Sorts niveau 3',
+          category: 'spell-slot',
+          resetPeriod: 'long-rest',
+          currentValue: 3,
+          maximumValue: 3,
+          level: 3,
+          displayOrder: 40,
+        },
+        {
+          id: 'hailee-protective-flare',
+          name: 'Illumination protectrice',
+          shortName: 'Illumination protectrice',
+          category: 'class-feature',
+          resetPeriod: 'long-rest',
+          currentValue: 4,
+          maximumValue: 4,
+          displayOrder: 50,
+        },
+      ],
+    },
+    {
+      id: 'character-fry',
+      name: 'Fry',
+      type: 'pc',
+
+      className: 'Artificier artilleur',
+      level: 6,
+
+      hitPoints: {
+        current: 33,
+        maximum: 33,
+        temporary: 0,
+      },
+
+      hitDice: [
+        {
+          die: 'd8',
+          current: 6,
+          maximum: 6,
+          id: 'fry-hit-dice',
+        },
+      ],
+
+      resources: [
+        {
+          id: 'fry-infused-items',
+          name: 'Objets imprégnés',
+          shortName: 'Objets imprégnés',
+          category: 'class-feature',
+          resetPeriod: 'manual',
+          currentValue: 3,
+          maximumValue: 3,
+          notes: '',
+          notesEditable: true,
+          displayOrder: 10,
+        },
+        {
+          id: 'fry-eldritch-cannon',
+          name: 'Canon occulte',
+          shortName: 'Canon occulte',
+          category: 'class-feature',
+          resetPeriod: 'long-rest',
+          currentValue: 1,
+          maximumValue: 1,
+          displayOrder: 20,
+        },
+        {
+          id: 'fry-spell-slot-1',
+          name: 'Emplacements de sorts de niveau 1',
+          shortName: 'Sorts niveau 1',
+          category: 'spell-slot',
+          resetPeriod: 'long-rest',
+          currentValue: 4,
+          maximumValue: 4,
+          level: 1,
+          displayOrder: 30,
+        },
+        {
+          id: 'fry-spell-slot-2',
+          name: 'Emplacements de sorts de niveau 2',
+          shortName: 'Sorts niveau 2',
+          category: 'spell-slot',
+          resetPeriod: 'long-rest',
+          currentValue: 2,
+          maximumValue: 2,
+          level: 2,
+          displayOrder: 40,
+        },
+      ],
+    },
+    {
+      id: 'character-ireena',
+      name: 'Ireena',
+      type: 'npc',
+
+      className: 'Paladine de la Vengeance',
+      level: 3,
+
+      hitPoints: {
+        current: 31,
+        maximum: 31,
+        temporary: 0,
+      },
+
+      hitDice: [
+        {
+          die: 'd10',
+          current: 3,
+          maximum: 3,
+          id: 'ireena-hit-dice',
+        },
+      ],
+
+      resources: [
+        {
+          id: 'ireena-divine-sense',
+          name: 'Sens divin',
+          shortName: 'Sens divin',
+          category: 'class-feature',
+          resetPeriod: 'long-rest',
+          currentValue: 4,
+          maximumValue: 4,
+          displayOrder: 10,
+        },
+        {
+          id: 'ireena-lay-on-hands',
+          name: 'Imposition des mains',
+          shortName: 'Imposition des mains',
+          category: 'class-feature',
+          resetPeriod: 'long-rest',
+          currentValue: 5,
+          maximumValue: 15,
+          displayOrder: 20,
+        },
+        {
+          id: 'ireena-channel-divinity',
+          name: 'Conduit divin',
+          shortName: 'Conduit divin',
+          category: 'class-feature',
+          resetPeriod: 'short-rest',
+          currentValue: 1,
+          maximumValue: 1,
+          displayOrder: 30,
+        },
+        {
+          id: 'ireena-spell-slot-1',
+          name: 'Emplacements de sorts de niveau 1',
+          shortName: 'Sorts niveau 1',
+          category: 'spell-slot',
+          resetPeriod: 'long-rest',
+          currentValue: 3,
+          maximumValue: 3,
+          level: 1,
+          displayOrder: 40,
+        },
+      ],
+    },
+    {
+      id: 'character-guts',
+      name: 'Guts',
+      type: 'pc',
+
+      className: 'Barbare de la Magie sauvage',
+      level: 6,
+
+      hitPoints: {
+        current: 78,
+        maximum: 78,
+        temporary: 0,
+      },
+
+      hitDice: [
+        {
+          die: 'd12',
+          current: 6,
+          maximum: 6,
+          id: 'guts-hit-dice',
+        },
+      ],
+
+      resources: [
+        {
+          id: 'guts-rage',
+          name: 'Rage',
+          shortName: 'Rages',
+          category: 'class-feature',
+          resetPeriod: 'long-rest',
+          currentValue: 4,
+          maximumValue: 4,
+          displayOrder: 10,
+        },
+        {
+          id: 'guts-bolstering-magic',
+          name: 'Magie galvanisante',
+          shortName: 'Magie galvanisante',
+          category: 'class-feature',
+          resetPeriod: 'long-rest',
+          currentValue: 3,
+          maximumValue: 3,
+          displayOrder: 20,
+        },
+      ],
+    },
+  ],
+
   initialLiveState: {
     sessionId: 'session-samedi',
     campaignId: 'campaign-strahd-01',
     fogEnabled: true,
     displayMode: 'normal',
+    status: 'draft',
 
     day: 11,
     dayPeriod: 'Nuit',
