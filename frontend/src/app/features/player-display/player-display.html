@@ -1,19 +1,31 @@
-<div class="player-screen">
+<div
+  class="player-screen"
+  [class.player-screen--cinematic]="
+    liveState()?.displayMode === 'cinematic'
+  "
+>
   <div class="display-layout">
     <section class="display-main">
-      <app-world-header />
+      <app-world-header
+        [campaignLabel]="campaign.worldName"
+        [state]="liveState()"
+      />
 
-      <app-main-display />
+      <app-main-display
+        [cinematic]="liveState()?.displayMode === 'cinematic'"
+        [displayedMedia]="liveState()?.displayedMedia ?? null"
+      />
     </section>
 
     <aside class="player-sidebar">
       <app-quests-panel />
-
       <app-memorial-panel />
     </aside>
   </div>
 
   <app-tip-bar />
 
-  <app-ambient-fog />
+  @if (liveState()?.fogEnabled) {
+    <app-ambient-fog />
+  }
 </div>

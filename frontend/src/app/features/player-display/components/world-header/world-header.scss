@@ -12,75 +12,84 @@
   width: 100%;
   min-width: 0;
   min-height: 8rem;
-
   padding: 1.25rem 2.5rem;
 
-  /*
-   * Le fond noir appartient désormais au player-display.
-   */
   background: transparent;
 }
 
 .conditions,
 .date,
 .location {
-  /*
-   * Halo irrégulier produit à partir de la forme réelle
-   * des textes et des icônes.
-   */
   filter:
     drop-shadow(0 0 18px rgba(0, 0, 0, 0.95))
     drop-shadow(0 0 28px rgba(0, 0, 0, 0.85))
     drop-shadow(0 5px 35px rgba(0, 0, 0, 0.75));
 }
 
+/* Conditions visuelles */
+
 .conditions {
   display: flex;
   align-items: center;
   justify-self: start;
   gap: 1.5rem;
+
   min-width: 0;
 }
 
-.condition {
+.moon-visual,
+.weather-visual {
   display: flex;
   align-items: center;
-  gap: 0.8rem;
+  justify-content: center;
 }
 
-.condition-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
+.moon-visual {
+  width: 72px;
+  height: 72px;
+  flex: 0 0 72px;
 }
 
-.weather-icon {
-  color: #c7d1d8;
-  font-size: 1.65rem;
-
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
+.weather-visual {
+  width: 76px;
+  height: 72px;
+  flex: 0 0 76px;
 }
 
-.moon-icon {
-  color: #dec77f;
-  font-size: 2.15rem;
-  line-height: 1;
+.moon-image,
+.weather-image {
+  display: block;
+  width: 100%;
+  height: 100%;
 
-  filter: drop-shadow(0 0 8px rgba(222, 199, 127, 0.22));
+  object-fit: contain;
+}
+
+.moon-image {
+  filter:
+    drop-shadow(0 0 5px rgba(235, 220, 170, 0.5))
+    drop-shadow(0 0 14px rgba(190, 180, 230, 0.25));
+}
+
+.weather-image {
+  filter:
+    drop-shadow(0 2px 5px rgba(0, 0, 0, 0.85))
+    drop-shadow(0 0 10px rgba(180, 195, 215, 0.18));
 }
 
 .separator {
   width: 1px;
   height: 2.8rem;
 
-  background:
-    linear-gradient(
-      to bottom,
-      transparent,
-      rgba(220, 191, 121, 0.45),
-      transparent
-    );
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(220, 191, 121, 0.45),
+    transparent
+  );
 }
+
+/* Libellés communs */
 
 .label {
   display: block;
@@ -96,18 +105,7 @@
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95);
 }
 
-.condition strong {
-  color: #f4efe6;
-
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 1.15rem;
-  font-weight: 500;
-  line-height: 1.1;
-
-  text-shadow:
-    0 2px 4px rgba(0, 0, 0, 0.95),
-    0 0 12px rgba(0, 0, 0, 0.65);
-}
+/* Date */
 
 .date {
   display: flex;
@@ -134,10 +132,6 @@
   font-size: clamp(1.85rem, 2.3vw, 2.5rem);
   font-weight: 500;
   line-height: 0.95;
-
-  text-shadow:
-    0 2px 4px rgba(0, 0, 0, 0.95),
-    0 0 14px rgba(0, 0, 0, 0.7);
 }
 
 .date small {
@@ -157,6 +151,8 @@
 
   filter: drop-shadow(0 0 5px rgba(213, 180, 93, 0.35));
 }
+
+/* Lieu */
 
 .location {
   display: flex;
@@ -178,10 +174,6 @@
   font-size: clamp(1.25rem, 1.65vw, 1.8rem);
   font-weight: 500;
   line-height: 1;
-
-  text-shadow:
-    0 2px 4px rgba(0, 0, 0, 0.95),
-    0 0 14px rgba(0, 0, 0, 0.7);
 }
 
 .location small {
@@ -193,6 +185,19 @@
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95);
 }
 
+/* Lisibilité des textes principaux */
+
+.date strong,
+.location strong {
+  text-shadow:
+    0 2px 3px rgba(0, 0, 0, 1),
+    0 0 8px rgba(0, 0, 0, 1),
+    0 0 18px rgba(0, 0, 0, 0.85),
+    0 5px 28px rgba(0, 0, 0, 0.75);
+}
+
+/* Écrans plus étroits */
+
 @media (max-width: 1400px) {
   .world-header {
     gap: 1.25rem;
@@ -203,29 +208,15 @@
     gap: 1rem;
   }
 
-  .condition {
-    gap: 0.55rem;
+  .moon-visual {
+    width: 64px;
+    height: 64px;
+    flex-basis: 64px;
   }
 
-  .weather-icon {
-    font-size: 1.4rem;
+  .weather-visual {
+    width: 68px;
+    height: 64px;
+    flex-basis: 68px;
   }
-
-  .moon-icon {
-    font-size: 1.8rem;
-  }
-
-  .condition strong {
-    font-size: 1rem;
-  }
-}
-
-.condition strong,
-.date strong,
-.location strong {
-  text-shadow:
-    0 2px 3px rgba(0, 0, 0, 1),
-    0 0 8px rgba(0, 0, 0, 1),
-    0 0 18px rgba(0, 0, 0, 0.85),
-    0 5px 28px rgba(0, 0, 0, 0.75);
 }

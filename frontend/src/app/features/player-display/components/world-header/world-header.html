@@ -1,33 +1,35 @@
 <header class="world-header">
   <section class="conditions" aria-label="Conditions actuelles">
-    <div class="condition">
-      <span class="weather-icon" aria-hidden="true">☁</span>
-
-      <div class="condition-copy">
-        <span class="label">Temps</span>
-        <strong>Orage</strong>
+    @if (state()?.moon; as moon) {
+      <div class="moon-visual">
+        <img
+          class="moon-image"
+          [src]="moon.imageUrl"
+          [alt]="moon.alt"
+        />
       </div>
-    </div>
+    }
 
     <span class="separator" aria-hidden="true"></span>
 
-    <div class="condition">
-      <span class="moon-icon" aria-hidden="true">☾</span>
-
-      <div class="condition-copy">
-        <span class="label">Lune</span>
-        <strong>Croissant</strong>
+    @if (state()?.weather; as weather) {
+      <div class="weather-visual">
+        <img
+          class="weather-image"
+          [src]="weather.imageUrl"
+          [alt]="weather.alt"
+        />
       </div>
-    </div>
+    }
   </section>
 
   <section class="date">
     <span class="ornament" aria-hidden="true">◆</span>
 
     <div>
-      <span class="label">Barovie</span>
-      <strong>Jour 11</strong>
-      <small>Nuit</small>
+      <span class="label">{{ campaignLabel() }}</span>
+      <strong>Jour {{ state()?.day }}</strong>
+      <small>{{ state()?.dayPeriod }}</small>
     </div>
 
     <span class="ornament" aria-hidden="true">◆</span>
@@ -35,7 +37,7 @@
 
   <section class="location">
     <span class="label">Lieu actuel</span>
-    <strong>Argynvostholt</strong>
-    <small>Lisière de la forêt</small>
+    <strong>{{ state()?.location?.name }}</strong>
+    <small>{{ state()?.location?.subtitle }}</small>
   </section>
 </header>

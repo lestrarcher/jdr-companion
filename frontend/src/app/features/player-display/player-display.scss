@@ -141,3 +141,72 @@ app-memorial-panel {
       bottom / 100% 6.5rem no-repeat;
   }
 }
+.player-screen--cinematic {
+  grid-template-rows: minmax(0, 1fr);
+
+  .display-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .display-main {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  app-world-header,
+  .player-sidebar,
+  app-tip-bar {
+    display: none;
+  }
+
+  &::before {
+    background: rgba(2, 5, 13, 0.35);
+  }
+}
+
+/* La légende vient par-dessus le bas de l’image. */
+
+.media-caption {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 3;
+
+  background: linear-gradient(
+    to top,
+    rgba(3, 5, 13, 0.98) 0%,
+    rgba(3, 5, 13, 0.9) 62%,
+    rgba(3, 5, 13, 0) 100%
+  );
+
+  border-top: 0;
+  padding: 3.5rem 2rem 1.25rem;
+}
+
+/* Le composant entier devient disponible pour l’image. */
+
+:host(.main-display-host--cinematic) {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+}
+
+.main-display-cinematic {
+  width: 100%;
+  height: 100%;
+
+  .media-figure {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+
+    border: 0;
+    box-shadow: none;
+  }
+
+  .image-frame {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+  }
+}
