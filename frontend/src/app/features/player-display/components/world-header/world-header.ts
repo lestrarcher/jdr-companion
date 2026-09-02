@@ -1,4 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, input } from '@angular/core';
+
+import { LiveSessionState } from '@core/models/live-session-state.model';
 
 @Component({
   imports: [],
@@ -6,4 +8,7 @@ import { Component } from '@angular/core';
   styleUrl: './world-header.scss',
   templateUrl: './world-header.html',
 })
-export class WorldHeader {}
+export class WorldHeader {
+  readonly campaignLabel = input.required<string>();
+  readonly state = input<LiveSessionState | null>(null);
+}

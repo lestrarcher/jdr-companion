@@ -1,15 +1,19 @@
 <section
   class="main-display"
-  [class.main-display-active]="displayedMedia !== null"
+  [class.main-display-active]="displayedMedia() !== null"
+  [class.main-display-cinematic]="cinematic()"
   aria-live="polite"
 >
-  @if (displayedMedia; as media) {
+  @if (displayedMedia(); as media) {
     <figure class="media-figure">
       <div class="image-frame">
         <img
           class="media-image"
           [src]="media.source"
           [alt]="media.alt"
+          [style.object-fit]="
+            cinematic() ? 'cover' : (media.fit ?? 'contain')
+          "
         />
 
         @if (media.title || media.subtitle) {

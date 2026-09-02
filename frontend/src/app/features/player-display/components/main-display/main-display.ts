@@ -1,25 +1,17 @@
-import { Component } from '@angular/core';
+import { Component, input } from '@angular/core';
 
-interface DisplayedImage {
-  type: 'image';
-  source: string;
-  alt: string;
-  title?: string;
-  subtitle?: string;
-}
+import { DisplayedMediaState } from '@core/models/live-session-state.model';
 
 @Component({
   selector: 'app-main-display',
   imports: [],
   templateUrl: './main-display.html',
   styleUrl: './main-display.scss',
+  host: {
+    '[class.main-display-host--cinematic]': 'cinematic()',
+  },
 })
 export class MainDisplay {
-  protected readonly displayedMedia: DisplayedImage | null = {
-    type: 'image',
-    source: '/assets/display/curse-of-strahd.png',
-    alt: 'Coucerture La Malédiction de Strahd',
-    title: 'La Malédiction de Strahd',
-    subtitle: 'Bienvenue en Barovie',
-  };
+  readonly cinematic = input(false);
+  readonly displayedMedia = input<DisplayedMediaState | null>(null);
 }

@@ -1,0 +1,44 @@
+export interface WeatherState {
+  id: string;
+  label: string;
+  imageUrl: string;
+  alt: string;
+}
+
+export interface MoonState {
+  id: string;
+  label: string;
+  imageUrl: string;
+  alt: string;
+}
+
+export interface LocationState {
+  name: string;
+  subtitle?: string;
+}
+
+export interface DisplayedMediaState {
+  id: string;
+  source: string;
+  alt: string;
+  title?: string;
+  subtitle?: string;
+  fit?: 'contain' | 'cover';
+}
+
+export interface LiveSessionState {
+  sessionId: string;
+  campaignId: string;
+
+  fogEnabled: boolean;
+  displayMode: DisplayMode;
+
+  day?: number;
+  dayPeriod?: string;
+  weather?: WeatherState;
+  moon?: MoonState;
+  location?: LocationState;
+  displayedMedia?: DisplayedMediaState;
+}
+
+export type DisplayMode = 'normal' | 'cinematic';
