@@ -278,4 +278,33 @@ final class GameSessionController extends AbstractController
                     ->format(DATE_ATOM),
         ];
     }
+
+    #[Route(
+    '/sessions/{sessionId}',
+    name: 'api_session_show',
+    requirements: ['sessionId' => '\d+'],
+    methods: ['GET'],
+)]
+public function show(
+    int $sessionId,
+    GameSessionRepository $sessionRepository,
+): JsonResponse {
+    $session = $sessionRepository->find($sessionId);
+
+    if (!$session) {
+        throw $this->createNotFoundException(
+            'Session inconnue.',
+        );
+    }
+
+    $this->denyAccessUnlessGranted(
+        CampaignVoter::VIEW,
+        $session->getCampaign(),
+    );
+
+    return $this->json([
+        'session' =>
+            $this->serializeSession($session),
+    ]);
+}
 }

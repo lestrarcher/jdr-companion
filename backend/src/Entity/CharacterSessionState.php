@@ -112,7 +112,7 @@ class CharacterSessionState
     /**
      * @param array<string, mixed> $state
      */
-    public function setState(array $state): self
+    public function setState(array $state): static
     {
         $this->state = $state;
         $this->updatedAt = new \DateTimeImmutable();

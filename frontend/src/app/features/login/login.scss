@@ -1,0 +1,134 @@
+:host {
+  display: block;
+  min-height: 100dvh;
+  color: #eee8dc;
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      rgba(80, 60, 111, 0.28),
+      transparent 45%
+    ),
+    linear-gradient(
+      145deg,
+      #171722,
+      #08090e
+    );
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.login-page {
+  display: grid;
+  min-height: 100dvh;
+  padding: 1rem;
+  place-items: center;
+}
+
+.login-card {
+  width: min(100%, 28rem);
+  padding: 2rem 1.4rem;
+  border: 1px solid
+    rgba(190, 151, 80, 0.42);
+  border-radius: 0.9rem;
+  background: rgba(12, 13, 20, 0.94);
+  box-shadow:
+    0 1.5rem 4rem rgba(0, 0, 0, 0.45),
+    inset 0 0 2rem rgba(85, 62, 109, 0.08);
+
+  header {
+    margin-bottom: 1.6rem;
+    text-align: center;
+  }
+
+  h1 {
+    margin: 0.35rem 0 0.65rem;
+    font-family:
+      Georgia,
+      'Times New Roman',
+      serif;
+    font-size: clamp(1.7rem, 6vw, 2.3rem);
+    font-weight: 500;
+  }
+
+  p {
+    margin: 0;
+    color: #aaa4ae;
+    line-height: 1.5;
+  }
+}
+
+.eyebrow {
+  color: #c29b53;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+form {
+  display: grid;
+  gap: 1rem;
+}
+
+label {
+  display: grid;
+  gap: 0.4rem;
+
+  span {
+    color: #c2bbc3;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+}
+
+input {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid
+    rgba(159, 136, 95, 0.4);
+  border-radius: 0.45rem;
+  outline: none;
+  color: #f2eadc;
+  background: rgba(4, 5, 9, 0.72);
+  font: inherit;
+
+  &:focus {
+    border-color: #c6a15b;
+    box-shadow:
+      0 0 0 3px
+      rgba(198, 161, 91, 0.12);
+  }
+}
+
+button {
+  min-height: 3rem;
+  margin-top: 0.35rem;
+  cursor: pointer;
+  border: 1px solid #a98546;
+  border-radius: 0.45rem;
+  color: #f5ead6;
+  background: linear-gradient(
+    135deg,
+    #74521f,
+    #3c2b18
+  );
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.48;
+  }
+}
+
+.error-message {
+  color: #e4a7a7 !important;
+  font-size: 0.85rem;
+  text-align: center;
+}

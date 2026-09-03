@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { authGuard } from '@core/guards/auth-guard';
 
 const DEFAULT_CAMPAIGN_ID = 'campaign-strahd-01';
 const DEFAULT_SESSION_ID = 'session-samedi';
@@ -11,6 +12,13 @@ const DEFAULT_CONTROL_ROUTE =
 
 export const routes: Routes = [
   {
+    path: 'login',
+    loadComponent: () =>
+      import('./features/login/login').then(
+        (component) => component.Login,
+      ),
+  },
+  {
     path: 'campaigns/:campaignId/sessions/:sessionId/display',
     loadComponent: () =>
       import('./features/player-display/player-display').then(
@@ -19,6 +27,7 @@ export const routes: Routes = [
   },
   {
     path: 'campaigns/:campaignId/sessions/:sessionId/control',
+    canActivate: [authGuard],
     loadComponent: () =>
       import('./features/control-dashboard/control-dashboard').then(
         (component) => component.ControlDashboard,

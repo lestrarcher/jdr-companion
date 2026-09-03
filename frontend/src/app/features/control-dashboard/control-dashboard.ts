@@ -1,11 +1,29 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+
+import {
+  catchError,
+  finalize,
+  of,
+  switchMap,
+  timer,
+} from 'rxjs';
+
+import {
+  RestRequestApiResponse,
+  RestRequestApiService,
+} from '@core/services/rest-request-api.service';
+import {
+  CampaignBootstrapService,
+  ImportedCharacterResult,
+} from '@core/services/campaign-bootstrap.service';
+import { GameSessionApiService } from '@core/services/game-session-api.service';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 
 import { CampaignMedia } from '@core/models/campaign.model';
 import { LiveSessionService } from '@core/services/live-session.service';
 import { STRAHD_CAMPAIGN } from '@data/campaigns/strahd.config';
-import { RestRequestService } from '@core/services/rest-request.service';
 
 @Component({
   selector: 'app-control-dashboard',
@@ -19,8 +37,17 @@ export class ControlDashboard {
   private readonly route = inject(ActivatedRoute);
 
   protected readonly campaign = STRAHD_CAMPAIGN;
-  private readonly restRequestService = inject(RestRequestService);
   protected readonly liveState = this.liveSessionService.state;
+
+  private readonly gameSessionApi = inject(
+    GameSessionApiService,
+  );
+
+  protected readonly sessionStatusUpdateRunning =
+    signal(false);
+
+  protected readonly sessionStatusError =
+    signal<string | null>(null);
 
   protected readonly worldForm = this.formBuilder.nonNullable.group({
     day: [1, [Validators.required, Validators.min(1)]],
@@ -33,6 +60,35 @@ export class ControlDashboard {
     locationName: ['', Validators.required],
     locationSubtitle: [''],
   });
+
+  private readonly campaignBootstrapService = inject(
+  CampaignBootstrapService,
+);
+
+private readonly backendCampaignId = 1;
+private readonly backendSessionId = 1;
+
+protected readonly characterImportRunning = signal(false);
+protected readonly characterImportError = signal<string | null>(null);
+
+protected readonly importedCharacters = signal<
+  ImportedCharacterResult[]
+>([]);
+
+private readonly destroyRef = inject(DestroyRef);
+
+private readonly restRequestApi = inject(
+  RestRequestApiService,
+);
+
+protected readonly pendingRestRequests =
+  signal<RestRequestApiResponse[]>([]);
+
+protected readonly resolvingRestRequestId =
+  signal<number | null>(null);
+
+protected readonly restRequestError =
+  signal<string | null>(null);
 
   constructor() {
     const campaignId = this.route.snapshot.paramMap.get('campaignId');
@@ -47,10 +103,7 @@ export class ControlDashboard {
     }
 
     this.liveSessionService.initialize(this.campaign, sessionId);
-    this.restRequestService.initialize(
-      this.campaign.id,
-      sessionId,
-    );
+
 
     const state = this.liveState();
 
@@ -64,18 +117,8 @@ export class ControlDashboard {
         locationSubtitle: state.location?.subtitle ?? '',
       });
     }
+    this.initializeRestRequestPolling();
   }
-
-  protected readonly pendingRestRequests = computed(() =>
-    this.restRequestService
-      .requests()
-      .filter((request) => request.status === 'pending')
-      .sort(
-        (first, second) =>
-          new Date(first.requestedAt).getTime() -
-          new Date(second.requestedAt).getTime(),
-      ),
-  );
 
   protected updateWorld(): void {
     if (this.worldForm.invalid) {
@@ -172,26 +215,144 @@ export class ControlDashboard {
   });
 
   protected openSession(): void {
-    this.liveSessionService.updateState({
-      status: 'live',
-    });
+    this.updateSessionStatus('live');
   }
 
   protected closeSession(): void {
-    this.liveSessionService.updateState({
-      status: 'closed',
-    });
+    this.updateSessionStatus('closed');
   }
 
-  protected resolveRestRequest(
-    requestId: string,
-    approved: boolean,
+  private updateSessionStatus(
+    status: 'live' | 'closed',
   ): void {
-    this.restRequestService.resolveRequest(
-      requestId,
-      approved ? 'approved' : 'rejected',
-    );
+    if (this.sessionStatusUpdateRunning()) {
+      return;
+    }
+
+    this.sessionStatusUpdateRunning.set(true);
+    this.sessionStatusError.set(null);
+
+    this.gameSessionApi
+      .updateStatus(this.backendSessionId, status)
+      .pipe(
+        finalize(() => {
+          this.sessionStatusUpdateRunning.set(false);
+        }),
+      )
+      .subscribe({
+        next: (session) => {
+          /*
+          * Symfony persiste l’état pour les téléphones.
+          * BroadcastChannel prévient le display local.
+          */
+          this.liveSessionService.updateState({
+            status: session.status,
+          });
+        },
+
+        error: (error: any) => {
+          console.error(
+            'Impossible de modifier le statut de la session.',
+            error,
+          );
+
+          this.sessionStatusError.set(
+            error?.error?.message ??
+              error?.error?.detail ??
+              'Impossible de modifier le statut de la session.',
+          );
+        },
+      });
   }
+
+protected resolveRestRequest(
+  requestId: number,
+  approved: boolean,
+): void {
+  if (
+    this.resolvingRestRequestId() !==
+    null
+  ) {
+    return;
+  }
+
+  this.resolvingRestRequestId.set(
+    requestId,
+  );
+
+  this.restRequestError.set(null);
+
+  this.restRequestApi
+    .resolve(
+      requestId,
+      approved
+        ? 'approved'
+        : 'rejected',
+    )
+    .pipe(
+      finalize(() => {
+        this.resolvingRestRequestId.set(
+          null,
+        );
+      }),
+    )
+    .subscribe({
+      next: () => {
+        this.pendingRestRequests.update(
+          (requests) =>
+            requests.filter(
+              (request) =>
+                request.id !== requestId,
+            ),
+        );
+      },
+
+      error: (error: any) => {
+        console.error(
+          'Impossible de traiter la demande de repos.',
+          error,
+        );
+
+        this.restRequestError.set(
+          error?.error?.message ??
+            'La demande de repos n’a pas pu être traitée.',
+        );
+      },
+    });
+}
+// TODO: remplacer ce polling temporaire par des événements Mercure.
+private initializeRestRequestPolling(): void {
+  timer(0, 5000)
+    .pipe(
+      switchMap(() =>
+        this.restRequestApi
+          .listPending(
+            this.backendSessionId,
+          )
+          .pipe(
+            catchError(
+              (error: unknown) => {
+                console.error(
+                  'Impossible de récupérer les demandes de repos.',
+                  error,
+                );
+
+                return of([]);
+              },
+            ),
+          ),
+      ),
+
+      takeUntilDestroyed(
+        this.destroyRef,
+      ),
+    )
+    .subscribe((requests) => {
+      this.pendingRestRequests.set(
+        requests,
+      );
+    });
+}
 
   protected restTypeLabel(
     type: 'short-rest' | 'long-rest',
@@ -200,4 +361,76 @@ export class ControlDashboard {
       ? 'Repos court'
       : 'Repos long';
   }
+
+  protected synchronizeCharacters(): void {
+  if (this.characterImportRunning()) {
+    return;
+  }
+
+  this.characterImportRunning.set(true);
+  this.characterImportError.set(null);
+
+  this.campaignBootstrapService
+    .synchronizeCharacters(
+      this.campaign,
+      this.backendCampaignId,
+      this.backendSessionId,
+    )
+    .pipe(
+      finalize(() => {
+        this.characterImportRunning.set(false);
+      }),
+    )
+    .subscribe({
+      next: (characters) => {
+        this.importedCharacters.set(characters);
+      },
+
+      error: (error: any) => {
+        console.error(
+          'Impossible de synchroniser les personnages.',
+          error,
+        );
+
+        const backendMessage =
+          error?.error?.message ??
+          error?.error?.detail ??
+          error?.message;
+
+        this.characterImportError.set(
+          backendMessage
+            ? `Synchronisation impossible : ${backendMessage}`
+            : 'La synchronisation des personnages a échoué.',
+        );
+      },
+    });
+}
+
+protected playerPortalUrl(
+  accessToken: string | null,
+): string | null {
+  if (!accessToken) {
+    return null;
+  }
+
+  const campaignId =
+    this.route.snapshot.paramMap.get('campaignId');
+
+  const sessionId =
+    this.route.snapshot.paramMap.get('sessionId');
+
+  if (!campaignId || !sessionId) {
+    return null;
+  }
+
+  return [
+    '',
+    'campaigns',
+    campaignId,
+    'sessions',
+    sessionId,
+    'player',
+    accessToken,
+  ].join('/');
+}
 }

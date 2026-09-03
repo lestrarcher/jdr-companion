@@ -4,10 +4,11 @@ import {
   output,
 } from '@angular/core';
 
-import {
-  RestRequest,
-  RestType,
-} from '@core/models/rest-request.model';
+import { RestType } from '@core/models/rest-request.model';
+
+export interface PendingRestRequest {
+  type: RestType;
+}
 
 @Component({
   selector: 'app-rest-controls',
@@ -17,7 +18,7 @@ import {
 })
 export class RestControls {
   readonly request =
-    input<RestRequest | undefined>();
+    input<PendingRestRequest | undefined>();
 
   readonly feedback =
     input<string | null>(null);
