@@ -11,6 +11,65 @@
     </div>
   </header>
 
+  <section class="control-panel characters-panel">
+  <div class="panel-heading">
+    <div>
+      <span class="eyebrow">Données persistantes</span>
+      <h2>Personnages de la session</h2>
+    </div>
+
+    <button
+      type="button"
+      [disabled]="characterImportRunning()"
+      (click)="synchronizeCharacters()"
+    >
+      {{
+        characterImportRunning()
+          ? 'Synchronisation…'
+          : 'Initialiser les personnages'
+      }}
+    </button>
+  </div>
+
+  @if (characterImportError()) {
+    <p class="import-error" role="alert">
+      {{ characterImportError() }}
+    </p>
+  }
+
+  @if (importedCharacters().length > 0) {
+    <div class="character-links">
+      @for (
+        character of importedCharacters();
+        track character.characterId
+      ) {
+        <article class="character-link-card">
+          <div>
+            <strong>{{ character.characterName }}</strong>
+            <small>
+              Personnage backend #{{ character.characterId }}
+            </small>
+          </div>
+
+          @if (playerPortalUrl(character.accessToken); as url) {
+            <a
+              [href]="url"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Ouvrir l’interface
+            </a>
+          } @else {
+            <span class="missing-link">
+              Lien indisponible
+            </span>
+          }
+        </article>
+      }
+    </div>
+  }
+</section>
+
   @if (pendingRestRequests().length > 0) {
   <section
     class="control-panel rest-requests-panel"
@@ -44,7 +103,7 @@
             </span>
 
             <div>
-              <strong>{{ request.characterName }}</strong>
+              <strong>{{ request.character.name }}</strong>
               <small>
                 demande un
                 {{ restTypeLabel(request.type).toLowerCase() }}
@@ -57,6 +116,9 @@
               class="reject-request-button"
               type="button"
               (click)="resolveRestRequest(request.id, false)"
+              [disabled]="
+                resolvingRestRequestId() !== null
+              "
             >
               Refuser
             </button>
@@ -65,6 +127,9 @@
               class="approve-request-button"
               type="button"
               (click)="resolveRestRequest(request.id, true)"
+              [disabled]="
+                resolvingRestRequestId() !== null
+              "
             >
               Accepter
             </button>
@@ -73,6 +138,11 @@
       }
     </div>
   </section>
+}
+@if (restRequestError()) {
+  <p class="import-error" role="alert">
+    {{ restRequestError() }}
+  </p>
 }
 
   <section class="control-panel">
@@ -160,25 +230,37 @@
   <div class="display-controls">
 
     <button
-  class="mode-button"
-  type="button"
-  [class.mode-button-active]="liveState()?.status === 'live'"
-  [disabled]="liveState()?.status === 'live'"
-  (click)="openSession()"
->
-  <strong>Ouvrir la session</strong>
-  <small>Autoriser l’accès aux interfaces joueurs</small>
-</button>
+      class="mode-button"
+      type="button"
+      [class.mode-button-active]="liveState()?.status === 'live'"
+      [disabled]="
+        liveState()?.status === 'live' ||
+        sessionStatusUpdateRunning()
+      "
+      (click)="openSession()"
+    >
+      <strong>Ouvrir la session</strong>
+      <small>Autoriser l’accès aux interfaces joueurs</small>
+    </button>
 
-<button
-  class="mode-button mode-button-danger"
-  type="button"
-  [disabled]="liveState()?.status === 'closed'"
-  (click)="closeSession()"
->
-  <strong>Fermer la session</strong>
-  <small>Bloquer les interfaces joueurs</small>
-</button>
+    <button
+      class="mode-button mode-button-danger"
+      type="button"
+      [disabled]="
+        liveState()?.status === 'closed' ||
+        sessionStatusUpdateRunning()
+      "
+      (click)="closeSession()"
+    >
+      <strong>Fermer la session</strong>
+      <small>Bloquer les interfaces joueurs</small>
+    </button>
+
+    @if (sessionStatusError()) {
+      <p class="import-error" role="alert">
+        {{ sessionStatusError() }}
+      </p>
+    }
 
     <button
       class="mode-button"

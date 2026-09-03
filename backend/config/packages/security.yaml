@@ -1,0 +1,48 @@
+security:
+    password_hashers:
+        Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
+
+    providers:
+        app_user_provider:
+            entity:
+                class: App\Entity\User
+                property: email
+
+    firewalls:
+        dev:
+            pattern: ^/(_profiler|_wdt|assets|build)/
+            security: false
+
+        main:
+            lazy: true
+            provider: app_user_provider
+
+            json_login:
+                check_path: api_login
+                username_path: email
+                password_path: password
+
+            logout:
+                path: api_logout
+
+    access_control:
+        # Vérification publique du fonctionnement de l’API
+        - { path: ^/health$, roles: PUBLIC_ACCESS }
+
+        # Connexion du MJ
+        - { path: ^/login$, roles: PUBLIC_ACCESS }
+
+        # Futurs liens publics du display et des joueurs
+        - { path: ^/public/, roles: PUBLIC_ACCESS }
+
+        # Toutes les autres routes Symfony sont privées
+        - { path: ^/, roles: ROLE_USER }
+
+when@test:
+    security:
+        password_hashers:
+            Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface:
+                algorithm: auto
+                cost: 4
+                time_cost: 3
+                memory_cost: 10

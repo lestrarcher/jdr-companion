@@ -180,3 +180,22 @@
     align-items: start;
   }
 }
+
+
+
+.session-indicators {
+  display: grid;
+  justify-items: end;
+  gap: 0.4rem;
+}
+
+.save-status {
+  min-height: 1rem;
+  color: rgba(244, 239, 229, 0.6);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+}
+
+.save-status-error {
+  color: #ef9a9a;
+}

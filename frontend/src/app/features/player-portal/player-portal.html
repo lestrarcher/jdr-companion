@@ -1,37 +1,71 @@
 <main class="player-portal">
-  @if (!player || !character) {
-    <section class="portal-message portal-message-error">
-      <span class="eyebrow">Accès refusé</span>
-
-      <h1>Lien joueur invalide</h1>
-
-      <p>
-        Ce lien ne correspond à aucun participant de cette campagne.
-      </p>
-    </section>
-  } @else if (sessionState()?.status !== 'live') {
+  @if (loading()) {
     <section class="portal-message">
-      <span class="eyebrow">{{ campaign.name }}</span>
+      <span class="eyebrow">
+        {{ campaign.name }}
+      </span>
 
-      <h1>{{ character.name }}</h1>
+      <h1>Chargement du personnage</h1>
 
-      <div class="closed-symbol" aria-hidden="true">
+      <div
+        class="closed-symbol"
+        aria-hidden="true"
+      >
         ◆
       </div>
 
-      <p>{{ closedMessage() }}</p>
-
-      <small>
-        Cette page s’ouvrira lorsque le MJ lancera la session.
-      </small>
+      <p>
+        Récupération des données de la session…
+      </p>
     </section>
-  } @else {
-    @if (characterState(); as currentCharacter) {
+  } @else if (loadError(); as errorMessage) {
+    <section
+      class="portal-message portal-message-error"
+    >
+      <span class="eyebrow">
+        Accès refusé
+      </span>
+
+      <h1>Lien joueur invalide</h1>
+
+      <p>{{ errorMessage }}</p>
+    </section>
+  } @else if (character(); as portalCharacter) {
+    @if (sessionStatus() !== 'live') {
+      <section class="portal-message">
+        <span class="eyebrow">
+          {{ campaign.name }}
+        </span>
+
+        <h1>
+          {{ portalCharacter.name }}
+        </h1>
+
+        <div
+          class="closed-symbol"
+          aria-hidden="true"
+        >
+          ◆
+        </div>
+
+        <p>{{ closedMessage() }}</p>
+
+        <small>
+          Cette page s’ouvrira lorsque le MJ
+          lancera la session.
+        </small>
+      </section>
+    } @else if (
+      characterState();
+      as currentCharacter
+    ) {
       <section class="character-dashboard">
         <div
           class="dashboard-content"
           [attr.inert]="
-            pendingRestRequest() ? '' : null
+            pendingRestRequest()
+              ? ''
+              : null
           "
         >
           <header class="character-header">
@@ -40,50 +74,95 @@
                 {{ campaign.name }}
               </span>
 
-              <h1>{{ currentCharacter.name }}</h1>
+              <h1>
+                {{ currentCharacter.name }}
+              </h1>
             </div>
 
-            <span class="live-badge">
-              <span aria-hidden="true"></span>
-              En cours
-            </span>
+            <div class="session-indicators">
+              <span class="live-badge">
+                <span aria-hidden="true"></span>
+                En cours
+              </span>
+
+              <span
+                class="save-status"
+                [class.save-status-error]="
+                  saveStatus() === 'error'
+                "
+                aria-live="polite"
+              >
+                @switch (saveStatus()) {
+                  @case ('saving') {
+                    Enregistrement…
+                  }
+
+                  @case ('saved') {
+                    Enregistré
+                  }
+
+                  @case ('error') {
+                    Échec de l’enregistrement
+                  }
+                }
+              </span>
+            </div>
           </header>
 
-          <!-- Malédictions, pactes et jauges spéciales -->
           <app-character-progressions
             [progressions]="
-              currentCharacter.progressions ?? []
+              currentCharacter.progressions ??
+              []
             "
             (progressionChanged)="
               handleProgressionChange($event)
             "
           />
 
-          <!-- Valeurs individuelles comme les Présages -->
           <app-character-stored-values
-            [resources]="storedValueResources()"
+            [resources]="
+              storedValueResources()
+            "
           />
 
           <div class="tracker-layout">
-            <!-- PV, PV temporaires et dés de vie -->
             <app-character-vitals
-              [character]="currentCharacter"
+              [character]="
+                currentCharacter
+              "
             />
 
-            <!-- Ressources consommables -->
             <app-character-resources
-              [resources]="sortedResources()"
+              [resources]="
+                sortedResources()
+              "
             />
           </div>
         </div>
 
-        <!-- Demandes de repos et modale d’attente -->
         <app-rest-controls
           [request]="pendingRestRequest()"
           [feedback]="restFeedback()"
-          (restRequested)="requestRest($event)"
+          (restRequested)="
+            requestRest($event)
+          "
         />
       </section>
     }
+  } @else {
+    <section
+      class="portal-message portal-message-error"
+    >
+      <span class="eyebrow">
+        Accès refusé
+      </span>
+
+      <h1>Personnage indisponible</h1>
+
+      <p>
+        Les données de ce personnage n’ont
+        pas pu être chargées.
+      </p>
+    </section>
   }
 </main>

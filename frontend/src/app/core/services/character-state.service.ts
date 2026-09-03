@@ -18,6 +18,7 @@ export class CharacterStateService {
   initialize(
     campaignId: string,
     character: Character,
+    loadLocalState = true,
   ): void {
     this.channel?.close();
 
@@ -27,8 +28,9 @@ export class CharacterStateService {
     const initialState =
       this.cloneCharacter(character);
 
-    const storedState =
-      this.loadStoredState();
+    const storedState = loadLocalState
+      ? this.loadStoredState()
+      : null;
 
     this.currentCharacter.set(
       storedState
