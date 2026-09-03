@@ -17,6 +17,19 @@ export interface HitPointState {
   temporary: number;
 }
 
+export interface CharacterProgression {
+  id: string;
+  name: string;
+  currentValue: number;
+  minimumValue: number;
+  maximumValue?: number;
+}
+
+export interface ResourceUnlockCondition {
+  progressionId: string;
+  minimumValue: number;
+}
+
 export interface CharacterResource {
   id: string;
   name: string;
@@ -26,6 +39,8 @@ export interface CharacterResource {
   resetPeriod: ResourceResetPeriod;
   notes?: string;
   notesEditable?: boolean;
+  unlockCondition?: ResourceUnlockCondition;
+  allowManualIncrease?: boolean;
   currentValue: number;
   maximumValue: number;
 
@@ -45,6 +60,7 @@ export interface Character {
 
   hitPoints: HitPointState;
   hitDice: HitDicePool[];
+  progressions?: CharacterProgression[];
   resources: CharacterResource[];
 }
 

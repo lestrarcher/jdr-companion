@@ -1,0 +1,110 @@
+<section class="hit-points-card">
+  <span class="section-label">Points de vie</span>
+
+  <div class="hit-points-summary">
+    <div class="hit-points-value">
+      <strong>
+        {{ character().hitPoints.current }}
+      </strong>
+
+      <span>
+        / {{ character().hitPoints.maximum }}
+      </span>
+    </div>
+
+    <div class="temporary-hit-points">
+      <span>PV temporaires</span>
+
+      <div class="counter">
+        <button
+          type="button"
+          aria-label="Retirer un point de vie temporaire"
+          (click)="changeTemporaryHitPoints(-1)"
+          [disabled]="
+            character().hitPoints.temporary <= 0
+          "
+        >
+          −
+        </button>
+
+        <strong>
+          {{ character().hitPoints.temporary }}
+        </strong>
+
+        <button
+          type="button"
+          aria-label="Ajouter un point de vie temporaire"
+          (click)="changeTemporaryHitPoints(1)"
+        >
+          +
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="hit-points-actions">
+    <label>
+      <span>Montant</span>
+
+      <input
+        type="number"
+        min="0"
+        inputmode="numeric"
+        [(ngModel)]="hitPointAmount"
+      />
+    </label>
+
+    <button
+      class="damage-button"
+      type="button"
+      (click)="applyDamage()"
+      [disabled]="hitPointAmount <= 0"
+    >
+      Dégâts
+    </button>
+
+    <button
+      class="healing-button"
+      type="button"
+      (click)="heal()"
+      [disabled]="hitPointAmount <= 0"
+    >
+      Soins
+    </button>
+  </div>
+
+  @if (character().hitDice.length > 0) {
+    <div class="hit-dice-section">
+      <span class="section-label">Dés de vie</span>
+
+      <div class="hit-dice-list">
+        @for (
+          pool of character().hitDice;
+          track pool.id
+        ) {
+          <div class="hit-dice-pool">
+            <strong>{{ pool.die }}</strong>
+
+            <div class="counter">
+              <button
+                type="button"
+                [attr.aria-label]="
+                  'Dépenser un dé de vie ' + pool.die
+                "
+                (click)="spendHitDie(pool.id)"
+                [disabled]="pool.current <= 0"
+              >
+                −
+              </button>
+
+              <strong>
+                {{ pool.current }}
+                <span>/ {{ pool.maximum }}</span>
+              </strong>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</section>

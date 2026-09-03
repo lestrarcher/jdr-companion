@@ -134,7 +134,11 @@ export class CharacterStateService {
        * Seules les ressources manuelles peuvent être
        * restaurées directement depuis l’interface joueur.
        */
-      if (change > 0 && resource.resetPeriod !== 'manual') {
+      const canIncreaseManually =
+        resource.resetPeriod === 'manual' ||
+        resource.allowManualIncrease === true;
+
+      if (change > 0 && !canIncreaseManually) {
         return resource;
       }
 
@@ -215,6 +219,44 @@ export class CharacterStateService {
     this.updateCharacter({
       ...character,
       resources,
+    });
+  }
+
+  adjustProgression(
+    progressionId: string,
+    change: number,
+  ): void {
+    const character = this.currentCharacter();
+
+    if (!character) {
+      return;
+    }
+
+    const progressions = (character.progressions ?? []).map(
+      (progression) => {
+        if (progression.id !== progressionId) {
+          return progression;
+        }
+
+        const nextValue = Math.max(
+          progression.minimumValue,
+          progression.currentValue + change,
+        );
+
+        return {
+          ...progression,
+
+          currentValue:
+            progression.maximumValue === undefined
+              ? nextValue
+              : Math.min(progression.maximumValue, nextValue),
+        };
+      },
+    );
+
+    this.updateCharacter({
+      ...character,
+      progressions,
     });
   }
 
@@ -342,8 +384,20 @@ export class CharacterStateService {
         ...pool,
       })),
 
+      progressions: (character.progressions ?? []).map(
+        (progression) => ({
+          ...progression,
+        }),
+      ),
+
       resources: character.resources.map((resource) => ({
         ...resource,
+
+        unlockCondition: resource.unlockCondition
+          ? {
+              ...resource.unlockCondition,
+            }
+          : undefined,
       })),
     };
   }
@@ -363,6 +417,24 @@ export class CharacterStateService {
 
       hitDice:
         storedState.hitDice ?? initialState.hitDice,
+
+        progressions: (initialState.progressions ?? []).map(
+          (initialProgression) => {
+            const storedProgression =
+              storedState.progressions?.find(
+                (progression) =>
+                  progression.id === initialProgression.id,
+              );
+
+            return {
+              ...initialProgression,
+
+              currentValue:
+                storedProgression?.currentValue ??
+                initialProgression.currentValue,
+            };
+          },
+        ),
 
       resources: initialState.resources.map(
         (initialResource) => {

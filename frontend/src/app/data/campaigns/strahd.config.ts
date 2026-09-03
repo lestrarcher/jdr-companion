@@ -262,6 +262,18 @@ export const STRAHD_CAMPAIGN: CampaignConfig = {
       characterId: 'character-guts',
       accessToken: 'demo-guts',
     },
+    {
+      id: 'player-anatoly',
+      displayName: 'Quentin',
+      characterId: 'character-anatoly',
+      accessToken: 'demo-anatoly',
+    },
+    {
+      id: 'player-nikita',
+      displayName: 'Mouss',
+      characterId: 'character-nikita',
+      accessToken: 'demo-nikita',
+    },
   ],
 
   characters: [
@@ -286,6 +298,15 @@ export const STRAHD_CAMPAIGN: CampaignConfig = {
         maximum: 38,
         temporary: 0,
       },
+
+      progressions: [
+        {
+          id: 'hailee-shadow-points',
+          name: 'Points d’ombre',
+          currentValue: 10,
+          minimumValue: 0,
+        },
+      ],
 
       resources: [
         {
@@ -340,6 +361,48 @@ export const STRAHD_CAMPAIGN: CampaignConfig = {
           currentValue: 4,
           maximumValue: 4,
           displayOrder: 50,
+        },
+        {
+          id: 'hailee-fog-cloud',
+          name: 'Nappe de brouillard',
+          shortName: 'Nappe de brouillard',
+          category: 'class-feature',
+          resetPeriod: 'long-rest',
+          currentValue: 1,
+          maximumValue: 1,
+          displayOrder: 60,
+          unlockCondition: {
+            progressionId: 'hailee-shadow-points',
+            minimumValue: 10,
+          },
+        },
+        {
+          id: 'hailee-misty-step',
+          name: 'Foulée brumeuse',
+          shortName: 'Foulée brumeuse',
+          category: 'class-feature',
+          resetPeriod: 'long-rest',
+          currentValue: 1,
+          maximumValue: 1,
+          displayOrder: 70,
+          unlockCondition: {
+            progressionId: 'hailee-shadow-points',
+            minimumValue: 18,
+          },
+        },
+        {
+          id: 'hailee-darkness',
+          name: 'Ténèbres',
+          shortName: 'Ténèbres',
+          category: 'class-feature',
+          resetPeriod: 'long-rest',
+          currentValue: 1,
+          maximumValue: 1,
+          displayOrder: 80,
+          unlockCondition: {
+            progressionId: 'hailee-shadow-points',
+            minimumValue: 25,
+          },
         },
       ],
     },
@@ -523,6 +586,145 @@ export const STRAHD_CAMPAIGN: CampaignConfig = {
           currentValue: 3,
           maximumValue: 3,
           displayOrder: 20,
+        },
+      ],
+    },
+    {
+      id: 'character-anatoly',
+      name: 'Anatoly',
+      type: 'pc',
+
+      className: 'Guerrier chevalier occulte',
+      level: 6,
+
+      hitPoints: {
+        current: 68,
+        maximum: 68,
+        temporary: 0,
+      },
+
+      hitDice: [
+        {
+          id: 'anatoly-hit-dice',
+          die: 'd10',
+          current: 6,
+          maximum: 6,
+        },
+      ],
+
+      resources: [
+        {
+          id: 'anatoly-action-surge',
+          name: 'Fougue',
+          shortName: 'Fougue',
+          category: 'class-feature',
+          resetPeriod: 'short-rest',
+          currentValue: 1,
+          maximumValue: 1,
+          displayOrder: 10,
+        },
+        {
+          id: 'anatoly-second-wind',
+          name: 'Second souffle',
+          shortName: 'Second souffle',
+          category: 'class-feature',
+          resetPeriod: 'short-rest',
+          currentValue: 1,
+          maximumValue: 1,
+          displayOrder: 20,
+        },
+        {
+          id: 'anatoly-spell-slot-1',
+          name: 'Emplacements de sorts de niveau 1',
+          shortName: 'Sorts niveau 1',
+          category: 'spell-slot',
+          resetPeriod: 'long-rest',
+          currentValue: 3,
+          maximumValue: 3,
+          level: 1,
+          displayOrder: 30,
+        },
+      ],
+    },
+    {
+      id: 'character-nikita',
+      name: 'Nikita',
+      type: 'pc',
+
+      className: 'Magicienne de l’école de Divination',
+      level: 6,
+
+      hitPoints: {
+        current: 46,
+        maximum: 46,
+        temporary: 0,
+      },
+
+      hitDice: [
+        {
+          id: 'nikita-hit-dice',
+          die: 'd6',
+          current: 6,
+          maximum: 6,
+        },
+      ],
+
+      resources: [
+        {
+          id: 'nikita-portent',
+          name: 'Présage',
+          shortName: 'Présage',
+          category: 'class-feature',
+          resetPeriod: 'long-rest',
+          currentValue: 2,
+          maximumValue: 2,
+          displayOrder: 10,
+        },
+        {
+          id: 'nikita-arcane-recovery',
+          name: 'Restauration arcanique',
+          shortName: 'Restauration arcanique',
+          category: 'class-feature',
+          resetPeriod: 'long-rest',
+          currentValue: 1,
+          maximumValue: 1,
+          displayOrder: 20,
+        },
+        {
+          id: 'nikita-spell-slot-1',
+          name: 'Emplacements de sorts de niveau 1',
+          shortName: 'Sorts niveau 1',
+          category: 'spell-slot',
+          resetPeriod: 'long-rest',
+          currentValue: 4,
+          maximumValue: 4,
+          level: 1,
+          displayOrder: 30,
+          allowManualIncrease: true,
+        },
+        {
+          id: 'nikita-spell-slot-2',
+          name: 'Emplacements de sorts de niveau 2',
+          shortName: 'Sorts niveau 2',
+          category: 'spell-slot',
+          resetPeriod: 'long-rest',
+          currentValue: 3,
+          maximumValue: 3,
+          level: 2,
+          displayOrder: 40,
+          allowManualIncrease: true,
+        },
+        {
+          id: 'nikita-spell-slot-3',
+          name: 'Emplacements de sorts de niveau 3',
+          shortName: 'Sorts niveau 3',
+          category: 'spell-slot',
+          resetPeriod: 'long-rest',
+          currentValue: 3,
+          maximumValue: 3,
+          level: 3,
+          displayOrder: 50,
+          allowManualIncrease: true,
         },
       ],
     },

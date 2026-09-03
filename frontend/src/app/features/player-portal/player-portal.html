@@ -15,7 +15,9 @@
 
       <h1>{{ character.name }}</h1>
 
-      <div class="closed-symbol" aria-hidden="true">◆</div>
+      <div class="closed-symbol" aria-hidden="true">
+        ◆
+      </div>
 
       <p>{{ closedMessage() }}</p>
 
@@ -25,302 +27,58 @@
     </section>
   } @else {
     @if (characterState(); as currentCharacter) {
-      <section
-        class="character-dashboard"
-        [attr.inert]="pendingRestRequest() ? '' : null"
-      >
-        <header class="character-header">
-          <div>
-            <span class="eyebrow">{{ campaign.name }}</span>
-            <h1>{{ currentCharacter.name }}</h1>
-          </div>
-
-          <span class="live-badge">
-            <span aria-hidden="true"></span>
-            En cours
-          </span>
-        </header>
-
-        @if (restFeedback(); as message) {
-          <div class="rest-feedback" role="status">
-            {{ message }}
-          </div>
-        }
-
-        <div class="rest-actions">
-          <button
-            type="button"
-            class="short-rest-button"
-            (click)="requestRest('short-rest')"
-            [disabled]="pendingRestRequest()"
-          >
-            <span>Repos court</span>
-            <small>Demander au MJ</small>
-          </button>
-
-          <button
-            type="button"
-            class="long-rest-button"
-            (click)="requestRest('long-rest')"
-            [disabled]="pendingRestRequest()"
-          >
-            <span>Repos long</span>
-            <small>Demander au MJ</small>
-          </button>
-        </div>
-
-        <div class="tracker-layout">
-          <section class="hit-points-card">
-            <span class="section-label">Points de vie</span>
-
-            <div class="hit-points-summary">
-              <div class="hit-points-value">
-                <strong>
-                  {{ currentCharacter.hitPoints.current }}
-                </strong>
-
-                <span>
-                  / {{ currentCharacter.hitPoints.maximum }}
-                </span>
-              </div>
-
-              <div class="temporary-hit-points">
-                <span>PV temporaires</span>
-
-                <div class="counter">
-                  <button
-                    type="button"
-                    aria-label="Retirer un point de vie temporaire"
-                    (click)="changeTemporaryHitPoints(-1)"
-                    [disabled]="
-                      currentCharacter.hitPoints.temporary <= 0
-                    "
-                  >
-                    −
-                  </button>
-
-                  <strong>
-                    {{ currentCharacter.hitPoints.temporary }}
-                  </strong>
-
-                  <button
-                    type="button"
-                    aria-label="Ajouter un point de vie temporaire"
-                    (click)="changeTemporaryHitPoints(1)"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div class="hit-points-actions">
-              <label>
-                <span>Montant</span>
-
-                <input
-                  type="number"
-                  min="0"
-                  inputmode="numeric"
-                  [(ngModel)]="hitPointAmount"
-                />
-              </label>
-
-              <button
-                class="damage-button"
-                type="button"
-                (click)="applyDamage()"
-                [disabled]="hitPointAmount <= 0"
-              >
-                Dégâts
-              </button>
-
-              <button
-                class="healing-button"
-                type="button"
-                (click)="heal()"
-                [disabled]="hitPointAmount <= 0"
-              >
-                Soins
-              </button>
-            </div>
-
-            @if (currentCharacter.hitDice.length > 0) {
-              <div class="hit-dice-section">
-                <span class="section-label">Dés de vie</span>
-
-                <div class="hit-dice-list">
-                  @for (
-                    pool of currentCharacter.hitDice;
-                    track pool.id
-                  ) {
-                    <div class="hit-dice-pool">
-                      <strong>{{ pool.die }}</strong>
-
-                      <div class="counter">
-                        <button
-                          type="button"
-                          [attr.aria-label]="
-                            'Dépenser un dé de vie ' + pool.die
-                          "
-                          (click)="changeHitDice(pool.id, -1)"
-                          [disabled]="pool.current <= 0"
-                        >
-                          −
-                        </button>
-
-                        <strong>
-                          {{ pool.current }}
-                          <span>/ {{ pool.maximum }}</span>
-                        </strong>
-                      </div>
-                    </div>
-                  }
-                </div>
-              </div>
-            }
-          </section>
-
-          <section class="resources-section">
-            <div class="section-heading">
-              <span class="section-label">Capacités</span>
-              <h2>Ressources</h2>
-            </div>
-
-            <div class="resources-list">
-              @for (
-                resource of sortedResources();
-                track resource.id
-              ) {
-                <article class="resource-card">
-                  <div class="resource-row">
-                    <div class="resource-information">
-                      <strong>
-                        {{
-                          resource.shortName ??
-                            resource.name
-                        }}
-                      </strong>
-
-                      <small>
-                        Recharge :
-                        {{
-                          resource.resetPeriod === 'short-rest'
-                            ? 'repos court'
-                            : resource.resetPeriod === 'long-rest'
-                              ? 'repos long'
-                              : resource.resetPeriod === 'manual'
-                                ? 'manuelle'
-                                : 'aucune'
-                        }}
-                      </small>
-                    </div>
-
-                    <div class="counter">
-                      <button
-                        type="button"
-                        [attr.aria-label]="
-                          'Utiliser une charge de ' +
-                          resource.name
-                        "
-                        (click)="changeResource(resource, -1)"
-                        [disabled]="resource.currentValue <= 0"
-                      >
-                        −
-                      </button>
-
-                      <strong>
-                        {{ resource.currentValue }}
-                        <span>
-                          / {{ resource.maximumValue }}
-                        </span>
-                      </strong>
-
-                      @if (
-                        resource.resetPeriod === 'manual'
-                      ) {
-                        <button
-                          type="button"
-                          [attr.aria-label]="
-                            'Restaurer une charge de ' +
-                            resource.name
-                          "
-                          (click)="changeResource(resource, 1)"
-                          [disabled]="
-                            resource.currentValue >=
-                            resource.maximumValue
-                          "
-                        >
-                          +
-                        </button>
-                      }
-                    </div>
-                  </div>
-
-                  @if (resource.notesEditable) {
-                    <label class="resource-notes">
-                      <span>
-                        Objets actuellement imprégnés
-                      </span>
-
-                      <textarea
-                        rows="2"
-                        placeholder="Ex. armure renforcée, sac sans fond…"
-                        [ngModel]="resource.notes ?? ''"
-                        (ngModelChange)="
-                          updateResourceNotes(
-                            resource.id,
-                            $event
-                          )
-                        "
-                      ></textarea>
-                    </label>
-                  }
-                </article>
-              }
-            </div>
-          </section>
-        </div>
-      </section>
-
-      @if (pendingRestRequest(); as request) {
-        <section
-          class="rest-waiting-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="rest-waiting-title"
+      <section class="character-dashboard">
+        <div
+          class="dashboard-content"
+          [attr.inert]="
+            pendingRestRequest() ? '' : null
+          "
         >
-          <div class="rest-waiting-card">
-            <div class="waiting-symbol" aria-hidden="true">
-              ◇
+          <header class="character-header">
+            <div>
+              <span class="eyebrow">
+                {{ campaign.name }}
+              </span>
+
+              <h1>{{ currentCharacter.name }}</h1>
             </div>
 
-            <span class="eyebrow">Demande envoyée</span>
+            <span class="live-badge">
+              <span aria-hidden="true"></span>
+              En cours
+            </span>
+          </header>
 
-            <h2 id="rest-waiting-title">
-              {{ restLabel(request.type) }}
-            </h2>
+          <!-- Malédictions, pactes et jauges spéciales -->
+          <app-character-progressions
+            [progressions]="
+              currentCharacter.progressions ?? []
+            "
+            (progressionChanged)="
+              handleProgressionChange($event)
+            "
+          />
 
-            <p>
-              En attente de la décision du MJ…
-            </p>
+          <div class="tracker-layout">
+            <!-- PV, PV temporaires et dés de vie -->
+            <app-character-vitals
+              [character]="currentCharacter"
+            />
 
-            <div
-              class="waiting-indicator"
-              aria-hidden="true"
-            >
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-
-            <small>
-              Tes ressources resteront inchangées jusqu’à sa
-              réponse.
-            </small>
+            <!-- Ressources et capacités passives -->
+            <app-character-resources
+              [resources]="sortedResources()"
+            />
           </div>
-        </section>
-      }
+        </div>
+
+        <!-- Demandes de repos et modale d’attente -->
+        <app-rest-controls
+          [request]="pendingRestRequest()"
+          [feedback]="restFeedback()"
+          (restRequested)="requestRest($event)"
+        />
+      </section>
     }
   }
 </main>

@@ -5,23 +5,32 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 
 import { CampaignPlayer } from '@core/models/campaign-player.model';
-import {
-  Character,
-  CharacterResource,
-} from '@core/models/character.model';
+import { Character } from '@core/models/character.model';
 import { RestType } from '@core/models/rest-request.model';
 import { CharacterStateService } from '@core/services/character-state.service';
 import { LiveSessionService } from '@core/services/live-session.service';
 import { RestRequestService } from '@core/services/rest-request.service';
 import { STRAHD_CAMPAIGN } from '@data/campaigns/strahd.config';
 
+import {
+  CharacterProgressions,
+  ProgressionChange,
+} from './components/character-progressions/character-progressions';
+import { CharacterResources } from './components/character-resources/character-resources';
+import { CharacterVitals } from './components/character-vitals/character-vitals';
+import { RestControls } from './components/rest-controls/rest-controls';
+
 @Component({
   selector: 'app-player-portal',
-  imports: [FormsModule],
+  imports: [
+    CharacterProgressions,
+    CharacterResources,
+    CharacterVitals,
+    RestControls,
+  ],
   templateUrl: './player-portal.html',
   styleUrl: './player-portal.scss',
 })
@@ -38,7 +47,10 @@ export class PlayerPortal {
     inject(RestRequestService);
 
   protected readonly campaign = STRAHD_CAMPAIGN;
-  protected readonly sessionState = this.liveSessionService.state;
+
+  protected readonly sessionState =
+    this.liveSessionService.state;
+
   protected readonly characterState =
     this.characterStateService.character;
 
@@ -47,16 +59,44 @@ export class PlayerPortal {
 
   private readonly sessionId: string;
 
-  protected hitPointAmount = 0;
+  protected readonly restFeedback =
+    signal<string | null>(null);
 
-  protected readonly restFeedback = signal<string | null>(null);
+  protected readonly sortedResources = computed(() => {
+    const character = this.characterState();
 
-  protected readonly sortedResources = computed(() =>
-    [...(this.characterState()?.resources ?? [])].sort(
-      (first, second) =>
-        first.displayOrder - second.displayOrder,
-    ),
-  );
+    if (!character) {
+      return [];
+    }
+
+    return character.resources
+      .filter((resource) => {
+        const condition = resource.unlockCondition;
+
+        if (!condition) {
+          return true;
+        }
+
+        const progression = character.progressions?.find(
+          (currentProgression) =>
+            currentProgression.id ===
+            condition.progressionId,
+        );
+
+        if (!progression) {
+          return false;
+        }
+
+        return (
+          progression.currentValue >=
+          condition.minimumValue
+        );
+      })
+      .sort(
+        (first, second) =>
+          first.displayOrder - second.displayOrder,
+      );
+  });
 
   protected readonly characterRestRequest = computed(() => {
     if (!this.character) {
@@ -105,13 +145,16 @@ export class PlayerPortal {
     }
 
     if (campaignId !== this.campaign.id) {
-      throw new Error(`Campagne inconnue : ${campaignId}`);
+      throw new Error(
+        `Campagne inconnue : ${campaignId}`,
+      );
     }
 
     this.sessionId = sessionId;
 
     this.player = this.campaign.players.find(
-      (player) => player.accessToken === accessToken,
+      (player) =>
+        player.accessToken === accessToken,
     );
 
     this.character = this.campaign.characters.find(
@@ -146,17 +189,34 @@ export class PlayerPortal {
       if (request.status === 'approved') {
         if (request.type === 'short-rest') {
           this.characterStateService.applyShortRest();
-          this.showRestFeedback('Repos court accordé par le MJ.');
+
+          this.showRestFeedback(
+            'Repos court accordé par le MJ.',
+          );
         } else {
           this.characterStateService.applyLongRest();
-          this.showRestFeedback('Repos long accordé par le MJ.');
+
+          this.showRestFeedback(
+            'Repos long accordé par le MJ.',
+          );
         }
       } else {
-        this.showRestFeedback('Le MJ a refusé le repos.');
+        this.showRestFeedback(
+          'Le MJ a refusé le repos.',
+        );
       }
 
       this.restRequestService.clearRequest(request.id);
     });
+  }
+
+  protected handleProgressionChange(
+    event: ProgressionChange,
+  ): void {
+    this.characterStateService.adjustProgression(
+      event.progressionId,
+      event.change,
+    );
   }
 
   protected requestRest(type: RestType): void {
@@ -177,77 +237,6 @@ export class PlayerPortal {
       this.character.name,
       type,
     );
-  }
-
-  protected applyDamage(): void {
-    if (this.hitPointAmount <= 0) {
-      return;
-    }
-
-    this.characterStateService.applyDamage(
-      this.hitPointAmount,
-    );
-
-    this.hitPointAmount = 0;
-  }
-
-  protected heal(): void {
-    if (this.hitPointAmount <= 0) {
-      return;
-    }
-
-    this.characterStateService.heal(
-      this.hitPointAmount,
-    );
-
-    this.hitPointAmount = 0;
-  }
-
-  protected changeTemporaryHitPoints(change: number): void {
-    this.characterStateService.adjustTemporaryHitPoints(change);
-  }
-
-  protected changeResource(
-    resource: CharacterResource,
-    change: number,
-  ): void {
-    if (
-      change > 0 &&
-      resource.resetPeriod !== 'manual'
-    ) {
-      return;
-    }
-
-    this.characterStateService.adjustResource(
-      resource.id,
-      change,
-    );
-  }
-
-  protected changeHitDice(
-    hitDicePoolId: string,
-    change: number,
-  ): void {
-    this.characterStateService.adjustHitDice(
-      hitDicePoolId,
-      change,
-    );
-  }
-
-  protected updateResourceNotes(
-    resourceId: string,
-    notes: string,
-  ): void {
-    this.characterStateService.updateResourceNotes(
-      resourceId,
-      notes,
-    );
-  }
-
-  protected restLabel(type: RestType): string {
-    return type === 'short-rest'
-      ? 'repos court'
-      : 'repos long';
   }
 
   private showRestFeedback(message: string): void {

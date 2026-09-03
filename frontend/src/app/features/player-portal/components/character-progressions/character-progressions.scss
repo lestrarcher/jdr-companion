@@ -1,0 +1,179 @@
+:host {
+  display: block;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.progressions-section {
+  margin-bottom: 1rem;
+  padding: 1.25rem;
+
+  border: 1px solid rgba(201, 168, 95, 0.25);
+  background: rgba(8, 9, 14, 0.88);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+}
+
+.section-heading {
+  margin-bottom: 1rem;
+
+  h2 {
+    margin: 0;
+
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 1.5rem;
+    font-weight: 400;
+  }
+}
+
+.section-label {
+  display: block;
+  margin-bottom: 0.45rem;
+
+  color: #c9a85f;
+
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.progressions-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.progression-card {
+  padding: 1rem;
+
+  border: 1px solid rgba(118, 95, 155, 0.42);
+  border-radius: 3px;
+
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(113, 79, 151, 0.2),
+      transparent 48%
+    ),
+    rgba(19, 17, 28, 0.78);
+
+  box-shadow:
+    inset 0 0 28px rgba(88, 60, 120, 0.08),
+    0 12px 28px rgba(0, 0, 0, 0.2);
+}
+
+.progression-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+
+  strong {
+    color: #e5d9ed;
+
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 1.1rem;
+    font-weight: 400;
+  }
+
+  span {
+    color: rgba(220, 198, 232, 0.65);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+  }
+}
+
+.progression-bar {
+  width: 100%;
+  height: 0.4rem;
+  margin: 0.85rem 0 1rem;
+  overflow: hidden;
+
+  border: 1px solid rgba(148, 115, 173, 0.35);
+  border-radius: 999px;
+  background: rgba(5, 5, 10, 0.75);
+
+  > span {
+    display: block;
+    height: 100%;
+
+    border-radius: inherit;
+    background: linear-gradient(
+      90deg,
+      #40304f,
+      #80619a,
+      #b190c5
+    );
+
+    box-shadow: 0 0 12px rgba(161, 121, 190, 0.45);
+    transition: width 220ms ease;
+  }
+}
+
+.progression-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+
+  button {
+    display: grid;
+    place-items: center;
+
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+
+    color: #d9c3e6;
+
+    border: 1px solid rgba(159, 125, 184, 0.55);
+    border-radius: 50%;
+    background: rgba(113, 79, 151, 0.12);
+
+    font: inherit;
+    font-size: 1.35rem;
+    cursor: pointer;
+    touch-action: manipulation;
+
+    &:disabled {
+      cursor: default;
+      opacity: 0.3;
+    }
+  }
+
+  strong {
+    min-width: 3rem;
+
+    color: #f1e8f4;
+
+    text-align: center;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 1.5rem;
+    font-weight: 400;
+  }
+}
+
+@media (min-width: 700px) {
+  .progressions-section {
+    padding: 2rem;
+  }
+
+  .progressions-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .progressions-list > :only-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 600px) {
+  .progressions-section {
+    padding: 1rem;
+  }
+
+  .progression-card {
+    padding: 0.8rem;
+  }
+}

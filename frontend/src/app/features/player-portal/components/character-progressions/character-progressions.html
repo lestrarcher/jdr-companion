@@ -1,0 +1,105 @@
+@if (progressions().length > 0) {
+  <section class="progressions-section">
+    <div class="section-heading">
+      <span class="section-label">
+        Évolution du personnage
+      </span>
+
+      <h2>Progression</h2>
+    </div>
+
+    <div class="progressions-list">
+      @for (
+        progression of progressions();
+        track progression.id
+      ) {
+        <article class="progression-card">
+          <div class="progression-heading">
+            <strong>{{ progression.name }}</strong>
+
+            <span>
+              {{ progression.currentValue }}
+
+              @if (
+                progression.maximumValue !== undefined
+              ) {
+                / {{ progression.maximumValue }}
+              }
+            </span>
+          </div>
+
+          @if (
+            progression.maximumValue !== undefined
+          ) {
+            <div
+              class="progression-bar"
+              role="progressbar"
+              [attr.aria-label]="progression.name"
+              [attr.aria-valuemin]="
+                progression.minimumValue
+              "
+              [attr.aria-valuemax]="
+                progression.maximumValue
+              "
+              [attr.aria-valuenow]="
+                progression.currentValue
+              "
+            >
+              <span
+                [style.width.%]="
+                  progression.maximumValue >
+                  progression.minimumValue
+                    ? ((progression.currentValue -
+                        progression.minimumValue) /
+                        (progression.maximumValue -
+                          progression.minimumValue)) *
+                      100
+                    : 0
+                "
+              ></span>
+            </div>
+          }
+
+          <div class="progression-controls">
+            <button
+              type="button"
+              [attr.aria-label]="
+                'Réduire ' + progression.name
+              "
+              (click)="
+                changeProgression(progression.id, -1)
+              "
+              [disabled]="
+                progression.currentValue <=
+                progression.minimumValue
+              "
+            >
+              −
+            </button>
+
+            <strong>
+              {{ progression.currentValue }}
+            </strong>
+
+            <button
+              type="button"
+              [attr.aria-label]="
+                'Augmenter ' + progression.name
+              "
+              (click)="
+                changeProgression(progression.id, 1)
+              "
+              [disabled]="
+                progression.maximumValue !== undefined &&
+                progression.currentValue >=
+                  progression.maximumValue
+              "
+            >
+              +
+            </button>
+          </div>
+        </article>
+      }
+    </div>
+  </section>
+}
