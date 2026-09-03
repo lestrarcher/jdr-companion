@@ -552,7 +552,7 @@ export const STRAHD_CAMPAIGN: CampaignConfig = {
       level: 6,
 
       hitPoints: {
-        current: 78,
+        current: 63,
         maximum: 78,
         temporary: 0,
       },
@@ -573,7 +573,7 @@ export const STRAHD_CAMPAIGN: CampaignConfig = {
           shortName: 'Rages',
           category: 'class-feature',
           resetPeriod: 'long-rest',
-          currentValue: 3,
+          currentValue: 2,
           maximumValue: 4,
           displayOrder: 10,
         },
