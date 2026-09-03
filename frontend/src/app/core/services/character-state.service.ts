@@ -9,23 +9,33 @@ export class CharacterStateService {
   private readonly currentCharacter =
     signal<Character | null>(null);
 
-  readonly character = this.currentCharacter.asReadonly();
+  readonly character =
+    this.currentCharacter.asReadonly();
 
   private storageKey = '';
   private channel?: BroadcastChannel;
 
-  initialize(campaignId: string, character: Character): void {
+  initialize(
+    campaignId: string,
+    character: Character,
+  ): void {
     this.channel?.close();
 
     this.storageKey =
       `jdr-companion:${campaignId}:characters:${character.id}:state`;
 
-    const initialState = this.cloneCharacter(character);
-    const storedState = this.loadStoredState();
+    const initialState =
+      this.cloneCharacter(character);
+
+    const storedState =
+      this.loadStoredState();
 
     this.currentCharacter.set(
       storedState
-        ? this.mergeCharacterState(initialState, storedState)
+        ? this.mergeCharacterState(
+            initialState,
+            storedState,
+          )
         : initialState,
     );
 
@@ -33,19 +43,31 @@ export class CharacterStateService {
       return;
     }
 
-    this.channel = new BroadcastChannel(this.storageKey);
+    this.channel =
+      new BroadcastChannel(this.storageKey);
 
     this.channel.onmessage = (
       event: MessageEvent<Character>,
     ): void => {
-      this.currentCharacter.set(event.data);
-      this.saveLocally(event.data);
+      const synchronizedCharacter =
+        this.cloneCharacter(event.data);
+
+      this.currentCharacter.set(
+        synchronizedCharacter,
+      );
+
+      this.saveLocally(
+        synchronizedCharacter,
+      );
     };
   }
 
   applyDamage(amount: number): void {
-    const character = this.currentCharacter();
-    const damage = this.normalizeAmount(amount);
+    const character =
+      this.currentCharacter();
+
+    const damage =
+      this.normalizeAmount(amount);
 
     if (!character || damage === 0) {
       return;
@@ -56,7 +78,8 @@ export class CharacterStateService {
       damage,
     );
 
-    const remainingDamage = damage - absorbedDamage;
+    const remainingDamage =
+      damage - absorbedDamage;
 
     this.updateCharacter({
       ...character,
@@ -65,19 +88,24 @@ export class CharacterStateService {
         ...character.hitPoints,
 
         temporary:
-          character.hitPoints.temporary - absorbedDamage,
+          character.hitPoints.temporary -
+          absorbedDamage,
 
         current: Math.max(
           0,
-          character.hitPoints.current - remainingDamage,
+          character.hitPoints.current -
+            remainingDamage,
         ),
       },
     });
   }
 
   heal(amount: number): void {
-    const character = this.currentCharacter();
-    const healing = this.normalizeAmount(amount);
+    const character =
+      this.currentCharacter();
+
+    const healing =
+      this.normalizeAmount(amount);
 
     if (!character || healing === 0) {
       return;
@@ -91,14 +119,18 @@ export class CharacterStateService {
 
         current: Math.min(
           character.hitPoints.maximum,
-          character.hitPoints.current + healing,
+          character.hitPoints.current +
+            healing,
         ),
       },
     });
   }
 
-  adjustTemporaryHitPoints(change: number): void {
-    const character = this.currentCharacter();
+  adjustTemporaryHitPoints(
+    change: number,
+  ): void {
+    const character =
+      this.currentCharacter();
 
     if (!character) {
       return;
@@ -112,45 +144,198 @@ export class CharacterStateService {
 
         temporary: Math.max(
           0,
-          character.hitPoints.temporary + change,
+          character.hitPoints.temporary +
+            change,
         ),
       },
     });
   }
 
-  adjustResource(resourceId: string, change: number): void {
-    const character = this.currentCharacter();
+  adjustResource(
+    resourceId: string,
+    change: number,
+  ): void {
+    const character =
+      this.currentCharacter();
 
     if (!character) {
       return;
     }
 
-    const resources = character.resources.map((resource) => {
-      if (resource.id !== resourceId) {
-        return resource;
-      }
+    const resources =
+      character.resources.map(
+        (resource) => {
+          if (resource.id !== resourceId) {
+            return resource;
+          }
 
-      /*
-       * Seules les ressources manuelles peuvent être
-       * restaurées directement depuis l’interface joueur.
-       */
-      const canIncreaseManually =
-        resource.resetPeriod === 'manual' ||
-        resource.allowManualIncrease === true;
+          /*
+           * Les ressources à valeurs stockées,
+           * comme Présage, sont gérées par leur
+           * interface dédiée.
+           */
+          if (resource.storedValuesConfig) {
+            return resource;
+          }
 
-      if (change > 0 && !canIncreaseManually) {
-        return resource;
-      }
+          const canIncreaseManually =
+            resource.resetPeriod === 'manual' ||
+            resource.allowManualIncrease === true;
 
-      return {
-        ...resource,
+          if (
+            change > 0 &&
+            !canIncreaseManually
+          ) {
+            return resource;
+          }
 
-        currentValue: Math.min(
-          resource.maximumValue,
-          Math.max(0, resource.currentValue + change),
-        ),
-      };
+          return {
+            ...resource,
+
+            currentValue: Math.min(
+              resource.maximumValue,
+              Math.max(
+                0,
+                resource.currentValue +
+                  change,
+              ),
+            ),
+          };
+        },
+      );
+
+    this.updateCharacter({
+      ...character,
+      resources,
     });
+  }
+
+  setStoredValues(
+    resourceId: string,
+    values: number[],
+  ): void {
+    const character =
+      this.currentCharacter();
+
+    if (!character) {
+      return;
+    }
+
+    const resources =
+      character.resources.map(
+        (resource) => {
+          if (
+            resource.id !== resourceId ||
+            !resource.storedValuesConfig
+          ) {
+            return resource;
+          }
+
+          /*
+           * Une ressource déjà initialisée ne
+           * peut pas être relancée manuellement.
+           *
+           * [] signifie que tous les résultats
+           * ont déjà été consommés.
+           */
+          if (
+            resource.storedValues !==
+            undefined
+          ) {
+            return resource;
+          }
+
+          const config =
+            resource.storedValuesConfig;
+
+          const normalizedValues =
+            values
+              .map((value) =>
+                Math.floor(Number(value)),
+              )
+              .filter(
+                (value) =>
+                  Number.isFinite(value) &&
+                  value >=
+                    config.minimumValue &&
+                  value <=
+                    config.maximumValue,
+              )
+              .slice(
+                0,
+                config.requiredCount,
+              );
+
+          if (
+            normalizedValues.length !==
+            config.requiredCount
+          ) {
+            return resource;
+          }
+
+          return {
+            ...resource,
+
+            storedValues:
+              normalizedValues,
+
+            currentValue:
+              normalizedValues.length,
+          };
+        },
+      );
+
+    this.updateCharacter({
+      ...character,
+      resources,
+    });
+  }
+
+  consumeStoredValue(
+    resourceId: string,
+    valueIndex: number,
+  ): void {
+    const character =
+      this.currentCharacter();
+
+    if (!character) {
+      return;
+    }
+
+    const resources =
+      character.resources.map(
+        (resource) => {
+          if (
+            resource.id !== resourceId ||
+            !resource.storedValuesConfig ||
+            resource.storedValues ===
+              undefined
+          ) {
+            return resource;
+          }
+
+          if (
+            valueIndex < 0 ||
+            valueIndex >=
+              resource.storedValues.length
+          ) {
+            return resource;
+          }
+
+          const storedValues =
+            resource.storedValues.filter(
+              (_, index) =>
+                index !== valueIndex,
+            );
+
+          return {
+            ...resource,
+            storedValues,
+            currentValue:
+              storedValues.length,
+          };
+        },
+      );
 
     this.updateCharacter({
       ...character,
@@ -162,34 +347,36 @@ export class CharacterStateService {
     hitDicePoolId: string,
     change: number,
   ): void {
-    const character = this.currentCharacter();
+    const character =
+      this.currentCharacter();
 
     if (!character) {
       return;
     }
 
     /*
-     * Le joueur peut dépenser un dé de vie, mais pas
-     * le récupérer manuellement : cela passe par le repos long.
+     * Le joueur peut dépenser ses dés de vie,
+     * mais leur récupération passe par le repos.
      */
     if (change > 0) {
       return;
     }
 
-    const hitDice = character.hitDice.map((pool) => {
-      if (pool.id !== hitDicePoolId) {
-        return pool;
-      }
+    const hitDice =
+      character.hitDice.map((pool) => {
+        if (pool.id !== hitDicePoolId) {
+          return pool;
+        }
 
-      return {
-        ...pool,
+        return {
+          ...pool,
 
-        current: Math.max(
-          0,
-          pool.current + change,
-        ),
-      };
-    });
+          current: Math.max(
+            0,
+            pool.current + change,
+          ),
+        };
+      });
 
     this.updateCharacter({
       ...character,
@@ -201,20 +388,23 @@ export class CharacterStateService {
     resourceId: string,
     notes: string,
   ): void {
-    const character = this.currentCharacter();
+    const character =
+      this.currentCharacter();
 
     if (!character) {
       return;
     }
 
-    const resources = character.resources.map((resource) =>
-      resource.id === resourceId
-        ? {
-            ...resource,
-            notes,
-          }
-        : resource,
-    );
+    const resources =
+      character.resources.map(
+        (resource) =>
+          resource.id === resourceId
+            ? {
+                ...resource,
+                notes,
+              }
+            : resource,
+      );
 
     this.updateCharacter({
       ...character,
@@ -226,33 +416,43 @@ export class CharacterStateService {
     progressionId: string,
     change: number,
   ): void {
-    const character = this.currentCharacter();
+    const character =
+      this.currentCharacter();
 
     if (!character) {
       return;
     }
 
-    const progressions = (character.progressions ?? []).map(
-      (progression) => {
-        if (progression.id !== progressionId) {
+    const progressions =
+      (
+        character.progressions ?? []
+      ).map((progression) => {
+        if (
+          progression.id !==
+          progressionId
+        ) {
           return progression;
         }
 
         const nextValue = Math.max(
           progression.minimumValue,
-          progression.currentValue + change,
+          progression.currentValue +
+            change,
         );
 
         return {
           ...progression,
 
           currentValue:
-            progression.maximumValue === undefined
+            progression.maximumValue ===
+            undefined
               ? nextValue
-              : Math.min(progression.maximumValue, nextValue),
+              : Math.min(
+                  progression.maximumValue,
+                  nextValue,
+                ),
         };
-      },
-    );
+      });
 
     this.updateCharacter({
       ...character,
@@ -261,7 +461,8 @@ export class CharacterStateService {
   }
 
   applyShortRest(): void {
-    const character = this.currentCharacter();
+    const character =
+      this.currentCharacter();
 
     if (!character) {
       return;
@@ -270,21 +471,29 @@ export class CharacterStateService {
     this.updateCharacter({
       ...character,
 
-      resources: character.resources.map((resource) => {
-        if (resource.resetPeriod !== 'short-rest') {
-          return resource;
-        }
+      resources:
+        character.resources.map(
+          (resource) => {
+            if (
+              resource.resetPeriod !==
+              'short-rest'
+            ) {
+              return resource;
+            }
 
-        return {
-          ...resource,
-          currentValue: resource.maximumValue,
-        };
-      }),
+            return {
+              ...resource,
+              currentValue:
+                resource.maximumValue,
+            };
+          },
+        ),
     });
   }
 
   applyLongRest(): void {
-    const character = this.currentCharacter();
+    const character =
+      this.currentCharacter();
 
     if (!character) {
       return;
@@ -295,48 +504,96 @@ export class CharacterStateService {
 
       hitPoints: {
         ...character.hitPoints,
-        current: character.hitPoints.maximum,
+
+        current:
+          character.hitPoints.maximum,
+
         temporary: 0,
       },
 
-      hitDice: character.hitDice.map((pool) => ({
-        ...pool,
+      hitDice:
+        character.hitDice.map(
+          (pool) => ({
+            ...pool,
 
-        current: Math.min(
-          pool.maximum,
+            current: Math.min(
+              pool.maximum,
 
-          pool.current +
-            Math.max(
-              1,
-              Math.floor(pool.maximum / 2),
+              pool.current +
+                Math.max(
+                  1,
+                  Math.floor(
+                    pool.maximum / 2,
+                  ),
+                ),
             ),
+          }),
         ),
-      })),
 
-      resources: character.resources.map((resource) => {
-        const resetsOnLongRest =
-          resource.resetPeriod === 'short-rest' ||
-          resource.resetPeriod === 'long-rest';
+      resources:
+        character.resources.map(
+          (resource) => {
+            const resetsOnLongRest =
+              resource.resetPeriod ===
+                'short-rest' ||
+              resource.resetPeriod ===
+                'long-rest';
 
-        if (!resetsOnLongRest) {
-          return resource;
-        }
+            if (!resetsOnLongRest) {
+              return resource;
+            }
 
-        return {
-          ...resource,
-          currentValue: resource.maximumValue,
-        };
-      }),
+            /*
+             * undefined signifie que de nouveaux
+             * résultats doivent être saisis.
+             *
+             * Un tableau vide signifie que tous
+             * les résultats ont été consommés.
+             */
+            if (
+              resource.storedValuesConfig
+            ) {
+              return {
+                ...resource,
+
+                storedValues: undefined,
+
+                currentValue: 0,
+              };
+            }
+
+            return {
+              ...resource,
+
+              currentValue:
+                resource.maximumValue,
+            };
+          },
+        ),
     });
   }
 
-  private updateCharacter(character: Character): void {
-    this.currentCharacter.set(character);
-    this.saveLocally(character);
-    this.channel?.postMessage(character);
+  private updateCharacter(
+    character: Character,
+  ): void {
+    const nextCharacter =
+      this.cloneCharacter(character);
+
+    this.currentCharacter.set(
+      nextCharacter,
+    );
+
+    this.saveLocally(
+      nextCharacter,
+    );
+
+    this.channel?.postMessage(
+      nextCharacter,
+    );
   }
 
-  private loadStoredState(): Character | null {
+  private loadStoredState():
+    Character | null {
     if (
       !this.storageKey ||
       typeof localStorage === 'undefined'
@@ -344,21 +601,31 @@ export class CharacterStateService {
       return null;
     }
 
-    const storedValue = localStorage.getItem(this.storageKey);
+    const storedValue =
+      localStorage.getItem(
+        this.storageKey,
+      );
 
     if (!storedValue) {
       return null;
     }
 
     try {
-      return JSON.parse(storedValue) as Character;
+      return JSON.parse(
+        storedValue,
+      ) as Character;
     } catch {
-      localStorage.removeItem(this.storageKey);
+      localStorage.removeItem(
+        this.storageKey,
+      );
+
       return null;
     }
   }
 
-  private saveLocally(character: Character): void {
+  private saveLocally(
+    character: Character,
+  ): void {
     if (
       !this.storageKey ||
       typeof localStorage === 'undefined'
@@ -372,7 +639,9 @@ export class CharacterStateService {
     );
   }
 
-  private cloneCharacter(character: Character): Character {
+  private cloneCharacter(
+    character: Character,
+  ): Character {
     return {
       ...character,
 
@@ -380,25 +649,53 @@ export class CharacterStateService {
         ...character.hitPoints,
       },
 
-      hitDice: character.hitDice.map((pool) => ({
-        ...pool,
-      })),
+      hitDice:
+        character.hitDice.map(
+          (pool) => ({
+            ...pool,
+          }),
+        ),
 
-      progressions: (character.progressions ?? []).map(
-        (progression) => ({
+      progressions:
+        (
+          character.progressions ?? []
+        ).map((progression) => ({
           ...progression,
-        }),
-      ),
+        })),
 
-      resources: character.resources.map((resource) => ({
-        ...resource,
+      resources:
+        character.resources.map(
+          (resource) => ({
+            ...resource,
 
-        unlockCondition: resource.unlockCondition
-          ? {
-              ...resource.unlockCondition,
-            }
-          : undefined,
-      })),
+            unlockCondition:
+              resource.unlockCondition
+                ? {
+                    ...resource.unlockCondition,
+                  }
+                : undefined,
+
+            storedValuesConfig:
+              resource.storedValuesConfig
+                ? {
+                    ...resource.storedValuesConfig,
+                  }
+                : undefined,
+
+            /*
+             * Attention à ne pas utiliser seulement
+             * un test de longueur : [] représente
+             * bien l’état "tous consommés".
+             */
+            storedValues:
+              resource.storedValues ===
+              undefined
+                ? undefined
+                : [
+                    ...resource.storedValues,
+                  ],
+          }),
+        ),
     };
   }
 
@@ -416,48 +713,126 @@ export class CharacterStateService {
       },
 
       hitDice:
-        storedState.hitDice ?? initialState.hitDice,
+        storedState.hitDice ??
+        initialState.hitDice,
 
-        progressions: (initialState.progressions ?? []).map(
+      /*
+       * La définition vient du code.
+       * Seule la valeur courante vient
+       * du stockage.
+       */
+      progressions:
+        (
+          initialState.progressions ?? []
+        ).map(
           (initialProgression) => {
             const storedProgression =
               storedState.progressions?.find(
                 (progression) =>
-                  progression.id === initialProgression.id,
+                  progression.id ===
+                  initialProgression.id,
               );
 
             return {
               ...initialProgression,
 
               currentValue:
-                storedProgression?.currentValue ??
-                initialProgression.currentValue,
+                storedProgression
+                  ?.currentValue ??
+                initialProgression
+                  .currentValue,
             };
           },
         ),
 
-      resources: initialState.resources.map(
-        (initialResource) => {
-          const storedResource =
-            storedState.resources?.find(
-              (resource) =>
-                resource.id === initialResource.id,
-            );
+      resources:
+        initialState.resources.map(
+          (initialResource) => {
+            const storedResource =
+              storedState.resources?.find(
+                (resource) =>
+                  resource.id ===
+                  initialResource.id,
+              );
 
-          return {
-            ...initialResource,
-            ...storedResource,
-          };
-        },
-      ),
+            /*
+             * On vérifie explicitement undefined :
+             * [] est une valeur valide et signifie
+             * que tous les présages sont utilisés.
+             */
+            const storedValues =
+              storedResource
+                ?.storedValues !==
+              undefined
+                ? [
+                    ...storedResource
+                      .storedValues,
+                  ]
+                : initialResource
+                      .storedValues !==
+                    undefined
+                  ? [
+                      ...initialResource
+                        .storedValues,
+                    ]
+                  : undefined;
+
+            if (
+              initialResource
+                .storedValuesConfig
+            ) {
+              return {
+                ...initialResource,
+                ...storedResource,
+
+                /*
+                 * La configuration vient toujours
+                 * de la définition actuelle.
+                 */
+                storedValuesConfig: {
+                  ...initialResource
+                    .storedValuesConfig,
+                },
+
+                storedValues,
+
+                currentValue:
+                  storedValues?.length ??
+                  0,
+              };
+            }
+
+            return {
+              ...initialResource,
+              ...storedResource,
+
+              storedValuesConfig:
+                undefined,
+
+              storedValues:
+                undefined,
+
+              currentValue:
+                storedResource
+                  ?.currentValue ??
+                initialResource
+                  .currentValue,
+            };
+          },
+        ),
     };
   }
 
-  private normalizeAmount(amount: number): number {
+  private normalizeAmount(
+    amount: number,
+  ): number {
     if (!Number.isFinite(amount)) {
       return 0;
     }
 
-    return Math.max(0, Math.floor(amount));
+    return Math.max(
+      0,
+      Math.floor(amount),
+    );
   }
 }

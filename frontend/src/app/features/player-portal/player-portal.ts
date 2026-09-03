@@ -22,12 +22,14 @@ import {
 import { CharacterResources } from './components/character-resources/character-resources';
 import { CharacterVitals } from './components/character-vitals/character-vitals';
 import { RestControls } from './components/rest-controls/rest-controls';
+import { CharacterStoredValues } from './components/character-stored-values/character-stored-values';
 
 @Component({
   selector: 'app-player-portal',
   imports: [
     CharacterProgressions,
     CharacterResources,
+    CharacterStoredValues,
     CharacterVitals,
     RestControls,
   ],
@@ -97,6 +99,13 @@ export class PlayerPortal {
           first.displayOrder - second.displayOrder,
       );
   });
+
+  protected readonly storedValueResources = computed(() =>
+    this.sortedResources().filter(
+      (resource) =>
+        resource.storedValuesConfig !== undefined,
+    ),
+  );
 
   protected readonly characterRestRequest = computed(() => {
     if (!this.character) {

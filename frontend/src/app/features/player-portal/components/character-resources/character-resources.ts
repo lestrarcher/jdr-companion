@@ -1,6 +1,7 @@
 import {
   Component,
   inject,
+  computed,
   input,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -20,6 +21,10 @@ export class CharacterResources {
 
   readonly resources =
     input.required<readonly CharacterResource[]>();
+
+  readonly standardResources = computed(() =>
+    this.resources().filter(resource => !resource.storedValuesConfig),
+  );
 
   protected changeResource(
     resource: CharacterResource,

@@ -673,12 +673,16 @@ export const STRAHD_CAMPAIGN: CampaignConfig = {
         {
           id: 'nikita-portent',
           name: 'Présage',
-          shortName: 'Présage',
           category: 'class-feature',
           resetPeriod: 'long-rest',
-          currentValue: 2,
+          currentValue: 0,
           maximumValue: 2,
           displayOrder: 10,
+          storedValuesConfig: {
+            requiredCount: 2,
+            minimumValue: 1,
+            maximumValue: 20,
+          },
         },
         {
           id: 'nikita-arcane-recovery',

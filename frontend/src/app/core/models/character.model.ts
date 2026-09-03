@@ -34,18 +34,19 @@ export interface CharacterResource {
   id: string;
   name: string;
   shortName?: string;
-
   category: ResourceCategory;
   resetPeriod: ResourceResetPeriod;
   notes?: string;
   notesEditable?: boolean;
-  unlockCondition?: ResourceUnlockCondition;
   allowManualIncrease?: boolean;
   currentValue: number;
   maximumValue: number;
-
   level?: number;
   displayOrder: number;
+  unlockCondition?: ResourceUnlockCondition;
+
+  storedValues?: number[];
+  storedValuesConfig?: StoredValuesConfig;
 }
 
 export interface Character {
@@ -77,4 +78,10 @@ export interface HitDicePool {
   die: HitDie;
   current: number;
   maximum: number;
+}
+
+export interface StoredValuesConfig {
+  requiredCount: number;
+  minimumValue: number;
+  maximumValue: number;
 }

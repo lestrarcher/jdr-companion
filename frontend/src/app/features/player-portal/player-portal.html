@@ -59,13 +59,18 @@
             "
           />
 
+          <!-- Valeurs individuelles comme les Présages -->
+          <app-character-stored-values
+            [resources]="storedValueResources()"
+          />
+
           <div class="tracker-layout">
             <!-- PV, PV temporaires et dés de vie -->
             <app-character-vitals
               [character]="currentCharacter"
             />
 
-            <!-- Ressources et capacités passives -->
+            <!-- Ressources consommables -->
             <app-character-resources
               [resources]="sortedResources()"
             />

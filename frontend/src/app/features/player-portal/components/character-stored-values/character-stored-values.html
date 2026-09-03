@@ -1,0 +1,132 @@
+@if (resources().length > 0) {
+  <section class="stored-values-section">
+    @for (resource of resources(); track resource.id) {
+      @if (resource.storedValuesConfig; as config) {
+        <article class="stored-resource">
+          <header class="resource-header">
+            <div>
+              <span class="resource-type">
+                Divination
+              </span>
+
+              <h2>{{ resource.name }}</h2>
+            </div>
+
+            <span class="reset-period">
+              {{ resetPeriodLabel(resource.resetPeriod) }}
+            </span>
+          </header>
+
+          <!--
+            undefined :
+            les nouveaux résultats doivent être saisis
+          -->
+          @if (resource.storedValues === undefined) {
+            <p class="resource-instruction">
+              Lancez vos
+              {{ config.requiredCount }} d20 après votre
+              repos long, puis enregistrez les résultats.
+            </p>
+
+            <div class="portent-form">
+              <div class="value-inputs">
+                @for (
+                  index of inputIndexes(resource);
+                  track index
+                ) {
+                  <label>
+                    <span>
+                      Dé {{ index + 1 }}
+                    </span>
+
+                    <input
+                      type="number"
+                      inputmode="numeric"
+                      [min]="config.minimumValue"
+                      [max]="config.maximumValue"
+                      [ngModel]="
+                        draftValues[resource.id]?.[index]
+                      "
+                      (ngModelChange)="
+                        updateDraftValue(
+                          resource.id,
+                          index,
+                          $event
+                        )
+                      "
+                    />
+                  </label>
+                }
+              </div>
+
+              <button
+                type="button"
+                class="save-values"
+                [disabled]="!canSave(resource)"
+                (click)="saveValues(resource)"
+              >
+                Enregistrer les présages
+              </button>
+            </div>
+          }
+
+          <!--
+            Tableau contenant encore au moins une valeur :
+            on affiche uniquement les dés restants
+          -->
+          @else if (resource.storedValues.length > 0) {
+            <p class="resource-instruction">
+              Sélectionnez le présage que vous venez
+              d’utiliser.
+            </p>
+
+            <div
+              class="stored-dice"
+              [class.single-die]="
+                resource.storedValues.length === 1
+              "
+            >
+              @for (
+                value of resource.storedValues;
+                track $index
+              ) {
+                <button
+                  type="button"
+                  class="portent-die"
+                  (click)="
+                    consumeValue(resource.id, $index)
+                  "
+                  [attr.aria-label]="
+                    'Utiliser le présage ' + value
+                  "
+                >
+                  <span>{{ value }}</span>
+                  <small>Utiliser</small>
+                </button>
+              }
+            </div>
+          }
+
+          <!--
+            Tableau vide :
+            les deux résultats ont été consommés
+          -->
+          @else {
+            <div class="empty-portents">
+              <span aria-hidden="true">◇</span>
+
+              <p>
+                Tous les présages ont été utilisés.
+              </p>
+
+              <small>
+                De nouveaux résultats pourront être
+                enregistrés après un repos long.
+              </small>
+            </div>
+          }
+        </article>
+      }
+    }
+  </section>
+}
