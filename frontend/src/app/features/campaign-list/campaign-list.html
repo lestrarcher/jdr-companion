@@ -1,0 +1,107 @@
+<main class="campaign-page">
+  <header class="page-header">
+    <div>
+      <span class="eyebrow">
+        JDR Companion
+      </span>
+
+      <h1>Mes campagnes</h1>
+
+      <p>
+        Prépare et pilote tes différentes
+        campagnes depuis un même espace.
+      </p>
+    </div>
+  </header>
+
+  <section class="creation-panel">
+    <div class="section-heading">
+      <span class="eyebrow">
+        Nouvelle aventure
+      </span>
+
+      <h2>Créer une campagne</h2>
+    </div>
+
+    <form
+      [formGroup]="campaignForm"
+      (ngSubmit)="createCampaign()"
+    >
+      <label>
+        <span>Nom de la campagne</span>
+
+        <input
+          type="text"
+          formControlName="name"
+          placeholder="La Malédiction de Strahd"
+        />
+      </label>
+
+      <button
+        type="submit"
+        [disabled]="creating()"
+      >
+        {{
+          creating()
+            ? 'Création…'
+            : 'Créer la campagne'
+        }}
+      </button>
+    </form>
+
+    @if (error()) {
+      <p class="error-message" role="alert">
+        {{ error() }}
+      </p>
+    }
+  </section>
+
+  <section class="campaign-section">
+    <div class="section-heading">
+      <span class="eyebrow">
+        Bibliothèque
+      </span>
+
+      <h2>Campagnes disponibles</h2>
+    </div>
+
+    @if (loading()) {
+      <p class="empty-state">
+        Chargement des campagnes…
+      </p>
+    } @else {
+      <div class="campaign-grid">
+        @for (
+          campaign of campaigns();
+          track campaign.id
+        ) {
+          <a
+            class="campaign-card"
+            [routerLink]="[
+              '/campaigns',
+              campaign.id
+            ]"
+          >
+            <span class="campaign-number">
+              Campagne {{ campaign.id }}
+            </span>
+
+            <h3>{{ campaign.name }}</h3>
+
+            <small>
+              {{ campaign.slug }}
+            </small>
+
+            <span class="open-label">
+              Ouvrir la campagne
+            </span>
+          </a>
+        } @empty {
+          <p class="empty-state">
+            Aucune campagne pour le moment.
+          </p>
+        }
+      </div>
+    }
+  </section>
+</main>

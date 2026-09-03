@@ -1,0 +1,140 @@
+<aside class="session-controls">
+  <header class="controls-heading">
+    <span class="eyebrow">
+      Contrôle
+    </span>
+
+    <h2>Session</h2>
+
+    <span
+      class="status"
+      [attr.data-status]="status()"
+    >
+      <span aria-hidden="true"></span>
+      {{ statusLabel() }}
+    </span>
+  </header>
+
+  <div class="control-actions">
+    <a
+      class="control-button"
+      [class.control-button-disabled]="
+        status() !== 'live'
+      "
+      [href]="
+        status() === 'live'
+          ? displayUrl()
+          : null
+      "
+      target="_blank"
+      rel="noopener noreferrer"
+      [attr.aria-disabled]="
+        status() !== 'live'
+      "
+    >
+      <strong>Display</strong>
+      <small>
+        {{
+          status() === 'live'
+            ? 'Ouvrir l’écran joueurs'
+            : 'Disponible en session'
+        }}
+      </small>
+    </a>
+
+    <button
+      class="control-button"
+      type="button"
+      [disabled]="
+        status() === 'draft' ||
+        updating()
+      "
+      (click)="draftSession()"
+    >
+      <strong>Préparation</strong>
+
+      <small>
+        Remettre la session en brouillon
+      </small>
+    </button>
+
+    <button
+      class="control-button"
+      type="button"
+      [disabled]="
+        status() === 'live' ||
+        updating()
+      "
+      (click)="openSession()"
+    >
+      <strong>
+        {{
+          status() === 'closed'
+            ? 'Rouvrir'
+            : 'Ouvrir'
+        }}
+      </strong>
+
+      <small>
+        Autoriser les interfaces joueurs
+      </small>
+    </button>
+
+    <button
+      class="control-button control-button-danger"
+      type="button"
+      [disabled]="
+        status() !== 'live' ||
+        updating()
+      "
+      (click)="closeSession()"
+    >
+      <strong>Fermer</strong>
+      <small>Terminer la session</small>
+    </button>
+
+    <button
+      class="control-button"
+      type="button"
+      [class.control-button-active]="
+        fogEnabled()
+      "
+      [disabled]="status() !== 'live'"
+      (click)="toggleFog()"
+    >
+      <strong>Brouillard</strong>
+      <small>
+        {{
+          fogEnabled()
+            ? 'Activé'
+            : 'Désactivé'
+        }}
+      </small>
+    </button>
+
+    <button
+      class="control-button"
+      type="button"
+      [class.control-button-active]="
+        cinematicEnabled()
+      "
+      [disabled]="status() !== 'live'"
+      (click)="toggleCinematic()"
+    >
+      <strong>Mode cinématique</strong>
+      <small>
+        {{
+          cinematicEnabled()
+            ? 'Plein écran'
+            : 'Affichage normal'
+        }}
+      </small>
+    </button>
+  </div>
+
+  @if (error()) {
+    <p class="control-error" role="alert">
+      {{ error() }}
+    </p>
+  }
+</aside>

@@ -423,22 +423,26 @@ export class PlayerPortal {
   private initializeRestRequestPolling(): void {
     timer(0, 5000)
       .pipe(
-        switchMap(() =>
-          this.restRequestApi
+        switchMap(() => {
+          if (this.sessionStatus() !== 'live') {
+            this.latestRestRequest.set(null);
+
+            return of(null);
+          }
+
+          return this.restRequestApi
             .getLatest(this.accessToken)
             .pipe(
-              catchError(
-                (error: unknown) => {
-                  console.error(
-                    'Impossible de vérifier la demande de repos.',
-                    error,
-                  );
+              catchError((error: unknown) => {
+                console.error(
+                  'Impossible de vérifier la demande de repos.',
+                  error,
+                );
 
-                  return of(null);
-                },
-              ),
-            ),
-        ),
+                return of(null);
+              }),
+            );
+        }),
 
         takeUntilDestroyed(
           this.destroyRef,

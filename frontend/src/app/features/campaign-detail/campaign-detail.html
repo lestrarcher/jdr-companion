@@ -1,0 +1,127 @@
+<main class="campaign-page">
+  <a
+    class="back-link"
+    routerLink="/campaigns"
+  >
+    ← Mes campagnes
+  </a>
+
+  @if (loading()) {
+    <p class="empty-state">
+      Chargement de la campagne…
+    </p>
+  } @else if (error()) {
+    <p class="error-message" role="alert">
+      {{ error() }}
+    </p>
+  } @else if (campaign(); as currentCampaign) {
+    <header class="page-header">
+      <span class="eyebrow">
+        Campagne
+      </span>
+
+      <h1>{{ currentCampaign.name }}</h1>
+
+      <p>
+        Prépare une nouvelle session ou
+        reprends une session existante.
+      </p>
+    </header>
+
+    <section class="creation-panel">
+      <div class="section-heading">
+        <span class="eyebrow">
+          Nouvelle partie
+        </span>
+
+        <h2>Préparer une session</h2>
+      </div>
+
+      <form
+        [formGroup]="sessionForm"
+        (ngSubmit)="createSession()"
+      >
+        <label>
+          <span>Nom de la session</span>
+
+          <input
+            type="text"
+            formControlName="name"
+            placeholder="Après nous, les ténèbres"
+          />
+        </label>
+
+        <button
+          type="submit"
+          [disabled]="creating()"
+        >
+          {{
+            creating()
+              ? 'Création…'
+              : 'Créer et préparer'
+          }}
+        </button>
+      </form>
+    </section>
+
+    <section class="session-section">
+      <div class="section-heading">
+        <span class="eyebrow">
+          Historique
+        </span>
+
+        <h2>Sessions</h2>
+      </div>
+
+      <div class="session-list">
+        @for (
+          session of sessions();
+          track session.id
+        ) {
+          <a
+            class="session-card"
+            [class.session-live]="
+              session.status === 'live'
+            "
+            [routerLink]="[
+              '/campaigns',
+              currentCampaign.id,
+              'sessions',
+              session.id,
+              'control'
+            ]"
+          >
+            <div>
+              <span
+                class="session-status"
+                [attr.data-status]="
+                  session.status
+                "
+              >
+                {{
+                  sessionStatusLabel(
+                    session.status
+                  )
+                }}
+              </span>
+
+              <h3>{{ session.name }}</h3>
+
+              <small>
+                {{ session.slug }}
+              </small>
+            </div>
+
+            <span class="open-label">
+              Ouvrir le control →
+            </span>
+          </a>
+        } @empty {
+          <p class="empty-state">
+            Aucune session pour cette campagne.
+          </p>
+        }
+      </div>
+    </section>
+  }
+</main>

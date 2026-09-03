@@ -19,8 +19,17 @@ export interface GameSessionApiResponse {
   updatedAt: string;
 }
 
+export interface CreateGameSessionPayload {
+  slug: string;
+  name: string;
+}
+
 interface GameSessionResponse {
   session: GameSessionApiResponse;
+}
+
+interface GameSessionListResponse {
+  sessions: GameSessionApiResponse[];
 }
 
 @Injectable({
@@ -29,6 +38,44 @@ interface GameSessionResponse {
 export class GameSessionApiService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = '/api';
+
+  list(
+    campaignId: number,
+  ): Observable<GameSessionApiResponse[]> {
+    return this.http
+      .get<GameSessionListResponse>(
+        `${this.apiUrl}/campaigns/${campaignId}/sessions`,
+      )
+      .pipe(
+        map((response) => response.sessions),
+      );
+  }
+
+  get(
+    sessionId: number,
+  ): Observable<GameSessionApiResponse> {
+    return this.http
+      .get<GameSessionResponse>(
+        `${this.apiUrl}/sessions/${sessionId}`,
+      )
+      .pipe(
+        map((response) => response.session),
+      );
+  }
+
+  create(
+    campaignId: number,
+    payload: CreateGameSessionPayload,
+  ): Observable<GameSessionApiResponse> {
+    return this.http
+      .post<GameSessionResponse>(
+        `${this.apiUrl}/campaigns/${campaignId}/sessions`,
+        payload,
+      )
+      .pipe(
+        map((response) => response.session),
+      );
+  }
 
   updateStatus(
     sessionId: number,

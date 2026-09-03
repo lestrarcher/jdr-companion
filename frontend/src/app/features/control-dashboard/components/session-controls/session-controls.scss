@@ -1,0 +1,129 @@
+:host {
+  display: block;
+  min-height: 0;
+}
+
+.session-controls {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 1.25rem;
+  border-right:
+    1px solid rgba(199, 165, 91, 0.22);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(16, 17, 27, 0.98),
+      rgba(8, 9, 15, 0.98)
+    );
+}
+
+.controls-heading {
+  padding-bottom: 1.25rem;
+  border-bottom:
+    1px solid rgba(199, 165, 91, 0.18);
+
+  h2 {
+    margin: 0.2rem 0 0.8rem;
+    font-family: Georgia, serif;
+    font-size: 1.6rem;
+  }
+}
+
+.eyebrow {
+  color: #c7a55b;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: rgba(244, 239, 229, 0.65);
+  font-size: 0.75rem;
+
+  span {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: #b6a46d;
+  }
+
+  &[data-status='live'] span {
+    background: #74c78d;
+    box-shadow:
+      0 0 0.7rem rgba(116, 199, 141, 0.7);
+  }
+
+  &[data-status='closed'] span {
+    background: #985e63;
+  }
+}
+
+.control-actions {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 1.25rem;
+}
+
+.control-button {
+  display: grid;
+  gap: 0.2rem;
+  width: 100%;
+  padding: 0.85rem;
+  border:
+    1px solid rgba(199, 165, 91, 0.22);
+  color: #f4efe5;
+  background: rgba(28, 29, 42, 0.72);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease;
+
+  &:hover:not(:disabled) {
+    border-color: #c7a55b;
+    background: rgba(199, 165, 91, 0.09);
+  }
+
+  &:disabled,
+  &-disabled {
+    cursor: not-allowed;
+    opacity: 0.42;
+    pointer-events: none;
+  }
+
+  strong {
+    font-size: 0.9rem;
+  }
+
+  small {
+    color: rgba(244, 239, 229, 0.52);
+    font-size: 0.7rem;
+  }
+}
+
+.control-button-active {
+  border-color: rgba(116, 199, 141, 0.65);
+  background: rgba(116, 199, 141, 0.08);
+}
+
+.control-button-danger {
+  border-color: rgba(164, 82, 88, 0.4);
+
+  &:hover:not(:disabled) {
+    border-color: #b96b72;
+    background: rgba(164, 82, 88, 0.1);
+  }
+}
+
+.control-error {
+  margin-top: auto;
+  padding-top: 1rem;
+  color: #ef9a9a;
+  font-size: 0.75rem;
+}

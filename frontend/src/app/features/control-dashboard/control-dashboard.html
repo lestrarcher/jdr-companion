@@ -1,355 +1,124 @@
 <main class="control-dashboard">
   <header class="dashboard-header">
     <div>
-      <span class="eyebrow">JDR Companion</span>
-      <h1>{{ campaign.name }}</h1>
+      <span class="eyebrow">
+        JDR Companion
+      </span>
+
+      <h1>
+        {{ campaign.name }}
+
+        @if (backendSession(); as session) {
+          <small>— {{ session.name }}</small>
+        }
+      </h1>
     </div>
 
-    <div class="session-status">
-      <span class="status-dot"></span>
-      {{ sessionStatusLabel() }}
-    </div>
+    <span
+      class="header-status"
+      [attr.data-status]="sessionStatus()"
+    >
+      {{ sessionStatus() }}
+    </span>
   </header>
 
-  <section class="control-panel characters-panel">
-  <div class="panel-heading">
-    <div>
-      <span class="eyebrow">Données persistantes</span>
-      <h2>Personnages de la session</h2>
-    </div>
-
-    <button
-      type="button"
-      [disabled]="characterImportRunning()"
-      (click)="synchronizeCharacters()"
+  @if (dashboardLoading()) {
+    <section class="dashboard-message">
+      Chargement de la session…
+    </section>
+  } @else if (dashboardError()) {
+    <section
+      class="dashboard-message dashboard-error"
+      role="alert"
     >
-      {{
-        characterImportRunning()
-          ? 'Synchronisation…'
-          : 'Initialiser les personnages'
-      }}
-    </button>
-  </div>
+      {{ dashboardError() }}
+    </section>
+  } @else {
+    <div class="dashboard-layout">
+      <app-session-controls
+        [status]="sessionStatus()"
+        [updating]="
+          sessionStatusUpdateRunning()
+        "
+        [fogEnabled]="
+          liveState()?.fogEnabled ?? false
+        "
+        [cinematicEnabled]="
+          liveState()?.displayMode ===
+          'cinematic'
+        "
+        [displayUrl]="displayUrl()"
+        [error]="sessionStatusError()"
+        (sessionOpened)="openSession()"
+        (sessionClosed)="closeSession()"
+        (fogToggled)="toggleFog()"
+        (cinematicToggled)="
+          toggleCinematicMode()
+        "
+        (sessionDrafted)="draftSession()"
+      />
 
-  @if (characterImportError()) {
-    <p class="import-error" role="alert">
-      {{ characterImportError() }}
-    </p>
-  }
-
-  @if (importedCharacters().length > 0) {
-    <div class="character-links">
-      @for (
-        character of importedCharacters();
-        track character.characterId
-      ) {
-        <article class="character-link-card">
-          <div>
-            <strong>{{ character.characterName }}</strong>
-            <small>
-              Personnage backend #{{ character.characterId }}
-            </small>
-          </div>
-
-          @if (playerPortalUrl(character.accessToken); as url) {
-            <a
-              [href]="url"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Ouvrir l’interface
-            </a>
-          } @else {
-            <span class="missing-link">
-              Lien indisponible
-            </span>
-          }
-        </article>
-      }
-    </div>
-  }
-</section>
-
-  @if (pendingRestRequests().length > 0) {
-  <section
-    class="control-panel rest-requests-panel"
-    aria-live="assertive"
-  >
-    <div class="panel-heading">
-      <div>
-        <span class="eyebrow">Action requise</span>
-        <h2>Demandes de repos</h2>
-      </div>
-
-      <span class="request-count">
-        {{ pendingRestRequests().length }}
-        {{
-          pendingRestRequests().length > 1
-            ? 'demandes'
-            : 'demande'
-        }}
-      </span>
-    </div>
-
-    <div class="rest-request-list">
-      @for (
-        request of pendingRestRequests();
-        track request.id
-      ) {
-        <article class="rest-request-card">
-          <div class="rest-request-information">
-            <span class="request-symbol" aria-hidden="true">
-              ◇
-            </span>
-
-            <div>
-              <strong>{{ request.character.name }}</strong>
-              <small>
-                demande un
-                {{ restTypeLabel(request.type).toLowerCase() }}
-              </small>
-            </div>
-          </div>
-
-          <div class="rest-request-actions">
-            <button
-              class="reject-request-button"
-              type="button"
-              (click)="resolveRestRequest(request.id, false)"
-              [disabled]="
-                resolvingRestRequestId() !== null
-              "
-            >
-              Refuser
-            </button>
-
-            <button
-              class="approve-request-button"
-              type="button"
-              (click)="resolveRestRequest(request.id, true)"
-              [disabled]="
-                resolvingRestRequestId() !== null
-              "
-            >
-              Accepter
-            </button>
-          </div>
-        </article>
-      }
-    </div>
-  </section>
-}
-@if (restRequestError()) {
-  <p class="import-error" role="alert">
-    {{ restRequestError() }}
-  </p>
-}
-
-  <section class="control-panel">
-    <div class="panel-heading">
-      <span class="eyebrow">État du monde</span>
-      <h2>Temps et calendrier</h2>
-    </div>
-
-    <form [formGroup]="worldForm" (ngSubmit)="updateWorld()">
-      <div class="form-grid">
-        <label>
-          <span>Jour</span>
-          <input type="number" formControlName="day" min="1" />
-        </label>
-
-        <label>
-          <span>Moment de la journée</span>
-          <select formControlName="dayPeriod">
-            <option value="Aube">Aube</option>
-            <option value="Matin">Matin</option>
-            <option value="Midi">Midi</option>
-            <option value="Après-midi">Après-midi</option>
-            <option value="Crépuscule">Crépuscule</option>
-            <option value="Nuit">Nuit</option>
-          </select>
-        </label>
-
-        <label>
-          <span>Météo</span>
-
-          <select formControlName="weatherId">
-            @for (weather of campaign.weatherStates; track weather.id) {
-              <option [value]="weather.id">
-                {{ weather.label }}
-              </option>
-            }
-          </select>
-        </label>
-
-        <label>
-          <span>Phase lunaire</span>
-
-          <select formControlName="moonId">
-            @for (moon of campaign.moonPhases; track moon.id) {
-              <option [value]="moon.id">
-                {{ moon.label }}
-              </option>
-            }
-          </select>
-        </label>
-
-        <label>
-          <span>Lieu actuel</span>
-          <input
-            type="text"
-            formControlName="locationName"
-            placeholder="Argynvostholt"
-          />
-        </label>
-
-        <label>
-          <span>Sous-lieu</span>
-          <input
-            type="text"
-            formControlName="locationSubtitle"
-            placeholder="Lisière de la forêt"
-          />
-        </label>
-      </div>
-
-      <div class="form-actions">
-        <button type="submit">Mettre à jour l’écran</button>
-      </div>
-    </form>
-  </section>
-
-    <section class="control-panel display-controls-panel">
-  <div class="panel-heading">
-    <div>
-      <span class="eyebrow">Mise en scène</span>
-      <h2>Affichage joueurs</h2>
-    </div>
-  </div>
-
-  <div class="display-controls">
-
-    <button
-      class="mode-button"
-      type="button"
-      [class.mode-button-active]="liveState()?.status === 'live'"
-      [disabled]="
-        liveState()?.status === 'live' ||
-        sessionStatusUpdateRunning()
-      "
-      (click)="openSession()"
-    >
-      <strong>Ouvrir la session</strong>
-      <small>Autoriser l’accès aux interfaces joueurs</small>
-    </button>
-
-    <button
-      class="mode-button mode-button-danger"
-      type="button"
-      [disabled]="
-        liveState()?.status === 'closed' ||
-        sessionStatusUpdateRunning()
-      "
-      (click)="closeSession()"
-    >
-      <strong>Fermer la session</strong>
-      <small>Bloquer les interfaces joueurs</small>
-    </button>
-
-    @if (sessionStatusError()) {
-      <p class="import-error" role="alert">
-        {{ sessionStatusError() }}
-      </p>
-    }
-
-    <button
-      class="mode-button"
-      type="button"
-      [class.mode-button-active]="liveState()?.fogEnabled"
-      [attr.aria-pressed]="liveState()?.fogEnabled"
-      (click)="toggleFog()"
-    >
-      <strong>Brouillard</strong>
-      <small>
-        {{ liveState()?.fogEnabled ? 'Activé' : 'Désactivé' }}
-      </small>
-    </button>
-
-    <button
-      class="mode-button"
-      type="button"
-      [class.mode-button-active]="
-        liveState()?.displayMode === 'cinematic'
-      "
-      [attr.aria-pressed]="
-        liveState()?.displayMode === 'cinematic'
-      "
-      (click)="toggleCinematicMode()"
-    >
-      <strong>Mode cinématique</strong>
-      <small>
-        {{
-          liveState()?.displayMode === 'cinematic'
-            ? 'Plein écran'
-            : 'Affichage normal'
-        }}
-      </small>
-    </button>
-  </div>
-</section>
-  <section class="control-panel media-panel">
-    <div class="panel-heading">
-      <div>
-        <span class="eyebrow">Écran joueurs</span>
-        <h2>Médias</h2>
-      </div>
-
-      <button
-        class="secondary-button"
-        type="button"
-        (click)="clearMedia()"
-      >
-        Masquer l’image
-      </button>
-    </div>
-
-
-
-    <div class="media-grid">
-      @for (media of campaign.media; track media.id) {
-        <button
-          class="media-card"
-          type="button"
-          [class.media-card-selected]="
-            liveState()?.displayedMedia?.id === media.id
+      <section class="dashboard-content">
+        <app-world-controls
+          [state]="liveState()"
+          [weatherStates]="
+            campaign.weatherStates
           "
-          (click)="displayMedia(media)"
-        >
-          <span class="media-thumbnail">
-            <img
-              [src]="media.thumbnail ?? media.source"
-              [alt]="media.alt"
-              loading="lazy"
-            />
-          </span>
+          [moonPhases]="
+            campaign.moonPhases
+          "
+          [disabled]="dashboardLoading()"
+          (worldUpdated)="
+            updateWorld($event)
+          "
+        />
 
-          <span class="media-information">
-            <strong>{{ media.label }}</strong>
+        <app-media-controls
+          [media]="campaign.media"
+          [selectedMediaId]="
+            liveState()
+              ?.displayedMedia
+              ?.id ?? null
+          "
+          [disabled]="dashboardLoading()"
+          (mediaSelected)="
+            displayMedia($event)
+          "
+          (mediaCleared)="clearMedia()"
+        />
+      </section>
 
-            @if (media.subtitle) {
-              <small>{{ media.subtitle }}</small>
-            }
-          </span>
-
-          <span class="media-fit">
-            {{ media.fit ?? 'contain' }}
-          </span>
-        </button>
-      } @empty {
-        <p class="empty-state">
-          Aucun média n’est encore configuré pour cette campagne.
-        </p>
-      }
+      <app-session-characters
+        [campaignId]="backendCampaignId"
+        [sessionId]="backendSessionId"
+        [characters]="
+          importedCharacters()
+        "
+        [initializationRunning]="
+          characterImportRunning()
+        "
+        [initializationError]="
+          characterImportError()
+        "
+        [restRequests]="
+          pendingRestRequests()
+        "
+        [resolvingRestRequestId]="
+          resolvingRestRequestId()
+        "
+        [restRequestError]="
+          restRequestError()
+        "
+        (charactersInitialized)="
+          synchronizeCharacters()
+        "
+        (restRequestResolved)="
+          resolveRestRequest(
+            $event.requestId,
+            $event.approved
+          )
+        "
+      />
     </div>
-  </section>
+  }
 </main>

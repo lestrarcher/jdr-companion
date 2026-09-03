@@ -1,14 +1,6 @@
 import { Routes } from '@angular/router';
+
 import { authGuard } from '@core/guards/auth-guard';
-
-const DEFAULT_CAMPAIGN_ID = 'campaign-strahd-01';
-const DEFAULT_SESSION_ID = 'session-samedi';
-
-const DEFAULT_DISPLAY_ROUTE =
-  `campaigns/${DEFAULT_CAMPAIGN_ID}/sessions/${DEFAULT_SESSION_ID}/display`;
-
-const DEFAULT_CONTROL_ROUTE =
-  `campaigns/${DEFAULT_CAMPAIGN_ID}/sessions/${DEFAULT_SESSION_ID}/control`;
 
 export const routes: Routes = [
   {
@@ -19,44 +11,66 @@ export const routes: Routes = [
       ),
   },
   {
-    path: 'campaigns/:campaignId/sessions/:sessionId/display',
+    path: 'campaigns',
     loadComponent: () =>
-      import('./features/player-display/player-display').then(
-        (component) => component.PlayerDisplay,
+      import(
+        './features/campaign-list/campaign-list'
+      ).then(
+        (component) =>
+          component.CampaignList,
       ),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'campaigns/:campaignId',
+    loadComponent: () =>
+      import(
+        './features/campaign-detail/campaign-detail'
+      ).then(
+        (component) =>
+          component.CampaignDetail,
+      ),
+    canActivate: [authGuard],
   },
   {
     path: 'campaigns/:campaignId/sessions/:sessionId/control',
-    canActivate: [authGuard],
     loadComponent: () =>
-      import('./features/control-dashboard/control-dashboard').then(
-        (component) => component.ControlDashboard,
+      import(
+        './features/control-dashboard/control-dashboard'
+      ).then(
+        (component) =>
+          component.ControlDashboard,
       ),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'campaigns/:campaignId/sessions/:sessionId/display',
+    loadComponent: () =>
+      import(
+        './features/player-display/player-display'
+      ).then(
+        (component) =>
+          component.PlayerDisplay,
+      ),
+    canActivate: [authGuard],
   },
   {
     path: 'campaigns/:campaignId/sessions/:sessionId/player/:accessToken',
     loadComponent: () =>
-      import('./features/player-portal/player-portal').then(
-        (component) => component.PlayerPortal,
+      import(
+        './features/player-portal/player-portal'
+      ).then(
+        (component) =>
+          component.PlayerPortal,
       ),
   },
   {
-    path: 'display',
-    redirectTo: DEFAULT_DISPLAY_ROUTE,
-    pathMatch: 'full',
-  },
-  {
-    path: 'control',
-    redirectTo: DEFAULT_CONTROL_ROUTE,
-    pathMatch: 'full',
-  },
-  {
     path: '',
-    redirectTo: DEFAULT_DISPLAY_ROUTE,
     pathMatch: 'full',
+    redirectTo: 'campaigns',
   },
   {
     path: '**',
-    redirectTo: DEFAULT_DISPLAY_ROUTE,
+    redirectTo: 'campaigns',
   },
 ];

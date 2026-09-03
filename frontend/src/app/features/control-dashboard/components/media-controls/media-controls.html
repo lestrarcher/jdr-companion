@@ -1,0 +1,74 @@
+<section class="media-controls">
+  <header class="section-heading">
+    <div>
+      <span class="eyebrow">
+        Mise en scène
+      </span>
+
+      <h2>Médias</h2>
+    </div>
+
+    <button
+      class="clear-button"
+      type="button"
+      [disabled]="
+        disabled() ||
+        !selectedMediaId()
+      "
+      (click)="clearMedia()"
+    >
+      Masquer l’image
+    </button>
+  </header>
+
+  <div class="media-grid">
+    @for (
+      item of media();
+      track item.id
+    ) {
+      <button
+        class="media-card"
+        type="button"
+        [class.media-card-selected]="
+          selectedMediaId() === item.id
+        "
+        [disabled]="disabled()"
+        (click)="selectMedia(item)"
+      >
+        <span class="media-thumbnail">
+          <img
+            [src]="
+              item.thumbnail ??
+              item.source
+            "
+            [alt]="item.alt"
+            loading="lazy"
+          />
+
+          @if (
+            selectedMediaId() === item.id
+          ) {
+            <span class="selected-label">
+              Affiché
+            </span>
+          }
+        </span>
+
+        <span class="media-information">
+          <strong>{{ item.label }}</strong>
+
+          @if (item.subtitle) {
+            <small>
+              {{ item.subtitle }}
+            </small>
+          }
+        </span>
+      </button>
+    } @empty {
+      <p class="empty-state">
+        Aucun média configuré pour cette
+        campagne.
+      </p>
+    }
+  </div>
+</section>
