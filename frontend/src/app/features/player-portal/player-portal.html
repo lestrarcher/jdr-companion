@@ -1,0 +1,89 @@
+<main class="player-portal">
+  @if (!player || !character) {
+    <section class="portal-message portal-message-error">
+      <span class="eyebrow">Accès refusé</span>
+
+      <h1>Lien joueur invalide</h1>
+
+      <p>
+        Ce lien ne correspond à aucun participant de cette campagne.
+      </p>
+    </section>
+  } @else if (sessionState()?.status !== 'live') {
+    <section class="portal-message">
+      <span class="eyebrow">{{ campaign.name }}</span>
+
+      <h1>{{ character.name }}</h1>
+
+      <div class="closed-symbol" aria-hidden="true">
+        ◆
+      </div>
+
+      <p>{{ closedMessage() }}</p>
+
+      <small>
+        Cette page s’ouvrira lorsque le MJ lancera la session.
+      </small>
+    </section>
+  } @else {
+    @if (characterState(); as currentCharacter) {
+      <section class="character-dashboard">
+        <div
+          class="dashboard-content"
+          [attr.inert]="
+            pendingRestRequest() ? '' : null
+          "
+        >
+          <header class="character-header">
+            <div>
+              <span class="eyebrow">
+                {{ campaign.name }}
+              </span>
+
+              <h1>{{ currentCharacter.name }}</h1>
+            </div>
+
+            <span class="live-badge">
+              <span aria-hidden="true"></span>
+              En cours
+            </span>
+          </header>
+
+          <!-- Malédictions, pactes et jauges spéciales -->
+          <app-character-progressions
+            [progressions]="
+              currentCharacter.progressions ?? []
+            "
+            (progressionChanged)="
+              handleProgressionChange($event)
+            "
+          />
+
+          <!-- Valeurs individuelles comme les Présages -->
+          <app-character-stored-values
+            [resources]="storedValueResources()"
+          />
+
+          <div class="tracker-layout">
+            <!-- PV, PV temporaires et dés de vie -->
+            <app-character-vitals
+              [character]="currentCharacter"
+            />
+
+            <!-- Ressources consommables -->
+            <app-character-resources
+              [resources]="sortedResources()"
+            />
+          </div>
+        </div>
+
+        <!-- Demandes de repos et modale d’attente -->
+        <app-rest-controls
+          [request]="pendingRestRequest()"
+          [feedback]="restFeedback()"
+          (restRequested)="requestRest($event)"
+        />
+      </section>
+    }
+  }
+</main>

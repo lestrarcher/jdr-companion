@@ -340,3 +340,178 @@ button {
     grid-template-columns: 1fr;
   }
 }
+
+.mode-button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.mode-button-danger:not(:disabled):hover {
+  color: #f2d8d3;
+  border-color: rgba(164, 72, 66, 0.75);
+  background: rgba(102, 35, 35, 0.28);
+}
+.rest-requests-panel {
+  border-color: rgba(201, 168, 95, 0.55);
+
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(201, 168, 95, 0.1),
+      transparent 38%
+    ),
+    rgba(8, 9, 14, 0.94);
+
+  box-shadow:
+    0 18px 50px rgba(0, 0, 0, 0.45),
+    0 0 24px rgba(201, 168, 95, 0.08);
+
+  animation: rest-request-appearance 300ms ease-out;
+}
+
+.request-count {
+  padding: 0.35rem 0.65rem;
+
+  color: #ead79e;
+
+  border: 1px solid rgba(201, 168, 95, 0.4);
+  border-radius: 999px;
+  background: rgba(201, 168, 95, 0.08);
+
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rest-request-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.rest-request-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+
+  padding: 1rem;
+
+  border: 1px solid rgba(201, 168, 95, 0.22);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.rest-request-information {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+
+  min-width: 0;
+
+  > div {
+    display: grid;
+    gap: 0.25rem;
+  }
+
+  strong {
+    color: #f1e8d8;
+
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 1.1rem;
+    font-weight: 400;
+  }
+
+  small {
+    color: rgba(238, 232, 220, 0.55);
+  }
+}
+
+.request-symbol {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+
+  width: 2.5rem;
+  height: 2.5rem;
+
+  color: #c9a85f;
+
+  border: 1px solid rgba(201, 168, 95, 0.35);
+  border-radius: 50%;
+  background: rgba(201, 168, 95, 0.06);
+
+  font-size: 1.2rem;
+
+  animation: request-symbol-pulse 2s ease-in-out infinite;
+}
+
+.rest-request-actions {
+  display: flex;
+  gap: 0.6rem;
+
+  button {
+    min-width: 6.5rem;
+    padding: 0.7rem 1rem;
+  }
+}
+
+.reject-request-button {
+  color: #d8c9c5;
+
+  border-color: rgba(164, 72, 66, 0.55);
+  background: rgba(102, 35, 35, 0.2);
+
+  &:hover {
+    color: #fff;
+    border-color: rgba(190, 86, 78, 0.85);
+    background: rgba(130, 45, 40, 0.4);
+  }
+}
+
+.approve-request-button {
+  color: #111218;
+  border-color: #c9a85f;
+  background: #c9a85f;
+
+  &:hover {
+    background: #ddc27f;
+  }
+}
+
+@keyframes rest-request-appearance {
+  from {
+    opacity: 0;
+    transform: translateY(-0.75rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes request-symbol-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(201, 168, 95, 0);
+  }
+
+  50% {
+    box-shadow: 0 0 18px rgba(201, 168, 95, 0.2);
+  }
+}
+
+@media (max-width: 700px) {
+  .rest-request-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .rest-request-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    button {
+      min-width: 0;
+    }
+  }
+}

@@ -1,0 +1,85 @@
+<section class="resources-section">
+  <div class="section-heading">
+    <span class="section-label">Capacités</span>
+    <h2>Ressources</h2>
+  </div>
+
+  <div class="resources-list">
+    @for (resource of standardResources(); track resource.id) {
+      <article class="resource-card">
+        <div class="resource-row">
+          <div class="resource-information">
+            <strong>
+              {{ resource.shortName ?? resource.name }}
+            </strong>
+
+            <small>
+              Recharge :
+              {{ resetPeriodLabel(resource.resetPeriod) }}
+            </small>
+          </div>
+
+          <div class="counter">
+            <button
+              type="button"
+              [attr.aria-label]="
+                'Utiliser une charge de ' + resource.name
+              "
+              (click)="changeResource(resource, -1)"
+              [disabled]="resource.currentValue <= 0"
+            >
+              −
+            </button>
+
+            <strong>
+              {{ resource.currentValue }}
+
+              <span>
+                / {{ resource.maximumValue }}
+              </span>
+            </strong>
+
+            @if (canIncreaseResource(resource)) {
+              <button
+                type="button"
+                [attr.aria-label]="
+                  'Restaurer une charge de ' +
+                  resource.name
+                "
+                (click)="changeResource(resource, 1)"
+                [disabled]="
+                  resource.currentValue >=
+                  resource.maximumValue
+                "
+              >
+                +
+              </button>
+            }
+          </div>
+        </div>
+
+        @if (resource.notesEditable) {
+          <label class="resource-notes">
+            <span>Notes</span>
+
+            <textarea
+              rows="2"
+              placeholder="Préciser les éléments concernés…"
+              [ngModel]="resource.notes ?? ''"
+              (ngModelChange)="
+                updateResourceNotes(
+                  resource.id,
+                  $event
+                )
+              "
+            ></textarea>
+          </label>
+        }
+      </article>
+    } @empty {
+      <p class="empty-resources">
+        Aucune ressource disponible actuellement.
+      </p>
+    }
+  </div>
+</section>

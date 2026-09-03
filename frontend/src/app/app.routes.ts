@@ -25,6 +25,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'campaigns/:campaignId/sessions/:sessionId/player/:accessToken',
+    loadComponent: () =>
+      import('./features/player-portal/player-portal').then(
+        (component) => component.PlayerPortal,
+      ),
+  },
+  {
     path: 'display',
     redirectTo: DEFAULT_DISPLAY_ROUTE,
     pathMatch: 'full',

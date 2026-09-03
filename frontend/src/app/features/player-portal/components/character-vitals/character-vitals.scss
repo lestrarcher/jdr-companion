@@ -1,0 +1,255 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.hit-points-card {
+  height: 100%;
+  padding: 1.25rem;
+
+  border: 1px solid rgba(201, 168, 95, 0.25);
+  background: rgba(8, 9, 14, 0.88);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+}
+
+.section-label {
+  display: block;
+  margin-bottom: 0.45rem;
+
+  color: #c9a85f;
+
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.hit-points-summary {
+  display: grid;
+  gap: 1rem;
+}
+
+.hit-points-value {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+
+  strong {
+    color: #f1e8d8;
+
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 4.5rem;
+    font-weight: 400;
+    line-height: 1;
+  }
+
+  span {
+    color: rgba(238, 232, 220, 0.55);
+    font-size: 1.2rem;
+  }
+}
+
+.temporary-hit-points {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+
+  padding-top: 1rem;
+  border-top: 1px solid rgba(201, 168, 95, 0.16);
+
+  > span {
+    color: rgba(238, 232, 220, 0.7);
+  }
+}
+
+.counter {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+
+  button {
+    display: grid;
+    place-items: center;
+
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+
+    color: #ead79e;
+
+    border: 1px solid rgba(201, 168, 95, 0.5);
+    border-radius: 50%;
+    background: rgba(201, 168, 95, 0.08);
+
+    font-size: 1.4rem;
+    cursor: pointer;
+    touch-action: manipulation;
+
+    &:disabled {
+      cursor: default;
+      opacity: 0.3;
+    }
+  }
+
+  strong {
+    min-width: 3rem;
+
+    color: #f1e8d8;
+
+    text-align: center;
+    font-size: 1.25rem;
+
+    span {
+      color: rgba(238, 232, 220, 0.45);
+      font-size: 0.8rem;
+    }
+  }
+}
+
+.hit-points-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 1fr 1fr;
+  gap: 0.6rem;
+
+  margin-top: 1.25rem;
+
+  label {
+    display: grid;
+    gap: 0.35rem;
+
+    span {
+      color: rgba(238, 232, 220, 0.55);
+
+      font-size: 0.65rem;
+      text-transform: uppercase;
+    }
+  }
+
+  input,
+  button {
+    min-height: 3rem;
+    border-radius: 3px;
+  }
+
+  input {
+    width: 100%;
+    padding: 0.65rem;
+
+    color: #fff;
+    text-align: center;
+
+    border: 1px solid rgba(201, 168, 95, 0.35);
+    background: #151620;
+
+    &:focus {
+      border-color: #c9a85f;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(201, 168, 95, 0.1);
+    }
+  }
+
+  button {
+    align-self: end;
+    padding: 0.65rem;
+
+    color: #f5eee3;
+    cursor: pointer;
+
+    &:disabled {
+      cursor: default;
+      opacity: 0.4;
+    }
+  }
+}
+
+.damage-button {
+  border: 1px solid rgba(177, 74, 69, 0.65);
+  background: rgba(119, 39, 36, 0.5);
+
+  &:not(:disabled):hover {
+    background: rgba(145, 48, 44, 0.65);
+  }
+}
+
+.healing-button {
+  border: 1px solid rgba(91, 154, 99, 0.65);
+  background: rgba(49, 105, 57, 0.5);
+
+  &:not(:disabled):hover {
+    background: rgba(56, 126, 66, 0.65);
+  }
+}
+
+.hit-dice-section {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+
+  border-top: 1px solid rgba(201, 168, 95, 0.16);
+}
+
+.hit-dice-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.hit-dice-pool {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+
+  > strong {
+    color: #d8bd7c;
+
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 1.2rem;
+    font-weight: 400;
+  }
+}
+
+@media (min-width: 700px) {
+  .hit-points-card {
+    padding: 2rem;
+  }
+
+  .hit-points-summary {
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+  }
+
+  .temporary-hit-points {
+    padding-top: 0;
+    padding-left: 1.5rem;
+
+    border-top: 0;
+    border-left: 1px solid rgba(201, 168, 95, 0.16);
+  }
+}
+
+@media (orientation: landscape) and (max-height: 600px) {
+  .hit-points-card {
+    padding: 1rem;
+  }
+
+  .hit-points-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .temporary-hit-points {
+    padding-top: 0.75rem;
+    padding-left: 0;
+
+    border-top: 1px solid rgba(201, 168, 95, 0.16);
+    border-left: 0;
+  }
+}

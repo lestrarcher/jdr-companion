@@ -1,0 +1,70 @@
+@if (feedback(); as message) {
+  <div class="rest-feedback" role="status">
+    {{ message }}
+  </div>
+}
+
+<section class="rest-section">
+  <div class="section-heading">
+    <span class="section-label">Récupération</span>
+    <h2>Demander un repos</h2>
+  </div>
+
+  <div class="rest-actions">
+    <button
+      type="button"
+      class="short-rest-button"
+      (click)="requestRest('short-rest')"
+      [disabled]="request() !== undefined"
+    >
+      <span>Repos court</span>
+      <small>Demander au MJ</small>
+    </button>
+
+    <button
+      type="button"
+      class="long-rest-button"
+      (click)="requestRest('long-rest')"
+      [disabled]="request() !== undefined"
+    >
+      <span>Repos long</span>
+      <small>Demander au MJ</small>
+    </button>
+  </div>
+</section>
+
+@if (request(); as pendingRequest) {
+  <section
+    class="rest-waiting-overlay"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="rest-waiting-title"
+  >
+    <div class="rest-waiting-card">
+      <div class="waiting-symbol" aria-hidden="true">
+        ◇
+      </div>
+
+      <span class="eyebrow">Demande envoyée</span>
+
+      <h2 id="rest-waiting-title">
+        {{ restLabel(pendingRequest.type) }}
+      </h2>
+
+      <p>
+        En attente de la décision du MJ…
+      </p>
+
+      <div class="waiting-indicator" aria-hidden="true">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+
+      <small>
+        Tes ressources resteront inchangées jusqu’à la
+        réponse du MJ.
+      </small>
+    </div>
+  </section>
+}

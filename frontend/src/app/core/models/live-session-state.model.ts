@@ -1,3 +1,5 @@
+import type { GameSessionStatus } from './game-session.model';
+
 export interface WeatherState {
   id: string;
   label: string;
@@ -29,6 +31,7 @@ export interface DisplayedMediaState {
 export interface LiveSessionState {
   sessionId: string;
   campaignId: string;
+  status: GameSessionStatus;
 
   fogEnabled: boolean;
   displayMode: DisplayMode;

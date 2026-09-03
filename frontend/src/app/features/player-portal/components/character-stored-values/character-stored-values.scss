@@ -1,0 +1,231 @@
+:host {
+  display: block;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.stored-values-section {
+  margin-bottom: 1rem;
+}
+
+.stored-resource {
+  overflow: hidden;
+  padding: 1.1rem;
+  border: 1px solid rgba(171, 136, 72, 0.42);
+  border-radius: 0.85rem;
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      rgba(85, 63, 112, 0.24),
+      transparent 58%
+    ),
+    linear-gradient(
+      145deg,
+      rgba(25, 23, 37, 0.97),
+      rgba(11, 12, 19, 0.98)
+    );
+  box-shadow:
+    0 1rem 2.5rem rgba(0, 0, 0, 0.28),
+    inset 0 0 1.5rem rgba(111, 76, 143, 0.08);
+}
+
+.resource-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+
+  h2 {
+    margin: 0.15rem 0 0;
+    color: #f3eadb;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 1.4rem;
+    font-weight: 500;
+  }
+}
+
+.resource-type {
+  color: #bc9a57;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.reset-period {
+  flex: 0 0 auto;
+  color: #a9a3b0;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.resource-instruction {
+  margin: 0.85rem 0;
+  color: #bdb7c2;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.stored-dice,
+.value-inputs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.stored-dice.single-die {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.portent-die {
+  position: relative;
+  min-height: 6.5rem;
+  cursor: pointer;
+  border: 1px solid rgba(199, 163, 92, 0.62);
+  border-radius: 0.75rem;
+  color: #f7eedc;
+  background:
+    radial-gradient(
+      circle,
+      rgba(108, 73, 137, 0.38),
+      rgba(20, 17, 28, 0.96) 68%
+    );
+  box-shadow:
+    inset 0 0 1.25rem rgba(181, 142, 212, 0.12),
+    0 0.5rem 1.2rem rgba(0, 0, 0, 0.25);
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+
+  span {
+    display: block;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 2.4rem;
+    line-height: 1;
+  }
+
+  small {
+    display: block;
+    margin-top: 0.5rem;
+    color: #b9afbf;
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  &:active {
+    transform: scale(0.97);
+  }
+
+  &:hover {
+    border-color: #d4ae61;
+    box-shadow:
+      inset 0 0 1.5rem rgba(181, 142, 212, 0.18),
+      0 0 1.1rem rgba(183, 142, 69, 0.16);
+  }
+}
+
+.portent-form {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.value-inputs {
+  label {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  span {
+    color: #b9b1bd;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-align: center;
+    text-transform: uppercase;
+  }
+
+  input {
+    width: 100%;
+    min-height: 3.5rem;
+    border: 1px solid rgba(164, 132, 75, 0.48);
+    border-radius: 0.55rem;
+    outline: none;
+    color: #f5eedf;
+    background: rgba(6, 7, 12, 0.66);
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 1.65rem;
+    text-align: center;
+
+    &:focus {
+      border-color: #cda75b;
+      box-shadow:
+        0 0 0 3px rgba(205, 167, 91, 0.12);
+    }
+  }
+}
+
+.save-values {
+  min-height: 2.9rem;
+  cursor: pointer;
+  border: 1px solid rgba(191, 151, 78, 0.58);
+  border-radius: 0.5rem;
+  color: #eee3d0;
+  background: linear-gradient(
+    135deg,
+    rgba(99, 70, 119, 0.72),
+    rgba(48, 36, 63, 0.82)
+  );
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+}
+
+.empty-portents {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  margin-top: 1rem;
+  padding: 1.15rem;
+  border: 1px dashed rgba(158, 143, 166, 0.24);
+  border-radius: 0.65rem;
+  text-align: center;
+
+  > span {
+    color: #8d739e;
+    font-size: 1.3rem;
+  }
+
+  p {
+    margin: 0;
+    color: #aea6b1;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 0.95rem;
+    font-style: italic;
+  }
+
+  small {
+    color: #77727c;
+    font-size: 0.72rem;
+    line-height: 1.4;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 600px) {
+  .stored-resource {
+    padding: 0.9rem;
+  }
+
+  .portent-die {
+    min-height: 5rem;
+  }
+}

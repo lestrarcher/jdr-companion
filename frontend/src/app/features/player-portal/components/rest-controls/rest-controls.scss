@@ -1,0 +1,248 @@
+:host {
+  display: block;
+  margin-top: 1rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button {
+  font: inherit;
+}
+
+.rest-section {
+  padding: 1.25rem;
+
+  border: 1px solid rgba(201, 168, 95, 0.25);
+  background: rgba(8, 9, 14, 0.88);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+}
+
+.section-heading {
+  margin-bottom: 1rem;
+
+  h2 {
+    margin: 0;
+
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 1.5rem;
+    font-weight: 400;
+  }
+}
+
+.section-label,
+.eyebrow {
+  display: block;
+  margin-bottom: 0.45rem;
+
+  color: #c9a85f;
+
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.rest-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+
+  button {
+    display: grid;
+    gap: 0.25rem;
+
+    min-height: 4rem;
+    padding: 0.75rem 1rem;
+
+    color: #eee8dc;
+
+    border: 1px solid rgba(201, 168, 95, 0.35);
+    border-radius: 3px;
+    background: rgba(8, 9, 14, 0.88);
+
+    cursor: pointer;
+    touch-action: manipulation;
+
+    span {
+      color: #ead79e;
+
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 1rem;
+    }
+
+    small {
+      color: rgba(238, 232, 220, 0.5);
+
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    &:not(:disabled):hover {
+      border-color: rgba(201, 168, 95, 0.7);
+      background: rgba(201, 168, 95, 0.1);
+    }
+
+    &:disabled {
+      cursor: default;
+      opacity: 0.4;
+    }
+  }
+}
+
+.rest-feedback {
+  margin-bottom: 1rem;
+  padding: 0.8rem 1rem;
+
+  color: #ead79e;
+  text-align: center;
+
+  border: 1px solid rgba(201, 168, 95, 0.35);
+  background: rgba(8, 9, 14, 0.92);
+}
+
+.rest-waiting-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+
+  display: grid;
+  place-items: center;
+
+  width: 100vw;
+  height: 100dvh;
+  padding: 1rem;
+
+  background:
+    radial-gradient(
+      circle at center,
+      rgba(31, 29, 42, 0.88),
+      rgba(5, 6, 10, 0.97)
+    );
+
+  backdrop-filter: blur(8px);
+  pointer-events: all;
+  overscroll-behavior: contain;
+}
+
+.rest-waiting-card {
+  width: min(100%, 25rem);
+  padding: 2rem 1.5rem;
+
+  text-align: center;
+
+  border: 1px solid rgba(201, 168, 95, 0.4);
+  border-radius: 4px;
+  background: rgba(8, 9, 14, 0.97);
+
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.75),
+    inset 0 0 35px rgba(201, 168, 95, 0.04);
+
+  h2 {
+    margin: 0;
+
+    color: #f1e8d8;
+
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 2rem;
+    font-weight: 400;
+  }
+
+  p {
+    margin: 1rem 0 0.75rem;
+    color: rgba(238, 232, 220, 0.8);
+  }
+
+  small {
+    display: block;
+    margin-top: 1rem;
+
+    color: rgba(238, 232, 220, 0.45);
+    line-height: 1.5;
+  }
+}
+
+.waiting-symbol {
+  margin-bottom: 1rem;
+
+  color: #c9a85f;
+
+  font-size: 2rem;
+  text-shadow: 0 0 18px rgba(201, 168, 95, 0.55);
+
+  animation: waiting-symbol-pulse 2s ease-in-out infinite;
+}
+
+.waiting-indicator {
+  display: flex;
+  justify-content: center;
+  gap: 0.45rem;
+
+  margin-top: 1rem;
+
+  span {
+    width: 0.4rem;
+    height: 0.4rem;
+
+    border-radius: 50%;
+    background: #c9a85f;
+
+    animation: waiting-dot 1.2s ease-in-out infinite;
+
+    &:nth-child(2) {
+      animation-delay: 0.15s;
+    }
+
+    &:nth-child(3) {
+      animation-delay: 0.3s;
+    }
+  }
+}
+
+@keyframes waiting-symbol-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.9) rotate(0deg);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.1) rotate(45deg);
+  }
+}
+
+@keyframes waiting-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+
+  30% {
+    opacity: 1;
+    transform: translateY(-0.3rem);
+  }
+}
+
+@media (min-width: 700px) {
+  .rest-section {
+    padding: 2rem;
+  }
+}
+
+@media (max-width: 430px) {
+  .rest-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 600px) {
+  .rest-section {
+    padding: 1rem;
+  }
+}

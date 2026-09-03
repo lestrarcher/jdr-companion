@@ -7,9 +7,73 @@
 
     <div class="session-status">
       <span class="status-dot"></span>
-      Session en préparation
+      {{ sessionStatusLabel() }}
     </div>
   </header>
+
+  @if (pendingRestRequests().length > 0) {
+  <section
+    class="control-panel rest-requests-panel"
+    aria-live="assertive"
+  >
+    <div class="panel-heading">
+      <div>
+        <span class="eyebrow">Action requise</span>
+        <h2>Demandes de repos</h2>
+      </div>
+
+      <span class="request-count">
+        {{ pendingRestRequests().length }}
+        {{
+          pendingRestRequests().length > 1
+            ? 'demandes'
+            : 'demande'
+        }}
+      </span>
+    </div>
+
+    <div class="rest-request-list">
+      @for (
+        request of pendingRestRequests();
+        track request.id
+      ) {
+        <article class="rest-request-card">
+          <div class="rest-request-information">
+            <span class="request-symbol" aria-hidden="true">
+              ◇
+            </span>
+
+            <div>
+              <strong>{{ request.characterName }}</strong>
+              <small>
+                demande un
+                {{ restTypeLabel(request.type).toLowerCase() }}
+              </small>
+            </div>
+          </div>
+
+          <div class="rest-request-actions">
+            <button
+              class="reject-request-button"
+              type="button"
+              (click)="resolveRestRequest(request.id, false)"
+            >
+              Refuser
+            </button>
+
+            <button
+              class="approve-request-button"
+              type="button"
+              (click)="resolveRestRequest(request.id, true)"
+            >
+              Accepter
+            </button>
+          </div>
+        </article>
+      }
+    </div>
+  </section>
+}
 
   <section class="control-panel">
     <div class="panel-heading">
@@ -94,6 +158,28 @@
   </div>
 
   <div class="display-controls">
+
+    <button
+  class="mode-button"
+  type="button"
+  [class.mode-button-active]="liveState()?.status === 'live'"
+  [disabled]="liveState()?.status === 'live'"
+  (click)="openSession()"
+>
+  <strong>Ouvrir la session</strong>
+  <small>Autoriser l’accès aux interfaces joueurs</small>
+</button>
+
+<button
+  class="mode-button mode-button-danger"
+  type="button"
+  [disabled]="liveState()?.status === 'closed'"
+  (click)="closeSession()"
+>
+  <strong>Fermer la session</strong>
+  <small>Bloquer les interfaces joueurs</small>
+</button>
+
     <button
       class="mode-button"
       type="button"

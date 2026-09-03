@@ -1,10 +1,11 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 
 import { CampaignMedia } from '@core/models/campaign.model';
 import { LiveSessionService } from '@core/services/live-session.service';
 import { STRAHD_CAMPAIGN } from '@data/campaigns/strahd.config';
+import { RestRequestService } from '@core/services/rest-request.service';
 
 @Component({
   selector: 'app-control-dashboard',
@@ -18,6 +19,7 @@ export class ControlDashboard {
   private readonly route = inject(ActivatedRoute);
 
   protected readonly campaign = STRAHD_CAMPAIGN;
+  private readonly restRequestService = inject(RestRequestService);
   protected readonly liveState = this.liveSessionService.state;
 
   protected readonly worldForm = this.formBuilder.nonNullable.group({
@@ -45,6 +47,10 @@ export class ControlDashboard {
     }
 
     this.liveSessionService.initialize(this.campaign, sessionId);
+    this.restRequestService.initialize(
+      this.campaign.id,
+      sessionId,
+    );
 
     const state = this.liveState();
 
@@ -59,6 +65,17 @@ export class ControlDashboard {
       });
     }
   }
+
+  protected readonly pendingRestRequests = computed(() =>
+    this.restRequestService
+      .requests()
+      .filter((request) => request.status === 'pending')
+      .sort(
+        (first, second) =>
+          new Date(first.requestedAt).getTime() -
+          new Date(second.requestedAt).getTime(),
+      ),
+  );
 
   protected updateWorld(): void {
     if (this.worldForm.invalid) {
@@ -139,5 +156,48 @@ export class ControlDashboard {
           ? 'normal'
           : 'cinematic',
     });
+  }
+
+  protected readonly sessionStatusLabel = computed(() => {
+    switch (this.liveState()?.status) {
+      case 'live':
+        return 'Session ouverte';
+
+      case 'closed':
+        return 'Session terminée';
+
+      default:
+        return 'Session en préparation';
+    }
+  });
+
+  protected openSession(): void {
+    this.liveSessionService.updateState({
+      status: 'live',
+    });
+  }
+
+  protected closeSession(): void {
+    this.liveSessionService.updateState({
+      status: 'closed',
+    });
+  }
+
+  protected resolveRestRequest(
+    requestId: string,
+    approved: boolean,
+  ): void {
+    this.restRequestService.resolveRequest(
+      requestId,
+      approved ? 'approved' : 'rejected',
+    );
+  }
+
+  protected restTypeLabel(
+    type: 'short-rest' | 'long-rest',
+  ): string {
+    return type === 'short-rest'
+      ? 'Repos court'
+      : 'Repos long';
   }
 }
