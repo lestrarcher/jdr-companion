@@ -21,3 +21,7 @@ backend/.phpunit.result.cache
 # Système
 .DS_Store
 Thumbs.db
+
+# Fichiers temporaires de tests HTTP
+/cookies.txt
+jdr-companion-frontend.tar.gz
