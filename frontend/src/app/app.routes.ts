@@ -10,39 +10,11 @@ export const routes: Routes = [
         (component) => component.Login,
       ),
   },
-  {
-    path: 'campaigns',
-    loadComponent: () =>
-      import(
-        './features/campaign-list/campaign-list'
-      ).then(
-        (component) =>
-          component.CampaignList,
-      ),
-    canActivate: [authGuard],
-  },
-  {
-    path: 'campaigns/:campaignId',
-    loadComponent: () =>
-      import(
-        './features/campaign-detail/campaign-detail'
-      ).then(
-        (component) =>
-          component.CampaignDetail,
-      ),
-    canActivate: [authGuard],
-  },
-  {
-    path: 'campaigns/:campaignId/sessions/:sessionId/control',
-    loadComponent: () =>
-      import(
-        './features/control-dashboard/control-dashboard'
-      ).then(
-        (component) =>
-          component.ControlDashboard,
-      ),
-    canActivate: [authGuard],
-  },
+
+  /*
+   * Ces deux interfaces restent volontairement
+   * en dehors du layout MJ.
+   */
   {
     path: 'campaigns/:campaignId/sessions/:sessionId/display',
     loadComponent: () =>
@@ -64,11 +36,61 @@ export const routes: Routes = [
           component.PlayerPortal,
       ),
   },
+
+  /*
+   * Toutes les pages privées du MJ utilisent
+   * désormais la même enveloppe de navigation.
+   */
   {
     path: '',
-    pathMatch: 'full',
-    redirectTo: 'campaigns',
+    loadComponent: () =>
+      import(
+        './features/mj-layout/mj-layout'
+      ).then(
+        (component) =>
+          component.MjLayout,
+      ),
+    canActivate: [authGuard],
+
+    children: [
+      {
+        path: 'campaigns',
+        loadComponent: () =>
+          import(
+            './features/campaign-list/campaign-list'
+          ).then(
+            (component) =>
+              component.CampaignList,
+          ),
+      },
+      {
+        path: 'campaigns/:campaignId',
+        loadComponent: () =>
+          import(
+            './features/campaign-detail/campaign-detail'
+          ).then(
+            (component) =>
+              component.CampaignDetail,
+          ),
+      },
+      {
+        path: 'campaigns/:campaignId/sessions/:sessionId/control',
+        loadComponent: () =>
+          import(
+            './features/control-dashboard/control-dashboard'
+          ).then(
+            (component) =>
+              component.ControlDashboard,
+          ),
+      },
+      {
+        path: '',
+        pathMatch: 'full',
+        redirectTo: 'campaigns',
+      },
+    ],
   },
+
   {
     path: '**',
     redirectTo: 'campaigns',

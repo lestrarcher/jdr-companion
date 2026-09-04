@@ -1,0 +1,170 @@
+:host {
+  display: block;
+  min-height: 100dvh;
+  color: #f4efe5;
+  background: #090a10;
+}
+
+.mj-shell {
+  min-height: 100dvh;
+}
+
+.mj-navigation {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+
+  min-height: 4.5rem;
+  padding: 0.75rem clamp(1rem, 4vw, 3rem);
+
+  border-bottom:
+    1px solid rgba(199, 165, 91, 0.24);
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(8, 9, 15, 0.98),
+      rgba(20, 19, 31, 0.96),
+      rgba(8, 9, 15, 0.98)
+    );
+
+  box-shadow:
+    0 0.75rem 2.5rem
+    rgba(0, 0, 0, 0.35);
+
+  backdrop-filter: blur(14px);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+
+  color: #f4efe5;
+  text-decoration: none;
+
+  .brand-symbol {
+    color: #c7a55b;
+    font-size: 1.1rem;
+    text-shadow:
+      0 0 1rem
+      rgba(199, 165, 91, 0.45);
+  }
+
+  > span:last-child {
+    display: grid;
+    gap: 0.12rem;
+  }
+
+  strong {
+    font-family: Georgia, serif;
+    font-size: 1.08rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+
+  small {
+    color: rgba(244, 239, 229, 0.5);
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+}
+
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+
+  min-width: 0;
+
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+
+  a {
+    padding: 0.55rem 0.35rem;
+
+    color: rgba(244, 239, 229, 0.62);
+    text-decoration: none;
+
+    transition: color 160ms ease;
+
+    &:hover {
+      color: #c7a55b;
+    }
+  }
+}
+
+.breadcrumb-separator {
+  color: rgba(199, 165, 91, 0.45);
+}
+
+.breadcrumb-current {
+  overflow: hidden;
+  padding: 0.55rem 0.35rem;
+
+  color: #f4efe5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .mj-navigation {
+    min-height: 4rem;
+    padding: 0.6rem 1rem;
+  }
+
+  .brand {
+    small {
+      display: none;
+    }
+
+    strong {
+      font-size: 0.95rem;
+    }
+  }
+
+  .breadcrumbs {
+    gap: 0.3rem;
+    font-size: 0.6rem;
+
+    a,
+    .breadcrumb-current {
+      padding-inline: 0.2rem;
+    }
+  }
+}
+
+.mj-content {
+  min-height: calc(100dvh - 4.5rem);
+}
+
+@media (max-width: 600px) {
+  .mj-navigation {
+    min-height: 4rem;
+    padding: 0.6rem 1rem;
+  }
+
+  .brand {
+    small {
+      display: none;
+    }
+
+    strong {
+      font-size: 0.95rem;
+    }
+  }
+
+  nav a {
+    padding-inline: 0.6rem;
+    font-size: 0.65rem;
+  }
+}
