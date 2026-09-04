@@ -305,6 +305,45 @@ export const STRAHD_CAMPAIGN: CampaignConfig = {
           name: 'Points d’ombre',
           currentValue: 10,
           minimumValue: 0,
+
+          accentColor: '#76609b',
+
+          states: [
+            {
+              label: 'Frisson des Ombres',
+              minimumValue: 0,
+              maximumValue: 9,
+              iconUrl:
+                '/assets/status/progressions/hailee/01-frisson-ombres.png',
+            },
+            {
+              label: 'Voile des Brumes',
+              minimumValue: 10,
+              maximumValue: 17,
+              iconUrl:
+                '/assets/status/progressions/hailee/02-voile-brumes.png',
+            },
+            {
+              label: 'Étreinte des Brumes',
+              minimumValue: 18,
+              maximumValue: 24,
+              iconUrl:
+                '/assets/status/progressions/hailee/03-etreinte-brumes.png',
+            },
+            {
+              label: 'Appel des Ténèbres',
+              minimumValue: 25,
+              maximumValue: 29,
+              iconUrl:
+                '/assets/status/progressions/hailee/04-appel-tenebres.png',
+            },
+            {
+              label: 'Mort de la Lumière',
+              minimumValue: 30,
+              iconUrl:
+                '/assets/status/progressions/hailee/05-mort-lumiere.png',
+            },
+          ],
         },
       ],
 

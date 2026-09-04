@@ -13,28 +13,45 @@
         progression of progressions();
         track progression.id
       ) {
-        <article class="progression-card">
-          <div class="progression-heading">
-            <strong>{{ progression.name }}</strong>
+        <article
+          class="progression-card"
+          [style.--progression-accent]="
+            progression.accentColor ?? '#80619a'
+          "
+        >
+          <header class="progression-heading">
+            <div>
+              <strong>
+                {{ progression.name }}
+              </strong>
+            </div>
 
-            <span>
-              {{ progression.currentValue }}
-
-              @if (
-                progression.maximumValue !== undefined
-              ) {
-                / {{ progression.maximumValue }}
-              }
-            </span>
-          </div>
+            @if (
+              currentState(progression);
+              as state
+            ) {
+              <figure
+                class="progression-state"
+                [title]="state.label"
+              >
+                <img
+                  [src]="state.iconUrl"
+                  [alt]="state.label"
+                />
+              </figure>
+            }
+          </header>
 
           @if (
-            progression.maximumValue !== undefined
+            progression.maximumValue !==
+            undefined
           ) {
             <div
               class="progression-bar"
               role="progressbar"
-              [attr.aria-label]="progression.name"
+              [attr.aria-label]="
+                progression.name
+              "
               [attr.aria-valuemin]="
                 progression.minimumValue
               "
@@ -66,12 +83,15 @@
               [attr.aria-label]="
                 'Réduire ' + progression.name
               "
-              (click)="
-                changeProgression(progression.id, -1)
-              "
               [disabled]="
                 progression.currentValue <=
                 progression.minimumValue
+              "
+              (click)="
+                changeProgression(
+                  progression.id,
+                  -1
+                )
               "
             >
               −
@@ -87,17 +107,176 @@
                 'Augmenter ' + progression.name
               "
               (click)="
-                changeProgression(progression.id, 1)
-              "
-              [disabled]="
-                progression.maximumValue !== undefined &&
-                progression.currentValue >=
-                  progression.maximumValue
+                changeProgression(
+                  progression.id,
+                  1
+                )
               "
             >
               +
             </button>
           </div>
+
+          @if (progression.bulkAdjustment) {
+            <div class="bulk-controls">
+              <div class="bulk-control">
+                <label
+                  [for]="
+                    progression.id + '-gain'
+                  "
+                >
+                  {{
+                    progression.bulkAdjustment
+                      .gainLabel
+                  }}
+                </label>
+
+                <div class="bulk-input-row">
+                  <input
+                    [id]="progression.id + '-gain'"
+                    type="number"
+                    min="0"
+                    step="1"
+                    inputmode="numeric"
+                    [value]="
+                      bulkValue(
+                        progression.id,
+                        'gain'
+                      )
+                    "
+                    (input)="
+                      updateBulkValue(
+                        progression.id,
+                        'gain',
+                        $event
+                      )
+                    "
+                  />
+
+                  <button
+                    type="button"
+                    [disabled]="
+                      bulkValue(
+                        progression.id,
+                        'gain'
+                      ) <= 0
+                    "
+                    (click)="
+                      submitBulkChange(
+                        progression.id,
+                        'gain'
+                      )
+                    "
+                  >
+                    Ajouter
+                  </button>
+                </div>
+              </div>
+
+              <div class="bulk-control">
+                <label
+                  [for]="
+                    progression.id + '-spend'
+                  "
+                >
+                  {{
+                    progression.bulkAdjustment
+                      .spendLabel
+                  }}
+                </label>
+
+                <div class="bulk-input-row">
+                  <input
+                    [id]="
+                      progression.id + '-spend'
+                    "
+                    type="number"
+                    min="0"
+                    step="1"
+                    inputmode="numeric"
+                    [value]="
+                      bulkValue(
+                        progression.id,
+                        'spend'
+                      )
+                    "
+                    (input)="
+                      updateBulkValue(
+                        progression.id,
+                        'spend',
+                        $event
+                      )
+                    "
+                  />
+
+                  <button
+                    type="button"
+                    [disabled]="
+                      bulkValue(
+                        progression.id,
+                        'spend'
+                      ) <= 0 ||
+                      progression.currentValue <=
+                        progression.minimumValue
+                    "
+                    (click)="
+                      submitBulkChange(
+                        progression.id,
+                        'spend'
+                      )
+                    "
+                  >
+                    Retirer
+                  </button>
+                </div>
+              </div>
+            </div>
+          }
+
+          @if (
+            linkedResource(progression);
+            as resource
+          ) {
+            <div class="linked-resource">
+              <div>
+                <span class="linked-resource-label">
+                  {{
+                    progression.linkedResource
+                      ?.label
+                  }}
+                </span>
+
+                <small>
+                  Repos long
+                </small>
+              </div>
+
+              <div class="linked-resource-controls">
+                <button
+                  type="button"
+                  [disabled]="
+                    resource.currentValue <= 0
+                  "
+                  [attr.aria-label]="
+                    'Utiliser ' + resource.name
+                  "
+                  (click)="
+                    consumeLinkedResource(
+                      resource
+                    )
+                  "
+                >
+                  −
+                </button>
+
+                <strong>
+                  {{ resource.currentValue }}
+                  /
+                  {{ resource.maximumValue }}
+                </strong>
+              </div>
+            </div>
+          }
         </article>
       }
     </div>

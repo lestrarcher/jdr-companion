@@ -17,12 +17,35 @@ export interface HitPointState {
   temporary: number;
 }
 
+export interface ProgressionStateIndicator {
+  label: string;
+  minimumValue: number;
+  maximumValue?: number;
+  iconUrl: string;
+}
+
+export interface ProgressionBulkAdjustment {
+  gainLabel: string;
+  spendLabel: string;
+}
+
+export interface ProgressionLinkedResource {
+  resourceId: string;
+  label: string;
+}
+
 export interface CharacterProgression {
   id: string;
   name: string;
   currentValue: number;
   minimumValue: number;
   maximumValue?: number;
+
+  accentColor?: string;
+
+  states?: ProgressionStateIndicator[];
+  bulkAdjustment?: ProgressionBulkAdjustment;
+  linkedResource?: ProgressionLinkedResource;
 }
 
 export interface ResourceUnlockCondition {
@@ -44,6 +67,7 @@ export interface CharacterResource {
   level?: number;
   displayOrder: number;
   unlockCondition?: ResourceUnlockCondition;
+  hiddenFromTracker?: boolean;
 
   storedValues?: number[];
   storedValuesConfig?: StoredValuesConfig;
@@ -85,3 +109,10 @@ export interface StoredValuesConfig {
   minimumValue: number;
   maximumValue: number;
 }
+
+export interface ProgressionStateIndicator {
+  label: string;
+  minimumValue: number;
+  maximumValue?: number;
+}
+

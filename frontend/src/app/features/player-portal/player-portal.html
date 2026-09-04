@@ -111,11 +111,14 @@
 
           <app-character-progressions
             [progressions]="
-              currentCharacter.progressions ??
-              []
+              currentCharacter.progressions ?? []
             "
+            [resources]="currentCharacter.resources"
             (progressionChanged)="
               handleProgressionChange($event)
+            "
+            (resourceChanged)="
+              handleProgressionResourceChange($event)
             "
           />
 

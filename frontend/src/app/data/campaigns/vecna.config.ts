@@ -111,6 +111,51 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
           name: 'Points d’infestation fongique',
           currentValue: 5,
           minimumValue: 1,
+          accentColor: '#738b56',
+
+          states: [
+            {
+              label: 'Infection fongique',
+              minimumValue: 1,
+              maximumValue: 7,
+              iconUrl:
+                '/assets/status/progressions/frank/01-infection-fongique.png',
+            },
+            {
+              label: 'Fracture de l’esprit',
+              minimumValue: 8,
+              maximumValue: 14,
+              iconUrl:
+                '/assets/status/progressions/frank/02-fracture-esprit.png',
+            },
+            {
+              label: 'Mycélium rampant',
+              minimumValue: 15,
+              maximumValue: 21,
+              iconUrl:
+                '/assets/status/progressions/frank/03-mycelium-rampant.png',
+            },
+            {
+              label: 'Étreinte de la guenaude',
+              minimumValue: 22,
+              maximumValue: 28,
+              iconUrl:
+                '/assets/status/progressions/frank/04-etreinte-guenaude.png',
+            },
+            {
+              label: 'Agent contagieux',
+              minimumValue: 29,
+              maximumValue: 34,
+              iconUrl:
+                '/assets/status/progressions/frank/05-agent-contagieux.png',
+            },
+            {
+              label: 'Marionnette de Venlee',
+              minimumValue: 35,
+              iconUrl:
+                '/assets/status/progressions/frank/06-marionnette-venlee.png',
+            },
+          ],
         },
       ],
 
@@ -279,12 +324,73 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
         {
           id: 'eneis-electric-charges',
           name: 'Charges électriques',
-          currentValue: 21,
+          currentValue: 76,
           minimumValue: 0,
+          accentColor: '#4dbfff',
+
+          states: [
+            {
+              label: 'Vulnérabilité à la foudre',
+              minimumValue: 0,
+              maximumValue: 24,
+              iconUrl:
+                '/assets/status/electric/lightning-vulnerability.png',
+            },
+            {
+              label: 'Résistance à la foudre',
+              minimumValue: 50,
+              maximumValue: 74,
+              iconUrl:
+                '/assets/status/electric/lightning-resistance.png',
+            },
+            {
+              label: 'Immunité à la foudre',
+              minimumValue: 75,
+              maximumValue: 149,
+              iconUrl:
+                '/assets/status/electric/lightning-immunity.png',
+            },
+            {
+              label: 'Surcharge électrique',
+              minimumValue: 150,
+              iconUrl:
+                '/assets/status/electric/lightning-overload.png',
+            },
+          ],
+
+          bulkAdjustment: {
+            gainLabel: 'Absorption',
+            spendLabel: 'Dépense',
+          },
+
+          linkedResource: {
+            resourceId: 'eneis-lightning-step',
+            label: 'Déplacement éclair',
+          },
         },
       ],
 
       resources: [
+        {
+          id: 'eneis-cold-breath',
+          name: 'Souffle de froid',
+          shortName: 'Souffle froid',
+          category: 'class-feature',
+          resetPeriod: 'long-rest',
+          currentValue: 5,
+          maximumValue: 5,
+          displayOrder: 10,
+        },
+        {
+          id: 'eneis-metallic-breath',
+          name: 'Souffle métallique',
+          shortName: 'Souffle métallique',
+          category: 'class-feature',
+          resetPeriod: 'long-rest',
+          currentValue: 1,
+          maximumValue: 1,
+          displayOrder: 20,
+        },
         {
           id: 'eneis-divine-sense',
           name: 'Sens divin',
@@ -294,6 +400,21 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
           currentValue: 5,
           maximumValue: 5,
           displayOrder: 10,
+        },
+        {
+          id: 'eneis-lightning-step',
+          name: 'Déplacement éclair',
+          category: 'class-feature',
+          resetPeriod: 'long-rest',
+          currentValue: 5,
+          maximumValue: 5,
+          displayOrder: 52,
+          hiddenFromTracker: true,
+
+          unlockCondition: {
+            progressionId: 'eneis-electric-charges',
+            minimumValue: 50,
+          },
         },
         {
           id: 'eneis-lay-on-hands',
@@ -314,22 +435,6 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
           currentValue: 1,
           maximumValue: 1,
           displayOrder: 30,
-        },
-        {
-          id: 'eneis-lightning-step',
-          name: 'Déplacement éclair',
-          shortName: 'Déplacement éclair',
-          category: 'class-feature',
-          resetPeriod: 'long-rest',
-          currentValue: 5,
-          maximumValue: 5,
-          displayOrder: 40,
-
-          unlockCondition: {
-            progressionId:
-              'eneis-electric-charges',
-            minimumValue: 50,
-          },
         },
         {
           id: 'eneis-detect-invisibility',
@@ -584,8 +689,46 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
         {
           id: 'rohunar-venlee-pact',
           name: 'Pacte de Venlee',
-          currentValue: 1,
+          currentValue: 7,
           minimumValue: 1,
+          accentColor: '#5f8f65',
+
+          states: [
+            {
+              label: 'Marques du dragon',
+              minimumValue: 1,
+              maximumValue: 9,
+              iconUrl:
+                '/assets/status/progressions/rohunar/01-griffes-dragon.png',
+            },
+            {
+              label: 'Lierre rampant',
+              minimumValue: 10,
+              maximumValue: 17,
+              iconUrl:
+                '/assets/status/progressions/rohunar/02-lierre.png',
+            },
+            {
+              label: 'Éveil électrique',
+              minimumValue: 18,
+              maximumValue: 24,
+              iconUrl:
+                '/assets/status/progressions/rohunar/03-etincelles.png',
+            },
+            {
+              label: 'Tatouage foudroyant',
+              minimumValue: 25,
+              maximumValue: 29,
+              iconUrl:
+                '/assets/status/progressions/rohunar/04-foudre.png',
+            },
+            {
+              label: 'Kobold maudite',
+              minimumValue: 30,
+              iconUrl:
+                '/assets/status/progressions/rohunar/05-kobold-maudite.png',
+            },
+          ],
         },
       ],
 

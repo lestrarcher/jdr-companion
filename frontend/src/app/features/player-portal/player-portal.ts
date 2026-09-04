@@ -42,6 +42,7 @@ import {
 import {
   CharacterProgressions,
   ProgressionChange,
+  ProgressionResourceChange,
 } from './components/character-progressions/character-progressions';
 import { CharacterResources } from './components/character-resources/character-resources';
 import { CharacterStoredValues } from './components/character-stored-values/character-stored-values';
@@ -151,6 +152,10 @@ export class PlayerPortal {
     }
 
     return character.resources
+      .filter(
+        (resource) =>
+          resource.hiddenFromTracker !== true,
+      )
       .filter((resource) => {
         const condition =
           resource.unlockCondition;
@@ -246,6 +251,15 @@ export class PlayerPortal {
         event.progressionId,
         event.change,
       );
+  }
+
+  protected handleProgressionResourceChange(
+    event: ProgressionResourceChange,
+  ): void {
+    this.characterStateService.adjustResource(
+      event.resourceId,
+      event.change,
+    );
   }
 
   protected requestRest(
