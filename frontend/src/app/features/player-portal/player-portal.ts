@@ -34,7 +34,10 @@ import {
   RestRequestApiResponse,
   RestRequestApiService,
 } from '@core/services/rest-request-api.service';
-import { STRAHD_CAMPAIGN } from '@data/campaigns/strahd.config';
+import { CampaignConfig } from '@core/models/campaign.model';
+import {
+  CampaignConfigurationRegistryService,
+} from '@core/services/campaign-configuration-registry.service';
 
 import {
   CharacterProgressions,
@@ -84,7 +87,11 @@ export class PlayerPortal {
     RestRequestApiService,
   );
 
-  protected readonly campaign = STRAHD_CAMPAIGN;
+  private readonly campaignConfigurationRegistry =
+    inject(CampaignConfigurationRegistryService);
+
+  protected readonly campaign =
+    signal<CampaignConfig | null>(null);
 
   protected readonly characterState =
     this.characterStateService.character;
@@ -121,9 +128,20 @@ export class PlayerPortal {
   private readonly remoteSynchronizationEnabled =
     signal(false);
 
-  private readonly campaignId: string;
-  private readonly sessionId: string;
-  private readonly accessToken: string;
+  private readonly campaignId =
+    this.route.snapshot.paramMap.get(
+      'campaignId',
+    ) ?? '';
+
+  private readonly sessionId =
+    this.route.snapshot.paramMap.get(
+      'sessionId',
+    ) ?? '';
+
+  private readonly accessToken =
+    this.route.snapshot.paramMap.get(
+      'accessToken',
+    ) ?? '';
 
   protected readonly sortedResources = computed(() => {
     const character = this.characterState();
@@ -184,40 +202,18 @@ export class PlayerPortal {
   });
 
   constructor() {
-    const campaignId =
-      this.route.snapshot.paramMap.get(
-        'campaignId',
-      );
-
-    const sessionId =
-      this.route.snapshot.paramMap.get(
-        'sessionId',
-      );
-
-    const accessToken =
-      this.route.snapshot.paramMap.get(
-        'accessToken',
-      );
-
     if (
-      !campaignId ||
-      !sessionId ||
-      !accessToken
+      !this.campaignId ||
+      !this.sessionId ||
+      !this.accessToken
     ) {
-      throw new Error(
-        'Lien joueur incomplet.',
+      this.loadError.set(
+        'Le lien joueur est incomplet.',
       );
-    }
 
-    if (campaignId !== this.campaign.id) {
-      throw new Error(
-        `Campagne inconnue : ${campaignId}`,
-      );
+      this.loading.set(false);
+      return;
     }
-
-    this.campaignId = campaignId;
-    this.sessionId = sessionId;
-    this.accessToken = accessToken;
 
     this.initializeRemoteSynchronization();
     this.initializeRestRequestPolling();
@@ -310,8 +306,52 @@ export class PlayerPortal {
       )
       .subscribe({
         next: (response) => {
+          if (
+            String(response.campaign.id) !==
+            this.campaignId
+          ) {
+            this.loadError.set(
+              'Ce personnage n’appartient pas à cette campagne.',
+            );
+
+            this.loading.set(false);
+            return;
+          }
+
+          if (
+            String(response.session.id) !==
+            this.sessionId
+          ) {
+            this.loadError.set(
+              'Ce personnage n’appartient pas à cette session.',
+            );
+
+            this.loading.set(false);
+            return;
+          }
+
+          let campaign: CampaignConfig;
+
+          try {
+            campaign =
+              this.campaignConfigurationRegistry
+                .getConfiguration(
+                  response.campaign
+                    .configurationKey,
+                );
+          } catch (error: unknown) {
+            this.loadError.set(
+              error instanceof Error
+                ? error.message
+                : 'La configuration de cette campagne est indisponible.',
+            );
+
+            this.loading.set(false);
+            return;
+          }
+
           const definition =
-            this.campaign.characters.find(
+            campaign.characters.find(
               (candidate) =>
                 candidate.id ===
                 `character-${response.character.slug}`,
@@ -332,16 +372,15 @@ export class PlayerPortal {
               response.state,
             );
 
-          this.character.set(
-            loadedCharacter,
-          );
+          this.campaign.set(campaign);
+          this.character.set(loadedCharacter);
 
           this.sessionStatus.set(
             response.session.status,
           );
 
           this.characterStateService.initialize(
-            this.campaign.id,
+            campaign.id,
             loadedCharacter,
             false,
           );

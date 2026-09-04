@@ -211,6 +211,14 @@ final class CharacterSessionStateController extends AbstractController
 
         $data = [
             'id' => $state->getId(),
+            'campaign' => [
+                'id' => $gameSession
+                    ->getCampaign()
+                    ->getId(),
+                'configurationKey' => $gameSession
+                    ->getCampaign()
+                    ->getConfigurationKey(),
+            ],
             'session' => [
                 'id' => $gameSession->getId(),
                 'name' => $gameSession->getName(),

@@ -134,7 +134,6 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
           currentValue: 11,
           maximumValue: 11,
           displayOrder: 20,
-          allowManualIncrease: true,
         },
         {
           id: 'frank-detect-invisibility',
@@ -193,7 +192,6 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
           maximumValue: 4,
           level: 1,
           displayOrder: 70,
-          allowManualIncrease: true,
         },
         {
           id: 'frank-spell-slot-2',
@@ -205,7 +203,6 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
           maximumValue: 3,
           level: 2,
           displayOrder: 80,
-          allowManualIncrease: true,
         },
         {
           id: 'frank-spell-slot-3',
@@ -217,7 +214,6 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
           maximumValue: 3,
           level: 3,
           displayOrder: 90,
-          allowManualIncrease: true,
         },
         {
           id: 'frank-spell-slot-4',
@@ -229,7 +225,6 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
           maximumValue: 3,
           level: 4,
           displayOrder: 100,
-          allowManualIncrease: true,
         },
         {
           id: 'frank-spell-slot-5',
@@ -241,7 +236,6 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
           maximumValue: 2,
           level: 5,
           displayOrder: 110,
-          allowManualIncrease: true,
         },
         {
           id: 'frank-spell-slot-6',
@@ -253,7 +247,6 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
           maximumValue: 1,
           level: 6,
           displayOrder: 120,
-          allowManualIncrease: true,
         },
       ],
     },
@@ -722,7 +715,6 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
           currentValue: 15,
           maximumValue: 15,
           displayOrder: 10,
-          allowManualIncrease: true,
         },
         {
           id: 'azriel-favored-by-the-gods',
@@ -774,7 +766,6 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
           maximumValue: 4,
           level: 1,
           displayOrder: 60,
-          allowManualIncrease: true,
         },
         {
           id: 'azriel-spell-slot-2',
@@ -786,7 +777,6 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
           maximumValue: 3,
           level: 2,
           displayOrder: 70,
-          allowManualIncrease: true,
         },
         {
           id: 'azriel-spell-slot-3',
@@ -798,7 +788,6 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
           maximumValue: 3,
           level: 3,
           displayOrder: 80,
-          allowManualIncrease: true,
         },
         {
           id: 'azriel-spell-slot-4',
@@ -810,7 +799,6 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
           maximumValue: 3,
           level: 4,
           displayOrder: 90,
-          allowManualIncrease: true,
         },
         {
           id: 'azriel-spell-slot-5',
@@ -822,7 +810,6 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
           maximumValue: 2,
           level: 5,
           displayOrder: 100,
-          allowManualIncrease: true,
         },
         {
           id: 'azriel-spell-slot-6',
@@ -834,7 +821,6 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
           maximumValue: 1,
           level: 6,
           displayOrder: 110,
-          allowManualIncrease: true,
         },
         {
           id: 'azriel-spell-slot-7',
@@ -846,7 +832,6 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
           maximumValue: 1,
           level: 7,
           displayOrder: 120,
-          allowManualIncrease: true,
         },
       ],
     },
@@ -883,7 +868,6 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
           currentValue: 15,
           maximumValue: 15,
           displayOrder: 10,
-          allowManualIncrease: true,
         },
         {
           id: 'anoukis-wave-walk',
@@ -935,7 +919,6 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
           maximumValue: 4,
           level: 1,
           displayOrder: 60,
-          allowManualIncrease: true,
         },
         {
           id: 'anoukis-spell-slot-2',
@@ -947,7 +930,6 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
           maximumValue: 3,
           level: 2,
           displayOrder: 70,
-          allowManualIncrease: true,
         },
         {
           id: 'anoukis-spell-slot-3',
@@ -959,7 +941,6 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
           maximumValue: 3,
           level: 3,
           displayOrder: 80,
-          allowManualIncrease: true,
         },
         {
           id: 'anoukis-spell-slot-4',
@@ -971,7 +952,6 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
           maximumValue: 3,
           level: 4,
           displayOrder: 90,
-          allowManualIncrease: true,
         },
         {
           id: 'anoukis-spell-slot-5',
@@ -983,7 +963,6 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
           maximumValue: 2,
           level: 5,
           displayOrder: 100,
-          allowManualIncrease: true,
         },
         {
           id: 'anoukis-spell-slot-6',
@@ -995,7 +974,6 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
           maximumValue: 1,
           level: 6,
           displayOrder: 110,
-          allowManualIncrease: true,
         },
         {
           id: 'anoukis-spell-slot-7',
@@ -1007,7 +985,6 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
           maximumValue: 1,
           level: 7,
           displayOrder: 120,
-          allowManualIncrease: true,
         },
       ],
     },

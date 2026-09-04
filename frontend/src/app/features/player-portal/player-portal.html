@@ -2,7 +2,7 @@
   @if (loading()) {
     <section class="portal-message">
       <span class="eyebrow">
-        {{ campaign.name }}
+        {{ campaign()?.name ?? 'JDR Companion' }}
       </span>
 
       <h1>Chargement du personnage</h1>
@@ -34,7 +34,7 @@
     @if (sessionStatus() !== 'live') {
       <section class="portal-message">
         <span class="eyebrow">
-          {{ campaign.name }}
+          {{ campaign()?.name ?? 'JDR Companion' }}
         </span>
 
         <h1>
@@ -71,7 +71,7 @@
           <header class="character-header">
             <div>
               <span class="eyebrow">
-                {{ campaign.name }}
+                {{ campaign()?.name ?? 'JDR Companion' }}
               </span>
 
               <h1>
