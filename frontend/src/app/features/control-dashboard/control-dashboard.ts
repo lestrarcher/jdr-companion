@@ -16,7 +16,13 @@ import {
   switchMap,
   timer,
 } from 'rxjs';
+import {
+  CampaignMedia as UploadedCampaignMedia,
+} from '@core/services/media-api.service';
 
+import {
+  MediaManager,
+} from './components/media-manager/media-manager';
 import {
   CampaignConfig,
   CampaignMedia,
@@ -54,6 +60,7 @@ import {
     SessionCharacters,
     SessionControls,
     WorldControls,
+    MediaManager,
   ],
   templateUrl: './control-dashboard.html',
   styleUrl: './control-dashboard.scss',
@@ -303,6 +310,25 @@ export class ControlDashboard {
         },
       });
   }
+
+  protected displayUploadedMedia(
+  media: UploadedCampaignMedia,
+): void {
+  this.liveSessionService.updateState({
+    displayedMedia: {
+      id: `uploaded-media-${media.id}`,
+      source: media.url,
+      alt:
+        media.title ??
+        media.originalName,
+      title:
+        media.title ??
+        undefined,
+      subtitle: undefined,
+      fit: 'contain',
+    },
+  });
+}
 
   protected resolveRestRequest(
     requestId: number,

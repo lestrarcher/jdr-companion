@@ -77,6 +77,17 @@
           "
         />
 
+        <app-media-manager
+          [campaignId]="backendCampaignId"
+          [selectedUrl]="
+            liveState()?.displayedMedia?.source ??
+            null
+          "
+          (mediaSelected)="
+            displayUploadedMedia($event)
+          "
+        />
+
         <app-media-controls
           [media]="activeCampaign.media"
           [selectedMediaId]="

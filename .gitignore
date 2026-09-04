@@ -25,3 +25,5 @@ Thumbs.db
 # Fichiers temporaires de tests HTTP
 /cookies.txt
 jdr-companion-frontend.tar.gz
+
+/backend/public/uploads/

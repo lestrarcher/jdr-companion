@@ -1,0 +1,271 @@
+:host {
+  display: block;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.media-manager {
+  display: grid;
+  gap: 1rem;
+}
+
+.section-heading {
+  h2 {
+    margin: 0;
+
+    color: #f0e9df;
+
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 1.45rem;
+    font-weight: 400;
+  }
+
+  p {
+    margin: 0.45rem 0 0;
+
+    color: rgba(224, 218, 228, 0.65);
+    font-size: 0.8rem;
+    line-height: 1.5;
+  }
+}
+
+.section-label {
+  display: block;
+  margin-bottom: 0.35rem;
+
+  color: #c9a85f;
+
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.upload-panel {
+  display: grid;
+  gap: 0.8rem;
+
+  padding: 1rem;
+
+  border: 1px solid rgba(201, 168, 95, 0.2);
+  background: rgba(5, 6, 11, 0.6);
+}
+
+.form-field {
+  display: grid;
+  gap: 0.4rem;
+
+  label {
+    color: rgba(235, 225, 211, 0.78);
+
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  input {
+    width: 100%;
+    min-width: 0;
+    min-height: 2.7rem;
+    padding: 0.65rem 0.75rem;
+
+    color: #f1e9df;
+
+    border: 1px solid rgba(157, 126, 184, 0.4);
+    border-radius: 2px;
+    background: rgba(8, 8, 14, 0.78);
+
+    font: inherit;
+    outline: none;
+
+    &:focus {
+      border-color: rgba(201, 168, 95, 0.75);
+      box-shadow:
+        0 0 0 2px rgba(201, 168, 95, 0.1);
+    }
+  }
+}
+
+.file-input {
+  cursor: pointer;
+
+  &::file-selector-button {
+    margin-right: 0.75rem;
+    padding: 0.45rem 0.7rem;
+
+    color: #e8d6aa;
+
+    border: 1px solid rgba(201, 168, 95, 0.4);
+    border-radius: 2px;
+    background: rgba(201, 168, 95, 0.08);
+
+    cursor: pointer;
+  }
+}
+
+.selected-file {
+  margin: 0;
+
+  color: rgba(225, 216, 230, 0.72);
+
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+.upload-button {
+  min-height: 2.8rem;
+  padding: 0.65rem 1rem;
+
+  color: #19150d;
+
+  border: 1px solid #d1b66f;
+  border-radius: 2px;
+  background: linear-gradient(
+    135deg,
+    #d2b76e,
+    #a98741
+  );
+
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+
+  cursor: pointer;
+
+  &:disabled {
+    cursor: default;
+    filter: grayscale(0.45);
+    opacity: 0.4;
+  }
+}
+
+.error-message,
+.empty-message {
+  margin: 0;
+  padding: 0.8rem;
+
+  font-size: 0.78rem;
+}
+
+.error-message {
+  color: #f1b4b4;
+
+  border: 1px solid rgba(180, 69, 69, 0.35);
+  background: rgba(104, 28, 28, 0.2);
+}
+
+.empty-message {
+  color: rgba(225, 216, 230, 0.6);
+  text-align: center;
+}
+
+.media-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.media-card {
+  display: grid;
+  gap: 0.45rem;
+
+  min-width: 0;
+  padding: 0.35rem;
+
+  color: #e8dfea;
+
+  border: 1px solid rgba(132, 104, 156, 0.32);
+  border-radius: 2px;
+  background: rgba(10, 9, 16, 0.74);
+
+  font: inherit;
+  text-align: left;
+
+  cursor: pointer;
+
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.media-card--selected {
+  border-color: #c9a85f;
+  background: rgba(201, 168, 95, 0.1);
+
+  box-shadow:
+    0 0 0 1px rgba(201, 168, 95, 0.18),
+    0 0 18px rgba(201, 168, 95, 0.12);
+}
+
+.media-preview {
+  display: block;
+
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+
+  background: rgba(0, 0, 0, 0.55);
+
+  img {
+    display: block;
+
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+  }
+}
+
+.media-title {
+  display: block;
+
+  padding: 0 0.25rem 0.25rem;
+
+  font-size: 0.7rem;
+  line-height: 1.3;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (min-width: 700px) {
+  .upload-panel {
+    grid-template-columns:
+      minmax(0, 1fr)
+      minmax(0, 1fr)
+      auto;
+    align-items: end;
+  }
+
+  .upload-button {
+    white-space: nowrap;
+  }
+
+  .selected-file {
+    grid-column: 1 / -1;
+  }
+
+  .media-grid {
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (hover: hover) {
+  .media-card:hover {
+    border-color: rgba(201, 168, 95, 0.55);
+    background: rgba(28, 22, 34, 0.84);
+  }
+}

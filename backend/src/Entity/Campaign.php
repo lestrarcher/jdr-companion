@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Repository\CampaignRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: CampaignRepository::class)]
@@ -43,6 +45,12 @@ class Campaign
     private string $configurationKey =
         self::CONFIGURATION_STRAHD;
 
+    /**
+     * @var Collection<int, Media>
+     */
+    #[ORM\OneToMany(targetEntity: Media::class, mappedBy: 'campaign', orphanRemoval: true,)]
+    private Collection $media;
+
     public function __construct(
         User $owner,
         string $slug,
@@ -51,6 +59,7 @@ class Campaign
         $this->owner = $owner;
         $this->slug = $slug;
         $this->name = $name;
+        $this->media = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -130,5 +139,35 @@ class Campaign
             self::CONFIGURATION_STRAHD,
             self::CONFIGURATION_VECNA,
         ];
+    }
+
+    /**
+     * @return Collection<int, Media>
+     */
+    public function getMedia(): Collection
+    {
+        return $this->media;
+    }
+
+    public function addMedia(Media $media): static
+    {
+        if (!$this->media->contains($media)) {
+            $this->media->add($media);
+            $media->setCampaign($this);
+        }
+
+        return $this;
+    }
+
+    public function removeFilename(Media $media): static
+    {
+        if ($this->media->removeElement($media)) {
+            // set the owning side to null (unless already changed)
+            if ($media->getCampaign() === $this) {
+                $media->setCampaign(null);
+            }
+        }
+
+        return $this;
     }
 }

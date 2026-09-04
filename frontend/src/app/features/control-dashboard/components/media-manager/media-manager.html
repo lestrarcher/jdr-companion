@@ -1,0 +1,117 @@
+<section class="media-manager">
+  <header class="section-heading">
+    <span class="section-label">
+      Bibliothèque
+    </span>
+
+    <h2>Médias</h2>
+
+    <p>
+      Ajoute une image puis sélectionne-la
+      pour l’afficher aux joueurs.
+    </p>
+  </header>
+
+  <div class="upload-panel">
+    <div class="form-field">
+      <label for="media-title">
+        Titre facultatif
+      </label>
+
+      <input
+        id="media-title"
+        type="text"
+        maxlength="255"
+        placeholder="Ex. Les rues de Sigil"
+        [value]="title()"
+        [disabled]="uploading()"
+        (input)="updateTitle($event)"
+      />
+    </div>
+
+    <div class="form-field">
+      <label for="media-file">
+        Image
+      </label>
+
+      <input
+        #fileInput
+        id="media-file"
+        class="file-input"
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        [disabled]="uploading()"
+        (change)="selectFile($event)"
+      />
+    </div>
+
+    @if (selectedFile(); as file) {
+      <p class="selected-file">
+        {{ file.name }}
+      </p>
+    }
+
+    <button
+      class="upload-button"
+      type="button"
+      [disabled]="
+        !selectedFile() ||
+        uploading()
+      "
+      (click)="upload(fileInput)"
+    >
+      @if (uploading()) {
+        Envoi en cours…
+      } @else {
+        Ajouter à la bibliothèque
+      }
+    </button>
+  </div>
+
+  @if (error()) {
+    <p class="error-message">
+      {{ error() }}
+    </p>
+  }
+
+  @if (loading()) {
+    <p class="empty-message">
+      Chargement des médias…
+    </p>
+  } @else if (media().length === 0) {
+    <p class="empty-message">
+      Aucun média pour cette campagne.
+    </p>
+  } @else {
+    <div class="media-grid">
+      @for (
+        item of media();
+        track item.id
+      ) {
+        <button
+          type="button"
+          class="media-card"
+          [class.media-card--selected]="
+            selectedUrl() === item.url
+          "
+          [attr.aria-pressed]="
+            selectedUrl() === item.url
+          "
+          (click)="selectMedia(item)"
+        >
+          <span class="media-preview">
+            <img
+              [src]="item.url"
+              [alt]="displayTitle(item)"
+              loading="lazy"
+            />
+          </span>
+
+          <span class="media-title">
+            {{ displayTitle(item) }}
+          </span>
+        </button>
+      }
+    </div>
+  }
+</section>

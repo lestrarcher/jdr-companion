@@ -23,6 +23,7 @@ services:
       - ./backend:/app
       - backend_vendor:/app/vendor
       - media_storage:/app/var/media
+      - ./backend/docker/php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
     environment:
       APP_ENV: dev
       DATABASE_URL: >-
