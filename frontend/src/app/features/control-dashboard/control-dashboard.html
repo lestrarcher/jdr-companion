@@ -1,27 +1,4 @@
 <main class="control-dashboard">
-  <header class="dashboard-header">
-    <div>
-      <span class="eyebrow">
-        JDR Companion
-      </span>
-
-      <h1>
-        {{ campaign.name }}
-
-        @if (backendSession(); as session) {
-          <small>— {{ session.name }}</small>
-        }
-      </h1>
-    </div>
-
-    <span
-      class="header-status"
-      [attr.data-status]="sessionStatus()"
-    >
-      {{ sessionStatus() }}
-    </span>
-  </header>
-
   @if (dashboardLoading()) {
     <section class="dashboard-message">
       Chargement de la session…
@@ -31,9 +8,36 @@
       class="dashboard-message dashboard-error"
       role="alert"
     >
-      {{ dashboardError() }}
+      <h1>Tableau de bord indisponible</h1>
+
+      <p>
+        {{ dashboardError() }}
+      </p>
     </section>
-  } @else {
+  } @else if (campaign; as activeCampaign) {
+    <header class="dashboard-header">
+      <div>
+        <span class="eyebrow">
+          JDR Companion
+        </span>
+
+        <h1>
+          {{ activeCampaign.name }}
+
+          @if (backendSession(); as session) {
+            <small>— {{ session.name }}</small>
+          }
+        </h1>
+      </div>
+
+      <span
+        class="header-status"
+        [attr.data-status]="sessionStatus()"
+      >
+        {{ sessionStatus() }}
+      </span>
+    </header>
+
     <div class="dashboard-layout">
       <app-session-controls
         [status]="sessionStatus()"
@@ -51,36 +55,36 @@
         [error]="sessionStatusError()"
         (sessionOpened)="openSession()"
         (sessionClosed)="closeSession()"
+        (sessionDrafted)="draftSession()"
         (fogToggled)="toggleFog()"
         (cinematicToggled)="
           toggleCinematicMode()
         "
-        (sessionDrafted)="draftSession()"
       />
 
       <section class="dashboard-content">
         <app-world-controls
           [state]="liveState()"
           [weatherStates]="
-            campaign.weatherStates
+            activeCampaign.weatherStates
           "
           [moonPhases]="
-            campaign.moonPhases
+            activeCampaign.moonPhases
           "
-          [disabled]="dashboardLoading()"
+          [disabled]="false"
           (worldUpdated)="
             updateWorld($event)
           "
         />
 
         <app-media-controls
-          [media]="campaign.media"
+          [media]="activeCampaign.media"
           [selectedMediaId]="
             liveState()
               ?.displayedMedia
               ?.id ?? null
           "
-          [disabled]="dashboardLoading()"
+          [disabled]="false"
           (mediaSelected)="
             displayMedia($event)
           "
@@ -120,5 +124,12 @@
         "
       />
     </div>
+  } @else {
+    <section
+      class="dashboard-message dashboard-error"
+      role="alert"
+    >
+      La configuration de cette campagne est indisponible.
+    </section>
   }
 </main>

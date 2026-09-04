@@ -1,31 +1,100 @@
-<div
-  class="player-screen"
-  [class.player-screen--cinematic]="
-    liveState()?.displayMode === 'cinematic'
-  "
->
-  <div class="display-layout">
-    <section class="display-main">
-      <app-world-header
-        [campaignLabel]="campaign.worldName"
-        [state]="liveState()"
-      />
+@if (loading()) {
+  <main class="display-gate">
+    <span class="gate-eyebrow">
+      JDR Companion
+    </span>
 
-      <app-main-display
-        [cinematic]="liveState()?.displayMode === 'cinematic'"
-        [displayedMedia]="liveState()?.displayedMedia ?? null"
-      />
-    </section>
+    <h1>Chargement du display</h1>
 
-    <aside class="player-sidebar">
-      <app-quests-panel />
-      <app-memorial-panel />
-    </aside>
+    <span
+      class="gate-symbol"
+      aria-hidden="true"
+    >
+      ◆
+    </span>
+  </main>
+} @else if (error()) {
+  <main class="display-gate display-gate-error">
+    <span class="gate-eyebrow">
+      Display indisponible
+    </span>
+
+    <h1>Impossible d’ouvrir la session</h1>
+
+    <p>{{ error() }}</p>
+  </main>
+} @else if (
+  liveState()?.status !== 'live'
+) {
+  <main class="display-gate">
+    <span class="gate-eyebrow">
+      {{ campaign.name }}
+    </span>
+
+    @if (
+      liveState()?.status === 'closed'
+    ) {
+      <h1>Session terminée</h1>
+
+      <p>
+        L’écran joueurs a été refermé
+        par le maître du jeu.
+      </p>
+    } @else {
+      <h1>Session en préparation</h1>
+
+      <p>
+        Le display apparaîtra lorsque
+        la session sera ouverte.
+      </p>
+    }
+
+    <span
+      class="gate-symbol"
+      aria-hidden="true"
+    >
+      ◆
+    </span>
+  </main>
+} @else {
+  <div
+    class="player-screen"
+    [class.player-screen--cinematic]="
+      liveState()?.displayMode ===
+      'cinematic'
+    "
+  >
+    <div class="display-layout">
+      <section class="display-main">
+        <app-world-header
+          [campaignLabel]="
+            campaign.worldName
+          "
+          [state]="liveState()"
+        />
+
+        <app-main-display
+          [cinematic]="
+            liveState()?.displayMode ===
+            'cinematic'
+          "
+          [displayedMedia]="
+            liveState()?.displayedMedia ??
+            null
+          "
+        />
+      </section>
+
+      <aside class="player-sidebar">
+        <app-quests-panel />
+        <app-memorial-panel />
+      </aside>
+    </div>
+
+    <app-tip-bar />
+
+    @if (liveState()?.fogEnabled) {
+      <app-ambient-fog />
+    }
   </div>
-
-  <app-tip-bar />
-
-  @if (liveState()?.fogEnabled) {
-    <app-ambient-fog />
-  }
-</div>
+}

@@ -6,7 +6,6 @@ namespace App\Controller;
 
 use App\Entity\Campaign;
 use App\Entity\User;
-use App\Security\Voter\CampaignVoter;
 use App\Repository\CampaignRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -34,11 +33,8 @@ final class CampaignController extends AbstractController
 
         return $this->json([
             'campaigns' => array_map(
-                static fn (Campaign $campaign): array => [
-                    'id' => $campaign->getId(),
-                    'slug' => $campaign->getSlug(),
-                    'name' => $campaign->getName(),
-                ],
+                fn (Campaign $campaign): array =>
+                    $this->serializeCampaign($campaign),
                 $campaigns,
             ),
         ]);
@@ -65,12 +61,21 @@ final class CampaignController extends AbstractController
             (string) ($payload['name'] ?? ''),
         );
 
+        /*
+         * Compatibilité avec les anciennes requêtes :
+         * si aucune configuration n'est fournie,
+         * on utilise celle de Strahd.
+         */
+        $configurationKey = trim(
+            (string) (
+                $payload['configurationKey']
+                ?? Campaign::CONFIGURATION_STRAHD
+            ),
+        );
+
         if (
-            $slug === '' ||
-            !preg_match(
-                '/^[a-z0-9-]+$/',
-                $slug,
-            )
+            $slug === ''
+            || !preg_match('/^[a-z0-9-]+$/', $slug)
         ) {
             return $this->json(
                 [
@@ -94,13 +99,30 @@ final class CampaignController extends AbstractController
             );
         }
 
-        $existingCampaign =
-            $campaignRepository->findOneBy([
-                'owner' => $user,
-                'slug' => $slug,
-            ]);
+        if (
+            !in_array(
+                $configurationKey,
+                Campaign::allowedConfigurationKeys(),
+                true,
+            )
+        ) {
+            return $this->json(
+                [
+                    'message' =>
+                        'La configuration de campagne est invalide.',
+                    'allowedConfigurationKeys' =>
+                        Campaign::allowedConfigurationKeys(),
+                ],
+                JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
 
-        if ($existingCampaign) {
+        $existingCampaign = $campaignRepository->findOneBy([
+            'owner' => $user,
+            'slug' => $slug,
+        ]);
+
+        if ($existingCampaign instanceof Campaign) {
             return $this->json(
                 [
                     'message' =>
@@ -116,19 +138,38 @@ final class CampaignController extends AbstractController
             $name,
         );
 
+        $campaign->setConfigurationKey($configurationKey);
+
         $entityManager->persist($campaign);
         $entityManager->flush();
 
         return $this->json(
             [
-                'campaign' => [
-                    'id' => $campaign->getId(),
-                    'slug' => $campaign->getSlug(),
-                    'name' => $campaign->getName(),
-                ],
+                'campaign' =>
+                    $this->serializeCampaign($campaign),
             ],
             JsonResponse::HTTP_CREATED,
         );
+    }
+
+    /**
+     * @return array{
+     *     id: int|null,
+     *     slug: string,
+     *     name: string,
+     *     configurationKey: string
+     * }
+     */
+    private function serializeCampaign(
+        Campaign $campaign,
+    ): array {
+        return [
+            'id' => $campaign->getId(),
+            'slug' => $campaign->getSlug(),
+            'name' => $campaign->getName(),
+            'configurationKey' =>
+                $campaign->getConfigurationKey(),
+        ];
     }
 
     private function getAuthenticatedUser(): User

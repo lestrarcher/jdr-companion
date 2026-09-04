@@ -37,6 +37,27 @@
         />
       </label>
 
+      <label>
+        <span>Modèle de campagne</span>
+
+        <select formControlName="configurationKey">
+          @for (
+            option of configurationOptions;
+            track option.key
+          ) {
+            <option
+              [value]="option.key"
+              [disabled]="!option.available"
+            >
+              {{ option.label }}
+              @if (!option.available) {
+                — bientôt disponible
+              }
+            </option>
+          }
+        </select>
+      </label>
+
       <button
         type="submit"
         [disabled]="creating()"
@@ -48,6 +69,20 @@
         }}
       </button>
     </form>
+
+    <p class="configuration-description">
+      @for (
+        option of configurationOptions;
+        track option.key
+      ) {
+        @if (
+          option.key ===
+          campaignForm.controls.configurationKey.value
+        ) {
+          {{ option.description }}
+        }
+      }
+    </p>
 
     @if (error()) {
       <p class="error-message" role="alert">
@@ -82,9 +117,19 @@
               campaign.id
             ]"
           >
-            <span class="campaign-number">
-              Campagne {{ campaign.id }}
-            </span>
+            <div class="campaign-card-heading">
+              <span class="campaign-number">
+                Campagne {{ campaign.id }}
+              </span>
+
+              <span class="configuration-badge">
+                {{
+                  getConfigurationLabel(
+                    campaign.configurationKey
+                  )
+                }}
+              </span>
+            </div>
 
             <h3>{{ campaign.name }}</h3>
 

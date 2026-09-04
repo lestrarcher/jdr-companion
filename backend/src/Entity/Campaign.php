@@ -15,6 +15,10 @@ use Doctrine\ORM\Mapping as ORM;
 )]
 class Campaign
 {
+
+    public const CONFIGURATION_STRAHD = 'strahd';
+    public const CONFIGURATION_VECNA = 'vecna';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -29,6 +33,15 @@ class Campaign
 
     #[ORM\Column(length: 150)]
     private string $name;
+
+    #[ORM\Column(
+        length: 50,
+        options: [
+            'default' => self::CONFIGURATION_STRAHD,
+        ],
+    )]
+    private string $configurationKey =
+        self::CONFIGURATION_STRAHD;
 
     public function __construct(
         User $owner,
@@ -77,5 +90,45 @@ class Campaign
     public function belongsTo(User $user): bool
     {
         return $this->owner === $user;
+    }
+
+    public function getConfigurationKey(): ?string
+    {
+        return $this->configurationKey;
+    }
+
+    public function setConfigurationKey(
+        string $configurationKey,
+    ): static {
+        if (
+            !in_array(
+                $configurationKey,
+                self::allowedConfigurationKeys(),
+                true,
+            )
+        ) {
+            throw new \InvalidArgumentException(
+                sprintf(
+                    'Configuration de campagne invalide : "%s".',
+                    $configurationKey,
+                ),
+            );
+        }
+
+        $this->configurationKey =
+            $configurationKey;
+
+        return $this;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function allowedConfigurationKeys(): array
+    {
+        return [
+            self::CONFIGURATION_STRAHD,
+            self::CONFIGURATION_VECNA,
+        ];
     }
 }

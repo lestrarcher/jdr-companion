@@ -53,23 +53,47 @@
   margin-bottom: 2rem;
 
   form {
-    display: flex;
+    display: grid;
+    grid-template-columns:
+      minmax(0, 1fr)
+      minmax(240px, 0.75fr)
+      auto;
     align-items: end;
     gap: 1rem;
   }
 
   label {
     display: grid;
-    flex: 1;
     gap: 0.5rem;
+
+    > span {
+      color: rgba(244, 239, 229, 0.78);
+      font-size: 0.8rem;
+      letter-spacing: 0.05em;
+    }
   }
 
-  input {
+  input,
+  select {
+    width: 100%;
     min-height: 2.8rem;
+    box-sizing: border-box;
     padding: 0 0.9rem;
     border: 1px solid rgba(199, 165, 91, 0.3);
+    border-radius: 0;
     color: #f4efe5;
     background: #11131e;
+    font: inherit;
+
+    &:focus {
+      border-color: #c7a55b;
+      outline: 1px solid rgba(199, 165, 91, 0.4);
+      outline-offset: 2px;
+    }
+  }
+
+  select {
+    cursor: pointer;
   }
 
   button {
@@ -79,12 +103,25 @@
     color: #11121a;
     background: #c7a55b;
     cursor: pointer;
+    font-weight: 700;
+
+    &:hover:not(:disabled) {
+      background: #dbc17d;
+    }
 
     &:disabled {
       cursor: wait;
       opacity: 0.55;
     }
   }
+}
+
+.configuration-description {
+  min-height: 1.2rem;
+  margin: 0.85rem 0 0;
+  color: rgba(244, 239, 229, 0.55);
+  font-size: 0.82rem;
+  font-style: italic;
 }
 
 .section-heading {
@@ -100,7 +137,7 @@
 .campaign-grid {
   display: grid;
   grid-template-columns:
-    repeat(auto-fit, minmax(230px, 1fr));
+    repeat(auto-fit, minmax(260px, 1fr));
   gap: 1rem;
 }
 
@@ -137,11 +174,29 @@
   }
 }
 
+.campaign-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .campaign-number,
 .open-label {
   color: #c7a55b;
   font-size: 0.68rem;
   letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.configuration-badge {
+  padding: 0.25rem 0.45rem;
+  border: 1px solid rgba(199, 165, 91, 0.25);
+  color: rgba(244, 239, 229, 0.65);
+  background: rgba(0, 0, 0, 0.2);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-align: right;
   text-transform: uppercase;
 }
 
@@ -159,13 +214,30 @@
   color: #ef9a9a;
 }
 
+@media (max-width: 800px) {
+  .creation-panel form {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+}
+
 @media (max-width: 650px) {
   .campaign-page {
     padding: 1.5rem 0;
   }
 
-  .creation-panel form {
-    align-items: stretch;
+  .creation-panel,
+  .campaign-section {
+    padding: 1rem;
+  }
+
+  .campaign-card-heading {
+    align-items: flex-start;
     flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .configuration-badge {
+    text-align: left;
   }
 }

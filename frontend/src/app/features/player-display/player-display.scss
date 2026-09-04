@@ -2,6 +2,61 @@
   display: block;
 }
 
+.display-gate {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  width: 100vw;
+  height: 100dvh;
+  box-sizing: border-box;
+  padding: 2rem;
+  overflow: hidden;
+  color: #f4efe5;
+  background:
+    radial-gradient(
+      circle at center,
+      rgba(42, 42, 66, 0.72),
+      rgba(10, 11, 18, 0.98) 62%
+    ),
+    #090a10;
+  text-align: center;
+
+  h1 {
+    margin: 0.5rem 0;
+    font-family: Georgia, serif;
+    font-size:
+      clamp(2rem, 5vw, 4.5rem);
+    font-weight: 400;
+  }
+
+  p {
+    max-width: 34rem;
+    color:
+      rgba(244, 239, 229, 0.58);
+  }
+}
+
+.gate-eyebrow {
+  color: #c7a55b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.gate-symbol {
+  margin-top: 1.5rem;
+  color: #c7a55b;
+  font-size: 1.2rem;
+}
+
+.display-gate-error {
+  .gate-eyebrow,
+  .gate-symbol {
+    color: #b96b72;
+  }
+}
+
 .player-screen {
   position: relative;
   isolation: isolate;

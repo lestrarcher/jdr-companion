@@ -2,15 +2,21 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
 
+export type CampaignConfigurationKey =
+  | 'strahd'
+  | 'vecna';
+
 export interface CampaignApiResponse {
   id: number;
   slug: string;
   name: string;
+  configurationKey: CampaignConfigurationKey;
 }
 
 export interface CreateCampaignPayload {
   slug: string;
   name: string;
+  configurationKey: CampaignConfigurationKey;
 }
 
 interface CampaignListResponse {

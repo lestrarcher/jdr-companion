@@ -17,10 +17,13 @@ import {
   timer,
 } from 'rxjs';
 
-import { CampaignMedia } from '@core/models/campaign.model';
 import {
-  CampaignApiService,
-} from '@core/services/campaign-api.service';
+  CampaignConfig,
+  CampaignMedia,
+} from '@core/models/campaign.model';
+import {
+  CampaignConfigurationRegistryService,
+} from '@core/services/campaign-configuration-registry.service';
 import {
   CampaignBootstrapService,
   ImportedCharacterResult,
@@ -35,7 +38,6 @@ import {
   RestRequestApiResponse,
   RestRequestApiService,
 } from '@core/services/rest-request-api.service';
-import { STRAHD_CAMPAIGN } from '@data/campaigns/strahd.config';
 
 import { MediaControls } from './components/media-controls/media-controls';
 import { SessionCharacters } from './components/session-characters/session-characters';
@@ -63,8 +65,8 @@ export class ControlDashboard {
   private readonly destroyRef =
     inject(DestroyRef);
 
-  private readonly campaignApi =
-    inject(CampaignApiService);
+  private readonly campaignConfigurationRegistry =
+    inject(CampaignConfigurationRegistryService);
 
   private readonly gameSessionApi =
     inject(GameSessionApiService);
@@ -78,8 +80,8 @@ export class ControlDashboard {
   private readonly restRequestApi =
     inject(RestRequestApiService);
 
-  protected readonly campaign =
-    STRAHD_CAMPAIGN;
+  protected campaign: CampaignConfig | null =
+    null;
 
   protected readonly liveState =
     this.liveSessionService.state;
@@ -249,12 +251,22 @@ export class ControlDashboard {
       return;
     }
 
+    const campaign = this.campaign;
+
+    if (!campaign) {
+      this.characterImportError.set(
+        'La configuration de la campagne n’est pas chargée.',
+      );
+
+      return;
+    }
+
     this.characterImportRunning.set(true);
     this.characterImportError.set(null);
 
     this.campaignBootstrapService
       .synchronizeCharacters(
-        this.campaign,
+        campaign,
         this.backendCampaignId,
         this.backendSessionId,
       )
@@ -353,7 +365,10 @@ export class ControlDashboard {
     this.dashboardError.set(null);
 
     forkJoin({
-      campaigns: this.campaignApi.list(),
+      campaignContext:
+        this.campaignConfigurationRegistry.getCampaign(
+          this.backendCampaignId,
+        ),
 
       session: this.gameSessionApi.get(
         this.backendSessionId,
@@ -361,30 +376,16 @@ export class ControlDashboard {
     })
       .pipe(
         finalize(() => {
-          this.dashboardLoading.set(
-            false,
-          );
+          this.dashboardLoading.set(false);
         }),
       )
       .subscribe({
         next: ({
-          campaigns,
+          campaignContext,
           session,
         }) => {
           const backendCampaign =
-            campaigns.find(
-              (campaign) =>
-                campaign.id ===
-                this.backendCampaignId,
-            );
-
-          if (!backendCampaign) {
-            this.dashboardError.set(
-              'Campagne introuvable.',
-            );
-
-            return;
-          }
+            campaignContext.campaign;
 
           if (
             session.campaignId !==
@@ -397,16 +398,12 @@ export class ControlDashboard {
             return;
           }
 
-          if (
-            backendCampaign.slug !==
-            'strahd-table-principale'
-          ) {
-            this.dashboardError.set(
-              'Cette campagne ne possède pas encore de configuration visuelle.',
-            );
-
-            return;
-          }
+          /*
+          * La configuration visuelle est désormais
+          * choisie avec configurationKey et non le slug.
+          */
+          this.campaign =
+            campaignContext.configuration;
 
           this.backendSession.set(session);
 
@@ -422,9 +419,9 @@ export class ControlDashboard {
           this.initializeRestRequestPolling();
 
           /*
-           * L’opération est idempotente :
-           * elle recharge aussi les liens existants.
-           */
+          * Cette opération est idempotente :
+          * elle recharge également les liens existants.
+          */
           this.synchronizeCharacters();
         },
 
@@ -436,6 +433,7 @@ export class ControlDashboard {
 
           this.dashboardError.set(
             error?.error?.message ??
+              error?.message ??
               'Le dashboard n’a pas pu être chargé.',
           );
         },

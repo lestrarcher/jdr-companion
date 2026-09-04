@@ -14,7 +14,15 @@ import { finalize } from 'rxjs';
 import {
   CampaignApiResponse,
   CampaignApiService,
+  CampaignConfigurationKey,
 } from '@core/services/campaign-api.service';
+
+interface CampaignConfigurationOption {
+  key: CampaignConfigurationKey;
+  label: string;
+  description: string;
+  available: boolean;
+}
 
 @Component({
   selector: 'app-campaign-list',
@@ -41,6 +49,24 @@ export class CampaignList {
   protected readonly error =
     signal<string | null>(null);
 
+  protected readonly configurationOptions:
+    readonly CampaignConfigurationOption[] = [
+      {
+        key: 'strahd',
+        label: 'La Malédiction de Strahd',
+        description:
+          'Interface brumeuse de Barovie, quêtes et mémorial.',
+        available: true,
+      },
+      {
+        key: 'vecna',
+        label: 'Vecna : au seuil du néant',
+        description:
+          'Configuration prévue pour la campagne de Vecna.',
+        available: false,
+      },
+    ];
+
   protected readonly campaignForm =
     this.formBuilder.nonNullable.group({
       name: [
@@ -50,6 +76,11 @@ export class CampaignList {
           Validators.minLength(3),
         ],
       ],
+
+      configurationKey:
+        this.formBuilder.nonNullable.control<
+          CampaignConfigurationKey
+        >('strahd'),
     });
 
   constructor() {
@@ -68,12 +99,17 @@ export class CampaignList {
     const name =
       this.campaignForm.controls.name.value.trim();
 
+    const configurationKey =
+      this.campaignForm.controls
+        .configurationKey.value;
+
     this.creating.set(true);
     this.error.set(null);
 
     this.campaignApi
       .create({
         name,
+        configurationKey,
         slug: this.createSlug(name),
       })
       .pipe(
@@ -92,6 +128,7 @@ export class CampaignList {
 
           this.campaignForm.reset({
             name: '',
+            configurationKey: 'strahd',
           });
         },
 
@@ -107,6 +144,17 @@ export class CampaignList {
           );
         },
       });
+  }
+
+  protected getConfigurationLabel(
+    configurationKey: CampaignConfigurationKey,
+  ): string {
+    return (
+      this.configurationOptions.find(
+        (option) =>
+          option.key === configurationKey,
+      )?.label ?? configurationKey
+    );
   }
 
   private loadCampaigns(): void {
