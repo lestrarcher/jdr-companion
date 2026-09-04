@@ -25,7 +25,6 @@ import {
 } from './components/media-manager/media-manager';
 import {
   CampaignConfig,
-  CampaignMedia,
 } from '@core/models/campaign.model';
 import {
   CampaignConfigurationRegistryService,
@@ -45,7 +44,6 @@ import {
   RestRequestApiService,
 } from '@core/services/rest-request-api.service';
 
-import { MediaControls } from './components/media-controls/media-controls';
 import { SessionCharacters } from './components/session-characters/session-characters';
 import { SessionControls } from './components/session-controls/session-controls';
 import {
@@ -56,7 +54,6 @@ import {
 @Component({
   selector: 'app-control-dashboard',
   imports: [
-    MediaControls,
     SessionCharacters,
     SessionControls,
     WorldControls,
@@ -197,21 +194,6 @@ export class ControlDashboard {
     );
   }
 
-  protected displayMedia(
-    media: CampaignMedia,
-  ): void {
-    this.liveSessionService.updateState({
-      displayedMedia: {
-        id: media.id,
-        source: media.source,
-        alt: media.alt,
-        title: media.title,
-        subtitle: media.subtitle,
-        fit: media.fit,
-      },
-    });
-  }
-
   protected clearMedia(): void {
     this.liveSessionService.updateState({
       displayedMedia: undefined,
@@ -312,23 +294,23 @@ export class ControlDashboard {
   }
 
   protected displayUploadedMedia(
-  media: UploadedCampaignMedia,
-): void {
-  this.liveSessionService.updateState({
-    displayedMedia: {
-      id: `uploaded-media-${media.id}`,
-      source: media.url,
-      alt:
-        media.title ??
-        media.originalName,
-      title:
-        media.title ??
-        undefined,
-      subtitle: undefined,
-      fit: 'contain',
-    },
-  });
-}
+    media: UploadedCampaignMedia,
+  ): void {
+    this.liveSessionService.updateState({
+      displayedMedia: {
+        id: `uploaded-media-${media.id}`,
+        source: media.url,
+        alt:
+          media.title ??
+          media.originalName,
+        title:
+          media.title ??
+          undefined,
+        subtitle: undefined,
+        fit: 'contain',
+      },
+    });
+  }
 
   protected resolveRestRequest(
     requestId: number,

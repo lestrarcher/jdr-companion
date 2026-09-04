@@ -4,7 +4,8 @@ import { map, Observable } from 'rxjs';
 
 export type CampaignConfigurationKey =
   | 'strahd'
-  | 'vecna';
+  | 'vecna'
+  | 'sorcelume';
 
 export interface CampaignApiResponse {
   id: number;

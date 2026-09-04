@@ -27,8 +27,6 @@ export const VECNA_CAMPAIGN: CampaignConfig = {
     },
   },
 
-  media: [],
-
   players: [
     {
       id: 'player-frank',

@@ -23,11 +23,6 @@ export interface CampaignTheme {
   effects: CampaignEffects;
 }
 
-export interface CampaignMedia extends DisplayedMediaState {
-  label: string;
-  thumbnail?: string;
-}
-
 export interface CampaignConfig {
   id: string;
   name: string;
@@ -39,7 +34,6 @@ export interface CampaignConfig {
 
   moonPhases: MoonState[];
   weatherStates: WeatherState[];
-  media: CampaignMedia[];
 
   initialLiveState: LiveSessionState;
 }

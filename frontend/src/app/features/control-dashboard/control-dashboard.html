@@ -86,19 +86,6 @@
           (mediaSelected)="
             displayUploadedMedia($event)
           "
-        />
-
-        <app-media-controls
-          [media]="activeCampaign.media"
-          [selectedMediaId]="
-            liveState()
-              ?.displayedMedia
-              ?.id ?? null
-          "
-          [disabled]="false"
-          (mediaSelected)="
-            displayMedia($event)
-          "
           (mediaCleared)="clearMedia()"
         />
       </section>

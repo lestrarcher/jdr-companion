@@ -1,23 +1,27 @@
 <section class="media-manager">
-  <header class="section-heading">
-    <span class="section-label">
-      Bibliothèque
-    </span>
+  <header class="section-header">
+    <div class="section-heading">
+      <span class="section-label">Bibliothèque</span>
+      <h2>Médias</h2>
+      <p>
+        Ajoute une image puis sélectionne-la pour
+        l’afficher aux joueurs.
+      </p>
+    </div>
 
-    <h2>Médias</h2>
-
-    <p>
-      Ajoute une image puis sélectionne-la
-      pour l’afficher aux joueurs.
-    </p>
+    <button
+      class="clear-button"
+      type="button"
+      [disabled]="selectedUrl() === null"
+      (click)="clearMedia()"
+    >
+      Masquer l’image
+    </button>
   </header>
 
   <div class="upload-panel">
     <div class="form-field">
-      <label for="media-title">
-        Titre facultatif
-      </label>
-
+      <label for="media-title">Titre facultatif</label>
       <input
         id="media-title"
         type="text"
@@ -30,10 +34,7 @@
     </div>
 
     <div class="form-field">
-      <label for="media-file">
-        Image
-      </label>
-
+      <label for="media-file">Image</label>
       <input
         #fileInput
         id="media-file"
@@ -45,19 +46,10 @@
       />
     </div>
 
-    @if (selectedFile(); as file) {
-      <p class="selected-file">
-        {{ file.name }}
-      </p>
-    }
-
     <button
       class="upload-button"
       type="button"
-      [disabled]="
-        !selectedFile() ||
-        uploading()
-      "
+      [disabled]="!selectedFile() || uploading()"
       (click)="upload(fileInput)"
     >
       @if (uploading()) {
@@ -66,37 +58,32 @@
         Ajouter à la bibliothèque
       }
     </button>
+
+    @if (selectedFile(); as file) {
+      <p class="selected-file">{{ file.name }}</p>
+    }
   </div>
 
   @if (error()) {
-    <p class="error-message">
-      {{ error() }}
-    </p>
+    <p class="error-message" role="alert">{{ error() }}</p>
   }
 
   @if (loading()) {
-    <p class="empty-message">
-      Chargement des médias…
-    </p>
+    <p class="empty-message">Chargement des médias…</p>
   } @else if (media().length === 0) {
     <p class="empty-message">
       Aucun média pour cette campagne.
     </p>
   } @else {
     <div class="media-grid">
-      @for (
-        item of media();
-        track item.id
-      ) {
+      @for (item of media(); track item.id) {
         <button
           type="button"
           class="media-card"
           [class.media-card--selected]="
             selectedUrl() === item.url
           "
-          [attr.aria-pressed]="
-            selectedUrl() === item.url
-          "
+          [attr.aria-pressed]="selectedUrl() === item.url"
           (click)="selectMedia(item)"
         >
           <span class="media-preview">
@@ -106,7 +93,6 @@
               loading="lazy"
             />
           </span>
-
           <span class="media-title">
             {{ displayTitle(item) }}
           </span>
