@@ -63,7 +63,7 @@ export class CampaignList {
         label: 'Vecna : au seuil du néant',
         description:
           'Configuration prévue pour la campagne de Vecna.',
-        available: false,
+        available: true,
       },
     ];
 

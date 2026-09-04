@@ -11,6 +11,7 @@ import {
   CampaignConfigurationKey,
 } from '@core/services/campaign-api.service';
 import { STRAHD_CAMPAIGN } from '@data/campaigns/strahd.config';
+import { VECNA_CAMPAIGN } from '@data/campaigns/vecna.config';
 
 @Injectable({
   providedIn: 'root',
@@ -27,6 +28,7 @@ export class CampaignConfigurationRegistryService {
       >
     > = {
       strahd: STRAHD_CAMPAIGN,
+      vecna: VECNA_CAMPAIGN,
     };
 
   getCampaign(

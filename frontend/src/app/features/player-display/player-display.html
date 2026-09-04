@@ -59,6 +59,11 @@
 } @else {
   <div
     class="player-screen"
+    [style.background-image]="
+      'url(' +
+      campaign.theme.backgroundImage +
+      ')'
+    "
     [class.player-screen--cinematic]="
       liveState()?.displayMode ===
       'cinematic'
