@@ -80,6 +80,7 @@ export const SORCELUME_CAMPAIGN: CampaignConfig = {
           maximumValue: 2,
           displayOrder: 20,
         },
+
         {
           id: 'sylveon-bladesong',
           name: 'Chantelame',
@@ -100,6 +101,7 @@ export const SORCELUME_CAMPAIGN: CampaignConfig = {
           maximumValue: 3,
           level: 1,
           displayOrder: 40,
+          allowManualIncrease: true,
         },
       ],
     },
