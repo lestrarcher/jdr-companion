@@ -50,6 +50,9 @@ import {
   WorldControls,
   WorldUpdate,
 } from './components/world-controls/world-controls';
+import {
+  QuestManager,
+} from './components/quest-manager/quest-manager';
 
 @Component({
   selector: 'app-control-dashboard',
@@ -58,6 +61,7 @@ import {
     SessionControls,
     WorldControls,
     MediaManager,
+    QuestManager,
   ],
   templateUrl: './control-dashboard.html',
   styleUrl: './control-dashboard.scss',

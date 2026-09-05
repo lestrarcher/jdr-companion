@@ -1,10 +1,16 @@
-import { Component } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
+import { finalize } from 'rxjs';
 
-interface QuestPreview {
-  title: string;
-  objective: string;
-  category: string;
-}
+import {
+  CampaignQuest,
+  QuestApiService,
+} from '@core/services/quest-api.service';
 
 @Component({
   selector: 'app-quests-panel',
@@ -12,46 +18,73 @@ interface QuestPreview {
   templateUrl: './quests-panel.html',
   styleUrl: './quests-panel.scss',
 })
-export class QuestsPanel {
-  protected readonly quests: QuestPreview[] = [
-    {
-      title: `L'attaque de loups-garous`,
-      objective: 'Retrouver les loups-garous qui ont attaqué le Gué de la Dague et sauver les enfants enlevés.',
-      category: 'Barovie'
-    },
-    {
-      title: 'La prophétie de Mme Eva',
-      objective: `Rassembler les artefacts et trouver l'allié pour vaincre Strahd.`,
-      category: 'Prophétie'
-    },
-    {
-      title: 'Ireena Kolyana',
-      objective: `Protéger Ireena et l'accompagner jusqu'à l'Abbaye Ste Markovia`,
-      category: 'Barovie'
-    },
-    {
-      title: 'Le maître du Barovie',
-      objective: 'Participer au bal de Strahd.',
-      category: 'Principale'
-    },
-    {
-      title: 'Le Livre de Strahd',
-      objective: `Vaincre Vladimir Cornegaarde pour récupérer le Livre et venger Greto et Rhéa.`,
-      category: 'Prophétie'
-    },
-    {
-      title: 'La deuxième gemme',
-      objective: `Aller aux ruines du bérez pour récupérer la deuxième gemme`,
-      category: 'Bérez'
-    },
-  ];
+export class QuestsPanel implements OnInit {
+  readonly campaignId =
+    input.required<number>();
+
+  private readonly questApi =
+    inject(QuestApiService);
+
+  protected readonly quests =
+    signal<CampaignQuest[]>([]);
+
+  protected readonly loading =
+    signal(true);
+
+  protected readonly error =
+    signal<string | null>(null);
+
+  ngOnInit(): void {
+    this.loadQuests();
+  }
 
   protected get scrollDuration(): string {
-    /*
-    * Environ sept secondes de lecture par quête,
-    * avec un minimum de trente secondes.
-    */
-    return `${Math.max(this.quests.length * 7, 30)}s`;
+    return `${
+      Math.max(
+        this.quests().length * 7,
+        30,
+      )
+    }s`;
+  }
+
+  private loadQuests(): void {
+    this.loading.set(true);
+    this.error.set(null);
+
+    this.questApi
+      .list(this.campaignId())
+      .pipe(
+        finalize(() => {
+          this.loading.set(false);
+        }),
+      )
+      .subscribe({
+        next: (quests) => {
+          this.quests.set(
+            quests
+              .filter(
+                (quest) =>
+                  quest.status === 'active',
+              )
+              .sort(
+                (first, second) =>
+                  first.displayOrder -
+                  second.displayOrder,
+              ),
+          );
+        },
+
+        error: (error: any) => {
+          console.error(
+            'Impossible de charger les quêtes.',
+            error,
+          );
+
+          this.error.set(
+            error?.error?.message ??
+              'Les quêtes sont indisponibles.',
+          );
+        },
+      });
   }
 }
-

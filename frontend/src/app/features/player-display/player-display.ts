@@ -42,6 +42,8 @@ export class PlayerDisplay {
   private readonly route =
     inject(ActivatedRoute);
 
+  protected readonly campaignId: number;
+
   private readonly gameSessionApi =
     inject(GameSessionApiService);
 
@@ -67,6 +69,8 @@ export class PlayerDisplay {
         'campaignId',
       ),
     );
+
+    this.campaignId = campaignId;
 
     const sessionId = Number(
       this.route.snapshot.paramMap.get(

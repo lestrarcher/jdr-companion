@@ -20,6 +20,7 @@ class Campaign
 
     public const CONFIGURATION_STRAHD = 'strahd';
     public const CONFIGURATION_VECNA = 'vecna';
+    public const CONFIGURATION_SORCELUME = 'sorcelume';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -51,6 +52,12 @@ class Campaign
     #[ORM\OneToMany(targetEntity: Media::class, mappedBy: 'campaign', orphanRemoval: true,)]
     private Collection $media;
 
+    /**
+     * @var Collection<int, Quest>
+     */
+    #[ORM\OneToMany(targetEntity: Quest::class, mappedBy: 'campaign')]
+    private Collection $quests;
+
     public function __construct(
         User $owner,
         string $slug,
@@ -60,6 +67,7 @@ class Campaign
         $this->slug = $slug;
         $this->name = $name;
         $this->media = new ArrayCollection();
+        $this->quests = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -138,6 +146,7 @@ class Campaign
         return [
             self::CONFIGURATION_STRAHD,
             self::CONFIGURATION_VECNA,
+            self::CONFIGURATION_SORCELUME,
         ];
     }
 
@@ -165,6 +174,36 @@ class Campaign
             // set the owning side to null (unless already changed)
             if ($media->getCampaign() === $this) {
                 $media->setCampaign(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Quest>
+     */
+    public function getQuests(): Collection
+    {
+        return $this->quests;
+    }
+
+    public function addQuest(Quest $quest): static
+    {
+        if (!$this->quests->contains($quest)) {
+            $this->quests->add($quest);
+            $quest->setCampaign($this);
+        }
+
+        return $this;
+    }
+
+    public function removeQuest(Quest $quest): static
+    {
+        if ($this->quests->removeElement($quest)) {
+            // set the owning side to null (unless already changed)
+            if ($quest->getCampaign() === $this) {
+                $quest->setCampaign(null);
             }
         }
 

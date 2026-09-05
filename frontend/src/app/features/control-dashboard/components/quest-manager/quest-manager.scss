@@ -1,0 +1,393 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.quest-manager {
+  padding: 1.5rem;
+
+  color: #f3eee5;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(13, 13, 23, 0.98),
+      rgba(7, 8, 15, 0.98)
+    );
+
+  border: 1px solid
+    rgba(194, 157, 77, 0.28);
+
+  box-shadow:
+    0 1rem 2.5rem
+      rgba(0, 0, 0, 0.25),
+    inset 0 0 2rem
+      rgba(0, 0, 0, 0.25);
+}
+
+.section-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.9rem;
+
+  border-bottom: 1px solid
+    rgba(194, 157, 77, 0.24);
+}
+
+.eyebrow {
+  color: #d8b45c;
+
+  font-family: Arial, sans-serif;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+}
+
+h2 {
+  margin: 0.3rem 0 0;
+
+  font-family: Georgia, serif;
+  font-size: 1.8rem;
+  font-weight: 500;
+}
+
+.quest-count {
+  display: grid;
+  width: 2.15rem;
+  height: 2.15rem;
+  place-items: center;
+
+  color: #d8b45c;
+  border: 1px solid
+    rgba(216, 180, 92, 0.45);
+  border-radius: 50%;
+
+  font-family: Georgia, serif;
+}
+
+.quest-form {
+  display: grid;
+  gap: 1rem;
+
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+
+  background: rgba(4, 5, 11, 0.62);
+
+  border: 1px solid
+    rgba(194, 157, 77, 0.18);
+}
+
+.form-heading {
+  color: #e1c477;
+
+  font-family: Georgia, serif;
+  font-size: 1.05rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 2fr)
+    minmax(9rem, 1fr);
+  gap: 1rem;
+}
+
+label {
+  display: grid;
+  gap: 0.4rem;
+
+  color: rgba(243, 238, 229, 0.72);
+
+  font-family: Arial, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+input,
+textarea {
+  width: 100%;
+  padding: 0.75rem 0.85rem;
+  box-sizing: border-box;
+
+  color: #f3eee5;
+  background: rgba(8, 9, 17, 0.92);
+
+  border: 1px solid
+    rgba(194, 157, 77, 0.28);
+  border-radius: 0;
+
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+
+  outline: none;
+
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+textarea {
+  min-height: 5.5rem;
+  resize: vertical;
+}
+
+input:focus,
+textarea:focus {
+  border-color:
+    rgba(216, 180, 92, 0.72);
+
+  box-shadow:
+    0 0 0 2px
+      rgba(216, 180, 92, 0.08);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.65rem;
+}
+
+button {
+  min-height: 2.35rem;
+  padding: 0.55rem 0.85rem;
+
+  color: #e9e1d3;
+  background: rgba(17, 18, 29, 0.92);
+
+  border: 1px solid
+    rgba(194, 157, 77, 0.3);
+
+  cursor: pointer;
+
+  font-family: Arial, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    background-color 150ms ease;
+}
+
+button:hover:not(:disabled) {
+  color: #fff4d3;
+  background: rgba(45, 38, 25, 0.75);
+  border-color:
+    rgba(216, 180, 92, 0.7);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.button-primary {
+  color: #090a10;
+  background: #d8b45c;
+  border-color: #d8b45c;
+}
+
+.button-primary:hover:not(:disabled) {
+  color: #090a10;
+  background: #efd17f;
+}
+
+.button-secondary {
+  background: transparent;
+}
+
+.quest-error,
+.quest-message {
+  margin: 1rem 0;
+  padding: 0.9rem;
+
+  font-family: Arial, sans-serif;
+  font-size: 0.85rem;
+}
+
+.quest-error {
+  color: #f1b3b3;
+  background: rgba(111, 25, 32, 0.2);
+  border: 1px solid
+    rgba(188, 75, 83, 0.4);
+}
+
+.quest-message {
+  color: rgba(243, 238, 229, 0.62);
+  text-align: center;
+}
+
+.quest-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.quest-card {
+  display: grid;
+  grid-template-columns:
+    auto minmax(0, 1fr) auto;
+  gap: 0.9rem;
+  align-items: center;
+
+  padding: 0.9rem;
+
+  background:
+    linear-gradient(
+      100deg,
+      rgba(16, 17, 28, 0.96),
+      rgba(9, 10, 18, 0.96)
+    );
+
+  border-left: 2px solid #d8b45c;
+  box-shadow:
+    0 0.5rem 1rem
+      rgba(0, 0, 0, 0.2);
+}
+
+.quest-card[data-status='completed'] {
+  opacity: 0.62;
+  border-left-color: #758477;
+}
+
+.quest-card[data-status='hidden'] {
+  opacity: 0.5;
+  border-left-color: #70687b;
+}
+
+.quest-order {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.quest-order button {
+  min-width: 2rem;
+  min-height: 1.8rem;
+  padding: 0.15rem 0.45rem;
+}
+
+.quest-content {
+  min-width: 0;
+}
+
+.quest-metadata {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+
+  margin-bottom: 0.3rem;
+}
+
+.quest-category {
+  color: #d8b45c;
+
+  font-family: Arial, sans-serif;
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.quest-status {
+  padding: 0.15rem 0.4rem;
+
+  color: #cbd6c8;
+  background: rgba(70, 101, 76, 0.2);
+
+  border: 1px solid
+    rgba(112, 151, 118, 0.32);
+
+  font-family: Arial, sans-serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.quest-status[data-status='completed'] {
+  color: #bec8be;
+}
+
+.quest-status[data-status='hidden'] {
+  color: #b8afc4;
+  background: rgba(82, 68, 98, 0.2);
+  border-color:
+    rgba(124, 105, 145, 0.32);
+}
+
+.quest-content h3 {
+  margin: 0;
+
+  color: #f3eadc;
+
+  font-family: Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+
+.quest-content p {
+  margin: 0.3rem 0 0;
+
+  color: rgba(235, 228, 215, 0.67);
+
+  font-family: Arial, sans-serif;
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.quest-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4rem;
+
+  max-width: 15rem;
+}
+
+.button-reactivate {
+  color: #d7e6d5;
+  border-color:
+    rgba(112, 151, 118, 0.48);
+}
+
+@media (max-width: 56rem) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .quest-card {
+    grid-template-columns:
+      auto minmax(0, 1fr);
+  }
+
+  .quest-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+    max-width: none;
+  }
+}
+
+@media (max-width: 36rem) {
+  .quest-manager {
+    padding: 1rem;
+  }
+
+  .quest-card {
+    align-items: start;
+  }
+
+  .quest-actions {
+    display: grid;
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
