@@ -515,3 +515,21 @@
 .quest-sign:nth-child(even) .quest-description {
   color: rgba(239, 224, 211, 0.76);
 }
+.quests-message {
+  align-self: start;
+
+  margin: 1rem 0.75rem;
+  padding: 1rem;
+
+  color: rgba(243, 238, 229, 0.62);
+
+  font-family: Georgia, serif;
+  font-size: 0.78rem;
+  font-style: italic;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.quests-error {
+  color: #e8aaaa;
+}

@@ -1,0 +1,228 @@
+<section
+  class="quest-manager"
+  aria-labelledby="quest-manager-title"
+>
+  <header class="section-header">
+    <div>
+      <span class="eyebrow">
+        Journal de campagne
+      </span>
+
+      <h2 id="quest-manager-title">
+        Quêtes
+      </h2>
+    </div>
+
+    <span class="quest-count">
+      {{ quests().length }}
+    </span>
+  </header>
+
+  <form
+    class="quest-form"
+    [formGroup]="questForm"
+    (ngSubmit)="submitQuest()"
+  >
+    <div class="form-heading">
+      @if (editingQuestId() !== null) {
+        Modifier la quête
+      } @else {
+        Nouvelle quête
+      }
+    </div>
+
+    <div class="form-row">
+      <label>
+        <span>Titre</span>
+
+        <input
+          type="text"
+          formControlName="title"
+          placeholder="La prophétie de Mme Eva"
+        />
+      </label>
+
+      <label>
+        <span>Catégorie</span>
+
+        <input
+          type="text"
+          formControlName="category"
+          placeholder="Prophétie"
+        />
+      </label>
+    </div>
+
+    <label>
+      <span>Objectif</span>
+
+      <textarea
+        formControlName="objective"
+        rows="3"
+        placeholder="Décris brièvement l’objectif visible par les joueurs…"
+      ></textarea>
+    </label>
+
+    <div class="form-actions">
+      @if (editingQuestId() !== null) {
+        <button
+          type="button"
+          class="button-secondary"
+          [disabled]="saving()"
+          (click)="cancelEdition()"
+        >
+          Annuler
+        </button>
+      }
+
+      <button
+        type="submit"
+        class="button-primary"
+        [disabled]="saving()"
+      >
+        @if (saving()) {
+          Enregistrement…
+        } @else if (
+          editingQuestId() !== null
+        ) {
+          Enregistrer
+        } @else {
+          Ajouter la quête
+        }
+      </button>
+    </div>
+  </form>
+
+  @if (error()) {
+    <p class="quest-error" role="alert">
+      {{ error() }}
+    </p>
+  }
+
+  @if (loading()) {
+    <p class="quest-message">
+      Chargement des quêtes…
+    </p>
+  } @else if (quests().length === 0) {
+    <p class="quest-message">
+      Aucune quête enregistrée pour cette campagne.
+    </p>
+  } @else {
+    <div class="quest-list">
+      @for (
+        quest of quests();
+        track quest.id
+      ) {
+        <article
+          class="quest-card"
+          [attr.data-status]="quest.status"
+        >
+          <div class="quest-order">
+            <button
+              type="button"
+              aria-label="Monter la quête"
+              title="Monter"
+              [disabled]="
+                saving() || isFirst(quest)
+              "
+              (click)="moveQuest(quest, -1)"
+            >
+              ↑
+            </button>
+
+            <button
+              type="button"
+              aria-label="Descendre la quête"
+              title="Descendre"
+              [disabled]="
+                saving() || isLast(quest)
+              "
+              (click)="moveQuest(quest, 1)"
+            >
+              ↓
+            </button>
+          </div>
+
+          <div class="quest-content">
+            <div class="quest-metadata">
+              <span class="quest-category">
+                {{ quest.category }}
+              </span>
+
+              <span
+                class="quest-status"
+                [attr.data-status]="
+                  quest.status
+                "
+              >
+                {{
+                  statusLabel(
+                    quest.status
+                  )
+                }}
+              </span>
+            </div>
+
+            <h3>{{ quest.title }}</h3>
+
+            <p>{{ quest.objective }}</p>
+          </div>
+
+          <div class="quest-actions">
+            <button
+              type="button"
+              [disabled]="saving()"
+              (click)="editQuest(quest)"
+            >
+              Modifier
+            </button>
+
+            @if (
+              quest.status === 'active'
+            ) {
+              <button
+                type="button"
+                [disabled]="saving()"
+                (click)="
+                  setStatus(
+                    quest,
+                    'completed'
+                  )
+                "
+              >
+                Terminer
+              </button>
+
+              <button
+                type="button"
+                [disabled]="saving()"
+                (click)="
+                  setStatus(
+                    quest,
+                    'hidden'
+                  )
+                "
+              >
+                Masquer
+              </button>
+            } @else {
+              <button
+                type="button"
+                class="button-reactivate"
+                [disabled]="saving()"
+                (click)="
+                  setStatus(
+                    quest,
+                    'active'
+                  )
+                "
+              >
+                Réactiver
+              </button>
+            }
+          </div>
+        </article>
+      }
+    </div>
+  }
+</section>

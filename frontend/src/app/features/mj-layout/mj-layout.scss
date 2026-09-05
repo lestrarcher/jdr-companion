@@ -6,7 +6,11 @@
 }
 
 .mj-shell {
-  min-height: 100dvh;
+  width: 100%;
+  height: 100dvh;
+  min-height: 0;
+  overflow-y: auto;
+  background: #090a10;
 }
 
 .mj-navigation {
@@ -144,7 +148,9 @@
 }
 
 .mj-content {
-  min-height: calc(100dvh - 4.5rem);
+  width: 100%;
+  height: calc(100dvh - 4.5rem);
+  min-height: 0;
 }
 
 @media (max-width: 600px) {
@@ -166,5 +172,19 @@
   nav a {
     padding-inline: 0.6rem;
     font-size: 0.65rem;
+  }
+}
+
+
+@media (max-width: 850px) {
+  .mj-content {
+    height: auto;
+    min-height: calc(100dvh - 4.5rem);
+  }
+}
+
+@media (max-width: 600px) {
+  .mj-content {
+    min-height: calc(100dvh - 4rem);
   }
 }

@@ -1,58 +1,101 @@
-<section class="quests-panel" aria-labelledby="quests-title">
+<section
+  class="quests-panel"
+  aria-labelledby="quests-title"
+>
   <header class="quests-header">
-    <p class="quests-eyebrow">Journal</p>
+    <p class="quests-eyebrow">
+      Journal
+    </p>
 
     <div class="quests-title-row">
-      <span class="title-ornament" aria-hidden="true">◆</span>
-      <h2 id="quests-title">Quêtes</h2>
-      <span class="title-ornament" aria-hidden="true">◆</span>
+      <span
+        class="title-ornament"
+        aria-hidden="true"
+      >
+        ◆
+      </span>
+
+      <h2 id="quests-title">
+        Quêtes
+      </h2>
+
+      <span
+        class="title-ornament"
+        aria-hidden="true"
+      >
+        ◆
+      </span>
     </div>
   </header>
 
-  <div class="quests-viewport">
-    <div
-      class="quests-track"
-      [style.--quest-scroll-duration]="scrollDuration"
+  @if (loading()) {
+    <p class="quests-message">
+      Ouverture du journal…
+    </p>
+  } @else if (error()) {
+    <p
+      class="quests-message quests-error"
+      role="alert"
     >
-      <div class="quests-set">
-        @for (quest of quests; track quest.title) {
-          <article class="quest-sign">
-            <p class="quest-category">
-              {{ quest.category }}
-            </p>
+      {{ error() }}
+    </p>
+  } @else if (quests().length === 0) {
+    <p class="quests-message">
+      Aucune quête en cours.
+    </p>
+  } @else {
+    <div class="quests-viewport">
+      <div
+        class="quests-track"
+        [style.--quest-scroll-duration]="
+          scrollDuration
+        "
+      >
+        <div class="quests-set">
+          @for (
+            quest of quests();
+            track quest.id
+          ) {
+            <article class="quest-sign">
+              <p class="quest-category">
+                {{ quest.category }}
+              </p>
 
-            <h3 class="quest-title">
-              {{ quest.title }}
-            </h3>
+              <h3 class="quest-title">
+                {{ quest.title }}
+              </h3>
 
-            <p class="quest-description">
-              {{ quest.objective }}
-            </p>
-          </article>
-        }
-      </div>
+              <p class="quest-description">
+                {{ quest.objective }}
+              </p>
+            </article>
+          }
+        </div>
 
-      <!--
-        Copie uniquement visuelle permettant une boucle continue.
-        Elle est ignorée par les lecteurs d’écran.
-      -->
-      <div class="quests-set" aria-hidden="true">
-        @for (quest of quests; track quest.title) {
-          <article class="quest-sign">
-            <p class="quest-category">
-              {{ quest.category }}
-            </p>
+        <div
+          class="quests-set"
+          aria-hidden="true"
+        >
+          @for (
+            quest of quests();
+            track quest.id
+          ) {
+            <article class="quest-sign">
+              <p class="quest-category">
+                {{ quest.category }}
+              </p>
 
-            <h3 class="quest-title">
-              {{ quest.title }}
-            </h3>
+              <h3 class="quest-title">
+                {{ quest.title }}
+              </h3>
 
-            <p class="quest-description">
-              {{ quest.objective }}
-            </p>
-          </article>
-        }
+              <p class="quest-description">
+                {{ quest.objective }}
+              </p>
+            </article>
+          }
+        </div>
       </div>
     </div>
-  </div>
+  }
 </section>
