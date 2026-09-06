@@ -1,99 +1,140 @@
-<aside class="character-sidebar">
-  <header class="sidebar-heading">
-    <span class="eyebrow">
-      Participants
-    </span>
+<section class="character-management">
+  <header class="management-heading">
+    <div>
+      <span class="eyebrow">
+        Participants
+      </span>
 
-    <h2>Personnages</h2>
+      <h2>Personnages</h2>
 
-    <span class="character-count">
-      {{ characters().length }}
-    </span>
+      <p>
+        Surveille leur état et gère les objets
+        distribués pendant la session.
+      </p>
+    </div>
+
+    <div class="heading-actions">
+      <span class="character-count">
+        {{ characters().length }}
+        personnage{{
+          characters().length > 1
+            ? 's'
+            : ''
+        }}
+      </span>
+
+      @if (hasCharacters()) {
+        <button
+          type="button"
+          class="refresh-button"
+          [disabled]="refreshingHitPoints()"
+          (click)="refreshHitPoints()"
+        >
+          {{
+            refreshingHitPoints()
+              ? 'Actualisation…'
+              : 'Actualiser les PV'
+          }}
+        </button>
+      }
+    </div>
   </header>
+
+  @if (characterActionError()) {
+    <p
+      class="feedback feedback--error"
+      role="alert"
+    >
+      {{ characterActionError() }}
+    </p>
+  }
 
   @if (restRequests().length > 0) {
     <section
       class="rest-request-section"
       aria-live="assertive"
     >
-      <span class="section-label">
-        Action requise
-      </span>
+      <header>
+        <span class="section-label">
+          Action requise
+        </span>
 
-      @for (
-        request of restRequests();
-        track request.id
-      ) {
-        <article class="rest-request-card">
-          <div>
-            <strong>
-              {{ request.character.name }}
-            </strong>
+        <strong>
+          {{ restRequests().length }}
+          demande{{
+            restRequests().length > 1
+              ? 's'
+              : ''
+          }}
+        </strong>
+      </header>
 
-            <small>
-              {{
-                restTypeLabel(request.type)
-              }}
-            </small>
-          </div>
+      <div class="rest-request-list">
+        @for (
+          request of restRequests();
+          track request.id
+        ) {
+          <article class="rest-request-card">
+            <div>
+              <strong>
+                {{ request.character.name }}
+              </strong>
 
-          <div class="request-actions">
-            <button
-              type="button"
-              class="reject-button"
-              [disabled]="
-                resolvingRestRequestId() !==
-                null
-              "
-              (click)="
-                resolveRestRequest(
-                  request.id,
-                  false
-                )
-              "
-            >
-              Refuser
-            </button>
+              <small>
+                {{
+                  restTypeLabel(request.type)
+                }}
+              </small>
+            </div>
 
-            <button
-              type="button"
-              class="approve-button"
-              [disabled]="
-                resolvingRestRequestId() !==
-                null
-              "
-              (click)="
-                resolveRestRequest(
-                  request.id,
-                  true
-                )
-              "
-            >
-              Accepter
-            </button>
-          </div>
-        </article>
-      }
+            <div class="request-actions">
+              <button
+                type="button"
+                class="reject-button"
+                [disabled]="
+                  resolvingRestRequestId()
+                  !== null
+                "
+                (click)="
+                  resolveRestRequest(
+                    request.id,
+                    false
+                  )
+                "
+              >
+                Refuser
+              </button>
+
+              <button
+                type="button"
+                class="approve-button"
+                [disabled]="
+                  resolvingRestRequestId()
+                  !== null
+                "
+                (click)="
+                  resolveRestRequest(
+                    request.id,
+                    true
+                  )
+                "
+              >
+                Accepter
+              </button>
+            </div>
+          </article>
+        }
+      </div>
     </section>
   }
 
-  <section class="character-list">
+  <section class="character-grid">
     @for (
       character of characters();
       track character.characterId
     ) {
-      @if (
-        playerPortalUrl(
-          character.accessToken
-        );
-        as portalUrl
-      ) {
-        <a
-          class="character-entry"
-          [href]="portalUrl"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+      <article class="character-card">
+        <header class="character-card__header">
           <span
             class="character-portrait"
             aria-hidden="true"
@@ -105,46 +146,161 @@
             }}
           </span>
 
-          <span class="character-information">
-            <strong>
+          <div class="character-identity">
+            <h3>
               {{ character.characterName }}
-            </strong>
+            </h3>
 
             <small>
+              Personnage #{{ character.characterId }}
+            </small>
+          </div>
+
+          <span
+            class="health-status"
+            [class.health-status--healthy]="
+              hitPointTone(character)
+              === 'healthy'
+            "
+            [class.health-status--wounded]="
+              hitPointTone(character)
+              === 'wounded'
+            "
+            [class.health-status--critical]="
+              hitPointTone(character)
+              === 'critical'
+            "
+          >
+            @switch (
+              hitPointTone(character)
+            ) {
+              @case ('healthy') {
+                Stable
+              }
+
+              @case ('wounded') {
+                Blessé
+              }
+
+              @case ('critical') {
+                Critique
+              }
+            }
+          </span>
+        </header>
+
+        <section class="hit-points">
+          <header>
+            <span>Points de vie</span>
+
+            <strong>
+              {{ currentHitPoints(character) }}
+              /
+              {{ character.maximumHitPoints }}
+            </strong>
+          </header>
+
+          <div
+            class="hit-point-track"
+            role="progressbar"
+            [attr.aria-valuenow]="
+              currentHitPoints(character)
+            "
+            [attr.aria-valuemin]="0"
+            [attr.aria-valuemax]="
+              character.maximumHitPoints
+            "
+            [attr.aria-label]="
+              'Points de vie de '
+              + character.characterName
+            "
+          >
+            <span
+              class="hit-point-value"
+              [class.hit-point-value--healthy]="
+                hitPointTone(character)
+                === 'healthy'
+              "
+              [class.hit-point-value--wounded]="
+                hitPointTone(character)
+                === 'wounded'
+              "
+              [class.hit-point-value--critical]="
+                hitPointTone(character)
+                === 'critical'
+              "
+              [style.width.%]="
+                hitPointPercentage(character)
+              "
+            ></span>
+          </div>
+
+          @if (
+            temporaryHitPoints(character) > 0
+          ) {
+            <span class="temporary-hit-points">
+              +
+              {{
+                temporaryHitPoints(character)
+              }}
+              PV temporaires
+            </span>
+          }
+        </section>
+
+        <footer class="character-actions">
+          @if (
+            playerPortalUrl(
+              character.accessToken
+            );
+            as portalUrl
+          ) {
+            <a
+              class="character-action"
+              [href]="portalUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               Ouvrir le portail
-            </small>
-          </span>
-        </a>
-      } @else {
-        <div
-          class="character-entry character-entry-disabled"
-        >
-          <span
-            class="character-portrait"
-            aria-hidden="true"
-          >
-            {{
-              characterInitial(
-                character.characterName
-              )
-            }}
-          </span>
-
-          <span class="character-information">
-            <strong>
-              {{ character.characterName }}
-            </strong>
-
-            <small>
+            </a>
+          } @else {
+            <button
+              type="button"
+              class="character-action"
+              disabled
+            >
               Lien indisponible
-            </small>
-          </span>
-        </div>
-      }
+            </button>
+          }
+
+          <button
+            type="button"
+            class="character-action"
+            (click)="openStatistics(character)"
+          >
+            Voir les caractéristiques
+          </button>
+
+          <button
+            type="button"
+            class="character-action character-action--primary"
+            (click)="
+              openItemAssignment(character)
+            "
+          >
+            Donner un objet
+          </button>
+        </footer>
+      </article>
     } @empty {
-      <p class="empty-state">
-        Aucun personnage initialisé.
-      </p>
+      <div class="empty-state">
+        <span aria-hidden="true">◇</span>
+
+        <p>
+          Aucun personnage initialisé pour
+          cette session.
+        </p>
+      </div>
     }
   </section>
 
@@ -166,14 +322,371 @@
   }
 
   @if (initializationError()) {
-    <p class="error-message" role="alert">
+    <p
+      class="feedback feedback--error"
+      role="alert"
+    >
       {{ initializationError() }}
     </p>
   }
 
   @if (restRequestError()) {
-    <p class="error-message" role="alert">
+    <p
+      class="feedback feedback--error"
+      role="alert"
+    >
       {{ restRequestError() }}
     </p>
   }
-</aside>
+</section>
+
+@if (
+  selectedCharacter();
+  as assignmentCharacter
+) {
+  <div
+    class="modal-backdrop"
+    role="presentation"
+    (click)="closeItemAssignment()"
+  >
+    <section
+      class="modal-panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="assignment-title"
+      (click)="$event.stopPropagation()"
+    >
+      <header class="modal-header">
+        <div>
+          <span class="eyebrow">
+            Inventaire
+          </span>
+
+          <h2 id="assignment-title">
+            Donner un objet
+          </h2>
+
+          <p>
+            Attribution à
+            <strong>
+              {{
+                assignmentCharacter.characterName
+              }}
+            </strong>
+          </p>
+        </div>
+
+        <button
+          type="button"
+          class="modal-close"
+          aria-label="Fermer"
+          [disabled]="assigningItem()"
+          (click)="closeItemAssignment()"
+        >
+          ×
+        </button>
+      </header>
+
+      @if (assignmentFeedback()) {
+        <p class="feedback feedback--success">
+          {{ assignmentFeedback() }}
+        </p>
+      }
+
+      @if (characterActionError()) {
+        <p class="feedback feedback--error">
+          {{ characterActionError() }}
+        </p>
+      }
+
+      @if (catalogLoading()) {
+        <p class="modal-empty">
+          Chargement du catalogue…
+        </p>
+      } @else if (catalog().length === 0) {
+        <p class="modal-empty">
+          Aucun objet n’existe dans le catalogue
+          de cette campagne.
+        </p>
+      } @else {
+        <label class="modal-field">
+          <span>Objet magique</span>
+
+          <select
+            [value]="
+              selectedMagicItemId() ?? ''
+            "
+            (change)="selectMagicItem($event)"
+          >
+            <option value="">
+              Sélectionner un objet…
+            </option>
+
+            @for (
+              magicItem of catalog();
+              track magicItem.id
+            ) {
+              <option [value]="magicItem.id">
+                {{ magicItem.name }}
+              </option>
+            }
+          </select>
+        </label>
+
+        @if (
+          selectedMagicItem();
+          as magicItem
+        ) {
+          <article class="selected-item">
+            <header>
+              <div>
+                <h3>{{ magicItem.name }}</h3>
+
+                <small>
+                  {{ magicItem.rarity }}
+                </small>
+              </div>
+
+              @if (
+                magicItem.requiresAttunement
+              ) {
+                <span>
+                  Harmonisation requise
+                </span>
+              }
+            </header>
+
+            @if (magicItem.description) {
+              <p>
+                {{ magicItem.description }}
+              </p>
+            }
+
+            <footer>
+              @if (
+                magicItem.maximumCharges
+                !== null
+              ) {
+                <span>
+                  {{ magicItem.maximumCharges }}
+                  charge{{
+                    magicItem.maximumCharges > 1
+                      ? 's'
+                      : ''
+                  }}
+                </span>
+              }
+
+              @if (
+                magicItem.abilityEffects.length
+                > 0
+              ) {
+                <span>
+                  {{
+                    magicItem
+                      .abilityEffects.length
+                  }}
+                  effet{{
+                    magicItem
+                      .abilityEffects.length > 1
+                      ? 's'
+                      : ''
+                  }}
+                </span>
+              }
+            </footer>
+          </article>
+        }
+
+        <footer class="modal-actions">
+          <button
+            type="button"
+            class="secondary-button"
+            [disabled]="assigningItem()"
+            (click)="closeItemAssignment()"
+          >
+            Fermer
+          </button>
+
+          <button
+            type="button"
+            class="primary-button"
+            [disabled]="
+              assigningItem()
+              || selectedMagicItemId()
+                === null
+            "
+            (click)="assignSelectedItem()"
+          >
+            {{
+              assigningItem()
+                ? 'Attribution…'
+                : 'Donner cet objet'
+            }}
+          </button>
+        </footer>
+      }
+    </section>
+  </div>
+}
+
+@if (
+  statisticsCharacter();
+  as statisticsCharacter
+) {
+  <div
+    class="modal-backdrop"
+    role="presentation"
+    (click)="closeStatistics()"
+  >
+    <section
+      class="modal-panel modal-panel--wide"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="statistics-title"
+      (click)="$event.stopPropagation()"
+    >
+      <header class="modal-header">
+        <div>
+          <span class="eyebrow">
+            Fiche technique
+          </span>
+
+          <h2 id="statistics-title">
+            {{
+              statisticsCharacter.characterName
+            }}
+          </h2>
+
+          <p>
+            Caractéristiques après application
+            des objets équipés.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          class="modal-close"
+          aria-label="Fermer"
+          (click)="closeStatistics()"
+        >
+          ×
+        </button>
+      </header>
+
+      @if (statisticsLoading()) {
+        <p class="modal-empty">
+          Calcul des caractéristiques…
+        </p>
+      } @else if (
+        statisticsInventory();
+        as inventory
+      ) {
+        <div class="attunement-summary">
+          <span>Harmonisation</span>
+
+          <strong>
+            {{ inventory.attunedCount }}
+            /
+            {{ inventory.attunementLimit }}
+          </strong>
+        </div>
+
+        <section class="ability-grid">
+          @for (
+            ability of inventory.effectiveAbilities;
+            track ability.ability
+          ) {
+            <article
+              class="ability-card"
+              [class.ability-card--modified]="
+                ability.effectiveValue
+                !== ability.baseValue
+              "
+            >
+              <span>
+                {{
+                  abilityLabel(
+                    ability.ability
+                  )
+                }}
+              </span>
+
+              <strong>
+                {{ ability.effectiveValue }}
+              </strong>
+
+              <small>
+                {{
+                  formatModifier(
+                    ability.modifier
+                  )
+                }}
+              </small>
+
+              @if (
+                ability.effectiveValue
+                !== ability.baseValue
+              ) {
+                <em>
+                  Base {{ ability.baseValue }}
+                </em>
+              }
+            </article>
+          }
+        </section>
+
+        <section class="statistics-items">
+          <header>
+            <h3>Objets possédés</h3>
+
+            <span>
+              {{ inventory.ownedItems.length }}
+            </span>
+          </header>
+
+          @for (
+            ownedItem of inventory.ownedItems;
+            track ownedItem.id
+          ) {
+            <article class="statistics-item">
+              <div>
+                <strong>
+                  {{ ownedItem.magicItem.name }}
+                </strong>
+
+                <small>
+                  @if (ownedItem.equipped) {
+                    Équipé
+                  } @else {
+                    Non équipé
+                  }
+
+                  @if (ownedItem.attuned) {
+                    · Harmonisé
+                  }
+                </small>
+              </div>
+
+              <span
+                [class.effect-active]="
+                  ownedItem.effectActive
+                "
+              >
+                {{
+                  ownedItem.effectActive
+                    ? 'Effets actifs'
+                    : 'Effets inactifs'
+                }}
+              </span>
+            </article>
+          } @empty {
+            <p class="modal-empty">
+              Aucun objet magique possédé.
+            </p>
+          }
+        </section>
+      }
+    </section>
+  </div>
+}

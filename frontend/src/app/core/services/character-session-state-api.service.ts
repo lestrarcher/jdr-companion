@@ -1,11 +1,21 @@
-import { HttpClient } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import {
+  HttpClient,
+} from '@angular/common/http';
+import {
+  inject,
+  Injectable,
+} from '@angular/core';
+import {
+  Observable,
+} from 'rxjs';
+
+import {
+  CharacterSessionStatePayload,
+} from '@core/mappers/character-api.mapper';
+
 import {
   CampaignConfigurationKey,
 } from '@core/services/campaign-api.service';
-
-import { CharacterSessionStatePayload } from '@core/mappers/character-api.mapper';
 
 export interface CharacterSessionStateApiResponse {
   id: number;
@@ -19,30 +29,10 @@ export interface CharacterSessionStateApiResponse {
   session: {
     id: number;
     name: string;
-    status: 'draft' | 'live' | 'closed';
-  };
-
-  character: {
-    id: number;
-    slug: string;
-    name: string;
-    playerName: string | null;
-    type: 'player' | 'npc';
-    definition: Record<string, unknown>;
-  };
-
-  state: CharacterSessionStatePayload;
-  accessToken?: string;
-  updatedAt: string;
-}
-
-export interface CharacterSessionStateApiResponse {
-  id: number;
-
-  session: {
-    id: number;
-    name: string;
-    status: 'draft' | 'live' | 'closed';
+    status:
+      | 'draft'
+      | 'live'
+      | 'closed';
   };
 
   character: {
@@ -63,7 +53,9 @@ export interface CharacterSessionStateApiResponse {
   providedIn: 'root',
 })
 export class CharacterSessionStateApiService {
-  private readonly http = inject(HttpClient);
+  private readonly http =
+    inject(HttpClient);
+
   private readonly apiUrl = '/api';
 
   create(

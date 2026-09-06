@@ -61,6 +61,9 @@
               <span class="tab-notification">{{ pendingRestRequests().length }}</span>
             }
           </button>
+          <button type="button" role="tab" [class.active]="activeTab() === 'items'" [attr.aria-selected]="activeTab() === 'items'" (click)="selectTab('items')">
+            Objets
+          </button>
         </nav>
 
         <div class="dashboard-tab-content">
@@ -104,13 +107,36 @@
                 [campaignId]="backendCampaignId"
                 [sessionId]="backendSessionId"
                 [characters]="importedCharacters()"
-                [initializationRunning]="characterImportRunning()"
-                [initializationError]="characterImportError()"
-                [restRequests]="pendingRestRequests()"
-                [resolvingRestRequestId]="resolvingRestRequestId()"
-                [restRequestError]="restRequestError()"
-                (charactersInitialized)="synchronizeCharacters()"
-                (restRequestResolved)="resolveRestRequest($event.requestId, $event.approved)"
+                [initializationRunning]="
+                  characterImportRunning()
+                "
+                [initializationError]="
+                  characterImportError()
+                "
+                [restRequests]="
+                  pendingRestRequests()
+                "
+                [resolvingRestRequestId]="
+                  resolvingRestRequestId()
+                "
+                [restRequestError]="
+                  restRequestError()
+                "
+                (charactersInitialized)="
+                  synchronizeCharacters()
+                "
+                (restRequestResolved)="
+                  resolveRestRequest(
+                    $event.requestId,
+                    $event.approved
+                  )
+                "
+              />
+            }
+
+            @case ('items') {
+              <app-magic-item-manager
+                [campaignId]="backendCampaignId"
               />
             }
           }

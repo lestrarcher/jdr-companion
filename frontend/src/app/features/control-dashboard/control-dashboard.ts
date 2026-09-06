@@ -17,7 +17,7 @@ import {
   timer,
 } from 'rxjs';
 import { CampaignMedia as UploadedCampaignMedia } from '@core/services/media-api.service';
-
+import { MagicItemManager } from './components/magic-item-manager/magic-item-manager';
 import { MediaManager } from './components/media-manager/media-manager';
 import { FigurePanelMode } from '@core/models/live-session-state.model';
 import { CampaignConfig } from '@core/models/campaign.model';
@@ -38,7 +38,8 @@ type DashboardTab =
   | 'staging'
   | 'journal'
   | 'figures'
-  | 'characters';
+  | 'characters'
+  | 'items';
 
 @Component({
   selector: 'app-control-dashboard',
@@ -50,6 +51,7 @@ type DashboardTab =
     QuestManager,
     CampaignFigureManager,
     TipManager,
+    MagicItemManager,
   ],
   templateUrl: './control-dashboard.html',
   styleUrl: './control-dashboard.scss',
