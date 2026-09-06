@@ -54,6 +54,14 @@ class Character
     #[ORM\Column(type: 'json')]
     private array $definition = [];
 
+    #[ORM\OneToOne(
+        mappedBy: 'character',
+        targetEntity: CharacterWallet::class,
+        cascade: ['persist', 'remove'],
+        orphanRemoval: true,
+    )]
+    private ?CharacterWallet $wallet = null;
+
     /**
      * @param array<string, mixed> $definition
      */
@@ -78,6 +86,7 @@ class Character
         $this->name = $name;
         $this->type = $type;
         $this->definition = $definition;
+        $this->wallet = new CharacterWallet($this);
     }
 
     public function getId(): ?int
@@ -145,6 +154,33 @@ class Character
     public function setDefinition(array $definition): self
     {
         $this->definition = $definition;
+
+        return $this;
+    }
+
+    public function getWallet():
+    CharacterWallet {
+    if (!$this->wallet) {
+        $this->wallet =
+            new CharacterWallet($this);
+    }
+
+    return $this->wallet;
+}
+
+    public function setWallet(
+        CharacterWallet $wallet,
+    ): static {
+        if (
+            $wallet->getCharacter()
+            !== $this
+        ) {
+            throw new \InvalidArgumentException(
+                'Cette bourse appartient à un autre personnage.',
+            );
+        }
+
+        $this->wallet = $wallet;
 
         return $this;
     }

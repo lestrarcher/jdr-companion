@@ -8,6 +8,9 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
+import {
+  CharacterWalletComponent,
+} from './components/character-wallet/character-wallet';
 
 import {
   EMPTY,
@@ -60,6 +63,10 @@ type SaveStatus =
   | 'saved'
   | 'error';
 
+type PlayerPortalTab =
+  | 'status'
+  | 'possessions';
+
 @Component({
   selector: 'app-player-portal',
   imports: [
@@ -67,6 +74,7 @@ type SaveStatus =
     CharacterResources,
     CharacterStoredValues,
     CharacterVitals,
+    CharacterWalletComponent,
     RestControls,
   ],
   templateUrl: './player-portal.html',
@@ -75,6 +83,11 @@ type SaveStatus =
 export class PlayerPortal {
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
+
+  protected readonly accessToken =
+    this.route.snapshot.paramMap.get(
+      'accessToken',
+    ) ?? '';
 
   private readonly characterStateService = inject(
     CharacterStateService,
@@ -139,10 +152,8 @@ export class PlayerPortal {
       'sessionId',
     ) ?? '';
 
-  private readonly accessToken =
-    this.route.snapshot.paramMap.get(
-      'accessToken',
-    ) ?? '';
+  protected readonly activeTab =
+    signal<PlayerPortalTab>('status');
 
   protected readonly sortedResources = computed(() => {
     const character = this.characterState();
@@ -241,6 +252,16 @@ export class PlayerPortal {
         ),
       );
     });
+  }
+
+  protected selectTab(
+    tab: PlayerPortalTab,
+  ): void {
+    if (this.pendingRestRequest()) {
+      return;
+    }
+
+    this.activeTab.set(tab);
   }
 
   protected handleProgressionChange(
