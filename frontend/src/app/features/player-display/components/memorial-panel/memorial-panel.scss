@@ -65,7 +65,7 @@
     0 0 14px rgba(0, 0, 0, 0.9);
 }
 
-.header-cross {
+.header-symbol {
   color: rgba(215, 181, 99, 0.72);
 
   font-family: Georgia, 'Times New Roman', serif;
@@ -74,6 +74,18 @@
   filter:
     drop-shadow(0 0 6px rgba(215, 181, 99, 0.25))
     drop-shadow(0 2px 3px rgba(0, 0, 0, 1));
+}
+
+.memorial-panel[data-mode='party'] {
+  --panel-accent: #7da0bf;
+}
+
+.memorial-panel[data-mode='important-npcs'] {
+  --panel-accent: #b9975f;
+}
+
+.memorial-panel[data-mode='memorial'] {
+  --panel-accent: #9e747b;
 }
 
 /* Zone animée */
@@ -136,6 +148,31 @@
 
   content: '';
   pointer-events: none;
+}
+
+.figure-placeholder {
+  grid-template-rows: auto auto;
+  align-content: center;
+  gap: 0.8rem;
+
+  padding: 1rem 0.7rem;
+  box-sizing: border-box;
+}
+
+.figure-initial {
+  display: grid;
+  width: 2.8rem;
+  height: 2.8rem;
+  place-items: center;
+
+  color: #eee7de;
+  background: rgba(5, 7, 13, 0.58);
+  border: 1px solid
+    rgba(211, 174, 88, 0.38);
+  border-radius: 50%;
+
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.3rem;
 }
 
 /* Portrait présent */
@@ -298,6 +335,24 @@
 .memorial-counter {
   color: rgba(204, 211, 215, 0.66);
   font-size: 0.46rem;
+}
+
+.panel-message {
+  align-self: center;
+  margin: 0;
+  padding: 1.5rem 0.75rem;
+
+  color: rgba(231, 225, 216, 0.62);
+
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 0.78rem;
+  font-style: italic;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.panel-message--error {
+  color: #d89b9b;
 }
 
 @keyframes memorial-reveal {

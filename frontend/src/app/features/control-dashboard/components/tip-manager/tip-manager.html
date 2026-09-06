@@ -1,0 +1,191 @@
+<section
+  class="tip-manager"
+  aria-labelledby="tip-manager-title"
+>
+  <header class="section-header">
+    <div>
+      <span class="eyebrow">
+        Informations aux joueurs
+      </span>
+
+      <h2 id="tip-manager-title">
+        Tips
+      </h2>
+    </div>
+
+    <span class="tip-count">
+      {{ tips().length }}
+    </span>
+  </header>
+
+  <form
+    class="tip-form"
+    [formGroup]="tipForm"
+    (ngSubmit)="submitTip()"
+  >
+    <h3>
+      @if (editingTipId() !== null) {
+        Modifier le tip
+      } @else {
+        Nouveau tip
+      }
+    </h3>
+
+    <div class="form-row">
+      <label>
+        <span>Titre</span>
+
+        <input
+          type="text"
+          formControlName="label"
+          placeholder="Boire une potion"
+        />
+      </label>
+
+      <label>
+        <span>Catégorie</span>
+
+        <select formControlName="category">
+          <option value="rule">Règle</option>
+          <option value="advice">Conseil</option>
+          <option value="lore">Univers</option>
+        </select>
+      </label>
+    </div>
+
+    <label>
+      <span>Texte</span>
+
+      <textarea
+        formControlName="text"
+        rows="3"
+        placeholder="Texte affiché aux joueurs…"
+      ></textarea>
+    </label>
+
+    <div class="form-actions">
+      @if (editingTipId() !== null) {
+        <button
+          type="button"
+          class="button-secondary"
+          [disabled]="saving()"
+          (click)="cancelEdition()"
+        >
+          Annuler
+        </button>
+      }
+
+      <button
+        type="submit"
+        class="button-primary"
+        [disabled]="saving()"
+      >
+        @if (saving()) {
+          Enregistrement…
+        } @else if (
+          editingTipId() !== null
+        ) {
+          Enregistrer
+        } @else {
+          Ajouter
+        }
+      </button>
+    </div>
+  </form>
+
+  @if (error()) {
+    <p class="manager-error" role="alert">
+      {{ error() }}
+    </p>
+  }
+
+  @if (loading()) {
+    <p class="manager-message">
+      Chargement des tips…
+    </p>
+  } @else if (tips().length === 0) {
+    <p class="manager-message">
+      Aucun tip enregistré.
+    </p>
+  } @else {
+    <div class="tip-list">
+      @for (tip of tips(); track tip.id) {
+        <article
+          class="tip-card"
+          [attr.data-status]="tip.status"
+        >
+          <div class="tip-order">
+            <button
+              type="button"
+              title="Monter"
+              aria-label="Monter le tip"
+              [disabled]="
+                saving() || isFirst(tip)
+              "
+              (click)="moveTip(tip, -1)"
+            >
+              ↑
+            </button>
+
+            <button
+              type="button"
+              title="Descendre"
+              aria-label="Descendre le tip"
+              [disabled]="
+                saving() || isLast(tip)
+              "
+              (click)="moveTip(tip, 1)"
+            >
+              ↓
+            </button>
+          </div>
+
+          <div class="tip-content">
+            <div class="tip-metadata">
+              <span>
+                {{
+                  categoryLabel(
+                    tip.category
+                  )
+                }}
+              </span>
+
+              <span>
+                {{
+                  tip.status === 'visible'
+                    ? 'Visible'
+                    : 'Masqué'
+                }}
+              </span>
+            </div>
+
+            <h3>{{ tip.label }}</h3>
+            <p>{{ tip.text }}</p>
+          </div>
+
+          <div class="tip-actions">
+            <button
+              type="button"
+              [disabled]="saving()"
+              (click)="editTip(tip)"
+            >
+              Modifier
+            </button>
+
+            <button
+              type="button"
+              [disabled]="saving()"
+              (click)="toggleVisibility(tip)"
+            >
+              @if (tip.status === 'visible') {
+                Masquer
+              } @else {
+                Rendre visible
+              }
+            </button>
+          </div>
+        </article>
+      }
+    </div>
+  }
+</section>

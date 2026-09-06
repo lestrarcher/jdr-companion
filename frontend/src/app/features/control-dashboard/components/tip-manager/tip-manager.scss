@@ -1,0 +1,302 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.tip-manager {
+  padding: 1.5rem;
+  color: #f3eee5;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(13, 13, 23, 0.98),
+      rgba(7, 8, 15, 0.98)
+    );
+
+  border: 1px solid
+    rgba(194, 157, 77, 0.28);
+}
+
+.section-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.9rem;
+
+  border-bottom: 1px solid
+    rgba(194, 157, 77, 0.24);
+}
+
+.eyebrow {
+  color: #d8b45c;
+
+  font-family: Arial, sans-serif;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+h2 {
+  margin: 0.3rem 0 0;
+  font-family: Georgia, serif;
+  font-size: 1.8rem;
+  font-weight: 500;
+}
+
+.tip-count {
+  display: grid;
+  width: 2.2rem;
+  height: 2.2rem;
+  place-items: center;
+
+  color: #d8b45c;
+
+  border: 1px solid
+    rgba(216, 180, 92, 0.45);
+  border-radius: 50%;
+}
+
+.tip-form {
+  display: grid;
+  gap: 1rem;
+
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+
+  background: rgba(4, 5, 11, 0.62);
+
+  border: 1px solid
+    rgba(194, 157, 77, 0.18);
+}
+
+.tip-form h3 {
+  margin: 0;
+  color: #e1c477;
+  font-family: Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 2fr)
+    minmax(9rem, 1fr);
+  gap: 1rem;
+}
+
+label {
+  display: grid;
+  gap: 0.4rem;
+
+  color: rgba(243, 238, 229, 0.7);
+
+  font-family: Arial, sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 0.75rem 0.85rem;
+
+  color: #f3eee5;
+  background: rgba(8, 9, 17, 0.94);
+
+  border: 1px solid
+    rgba(194, 157, 77, 0.28);
+
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+
+  outline: none;
+}
+
+textarea {
+  min-height: 5.5rem;
+  resize: vertical;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color:
+    rgba(216, 180, 92, 0.72);
+}
+
+.form-actions,
+.tip-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+button {
+  min-height: 2.3rem;
+  padding: 0.5rem 0.8rem;
+
+  color: #e9e1d3;
+  background: rgba(17, 18, 29, 0.92);
+
+  border: 1px solid
+    rgba(194, 157, 77, 0.3);
+
+  cursor: pointer;
+
+  font-family: Arial, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+button:hover:not(:disabled) {
+  color: #fff4d3;
+  background: rgba(45, 38, 25, 0.75);
+  border-color:
+    rgba(216, 180, 92, 0.7);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.button-primary {
+  color: #090a10;
+  background: #d8b45c;
+  border-color: #d8b45c;
+}
+
+.button-secondary {
+  background: transparent;
+}
+
+.manager-error,
+.manager-message {
+  margin: 1rem 0;
+  padding: 1rem;
+
+  font-family: Arial, sans-serif;
+  font-size: 0.82rem;
+}
+
+.manager-error {
+  color: #efadad;
+  background: rgba(111, 25, 32, 0.2);
+
+  border: 1px solid
+    rgba(188, 75, 83, 0.4);
+}
+
+.manager-message {
+  color: rgba(243, 238, 229, 0.58);
+  text-align: center;
+}
+
+.tip-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.tip-card {
+  display: grid;
+  grid-template-columns:
+    auto minmax(0, 1fr) auto;
+  gap: 0.9rem;
+  align-items: center;
+
+  padding: 0.9rem;
+
+  background:
+    linear-gradient(
+      100deg,
+      rgba(16, 17, 28, 0.96),
+      rgba(9, 10, 18, 0.96)
+    );
+
+  border-left: 2px solid #d8b45c;
+}
+
+.tip-card[data-status='hidden'] {
+  opacity: 0.45;
+  border-left-color: #70687b;
+}
+
+.tip-order {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.tip-order button {
+  min-width: 2rem;
+  min-height: 1.8rem;
+  padding: 0.1rem 0.4rem;
+}
+
+.tip-content {
+  min-width: 0;
+}
+
+.tip-metadata {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.3rem;
+}
+
+.tip-metadata span {
+  padding: 0.15rem 0.35rem;
+
+  color: #cdbb8e;
+  border: 1px solid
+    rgba(199, 165, 91, 0.2);
+
+  font-family: Arial, sans-serif;
+  font-size: 0.52rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tip-content h3 {
+  margin: 0;
+
+  color: #f3eadc;
+  font-family: Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+
+.tip-content p {
+  margin: 0.3rem 0 0;
+
+  color: rgba(235, 228, 215, 0.67);
+
+  font-family: Arial, sans-serif;
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 56rem) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .tip-card {
+    grid-template-columns:
+      auto minmax(0, 1fr);
+  }
+
+  .tip-actions {
+    grid-column: 1 / -1;
+  }
+}

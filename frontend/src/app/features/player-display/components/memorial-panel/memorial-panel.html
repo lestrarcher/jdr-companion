@@ -1,77 +1,142 @@
-<section
-  class="memorial-panel"
-  aria-labelledby="memorial-title"
->
-  <header class="memorial-header">
-    <div>
-      <span class="memorial-eyebrow">
-        Ceux que la Brume a pris
-      </span>
+@if (mode() !== 'hidden') {
+  <section
+    class="memorial-panel"
+    [attr.data-mode]="mode()"
+    aria-labelledby="figure-panel-title"
+  >
+    <header class="memorial-header">
+      <div>
+        <span class="memorial-eyebrow">
+          {{ eyebrow() }}
+        </span>
 
-      <h2 id="memorial-title">
-        In memoriam
-      </h2>
+        <h2 id="figure-panel-title">
+          {{ title() }}
+        </h2>
+      </div>
+
+      @if (mode() === 'memorial') {
+        <span
+          class="header-symbol"
+          aria-hidden="true"
+        >
+          †
+        </span>
+      }
+    </header>
+
+    <div class="memorial-viewport">
+      @if (loading()) {
+        <p class="panel-message">
+          Chargement…
+        </p>
+      } @else if (error()) {
+        <p class="panel-message panel-message--error">
+          {{ error() }}
+        </p>
+      } @else if (activeFigure(); as figure) {
+        <article
+          class="memorial-entry"
+          [attr.aria-label]="
+            mode() === 'memorial'
+              ? 'Mémorial de ' + figure.name
+              : 'Présentation de ' + figure.name
+          "
+        >
+          @if (figure.portrait) {
+            <div class="memorial-visual memorial-portrait">
+              <img
+                [src]="figure.portrait.url"
+                [alt]="'Portrait de ' + figure.name"
+              />
+
+              @if (mode() === 'memorial') {
+                <span
+                  class="portrait-cross"
+                  aria-hidden="true"
+                >
+                  †
+                </span>
+              }
+            </div>
+          } @else {
+            <div
+              class="memorial-visual figure-placeholder"
+              [class.memorial-tombstone]="
+                mode() === 'memorial'
+              "
+              aria-hidden="true"
+            >
+              @if (mode() === 'memorial') {
+                <span class="tombstone-cross">†</span>
+              } @else {
+                <span class="figure-initial">
+                  {{
+                    figure.name
+                      .charAt(0)
+                      .toUpperCase()
+                  }}
+                </span>
+              }
+
+              <span class="tombstone-name">
+                {{ figure.name }}
+              </span>
+            </div>
+          }
+
+          <div class="memorial-copy">
+            <span class="memorial-role">
+              {{ roleLabel(figure) }}
+            </span>
+
+            <h3>{{ figure.name }}</h3>
+
+            <p>{{ figure.description }}</p>
+
+            @if (
+              mode() === 'memorial'
+              && figure.deathLabel
+            ) {
+              <span class="death-day">
+                {{ figure.deathLabel }}
+              </span>
+            }
+          </div>
+        </article>
+      } @else {
+        <p class="panel-message">
+          @switch (mode()) {
+            @case ('party') {
+              Aucun aventurier à présenter.
+            }
+            @case ('important-npcs') {
+              Aucun PNJ important à présenter.
+            }
+            @default {
+              Aucun nom dans le mémorial.
+            }
+          }
+        </p>
+      }
     </div>
 
-    <span class="header-cross" aria-hidden="true">
-      †
-    </span>
-  </header>
+    @if (displayedFigures().length > 0) {
+      <footer class="memorial-footer">
+        <span
+          class="memorial-line"
+          aria-hidden="true"
+        ></span>
 
-  <div class="memorial-viewport">
-    @for (entry of [activeEntry()]; track entry.name) {
-      <article
-        class="memorial-entry"
-        [attr.aria-label]="'Mémorial de ' + entry.name"
-      >
-        @if (entry.imageUrl) {
-          <div class="memorial-visual memorial-portrait">
-            <img
-              [src]="entry.imageUrl"
-              [alt]="entry.imageAlt || ('Portrait de ' + entry.name)"
-            />
-
-            <span class="portrait-cross" aria-hidden="true">
-              †
-            </span>
-          </div>
-        } @else {
-          <div
-            class="memorial-visual memorial-tombstone"
-            aria-hidden="true"
-          >
-            <span class="tombstone-cross">†</span>
-
-            <span class="tombstone-name">
-              {{ entry.name }}
-            </span>
-          </div>
-        }
-
-        <div class="memorial-copy">
-          <span class="memorial-role">
-            {{ entry.role }}
-          </span>
-
-          <h3>{{ entry.name }}</h3>
-
-          <p>{{ entry.epitaph }}</p>
-
-          <span class="death-day">
-            {{ entry.deathDay }}
-          </span>
-        </div>
-      </article>
+        <span class="memorial-counter">
+          {{
+            (activeIndex()
+              % displayedFigures().length) + 1
+          }}
+          /
+          {{ displayedFigures().length }}
+        </span>
+      </footer>
     }
-  </div>
-
-  <footer class="memorial-footer">
-    <span class="memorial-line" aria-hidden="true"></span>
-
-    <span class="memorial-counter">
-      {{ activeIndex() + 1 }}
-      /
-      {{ memorialEntries.length }}
-    </span>
-  </footer>
-</section>
+  </section>
+}

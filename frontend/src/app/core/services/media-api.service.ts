@@ -12,9 +12,14 @@ export interface CampaignMedia {
   originalName: string;
   mimeType: string;
   size: number;
+  usage: MediaUsage;
   url: string;
   createdAt: string;
 }
+
+export type MediaUsage =
+  | 'scene'
+  | 'portrait';
 
 interface MediaListApiResponse {
   media: CampaignMedia[];
@@ -35,10 +40,11 @@ export class MediaApiService {
 
   list(
     campaignId: number,
+    usage: MediaUsage = 'scene',
   ): Observable<CampaignMedia[]> {
     return this.http
       .get<MediaListApiResponse>(
-        `${this.apiUrl}/campaigns/${campaignId}/media`,
+        `${this.apiUrl}/campaigns/${campaignId}/media?usage=${usage}`,
       )
       .pipe(
         map((response) => response.media),
@@ -49,6 +55,7 @@ export class MediaApiService {
     campaignId: number,
     file: File,
     title?: string,
+    usage: MediaUsage = 'scene',
   ): Observable<CampaignMedia> {
     const formData = new FormData();
 
@@ -68,6 +75,8 @@ export class MediaApiService {
       );
     }
 
+    formData.append('usage', usage);
+
     return this.http
       .post<MediaUploadApiResponse>(
         `${this.apiUrl}/campaigns/${campaignId}/media`,
@@ -76,5 +85,14 @@ export class MediaApiService {
       .pipe(
         map((response) => response.media),
       );
+  }
+
+  remove(
+    campaignId: number,
+    mediaId: number,
+  ): Observable<void> {
+    return this.http.delete<void>(
+      `${this.apiUrl}/campaigns/${campaignId}/media/${mediaId}`,
+    );
   }
 }

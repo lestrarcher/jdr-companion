@@ -94,7 +94,13 @@
         <app-quests-panel
           [campaignId]="campaignId"
         />
-        <app-memorial-panel />
+        <app-memorial-panel
+          [campaignId]="campaignId"
+          [mode]="
+            liveState()?.figurePanelMode
+            ?? 'memorial'
+          "
+        />
       </aside>
     </div>
 

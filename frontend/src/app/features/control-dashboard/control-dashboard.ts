@@ -16,43 +16,29 @@ import {
   switchMap,
   timer,
 } from 'rxjs';
-import {
-  CampaignMedia as UploadedCampaignMedia,
-} from '@core/services/media-api.service';
+import { CampaignMedia as UploadedCampaignMedia } from '@core/services/media-api.service';
 
-import {
-  MediaManager,
-} from './components/media-manager/media-manager';
-import {
-  CampaignConfig,
-} from '@core/models/campaign.model';
-import {
-  CampaignConfigurationRegistryService,
-} from '@core/services/campaign-configuration-registry.service';
-import {
-  CampaignBootstrapService,
-  ImportedCharacterResult,
-} from '@core/services/campaign-bootstrap.service';
-import {
-  GameSessionApiResponse,
-  GameSessionApiService,
-  GameSessionStatus,
-} from '@core/services/game-session-api.service';
+import { MediaManager } from './components/media-manager/media-manager';
+import { FigurePanelMode } from '@core/models/live-session-state.model';
+import { CampaignConfig } from '@core/models/campaign.model';
+import { CampaignConfigurationRegistryService } from '@core/services/campaign-configuration-registry.service';
+import { CampaignBootstrapService, ImportedCharacterResult } from '@core/services/campaign-bootstrap.service';
+import { GameSessionApiResponse, GameSessionApiService, GameSessionStatus } from '@core/services/game-session-api.service';
 import { LiveSessionService } from '@core/services/live-session.service';
-import {
-  RestRequestApiResponse,
-  RestRequestApiService,
-} from '@core/services/rest-request-api.service';
+import { RestRequestApiResponse, RestRequestApiService } from '@core/services/rest-request-api.service';
 
 import { SessionCharacters } from './components/session-characters/session-characters';
 import { SessionControls } from './components/session-controls/session-controls';
-import {
-  WorldControls,
-  WorldUpdate,
-} from './components/world-controls/world-controls';
-import {
-  QuestManager,
-} from './components/quest-manager/quest-manager';
+import { WorldControls, WorldUpdate } from './components/world-controls/world-controls';
+import { QuestManager } from './components/quest-manager/quest-manager';
+import { CampaignFigureManager } from './components/campaign-figure-manager/campaign-figure-manager';
+import { TipManager } from './components/tip-manager/tip-manager';
+
+type DashboardTab =
+  | 'staging'
+  | 'journal'
+  | 'figures'
+  | 'characters';
 
 @Component({
   selector: 'app-control-dashboard',
@@ -62,6 +48,8 @@ import {
     WorldControls,
     MediaManager,
     QuestManager,
+    CampaignFigureManager,
+    TipManager,
   ],
   templateUrl: './control-dashboard.html',
   styleUrl: './control-dashboard.scss',
@@ -128,6 +116,9 @@ export class ControlDashboard {
 
   protected readonly restRequestError =
     signal<string | null>(null);
+
+  protected readonly activeTab =
+    signal<DashboardTab>('staging');
 
   protected readonly sessionStatus =
     computed<GameSessionStatus>(() => {
@@ -237,6 +228,18 @@ export class ControlDashboard {
 
   protected closeSession(): void {
     this.updateSessionStatus('closed');
+  }
+
+  protected selectTab(tab: DashboardTab): void {
+    this.activeTab.set(tab);
+  }
+
+  protected updateFigurePanelMode(
+    mode: FigurePanelMode,
+  ): void {
+    this.liveSessionService.updateState({
+      figurePanelMode: mode,
+    });
   }
 
   protected synchronizeCharacters(): void {
@@ -366,7 +369,7 @@ export class ControlDashboard {
 
           this.restRequestError.set(
             error?.error?.message ??
-              'La demande n’a pas pu être traitée.',
+            'La demande n’a pas pu être traitée.',
           );
         },
       });
@@ -445,8 +448,8 @@ export class ControlDashboard {
 
           this.dashboardError.set(
             error?.error?.message ??
-              error?.message ??
-              'Le dashboard n’a pas pu être chargé.',
+            error?.message ??
+            'Le dashboard n’a pas pu être chargé.',
           );
         },
       });
@@ -496,7 +499,7 @@ export class ControlDashboard {
 
           this.sessionStatusError.set(
             error?.error?.message ??
-              'Le statut n’a pas pu être modifié.',
+            'Le statut n’a pas pu être modifié.',
           );
         },
       });

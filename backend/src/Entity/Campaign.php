@@ -58,6 +58,18 @@ class Campaign
     #[ORM\OneToMany(targetEntity: Quest::class, mappedBy: 'campaign')]
     private Collection $quests;
 
+    /**
+     * @var Collection<int, CampaignFigure>
+     */
+    #[ORM\OneToMany(targetEntity: CampaignFigure::class, mappedBy: 'campaign', orphanRemoval: true)]
+    private Collection $campaignFigures;
+
+    /**
+     * @var Collection<int, Tip>
+     */
+    #[ORM\OneToMany(targetEntity: Tip::class, mappedBy: 'campaign', orphanRemoval: true)]
+    private Collection $tips;
+
     public function __construct(
         User $owner,
         string $slug,
@@ -68,6 +80,8 @@ class Campaign
         $this->name = $name;
         $this->media = new ArrayCollection();
         $this->quests = new ArrayCollection();
+        $this->campaignFigures = new ArrayCollection();
+        $this->tips = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -204,6 +218,66 @@ class Campaign
             // set the owning side to null (unless already changed)
             if ($quest->getCampaign() === $this) {
                 $quest->setCampaign(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, CampaignFigure>
+     */
+    public function getCampaignFigures(): Collection
+    {
+        return $this->campaignFigures;
+    }
+
+    public function addCampaignFigure(CampaignFigure $campaignFigure): static
+    {
+        if (!$this->campaignFigures->contains($campaignFigure)) {
+            $this->campaignFigures->add($campaignFigure);
+            $campaignFigure->setCampaign($this);
+        }
+
+        return $this;
+    }
+
+    public function removeCampaignFigure(CampaignFigure $campaignFigure): static
+    {
+        if ($this->campaignFigures->removeElement($campaignFigure)) {
+            // set the owning side to null (unless already changed)
+            if ($campaignFigure->getCampaign() === $this) {
+                $campaignFigure->setCampaign(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Tip>
+     */
+    public function getTips(): Collection
+    {
+        return $this->tips;
+    }
+
+    public function addTip(Tip $tip): static
+    {
+        if (!$this->tips->contains($tip)) {
+            $this->tips->add($tip);
+            $tip->setCampaign($this);
+        }
+
+        return $this;
+    }
+
+    public function removeTip(Tip $tip): static
+    {
+        if ($this->tips->removeElement($tip)) {
+            // set the owning side to null (unless already changed)
+            if ($tip->getCampaign() === $this) {
+                $tip->setCampaign(null);
             }
         }
 
