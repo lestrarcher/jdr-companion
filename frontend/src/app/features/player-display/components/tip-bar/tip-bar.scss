@@ -9,15 +9,11 @@
   place-items: center;
 
   width: 100%;
-  min-height: 6.25rem;
+  min-height: 7.5rem;
 
-  padding: 0.75rem 4rem;
+  padding: 1rem 4rem;
   box-sizing: border-box;
 
-  /*
-   * Le fond noir inférieur est désormais géré
-   * par player-display.
-   */
   background: transparent;
 
   text-shadow:
@@ -25,14 +21,11 @@
     0 0 14px rgba(0, 0, 0, 0.9);
 }
 
-/*
- * Séparation très fine avec le reste de l’écran.
- */
 .tip-bar::after {
   position: absolute;
   top: 0;
-  right: 10%;
-  left: 10%;
+  right: 8%;
+  left: 8%;
 
   height: 1px;
 
@@ -40,7 +33,7 @@
     linear-gradient(
       to right,
       transparent,
-      rgba(221, 194, 142, 0.4),
+      rgba(221, 194, 142, 0.48),
       transparent
     );
 
@@ -51,8 +44,8 @@
 .tip-stage {
   position: relative;
 
-  width: min(100%, 80rem);
-  height: 4.75rem;
+  width: min(100%, 88rem);
+  height: 5.75rem;
   min-width: 0;
 }
 
@@ -81,28 +74,9 @@
   transform: translateY(0);
 }
 
-.tip-symbol {
-  display: grid;
-  flex: 0 0 2.4rem;
-  place-items: center;
-
-  width: 2.4rem;
-  height: 2.4rem;
-
-  color: #dfbd68;
-
-  font-size: 1.4rem;
-  line-height: 1;
-  text-align: center;
-
-  filter:
-    drop-shadow(0 0 6px rgba(221, 194, 142, 0.45))
-    drop-shadow(0 2px 4px rgba(0, 0, 0, 1));
-}
-
 .tip-content {
   min-width: 0;
-  max-width: 72rem;
+  max-width: 82rem;
 
   text-align: center;
 }
@@ -111,9 +85,9 @@
   color: #dcb860;
 
   font-family: Arial, sans-serif;
-  font-size: 0.64rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.24em;
   line-height: 1;
   text-transform: uppercase;
 
@@ -123,14 +97,18 @@
 }
 
 .tip-content p {
-  margin: 0.48rem 0 0;
+  margin: 0.65rem 0 0;
 
-  color: #e5dfd6;
+  color: #eee8df;
 
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 1.05rem;
+  font-family:
+    Georgia,
+    'Times New Roman',
+    serif;
+
+  font-size: 1.25rem;
   font-style: italic;
-  line-height: 1.35;
+  line-height: 1.4;
 
   text-wrap: balance;
 
@@ -139,18 +117,48 @@
     0 0 14px rgba(0, 0, 0, 0.9);
 }
 
+.tip-bar[data-category='rule']
+  .tip-label {
+  color: #dcb860;
+}
+
+.tip-bar[data-category='advice']
+  .tip-label {
+  color: #91b5cd;
+}
+
+.tip-bar[data-category='lore']
+  .tip-label {
+  color: #b798c9;
+}
+
 @media (max-width: 1400px) {
   .tip-bar {
-    min-height: 5.75rem;
+    min-height: 6.5rem;
     padding-inline: 2rem;
   }
 
   .tip-stage {
-    height: 4.5rem;
+    height: 5rem;
   }
 
   .tip-content p {
-    font-size: 0.95rem;
+    font-size: 1.1rem;
+  }
+}
+
+@media (max-width: 800px) {
+  .tip-bar {
+    min-height: 6rem;
+    padding-inline: 1rem;
+  }
+
+  .tip-label {
+    font-size: 0.62rem;
+  }
+
+  .tip-content p {
+    font-size: 1rem;
   }
 }
 

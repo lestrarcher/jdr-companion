@@ -104,7 +104,7 @@
       </aside>
     </div>
 
-    <app-tip-bar />
+    <app-tip-bar [campaignId]="campaignId" />
 
     @if (liveState()?.fogEnabled) {
       <app-ambient-fog />

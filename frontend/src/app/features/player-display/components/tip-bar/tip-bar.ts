@@ -1,18 +1,18 @@
 import {
   Component,
   DestroyRef,
+  OnInit,
   computed,
   inject,
+  input,
   signal,
 } from '@angular/core';
+import { finalize } from 'rxjs';
 
-type TipCategory = 'rule' | 'advice' | 'lore';
-
-interface Tip {
-  category: TipCategory;
-  label: string;
-  text: string;
-}
+import {
+  CampaignTip,
+  TipApiService,
+} from '@core/services/tip-api.service';
 
 @Component({
   selector: 'app-tip-bar',
@@ -20,52 +20,114 @@ interface Tip {
   templateUrl: './tip-bar.html',
   styleUrl: './tip-bar.scss',
 })
-export class TipBar {
-  private readonly destroyRef = inject(DestroyRef);
+export class TipBar implements OnInit {
+  readonly campaignId =
+    input.required<number>();
 
-  protected readonly tips: Tip[] = [
-    {
-      category: 'rule',
-      label: 'Bousculade',
-      text: 'Par une action bonus, vous pouvez tenter de repousser de 1,50 m une créature à votre portée ne dépassant pas votre taille de plus d’une catégorie. Faites un test d’Athlétisme opposé à son Athlétisme ou son Acrobaties.',
-    },
-    {
-      category: 'rule',
-      label: 'Boire une potion',
-      text: 'Vous pouvez boire une potion par une action ou une action bonus. Administrer une potion à une autre créature nécessite une action.',
-    },
-    {
-      category: 'advice',
-      label: 'Conseil aux aventuriers',
-      text: 'Pensez à utiliser votre Inspiration avant qu’il ne soit trop tard.',
-    },
-    {
-      category: 'lore',
-      label: 'Murmure de Barovie',
-      text: 'Les invités du comte sont priés de conserver leur masque jusqu’à minuit.',
-    },
-  ];
+  private readonly destroyRef =
+    inject(DestroyRef);
 
-  protected readonly currentIndex = signal(0);
+  private readonly tipApi =
+    inject(TipApiService);
 
-  protected readonly currentTip = computed(
-    () => this.tips[this.currentIndex()],
-  );
+  protected readonly tips =
+    signal<CampaignTip[]>([]);
+
+  protected readonly loading =
+    signal(true);
+
+  protected readonly currentIndex =
+    signal(0);
+
+  protected readonly visibleTips =
+    computed(() =>
+      this.tips()
+        .filter(
+          (tip) =>
+            tip.status === 'visible',
+        )
+        .sort(
+          (firstTip, secondTip) =>
+            firstTip.displayOrder
+            - secondTip.displayOrder,
+        ),
+    );
+
+  protected readonly currentTip =
+    computed(() => {
+      const tips =
+        this.visibleTips();
+
+      if (tips.length === 0) {
+        return null;
+      }
+
+      return tips[
+        this.currentIndex()
+        % tips.length
+      ];
+    });
 
   public constructor() {
-    const rotationTimer = window.setInterval(() => {
-      this.showNextTip();
-    }, 8_000);
+    const rotationTimer =
+      window.setInterval(() => {
+        this.showNextTip();
+      }, 8_000);
 
     this.destroyRef.onDestroy(() => {
-      window.clearInterval(rotationTimer);
+      window.clearInterval(
+        rotationTimer,
+      );
     });
   }
 
-  private showNextTip(): void {
-    const nextIndex =
-      (this.currentIndex() + 1) % this.tips.length;
+  ngOnInit(): void {
+    this.loadTips();
+  }
 
-    this.currentIndex.set(nextIndex);
+  private loadTips(): void {
+    this.loading.set(true);
+
+    this.tipApi
+      .list(this.campaignId())
+      .pipe(
+        finalize(() => {
+          this.loading.set(false);
+        }),
+      )
+      .subscribe({
+        next: (tips) => {
+          this.tips.set(tips);
+          this.currentIndex.set(0);
+        },
+
+        error: (error: unknown) => {
+          console.error(
+            'Impossible de charger les tips.',
+            error,
+          );
+
+          /*
+           * Le display ne montre pas de message
+           * technique aux joueurs. La barre reste
+           * simplement masquée.
+           */
+          this.tips.set([]);
+        },
+      });
+  }
+
+  private showNextTip(): void {
+    const tipCount =
+      this.visibleTips().length;
+
+    if (tipCount <= 1) {
+      return;
+    }
+
+    this.currentIndex.update(
+      (currentIndex) =>
+        (currentIndex + 1) % tipCount,
+    );
   }
 }
