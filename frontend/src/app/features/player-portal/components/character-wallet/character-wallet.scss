@@ -1,0 +1,265 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.wallet {
+  padding: 1rem;
+
+  color: #f3eee5;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(13, 13, 23, 0.98),
+      rgba(7, 8, 15, 0.98)
+    );
+
+  border: 1px solid
+    rgba(194, 157, 77, 0.28);
+}
+
+.wallet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  margin-bottom: 1rem;
+  padding-bottom: 0.8rem;
+
+  border-bottom: 1px solid
+    rgba(194, 157, 77, 0.25);
+}
+
+.wallet-eyebrow {
+  color: #d8b45c;
+
+  font-family: Arial, sans-serif;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.wallet-header h2 {
+  margin: 0.25rem 0 0;
+
+  font-family: Georgia, serif;
+  font-size: 1.6rem;
+  font-weight: 500;
+}
+
+.wallet-symbol {
+  color: #d8b45c;
+  font-size: 1.5rem;
+}
+
+.currency-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(5, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.currency-card {
+  display: grid;
+  gap: 0.25rem;
+  justify-items: center;
+
+  min-width: 0;
+  padding: 0.7rem 0.25rem;
+
+  color: #d8d3cb;
+  background: rgba(15, 16, 26, 0.92);
+
+  border: 1px solid
+    rgba(194, 157, 77, 0.22);
+  border-radius: 0.25rem;
+
+  cursor: pointer;
+}
+
+.currency-card strong {
+  font-family: Georgia, serif;
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.currency-card small {
+  overflow: hidden;
+  max-width: 100%;
+
+  color: rgba(243, 238, 229, 0.5);
+
+  font-family: Arial, sans-serif;
+  font-size: 0.55rem;
+  text-overflow: ellipsis;
+}
+
+.currency-abbreviation {
+  font-family: Arial, sans-serif;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.currency-card--selected {
+  color: #fff4d3;
+  background: rgba(71, 57, 29, 0.72);
+
+  border-color: #d8b45c;
+
+  box-shadow:
+    0 0 12px
+      rgba(216, 180, 92, 0.16);
+}
+
+.currency-card[data-currency='copperPieces']
+  .currency-abbreviation {
+  color: #c98963;
+}
+
+.currency-card[data-currency='silverPieces']
+  .currency-abbreviation {
+  color: #c8d0d8;
+}
+
+.currency-card[data-currency='electrumPieces']
+  .currency-abbreviation {
+  color: #9cc7bd;
+}
+
+.currency-card[data-currency='goldPieces']
+  .currency-abbreviation {
+  color: #e3bd57;
+}
+
+.currency-card[data-currency='platinumPieces']
+  .currency-abbreviation {
+  color: #d9e6eb;
+}
+
+.wallet-operation {
+  display: grid;
+  gap: 0.7rem;
+
+  margin-top: 1rem;
+  padding-top: 1rem;
+
+  border-top: 1px solid
+    rgba(194, 157, 77, 0.18);
+}
+
+.wallet-operation label {
+  color: rgba(243, 238, 229, 0.68);
+
+  font-family: Arial, sans-serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.wallet-operation input {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.65rem 0.8rem;
+  box-sizing: border-box;
+
+  color: #f3eee5;
+  background: rgba(6, 7, 13, 0.96);
+
+  border: 1px solid
+    rgba(194, 157, 77, 0.35);
+
+  font-family: Georgia, serif;
+  font-size: 1.25rem;
+  text-align: center;
+}
+
+.wallet-operation input:focus {
+  border-color: #d8b45c;
+  outline: none;
+
+  box-shadow:
+    0 0 0 2px
+      rgba(216, 180, 92, 0.1);
+}
+
+.wallet-actions {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.wallet-button {
+  min-height: 3rem;
+  padding: 0.7rem;
+
+  color: #eee8df;
+  background: rgba(19, 20, 31, 0.95);
+
+  border: 1px solid
+    rgba(194, 157, 77, 0.3);
+
+  font-family: Arial, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.wallet-button--add {
+  color: #09100c;
+  background: #8bb996;
+  border-color: #8bb996;
+}
+
+.wallet-button--spend {
+  border-color:
+    rgba(177, 88, 93, 0.7);
+}
+
+.wallet-button:disabled,
+.currency-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.wallet-message {
+  margin: 0.8rem 0 0;
+  padding: 0.75rem;
+
+  color: rgba(243, 238, 229, 0.62);
+
+  font-family: Arial, sans-serif;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.wallet-message--error {
+  color: #efadad;
+  background: rgba(111, 25, 32, 0.18);
+
+  border: 1px solid
+    rgba(188, 75, 83, 0.35);
+}
+
+@media (max-width: 30rem) {
+  .wallet {
+    padding: 0.85rem;
+  }
+
+  .currency-grid {
+    gap: 0.3rem;
+  }
+
+  .currency-card strong {
+    font-size: 1.05rem;
+  }
+
+  .currency-card small {
+    display: none;
+  }
+}

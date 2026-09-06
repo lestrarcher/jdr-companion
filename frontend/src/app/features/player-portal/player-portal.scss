@@ -1,4 +1,13 @@
 :host {
+  --portal-background: #090a11;
+  --portal-surface: rgba(14, 15, 25, 0.96);
+  --portal-surface-soft: rgba(21, 21, 33, 0.9);
+  --portal-border: rgba(201, 168, 95, 0.3);
+  --portal-accent: #c9a85f;
+  --portal-text: #eee8dc;
+  --portal-muted: rgba(238, 232, 220, 0.6);
+  --portal-success: #72b96d;
+  --portal-danger: #ef9a9a;
   display: block;
 
   width: 100%;
@@ -101,6 +110,109 @@
   }
 }
 
+.portal-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 0.4rem;
+
+  margin-bottom: 1rem;
+  padding: 0.35rem;
+
+  background:
+    rgba(8, 9, 14, 0.94);
+
+  border: 1px solid
+    var(--portal-border);
+
+  backdrop-filter: blur(12px);
+}
+
+.portal-tabs button {
+  display: flex;
+  gap: 0.65rem;
+  align-items: center;
+
+  min-width: 0;
+  min-height: 3.6rem;
+  padding: 0.65rem 0.8rem;
+
+  color: var(--portal-muted);
+  background: transparent;
+
+  border: 1px solid transparent;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.portal-tabs button > span:last-child {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.portal-tabs strong {
+  color: inherit;
+
+  font-family:
+    Georgia,
+    'Times New Roman',
+    serif;
+
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.portal-tabs small {
+  overflow: hidden;
+
+  color: var(--portal-muted);
+
+  font-family: Arial, sans-serif;
+  font-size: 0.6rem;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.portal-tab-symbol {
+  flex: 0 0 auto;
+
+  color: var(--portal-accent);
+  font-size: 1.15rem;
+}
+
+.portal-tabs
+  button.portal-tab--active {
+  color: var(--portal-text);
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(201, 168, 95, 0.18),
+      rgba(201, 168, 95, 0.05)
+    );
+
+  border-color:
+    rgba(201, 168, 95, 0.45);
+
+  box-shadow:
+    inset 0 0 18px
+      rgba(201, 168, 95, 0.06);
+}
+
+.portal-tab-content {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
 .eyebrow {
   display: block;
   margin-bottom: 0.45rem;
@@ -178,6 +290,11 @@
       minmax(20rem, 1.2fr);
 
     align-items: start;
+  }
+
+  .portal-tabs {
+    position: static;
+    max-width: 32rem;
   }
 }
 

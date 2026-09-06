@@ -1,0 +1,133 @@
+<section
+  class="wallet"
+  aria-labelledby="wallet-title"
+>
+  <header class="wallet-header">
+    <div>
+      <span class="wallet-eyebrow">
+        Possessions
+      </span>
+
+      <h2 id="wallet-title">
+        Bourse
+      </h2>
+    </div>
+
+    <span
+      class="wallet-symbol"
+      aria-hidden="true"
+    >
+      ◈
+    </span>
+  </header>
+
+  @if (loading()) {
+    <p class="wallet-message">
+      Ouverture de la bourse…
+    </p>
+  } @else if (!wallet()) {
+    <p class="wallet-message wallet-message--error">
+      {{ error() ?? 'Bourse indisponible.' }}
+    </p>
+  } @else {
+    <div
+      class="currency-grid"
+      role="list"
+      aria-label="Contenu de la bourse"
+    >
+      @for (
+        currency of currencies;
+        track currency.field
+      ) {
+        <button
+          type="button"
+          class="currency-card"
+          [class.currency-card--selected]="
+            selectedField() === currency.field
+          "
+          [attr.data-currency]="currency.field"
+          [attr.aria-pressed]="
+            selectedField() === currency.field
+          "
+          [disabled]="saving()"
+          (click)="
+            selectCurrency(currency.field)
+          "
+        >
+          <span class="currency-abbreviation">
+            {{ currency.abbreviation }}
+          </span>
+
+          <strong>
+            {{ wallet()![currency.field] }}
+          </strong>
+
+          <small>
+            {{ currency.label }}
+          </small>
+        </button>
+      }
+    </div>
+
+    <div class="wallet-operation">
+      <label for="wallet-amount">
+        Montant en
+        {{ selectedCurrency().abbreviation }}
+      </label>
+
+      <input
+        id="wallet-amount"
+        type="number"
+        min="1"
+        step="1"
+        inputmode="numeric"
+        [formControl]="amountControl"
+        [disabled]="disabled() || saving()"
+      />
+
+      <div class="wallet-actions">
+        <button
+          type="button"
+          class="wallet-button wallet-button--spend"
+          [disabled]="
+            disabled()
+            || saving()
+            || amountControl.invalid
+          "
+          (click)="spendMoney()"
+        >
+          Dépenser
+        </button>
+
+        <button
+          type="button"
+          class="wallet-button wallet-button--add"
+          [disabled]="
+            disabled()
+            || saving()
+            || amountControl.invalid
+          "
+          (click)="addMoney()"
+        >
+          Ajouter
+        </button>
+      </div>
+    </div>
+
+    @if (error()) {
+      <p
+        class="wallet-message wallet-message--error"
+        role="alert"
+      >
+        {{ error() }}
+      </p>
+    }
+
+    @if (disabled()) {
+      <p class="wallet-message">
+        La bourse pourra être modifiée lorsque
+        la session sera ouverte.
+      </p>
+    }
+  }
+</section>

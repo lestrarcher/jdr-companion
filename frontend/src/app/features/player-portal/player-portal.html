@@ -2,7 +2,10 @@
   @if (loading()) {
     <section class="portal-message">
       <span class="eyebrow">
-        {{ campaign()?.name ?? 'JDR Companion' }}
+        {{
+          campaign()?.name
+          ?? 'JDR Companion'
+        }}
       </span>
 
       <h1>Chargement du personnage</h1>
@@ -18,7 +21,10 @@
         Récupération des données de la session…
       </p>
     </section>
-  } @else if (loadError(); as errorMessage) {
+  } @else if (
+    loadError();
+    as errorMessage
+  ) {
     <section
       class="portal-message portal-message-error"
     >
@@ -30,11 +36,17 @@
 
       <p>{{ errorMessage }}</p>
     </section>
-  } @else if (character(); as portalCharacter) {
+  } @else if (
+    character();
+    as portalCharacter
+  ) {
     @if (sessionStatus() !== 'live') {
       <section class="portal-message">
         <span class="eyebrow">
-          {{ campaign()?.name ?? 'JDR Companion' }}
+          {{
+            campaign()?.name
+            ?? 'JDR Companion'
+          }}
         </span>
 
         <h1>
@@ -71,7 +83,10 @@
           <header class="character-header">
             <div>
               <span class="eyebrow">
-                {{ campaign()?.name ?? 'JDR Companion' }}
+                {{
+                  campaign()?.name
+                  ?? 'JDR Companion'
+                }}
               </span>
 
               <h1>
@@ -109,47 +124,132 @@
             </div>
           </header>
 
-          <app-character-progressions
-            [progressions]="
-              currentCharacter.progressions ?? []
-            "
-            [resources]="currentCharacter.resources"
-            (progressionChanged)="
-              handleProgressionChange($event)
-            "
-            (resourceChanged)="
-              handleProgressionResourceChange($event)
-            "
-          />
-
-          <app-character-stored-values
-            [resources]="
-              storedValueResources()
-            "
-          />
-
-          <div class="tracker-layout">
-            <app-character-vitals
-              [character]="
-                currentCharacter
+          <nav
+            class="portal-tabs"
+            aria-label="Sections du personnage"
+          >
+            <button
+              type="button"
+              [class.portal-tab--active]="
+                activeTab() === 'status'
               "
-            />
-
-            <app-character-resources
-              [resources]="
-                sortedResources()
+              [attr.aria-pressed]="
+                activeTab() === 'status'
               "
-            />
+              (click)="selectTab('status')"
+            >
+              <span
+                class="portal-tab-symbol"
+                aria-hidden="true"
+              >
+                ✦
+              </span>
+
+              <span>
+                <strong>État</strong>
+                <small>
+                  Santé et capacités
+                </small>
+              </span>
+            </button>
+
+            <button
+              type="button"
+              [class.portal-tab--active]="
+                activeTab() === 'possessions'
+              "
+              [attr.aria-pressed]="
+                activeTab() === 'possessions'
+              "
+              (click)="
+                selectTab('possessions')
+              "
+            >
+              <span
+                class="portal-tab-symbol"
+                aria-hidden="true"
+              >
+                ◈
+              </span>
+
+              <span>
+                <strong>Possessions</strong>
+                <small>
+                  Bourse et objets
+                </small>
+              </span>
+            </button>
+          </nav>
+
+          <div class="portal-tab-content">
+            @switch (activeTab()) {
+              @case ('status') {
+                <app-character-progressions
+                  [progressions]="
+                    currentCharacter
+                      .progressions
+                    ?? []
+                  "
+                  [resources]="
+                    currentCharacter.resources
+                  "
+                  (progressionChanged)="
+                    handleProgressionChange(
+                      $event
+                    )
+                  "
+                  (resourceChanged)="
+                    handleProgressionResourceChange(
+                      $event
+                    )
+                  "
+                />
+
+                <app-character-stored-values
+                  [resources]="
+                    storedValueResources()
+                  "
+                />
+
+                <div class="tracker-layout">
+                  <app-character-vitals
+                    [character]="
+                      currentCharacter
+                    "
+                  />
+
+                  <app-character-resources
+                    [resources]="
+                      sortedResources()
+                    "
+                  />
+                </div>
+              }
+
+              @case ('possessions') {
+                <app-character-wallet
+                  [accessToken]="accessToken"
+                  [disabled]="
+                    sessionStatus()
+                    !== 'live'
+                  "
+                />
+              }
+            }
           </div>
         </div>
 
-        <app-rest-controls
-          [request]="pendingRestRequest()"
-          [feedback]="restFeedback()"
-          (restRequested)="
-            requestRest($event)
-          "
-        />
+        @if (activeTab() === 'status') {
+          <app-rest-controls
+            [request]="
+              pendingRestRequest()
+            "
+            [feedback]="restFeedback()"
+            (restRequested)="
+              requestRest($event)
+            "
+          />
+        }
       </section>
     }
   } @else {
