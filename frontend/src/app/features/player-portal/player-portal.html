@@ -227,13 +227,18 @@
               }
 
               @case ('possessions') {
-                <app-character-wallet
-                  [accessToken]="accessToken"
-                  [disabled]="
-                    sessionStatus()
-                    !== 'live'
-                  "
-                />
+                <div class="possessions-sections">
+                  <app-character-wallet
+                    [accessToken]="accessToken"
+                    [disabled]="
+                      sessionStatus() !== 'live'
+                    "
+                  />
+
+                  <app-character-magic-items
+                    [accessToken]="accessToken"
+                  />
+                </div>
               }
             }
           </div>

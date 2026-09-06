@@ -1,0 +1,357 @@
+<section class="magic-item-manager">
+  <header class="manager-header">
+    <div>
+      <span class="eyebrow">
+        Trésor de campagne
+      </span>
+
+      <h2>Objets magiques</h2>
+
+      <p>
+        Prépare les objets avant la session, puis
+        attribue-les aux personnages lorsqu’ils
+        les découvrent.
+      </p>
+    </div>
+
+    <span class="catalog-count">
+      {{ catalog().length }}
+      objet{{ catalog().length > 1 ? 's' : '' }}
+    </span>
+  </header>
+
+  @if (errorMessage()) {
+    <p class="feedback feedback--error">
+      {{ errorMessage() }}
+    </p>
+  }
+
+  @if (successMessage()) {
+    <p class="feedback feedback--success">
+      {{ successMessage() }}
+    </p>
+  }
+
+  <div class="manager-layout">
+    <form
+      class="creation-form"
+      [formGroup]="form"
+      (ngSubmit)="submit()"
+    >
+      <header class="section-header">
+        <div>
+          <span class="eyebrow">
+            Nouvel objet
+          </span>
+
+          <h3>Créer un objet magique</h3>
+        </div>
+      </header>
+
+      <div class="form-grid">
+        <label class="field field--wide">
+          <span>Nom</span>
+
+          <input
+            type="text"
+            formControlName="name"
+            placeholder="Ex. Bandeau d’intelligence"
+          />
+        </label>
+
+        <label class="field">
+          <span>Rareté</span>
+
+          <select formControlName="rarity">
+            @for (
+              rarity of rarities;
+              track rarity.value
+            ) {
+              <option [value]="rarity.value">
+                {{ rarity.label }}
+              </option>
+            }
+          </select>
+        </label>
+
+        <label class="checkbox-field">
+          <input
+            type="checkbox"
+            formControlName="requiresAttunement"
+          />
+
+          <span>Harmonisation requise</span>
+        </label>
+
+        <label class="field field--wide">
+          <span>Description</span>
+
+          <textarea
+            formControlName="description"
+            rows="4"
+            placeholder="Effets et règles utiles de l’objet…"
+          ></textarea>
+        </label>
+
+        <label class="field">
+          <span>Charges maximales</span>
+
+          <input
+            type="number"
+            min="1"
+            max="999"
+            formControlName="maximumCharges"
+            placeholder="Aucune"
+          />
+        </label>
+
+        <label class="field">
+          <span>Type de recharge</span>
+
+          <select formControlName="rechargeType">
+            @for (
+              rechargeType of rechargeTypes;
+              track rechargeType.value
+            ) {
+              <option [value]="rechargeType.value">
+                {{ rechargeType.label }}
+              </option>
+            }
+          </select>
+        </label>
+
+        <label class="field field--wide">
+          <span>Formule de recharge</span>
+
+          <input
+            type="text"
+            formControlName="rechargeFormula"
+            placeholder="Ex. full, 1d6+1…"
+          />
+
+          <small>
+            Laisse vide si l’objet n’a pas de
+            recharge automatique.
+          </small>
+        </label>
+      </div>
+
+      <section
+        class="ability-effects"
+        formArrayName="abilityEffects"
+      >
+        <header class="effects-header">
+          <div>
+            <h4>Effets sur les caractéristiques</h4>
+
+            <p>
+              Facultatif : bonus, valeur minimale
+              ou augmentation permanente.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="secondary-button"
+            (click)="addAbilityEffect()"
+          >
+            Ajouter un effet
+          </button>
+        </header>
+
+        @for (
+          effect of abilityEffects.controls;
+          track effect;
+          let index = $index
+        ) {
+          <div
+            class="effect-row"
+            [formGroupName]="index"
+          >
+            <label class="field">
+              <span>Caractéristique</span>
+
+              <select formControlName="ability">
+                @for (
+                  ability of abilities;
+                  track ability.value
+                ) {
+                  <option [value]="ability.value">
+                    {{ ability.label }}
+                  </option>
+                }
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Effet</span>
+
+              <select formControlName="operation">
+                @for (
+                  operation of operations;
+                  track operation.value
+                ) {
+                  <option [value]="operation.value">
+                    {{ operation.label }}
+                  </option>
+                }
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Valeur</span>
+
+              <input
+                type="number"
+                min="1"
+                max="30"
+                formControlName="value"
+              />
+            </label>
+
+            <label class="field">
+              <span>Plafond éventuel</span>
+
+              <input
+                type="number"
+                min="1"
+                max="30"
+                formControlName="scoreCap"
+                placeholder="Aucun"
+              />
+            </label>
+
+            <label class="field">
+              <span>Maximum augmenté</span>
+
+              <input
+                type="number"
+                min="0"
+                max="30"
+                formControlName="maximumIncrease"
+              />
+            </label>
+
+            <button
+              type="button"
+              class="remove-effect"
+              aria-label="Supprimer cet effet"
+              (click)="removeAbilityEffect(index)"
+            >
+              ×
+            </button>
+          </div>
+        }
+      </section>
+
+      <button
+        type="submit"
+        class="primary-button"
+        [disabled]="submitting()"
+      >
+        {{
+          submitting()
+            ? 'Création…'
+            : 'Ajouter au catalogue'
+        }}
+      </button>
+    </form>
+
+    <section class="catalog">
+      <header class="section-header">
+        <div>
+          <span class="eyebrow">
+            Bibliothèque
+          </span>
+
+          <h3>Catalogue préparé</h3>
+        </div>
+      </header>
+
+      @if (loading()) {
+        <p class="catalog-empty">
+          Chargement du catalogue…
+        </p>
+      } @else if (catalog().length === 0) {
+        <p class="catalog-empty">
+          Aucun objet magique n’a encore été créé.
+        </p>
+      } @else {
+        <div class="catalog-list">
+          @for (
+            magicItem of catalog();
+            track magicItem.id
+          ) {
+            <article class="catalog-item">
+              <header>
+                <div>
+                  <h4>{{ magicItem.name }}</h4>
+
+                  <span>
+                    {{
+                      rarityLabel(
+                        magicItem.rarity
+                      )
+                    }}
+                  </span>
+                </div>
+
+                @if (
+                  magicItem.requiresAttunement
+                ) {
+                  <span class="attunement-symbol">
+                    ◈
+                  </span>
+                }
+              </header>
+
+              @if (magicItem.description) {
+                <p>
+                  {{ magicItem.description }}
+                </p>
+              }
+
+              <footer>
+                @if (
+                  magicItem.maximumCharges !== null
+                ) {
+                  <span>
+                    {{ magicItem.maximumCharges }}
+                    charge{{
+                      magicItem.maximumCharges > 1
+                        ? 's'
+                        : ''
+                    }}
+                  </span>
+
+                  <span>
+                    {{
+                      rechargeLabel(
+                        magicItem.rechargeType
+                      )
+                    }}
+                  </span>
+                }
+
+                @if (
+                  magicItem.abilityEffects.length > 0
+                ) {
+                  <span>
+                    {{
+                      magicItem.abilityEffects.length
+                    }}
+                    effet{{
+                      magicItem.abilityEffects.length > 1
+                        ? 's'
+                        : ''
+                    }}
+                  </span>
+                }
+              </footer>
+            </article>
+          }
+        </div>
+      }
+    </section>
+  </div>
+</section>

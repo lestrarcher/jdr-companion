@@ -1,0 +1,205 @@
+<section class="magic-items">
+  <header class="magic-items__header">
+    <div>
+      <p class="magic-items__eyebrow">
+        Équipement
+      </p>
+
+      <h2>Objets magiques</h2>
+    </div>
+
+    <div
+      class="attunement"
+      aria-label="Objets harmonisés"
+    >
+      <span>Harmonisation</span>
+
+      <strong>
+        {{ attunedCount() }} / {{ attunementLimit() }}
+      </strong>
+    </div>
+  </header>
+
+  @if (errorMessage()) {
+    <p class="magic-items__error" role="alert">
+      {{ errorMessage() }}
+    </p>
+  }
+
+  @if (loading()) {
+    <p class="magic-items__empty">
+      Chargement des objets…
+    </p>
+  } @else if (!hasItems()) {
+    <div class="magic-items__empty">
+      <span class="magic-items__empty-symbol">◇</span>
+
+      <p>Aucun objet magique dans l’inventaire.</p>
+    </div>
+  } @else {
+    <div class="magic-items__list">
+      @for (
+        ownedItem of ownedItems();
+        track ownedItem.id
+      ) {
+        <article
+          class="magic-item"
+          [class.magic-item--active]="
+            ownedItem.effectActive
+          "
+          [class.magic-item--updating]="
+            isUpdating(ownedItem)
+          "
+        >
+          <header class="magic-item__header">
+            <div>
+              <h3>{{ ownedItem.magicItem.name }}</h3>
+
+              <p class="magic-item__rarity">
+                {{
+                  rarityLabel(
+                    ownedItem.magicItem.rarity
+                  )
+                }}
+
+                @if (
+                  ownedItem.magicItem.requiresAttunement
+                ) {
+                  · Harmonisation requise
+                }
+              </p>
+            </div>
+
+            @if (ownedItem.quantity > 1) {
+              <span class="magic-item__quantity">
+                × {{ ownedItem.quantity }}
+              </span>
+            }
+          </header>
+
+          @if (ownedItem.magicItem.description) {
+            <p class="magic-item__description">
+              {{ ownedItem.magicItem.description }}
+            </p>
+          }
+
+          @if (ownedItem.notes) {
+            <p class="magic-item__notes">
+              {{ ownedItem.notes }}
+            </p>
+          }
+
+          @if (hasCharges(ownedItem)) {
+            <div class="charges">
+              <div class="charges__label">
+                <span>Charges</span>
+
+                @if (
+                  ownedItem.magicItem.rechargeFormula
+                ) {
+                  <small>
+                    Recharge :
+                    {{
+                      ownedItem.magicItem
+                        .rechargeFormula
+                    }}
+                  </small>
+                }
+              </div>
+
+              <div class="charges__controls">
+                <button
+                  type="button"
+                  class="charges__button"
+                  aria-label="Dépenser une charge"
+                  [disabled]="
+                    ownedItem.currentCharges <= 0
+                    || isUpdating(ownedItem)
+                  "
+                  (click)="spendCharge(ownedItem)"
+                >
+                  −
+                </button>
+
+                <strong>
+                  {{ ownedItem.currentCharges }}
+                  /
+                  {{
+                    ownedItem.magicItem
+                      .maximumCharges
+                  }}
+                </strong>
+
+                @if (
+                  canRestoreManually(ownedItem)
+                ) {
+                  <button
+                    type="button"
+                    class="charges__button"
+                    aria-label="Récupérer une charge"
+                    [disabled]="
+                      ownedItem.currentCharges >=
+                        ownedItem.magicItem
+                          .maximumCharges!
+                      || isUpdating(ownedItem)
+                    "
+                    (click)="restoreCharge(ownedItem)"
+                  >
+                    +
+                  </button>
+                }
+              </div>
+            </div>
+          }
+
+          <footer class="magic-item__actions">
+            <button
+              type="button"
+              class="item-action"
+              [class.item-action--active]="
+                ownedItem.equipped
+              "
+              [disabled]="isUpdating(ownedItem)"
+              (click)="toggleEquipped(ownedItem)"
+            >
+              {{
+                ownedItem.equipped
+                  ? 'Équipé'
+                  : 'Équiper'
+              }}
+            </button>
+
+            @if (
+              ownedItem.magicItem.requiresAttunement
+            ) {
+              <button
+                type="button"
+                class="item-action"
+                [class.item-action--active]="
+                  ownedItem.attuned
+                "
+                [disabled]="
+                  isUpdating(ownedItem)
+                  || isAttunementDisabled(ownedItem)
+                "
+                (click)="toggleAttuned(ownedItem)"
+              >
+                {{
+                  ownedItem.attuned
+                    ? 'Harmonisé'
+                    : 'S’harmoniser'
+                }}
+              </button>
+            }
+
+            @if (ownedItem.effectActive) {
+              <span class="magic-item__active-label">
+                Effets actifs
+              </span>
+            }
+          </footer>
+        </article>
+      }
+    </div>
+  }
+</section>

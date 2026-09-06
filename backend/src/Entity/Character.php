@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 namespace App\Entity;
-
+use App\Enum\Ability;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use App\Repository\CharacterRepository;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -63,6 +65,29 @@ class Character
     private ?CharacterWallet $wallet = null;
 
     /**
+     * @var Collection<int, CharacterAbilityScore>
+     */
+    #[ORM\OneToMany(
+        mappedBy: 'character',
+        targetEntity: CharacterAbilityScore::class,
+        cascade: ['persist', 'remove'],
+        orphanRemoval: true,
+    )]
+    #[ORM\OrderBy(['ability' => 'ASC'])]
+    private Collection $abilityScores;
+
+    /**
+     * @var Collection<int, CharacterMagicItem>
+     */
+    #[ORM\OneToMany(
+        mappedBy: 'character',
+        targetEntity: CharacterMagicItem::class,
+        cascade: ['persist', 'remove'],
+        orphanRemoval: true,
+    )]
+    private Collection $magicItems;
+
+    /**
      * @param array<string, mixed> $definition
      */
     public function __construct(
@@ -87,6 +112,17 @@ class Character
         $this->type = $type;
         $this->definition = $definition;
         $this->wallet = new CharacterWallet($this);
+        $this->abilityScores = new ArrayCollection();
+        $this->magicItems  = new ArrayCollection();
+
+        foreach (Ability::cases() as $ability) {
+            $this->abilityScores->add(
+                new CharacterAbilityScore(
+                    $this,
+                    $ability,
+                ),
+            );
+        }
     }
 
     public function getId(): ?int
@@ -183,5 +219,96 @@ class Character
         $this->wallet = $wallet;
 
         return $this;
+    }
+
+    /**
+     * @return Collection<int, CharacterAbilityScore>
+     */
+    public function getAbilityScores():
+        Collection {
+        return $this->abilityScores;
+    }
+
+    public function getAbilityScore(
+        Ability $ability,
+    ): CharacterAbilityScore {
+        foreach (
+            $this->abilityScores
+            as $abilityScore
+        ) {
+            if (
+                $abilityScore->getAbility()
+                === $ability
+            ) {
+                return $abilityScore;
+            }
+        }
+
+        /*
+        * Sécurité pour un ancien personnage auquel
+        * il manquerait exceptionnellement une ligne.
+        */
+        $abilityScore =
+            new CharacterAbilityScore(
+                $this,
+                $ability,
+            );
+
+        $this->abilityScores->add(
+            $abilityScore,
+        );
+
+        return $abilityScore;
+    }
+
+    /**
+ * @return Collection<int, CharacterMagicItem>
+ */
+public function getMagicItems():
+    Collection {
+    return $this->magicItems;
+}
+
+public function addMagicItem(
+    CharacterMagicItem $magicItem,
+): static {
+    if (
+        $magicItem->getCharacter()
+        !== $this
+    ) {
+        throw new \InvalidArgumentException(
+            'Cet objet appartient à un autre personnage.',
+        );
+    }
+
+    if (
+        !$this->magicItems
+            ->contains($magicItem)
+    ) {
+        $this->magicItems->add(
+            $magicItem,
+        );
+    }
+
+    return $this;
+}
+
+    public function removeMagicItem( CharacterMagicItem $magicItem ): static {
+        $this->magicItems
+            ->removeElement($magicItem);
+
+        return $this;
+    }
+
+    public function getAttunedMagicItemCount(): int
+    {
+        return $this->magicItems
+            ->filter(
+                static fn (
+                    CharacterMagicItem $item,
+                ): bool =>
+                    $item->isAttuned(),
+            )
+            ->count();
     }
 }

@@ -11,6 +11,7 @@ import { ActivatedRoute } from '@angular/router';
 import {
   CharacterWalletComponent,
 } from './components/character-wallet/character-wallet';
+import { CharacterMagicItems } from './components/character-magic-items/character-magic-items';
 
 import {
   EMPTY,
@@ -75,6 +76,7 @@ type PlayerPortalTab =
     CharacterStoredValues,
     CharacterVitals,
     CharacterWalletComponent,
+    CharacterMagicItems,
     RestControls,
   ],
   templateUrl: './player-portal.html',
