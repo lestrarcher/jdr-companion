@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Campaign;
 use App\Entity\Media;
 use App\Repository\CampaignRepository;
+use App\Repository\CampaignFigureRepository;
 use App\Repository\MediaRepository;
 use App\Security\Voter\CampaignVoter;
 use App\Service\MediaStorageService;
@@ -29,6 +30,7 @@ final class MediaController extends AbstractController
     #[Route('', name: 'api_media_list', methods: ['GET'])]
     public function list(
         int $campaignId,
+        Request $request,
     ): JsonResponse {
         $campaign =
             $this->getCampaign($campaignId);
@@ -38,8 +40,23 @@ final class MediaController extends AbstractController
             $campaign,
         );
 
+        $usage = (string) $request->query->get(
+            'usage',
+            Media::USAGE_SCENE,
+        );
+
+        if (!in_array($usage, Media::allowedUsages(), true)) {
+            return $this->json(
+                ['message' => 'Le type de média demandé est invalide.'],
+                JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
+
         $media = $this->mediaRepository->findBy(
-            ['campaign' => $campaign],
+            [
+                'campaign' => $campaign,
+                'usage' => $usage,
+            ],
             ['createdAt' => 'DESC'],
         );
 
@@ -141,6 +158,22 @@ final class MediaController extends AbstractController
             ),
         );
 
+        $usage = trim(
+            (string) $request->request->get(
+                'usage',
+                Media::USAGE_SCENE,
+            ),
+        );
+
+        if (!in_array($usage, Media::allowedUsages(), true)) {
+            $this->mediaStorage->remove($filename, $campaignId);
+
+            return $this->json(
+                ['message' => 'Le type de média est invalide.'],
+                JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
+
         $media = new Media();
 
         $media
@@ -149,14 +182,21 @@ final class MediaController extends AbstractController
             ->setOriginalName($originalName)
             ->setMimeType($mimeType)
             ->setSize($size)
+            ->setUsage($usage)
             ->setTitle(
                 $title !== ''
                     ? $title
                     : null,
             );
 
-        $this->entityManager->persist($media);
-        $this->entityManager->flush();
+        try {
+            $this->entityManager->persist($media);
+            $this->entityManager->flush();
+        } catch (\Throwable $exception) {
+            $this->mediaStorage->remove($filename, $campaignId);
+
+            throw $exception;
+        }
 
         return $this->json(
             [
@@ -165,6 +205,55 @@ final class MediaController extends AbstractController
             ],
             201,
         );
+    }
+
+    #[Route('/{mediaId}', name: 'api_media_delete', requirements: ['mediaId' => '\\d+'], methods: ['DELETE'])]
+    public function delete(
+        int $campaignId,
+        int $mediaId,
+        CampaignFigureRepository $figureRepository,
+    ): JsonResponse {
+        $campaign = $this->getCampaign($campaignId);
+
+        $this->denyAccessUnlessGranted(
+            CampaignVoter::MANAGE,
+            $campaign,
+        );
+
+        $media = $this->mediaRepository->find($mediaId);
+
+        if (
+            !$media instanceof Media
+            || $media->getCampaign()?->getId() !== $campaign->getId()
+        ) {
+            throw $this->createNotFoundException(
+                'Média introuvable.',
+            );
+        }
+
+        if ($figureRepository->findOneBy(['portrait' => $media])) {
+            return $this->json(
+                [
+                    'message' =>
+                        'Ce portrait est encore utilisé par une personne.',
+                ],
+                JsonResponse::HTTP_CONFLICT,
+            );
+        }
+
+        $filename = $media->getFilename();
+
+        if ($filename === null) {
+            throw $this->createNotFoundException(
+                'Fichier média introuvable.',
+            );
+        }
+
+        $this->mediaStorage->remove($filename, $campaignId);
+        $this->entityManager->remove($media);
+        $this->entityManager->flush();
+
+        return new JsonResponse(null, JsonResponse::HTTP_NO_CONTENT);
     }
 
     private function getCampaign(
@@ -198,6 +287,7 @@ final class MediaController extends AbstractController
                 $media->getOriginalName(),
             'mimeType' => $media->getMimeType(),
             'size' => $media->getSize(),
+            'usage' => $media->getUsage(),
 
             'url' => sprintf(
                 '/api/public/media/%s',

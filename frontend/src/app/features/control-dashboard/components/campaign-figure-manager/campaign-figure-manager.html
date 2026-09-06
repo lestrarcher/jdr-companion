@@ -1,0 +1,427 @@
+<section
+  class="figure-manager"
+  aria-labelledby="figure-manager-title"
+>
+  <header class="section-header">
+    <div>
+      <span class="eyebrow">
+        Figures de la campagne
+      </span>
+
+      <h2 id="figure-manager-title">
+        Personnes rencontrées
+      </h2>
+    </div>
+
+    <span class="figure-count">
+      {{ figures().length }}
+    </span>
+  </header>
+
+  <section
+    class="display-selector"
+    aria-labelledby="figure-display-title"
+  >
+    <div class="display-selector-copy">
+      <span class="eyebrow">
+        Affichage joueurs
+      </span>
+
+      <h3 id="figure-display-title">
+        Personnes présentées
+      </h3>
+
+      <p>
+        Choisis les personnages actuellement
+        visibles sur le display.
+      </p>
+    </div>
+
+    <div
+      class="display-selector-actions"
+      role="group"
+      aria-label="Type de personnages affichés"
+    >
+      <button
+        type="button"
+        [class.is-active]="
+          displayMode() === 'party'
+        "
+        [attr.aria-pressed]="
+          displayMode() === 'party'
+        "
+        (click)="selectDisplayMode('party')"
+      >
+        Aventuriers
+      </button>
+
+      <button
+        type="button"
+        [class.is-active]="
+          displayMode() === 'important-npcs'
+        "
+        [attr.aria-pressed]="
+          displayMode() === 'important-npcs'
+        "
+        (click)="
+          selectDisplayMode('important-npcs')
+        "
+      >
+        PNJ importants
+      </button>
+
+      <button
+        type="button"
+        [class.is-active]="
+          displayMode() === 'memorial'
+        "
+        [attr.aria-pressed]="
+          displayMode() === 'memorial'
+        "
+        (click)="selectDisplayMode('memorial')"
+      >
+        In memoriam
+      </button>
+
+      <button
+        type="button"
+        [class.is-active]="
+          displayMode() === 'hidden'
+        "
+        [attr.aria-pressed]="
+          displayMode() === 'hidden'
+        "
+        (click)="selectDisplayMode('hidden')"
+      >
+        Masquer
+      </button>
+    </div>
+  </section>
+
+  <form
+    class="figure-form"
+    [formGroup]="figureForm"
+    (ngSubmit)="submitFigure()"
+  >
+    <h3>
+      @if (editingFigureId() !== null) {
+        Modifier la figure
+      } @else {
+        Préparer une nouvelle figure
+      }
+    </h3>
+
+    <div class="form-grid">
+      <label>
+        <span>Nom</span>
+
+        <input
+          type="text"
+          formControlName="name"
+          placeholder="Ezmeralda d’Avenir"
+        />
+      </label>
+
+      <label>
+        <span>Type</span>
+
+        <select formControlName="characterType">
+          <option value="npc">PNJ</option>
+          <option value="pc">PJ</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Rencontre</span>
+
+        <select formControlName="encounterStatus">
+          <option value="unmet">
+            Non rencontré
+          </option>
+
+          <option value="met">
+            Rencontré
+          </option>
+        </select>
+      </label>
+
+      <label>
+        <span>État</span>
+
+        <select formControlName="lifeStatus">
+          <option value="alive">
+            Vivant
+          </option>
+
+          <option value="dead">
+            Mort
+          </option>
+        </select>
+      </label>
+    </div>
+
+    <label>
+      <span>Description ou épitaphe</span>
+
+      <textarea
+        formControlName="description"
+        rows="3"
+        placeholder="Chasseuse de monstres et alliée imprévisible…"
+      ></textarea>
+    </label>
+
+    <div class="form-grid">
+      <label>
+        <span>Jour ou contexte du décès</span>
+
+        <input
+          type="text"
+          formControlName="deathLabel"
+          placeholder="Jour 16"
+        />
+      </label>
+
+      <label class="portrait-field">
+        <span>Portrait (facultatif)</span>
+
+        <input
+          #portraitInput
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          [disabled]="saving()"
+          (change)="onPortraitSelected($event)"
+        />
+
+        <small>
+          Le portrait restera lié à la personne et ne sera pas affiché dans la galerie des médias.
+        </small>
+      </label>
+    </div>
+
+    @if (portraitPreviewUrl()) {
+      <div class="portrait-preview">
+        <img
+          [src]="portraitPreviewUrl()"
+          alt="Aperçu du portrait sélectionné"
+        />
+
+        <div>
+          <strong>
+            {{ selectedPortrait()?.name }}
+          </strong>
+
+          <button
+            type="button"
+            class="button-secondary"
+            [disabled]="saving()"
+            (click)="removeSelectedPortrait()"
+          >
+            Retirer le portrait
+          </button>
+        </div>
+      </div>
+    } @else if (
+      editingFigureId() !== null
+      && figureForm.controls.portraitId.value !== null
+    ) {
+      <p class="current-portrait-note">
+        Le portrait actuel sera conservé tant qu’aucun nouveau fichier n’est choisi.
+      </p>
+    }
+
+    <div class="form-actions">
+      @if (editingFigureId() !== null) {
+        <button
+          type="button"
+          class="button-secondary"
+          [disabled]="saving()"
+          (click)="cancelEdition()"
+        >
+          Annuler
+        </button>
+      }
+
+      <button
+        type="submit"
+        class="button-primary"
+        [disabled]="saving()"
+      >
+        @if (saving()) {
+          Enregistrement…
+        } @else if (
+          editingFigureId() !== null
+        ) {
+          Enregistrer
+        } @else {
+          Ajouter
+        }
+      </button>
+    </div>
+  </form>
+
+  @if (error()) {
+    <p class="manager-error" role="alert">
+      {{ error() }}
+    </p>
+  }
+
+  @if (loading()) {
+    <p class="manager-message">
+      Chargement des figures…
+    </p>
+  } @else if (figures().length === 0) {
+    <p class="manager-message">
+      Aucune figure préparée.
+    </p>
+  } @else {
+    <div class="figure-list">
+      @for (
+        figure of figures();
+        track figure.id
+      ) {
+        <article
+          class="figure-card"
+          [attr.data-encounter]="
+            figure.encounterStatus
+          "
+          [attr.data-life]="
+            figure.lifeStatus
+          "
+          [attr.data-publication]="
+            figure.publicationStatus
+          "
+        >
+          <div class="portrait">
+            @if (figure.portrait) {
+              <img
+                [src]="figure.portrait.url"
+                [alt]="
+                  'Portrait de ' +
+                  figure.name
+                "
+              />
+            } @else {
+              <span>
+                {{
+                  figure.name
+                    .charAt(0)
+                    .toUpperCase()
+                }}
+              </span>
+            }
+          </div>
+
+          <div class="figure-content">
+            <div class="figure-badges">
+              <span>
+                {{
+                  characterTypeLabel(
+                    figure.characterType
+                  )
+                }}
+              </span>
+
+              <span>
+                {{
+                  encounterLabel(
+                    figure.encounterStatus
+                  )
+                }}
+              </span>
+
+              <span>
+                {{
+                  lifeLabel(
+                    figure.lifeStatus
+                  )
+                }}
+              </span>
+
+              <span>
+                {{
+                  visibilityLabel(
+                    figure.publicationStatus
+                  )
+                }}
+              </span>
+            </div>
+
+            <h3>{{ figure.name }}</h3>
+
+            <p>{{ figure.description }}</p>
+
+            @if (
+              figure.lifeStatus === 'dead'
+              && figure.deathLabel
+            ) {
+              <small>
+                {{ figure.deathLabel }}
+              </small>
+            }
+          </div>
+
+          <div class="figure-actions">
+            <button
+              type="button"
+              [disabled]="saving()"
+              (click)="editFigure(figure)"
+            >
+              Modifier
+            </button>
+
+            <button
+              type="button"
+              [disabled]="saving()"
+              (click)="
+                markEncountered(figure)
+              "
+            >
+              @if (
+                figure.encounterStatus ===
+                'met'
+              ) {
+                Marquer non rencontré
+              } @else {
+                Débloquer
+              }
+            </button>
+
+            <button
+              type="button"
+              [disabled]="saving()"
+              (click)="
+                toggleLifeStatus(figure)
+              "
+            >
+              @if (
+                figure.lifeStatus ===
+                'alive'
+              ) {
+                Déclarer mort
+              } @else {
+                Déclarer vivant
+              }
+            </button>
+
+            <button
+              type="button"
+              [disabled]="saving()"
+              (click)="
+                toggleVisibility(figure)
+              "
+            >
+              @if (
+                figure.publicationStatus ===
+                'visible'
+              ) {
+                Masquer
+              } @else {
+                Rendre visible
+              }
+            </button>
+          </div>
+        </article>
+      }
+    </div>
+  }
+</section>

@@ -1,57 +1,30 @@
 <div class="mj-shell">
-  <header class="mj-navigation">
-    <a
-      class="brand"
-      routerLink="/campaigns"
-      aria-label="Accueil de JDR Companion"
-    >
-      <span
-        class="brand-symbol"
-        aria-hidden="true"
-      >
-        ◆
-      </span>
+  <header class="mj-header">
+    <div class="mj-navigation">
+      <a class="brand" routerLink="/campaigns" aria-label="Accueil de JDR Companion">
+        <span class="brand-symbol" aria-hidden="true">◆</span>
+        <span><strong>JDR Companion</strong><small>Espace du maître du jeu</small></span>
+      </a>
 
-      <span>
-        <strong>JDR Companion</strong>
-        <small>Espace du maître du jeu</small>
-      </span>
-    </a>
-
-    <nav
-      class="breadcrumbs"
-      aria-label="Fil d’Ariane"
-    >
-      @for (
-        breadcrumb of breadcrumbs();
-        track $index
-      ) {
-        @if (!$first) {
-          <span
-            class="breadcrumb-separator"
-            aria-hidden="true"
-          >
-            ›
-          </span>
+      <nav class="primary-navigation" aria-label="Navigation principale">
+        <a routerLink="/campaigns" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Campagnes</a>
+        @if (sessionsUrl(); as url) {
+          <a [routerLink]="url" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Sessions</a>
         }
+      </nav>
+    </div>
 
+    <nav class="breadcrumbs" aria-label="Fil d’Ariane" [attr.aria-busy]="navigationLoading()">
+      @for (breadcrumb of breadcrumbs(); track $index) {
+        @if (!$first) { <span class="breadcrumb-separator" aria-hidden="true">›</span> }
         @if (breadcrumb.url) {
-          <a [routerLink]="breadcrumb.url">
-            {{ breadcrumb.label }}
-          </a>
+          <a [routerLink]="breadcrumb.url">{{ breadcrumb.label }}</a>
         } @else {
-          <span
-            class="breadcrumb-current"
-            aria-current="page"
-          >
-            {{ breadcrumb.label }}
-          </span>
+          <span class="breadcrumb-current" aria-current="page">{{ breadcrumb.label }}</span>
         }
       }
     </nav>
   </header>
 
-  <div class="mj-content">
-    <router-outlet />
-  </div>
+  <div class="mj-content"><router-outlet /></div>
 </div>

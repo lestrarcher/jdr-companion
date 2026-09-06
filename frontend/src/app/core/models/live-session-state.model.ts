@@ -28,6 +28,16 @@ export interface DisplayedMediaState {
   fit?: 'contain' | 'cover';
 }
 
+export type DisplayMode =
+  | 'normal'
+  | 'cinematic';
+
+export type FigurePanelMode =
+  | 'party'
+  | 'important-npcs'
+  | 'memorial'
+  | 'hidden';
+
 export interface LiveSessionState {
   sessionId: string;
   campaignId: string;
@@ -36,6 +46,13 @@ export interface LiveSessionState {
   fogEnabled: boolean;
   displayMode: DisplayMode;
 
+  /*
+   * Facultatif pour rester compatible avec les
+   * configurations et états enregistrés avant
+   * l’ajout du panneau des figures.
+   */
+  figurePanelMode?: FigurePanelMode;
+
   day?: number;
   dayPeriod?: string;
   weather?: WeatherState;
@@ -43,5 +60,3 @@ export interface LiveSessionState {
   location?: LocationState;
   displayedMedia?: DisplayedMediaState;
 }
-
-export type DisplayMode = 'normal' | 'cinematic';

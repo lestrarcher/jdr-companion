@@ -1,16 +1,19 @@
-import { Component, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   ActivatedRoute,
   NavigationEnd,
   Router,
   RouterLink,
+  RouterLinkActive,
   RouterOutlet,
 } from '@angular/router';
 import {
-  filter,
+  filter, finalize, forkJoin,
   startWith,
 } from 'rxjs';
+import { CampaignConfigurationRegistryService } from '@core/services/campaign-configuration-registry.service';
+import { GameSessionApiService } from '@core/services/game-session-api.service';
 
 interface Breadcrumb {
   label: string;
@@ -21,19 +24,26 @@ interface Breadcrumb {
   selector: 'app-mj-layout',
   imports: [
     RouterLink,
+    RouterLinkActive,
     RouterOutlet,
   ],
   templateUrl: './mj-layout.html',
   styleUrl: './mj-layout.scss',
 })
 export class MjLayout {
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly campaignRegistry = inject(CampaignConfigurationRegistryService);
+  private readonly gameSessionApi = inject(GameSessionApiService);
+
   protected readonly breadcrumbs =
     signal<Breadcrumb[]>([]);
+  protected readonly campaignId = signal<number | null>(null);
+  protected readonly sessionId = signal<number | null>(null);
+  protected readonly navigationLoading = signal(false);
+  protected readonly sessionsUrl = computed(() => this.campaignId() ? `/campaigns/${this.campaignId()}` : null);
 
-  constructor(
-    private readonly router: Router,
-    private readonly route: ActivatedRoute,
-  ) {
+  constructor() {
     this.router.events
       .pipe(
         filter(
@@ -44,59 +54,61 @@ export class MjLayout {
         takeUntilDestroyed(),
       )
       .subscribe(() => {
-        this.updateBreadcrumbs();
+        this.updateNavigationContext();
       });
   }
 
-  private updateBreadcrumbs(): void {
+  private updateNavigationContext(): void {
     const childRoute =
       this.getDeepestChildRoute();
 
-    const campaignId =
-      childRoute.snapshot.paramMap.get(
-        'campaignId',
-      );
-
-    const sessionId =
-      childRoute.snapshot.paramMap.get(
-        'sessionId',
-      );
-
-    const breadcrumbs: Breadcrumb[] = [];
+    const rawCampaignId = Number(childRoute.snapshot.paramMap.get('campaignId'));
+    const rawSessionId = Number(childRoute.snapshot.paramMap.get('sessionId'));
+    const campaignId = Number.isInteger(rawCampaignId) && rawCampaignId > 0 ? rawCampaignId : null;
+    const sessionId = Number.isInteger(rawSessionId) && rawSessionId > 0 ? rawSessionId : null;
+    this.campaignId.set(campaignId);
+    this.sessionId.set(sessionId);
 
     if (!campaignId) {
-      breadcrumbs.push({
-        label: 'Campagnes',
-      });
-
-      this.breadcrumbs.set(breadcrumbs);
+      this.breadcrumbs.set([{ label: 'Campagnes' }]);
       return;
     }
-
-    breadcrumbs.push({
-      label: 'Campagnes',
-      url: '/campaigns',
-    });
-
+    this.navigationLoading.set(true);
     if (!sessionId) {
-      breadcrumbs.push({
-        label: 'Sessions',
+      this.campaignRegistry.getCampaign(campaignId).pipe(
+        finalize(() => this.navigationLoading.set(false)),
+      ).subscribe({
+        next: (context) => this.breadcrumbs.set([
+          { label: 'Campagnes', url: '/campaigns' },
+          { label: context.campaign.name },
+        ]),
+        error: () => this.setFallbackBreadcrumbs(campaignId),
       });
-
-      this.breadcrumbs.set(breadcrumbs);
       return;
     }
-
-    breadcrumbs.push({
-      label: 'Sessions',
-      url: `/campaigns/${campaignId}`,
+    forkJoin({
+      campaignContext: this.campaignRegistry.getCampaign(campaignId),
+      session: this.gameSessionApi.get(sessionId),
+    }).pipe(
+      finalize(() => this.navigationLoading.set(false)),
+    ).subscribe({
+      next: ({ campaignContext, session }) => this.breadcrumbs.set([
+        { label: 'Campagnes', url: '/campaigns' },
+        { label: campaignContext.campaign.name, url: `/campaigns/${campaignId}` },
+        { label: session.name },
+        { label: 'Contrôle' },
+      ]),
+      error: () => this.setFallbackBreadcrumbs(campaignId),
     });
+  }
 
-    breadcrumbs.push({
-      label: 'Control',
-    });
-
-    this.breadcrumbs.set(breadcrumbs);
+  private setFallbackBreadcrumbs(campaignId: number): void {
+    this.navigationLoading.set(false);
+    this.breadcrumbs.set([
+      { label: 'Campagnes', url: '/campaigns' },
+      { label: 'Sessions', url: `/campaigns/${campaignId}` },
+      ...(this.sessionId() ? [{ label: 'Contrôle' }] : []),
+    ]);
   }
 
   private getDeepestChildRoute():

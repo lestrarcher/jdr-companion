@@ -15,28 +15,6 @@
       </p>
     </section>
   } @else if (campaign; as activeCampaign) {
-    <header class="dashboard-header">
-      <div>
-        <span class="eyebrow">
-          JDR Companion
-        </span>
-
-        <h1>
-          {{ activeCampaign.name }}
-
-          @if (backendSession(); as session) {
-            <small>— {{ session.name }}</small>
-          }
-        </h1>
-      </div>
-
-      <span
-        class="header-status"
-        [attr.data-status]="sessionStatus()"
-      >
-        {{ sessionStatus() }}
-      </span>
-    </header>
 
     <div class="dashboard-layout">
       <app-session-controls
@@ -62,69 +40,82 @@
         "
       />
 
-      <section class="dashboard-content">
-        <app-world-controls
-          [state]="liveState()"
-          [weatherStates]="
-            activeCampaign.weatherStates
-          "
-          [moonPhases]="
-            activeCampaign.moonPhases
-          "
-          [disabled]="false"
-          (worldUpdated)="
-            updateWorld($event)
-          "
-        />
+      <section class="dashboard-workspace">
+        <nav
+          class="dashboard-tabs"
+          role="tablist"
+          aria-label="Sections du tableau de bord"
+        >
+          <button type="button" role="tab" [class.active]="activeTab() === 'staging'" [attr.aria-selected]="activeTab() === 'staging'" (click)="selectTab('staging')">
+            Mise en scène
+          </button>
+          <button type="button" role="tab" [class.active]="activeTab() === 'journal'" [attr.aria-selected]="activeTab() === 'journal'" (click)="selectTab('journal')">
+            Journal
+          </button>
+          <button type="button" role="tab" [class.active]="activeTab() === 'figures'" [attr.aria-selected]="activeTab() === 'figures'" (click)="selectTab('figures')">
+            Figures
+          </button>
+          <button type="button" role="tab" [class.active]="activeTab() === 'characters'" [attr.aria-selected]="activeTab() === 'characters'" (click)="selectTab('characters')">
+            Personnages
+            @if (pendingRestRequests().length > 0) {
+              <span class="tab-notification">{{ pendingRestRequests().length }}</span>
+            }
+          </button>
+        </nav>
 
-        <app-media-manager
-          [campaignId]="backendCampaignId"
-          [selectedUrl]="
-            liveState()?.displayedMedia?.source ??
-            null
-          "
-          (mediaSelected)="
-            displayUploadedMedia($event)
-          "
-          (mediaCleared)="clearMedia()"
-        />
+        <div class="dashboard-tab-content">
+          @switch (activeTab()) {
+            @case ('staging') {
+              <app-world-controls
+                [state]="liveState()"
+                [weatherStates]="activeCampaign.weatherStates"
+                [moonPhases]="activeCampaign.moonPhases"
+                [disabled]="false"
+                (worldUpdated)="updateWorld($event)"
+              />
+              <app-media-manager
+                [campaignId]="backendCampaignId"
+                [selectedUrl]="liveState()?.displayedMedia?.source ?? null"
+                (mediaSelected)="displayUploadedMedia($event)"
+                (mediaCleared)="clearMedia()"
+              />
+            }
 
-        <app-quest-manager
-          [campaignId]="backendCampaignId"
-        />
+            @case ('journal') {
+              <app-quest-manager [campaignId]="backendCampaignId" />
+              <app-tip-manager [campaignId]="backendCampaignId" />
+            }
+
+            @case ('figures') {
+              <app-campaign-figure-manager
+                [campaignId]="backendCampaignId"
+                [displayMode]="
+                  liveState()?.figurePanelMode
+                  ?? 'memorial'
+                "
+                (displayModeChanged)="
+                  updateFigurePanelMode($event)
+                "
+              />
+            }
+
+            @case ('characters') {
+              <app-session-characters
+                [campaignId]="backendCampaignId"
+                [sessionId]="backendSessionId"
+                [characters]="importedCharacters()"
+                [initializationRunning]="characterImportRunning()"
+                [initializationError]="characterImportError()"
+                [restRequests]="pendingRestRequests()"
+                [resolvingRestRequestId]="resolvingRestRequestId()"
+                [restRequestError]="restRequestError()"
+                (charactersInitialized)="synchronizeCharacters()"
+                (restRequestResolved)="resolveRestRequest($event.requestId, $event.approved)"
+              />
+            }
+          }
+        </div>
       </section>
-
-      <app-session-characters
-        [campaignId]="backendCampaignId"
-        [sessionId]="backendSessionId"
-        [characters]="
-          importedCharacters()
-        "
-        [initializationRunning]="
-          characterImportRunning()
-        "
-        [initializationError]="
-          characterImportError()
-        "
-        [restRequests]="
-          pendingRestRequests()
-        "
-        [resolvingRestRequestId]="
-          resolvingRestRequestId()
-        "
-        [restRequestError]="
-          restRequestError()
-        "
-        (charactersInitialized)="
-          synchronizeCharacters()
-        "
-        (restRequestResolved)="
-          resolveRestRequest(
-            $event.requestId,
-            $event.approved
-          )
-        "
-      />
     </div>
   } @else {
     <section
