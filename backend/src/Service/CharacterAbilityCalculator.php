@@ -8,6 +8,7 @@ use App\Dto\EffectiveAbilityScore;
 use App\Entity\Character;
 use App\Entity\MagicItemAbilityEffect;
 use App\Enum\Ability;
+use App\Enum\AbilityAdjustmentOperation;
 use App\Enum\AbilityEffectOperation;
 
 final class CharacterAbilityCalculator
@@ -18,86 +19,78 @@ final class CharacterAbilityCalculator
     /**
      * @return array<string, EffectiveAbilityScore>
      */
-    public function calculateAll(
-        Character $character,
-    ): array {
+    public function calculateAll(Character $character): array
+    {
         $results = [];
 
-        foreach (
-            Ability::cases()
-            as $ability
-        ) {
-            $results[$ability->value] =
-                $this->calculate(
-                    $character,
-                    $ability,
-                );
+        foreach (Ability::cases() as $ability) {
+            $results[$ability->value] = $this->calculate($character, $ability);
         }
 
         return $results;
     }
 
-    public function calculate(
-        Character $character,
-        Ability $ability,
-    ): EffectiveAbilityScore {
-        $abilityScore =
-            $character->getAbilityScore(
-                $ability,
-            );
+    public function calculate(Character $character, Ability $ability): EffectiveAbilityScore
+    {
+        $abilityScore = $character->getAbilityScore($ability);
 
-        $baseValue =
-            $abilityScore->getBaseValue();
+        $baseValue = $abilityScore->getBaseValue();
 
         $effectiveValue = $baseValue;
         $minimumValue = null;
 
-        foreach (
-            $character->getMagicItems()
-            as $ownedItem
-        ) {
-            if (
-                !$ownedItem->isEffectActive()
-            ) {
+        $race = $character->getRace();
+
+        if ($race !== null) {
+            foreach ($race->getInheritedAbilityModifiers() as $modifier) {
+                if ($modifier->requiresChoice()) {
+                    continue;
+                }
+
+                if ($modifier->getAbility() === $ability) {
+                    $effectiveValue += $modifier->getValue();
+                }
+            }
+        }
+
+        foreach ($character->getRaceAbilityChoices() as $choice) {
+            if ($choice->getAbility() === $ability) {
+                $effectiveValue += $choice->getValue();
+            }
+        }
+
+        /*
+        * Les dons sont des améliorations permanentes
+        * du personnage. Ils sont appliqués avant les
+        * effets temporaires ou conditionnels des objets.
+        */
+        foreach ($character->getFeats() as $characterFeat) {
+            if ($characterFeat->getChosenAbility() !== $ability) {
                 continue;
             }
 
-            foreach (
-                $ownedItem
-                    ->getMagicItem()
-                    ->getAbilityEffects()
-                as $effect
-            ) {
-                if (
-                    $effect->getAbility()
-                    !== $ability
-                ) {
+            $effectiveValue += $characterFeat->getAbilityIncrease();
+        }
+
+        $effectiveValue = $this->applyPermanentAdjustments($character, $ability, $effectiveValue);
+
+        foreach ($character->getMagicItems() as $ownedItem) {
+            if (!$ownedItem->isEffectActive()) {
+                continue;
+            }
+
+            foreach ($ownedItem->getMagicItem()->getAbilityEffects() as $effect) {
+                if ($effect->getAbility() !== $ability) {
                     continue;
                 }
 
-                if (
-                    $effect->getOperation()
-                    ===
-                    AbilityEffectOperation::Bonus
-                ) {
-                    $effectiveValue =
-                        $this->applyBonus(
-                            $effectiveValue,
-                            $effect,
-                        );
-
+                if ($effect->getOperation() === AbilityEffectOperation::Bonus) {
+                    $effectiveValue = $this->applyBonus($effectiveValue, $effect);
                     continue;
                 }
 
-                if (
-                    $effect->getOperation()
-                    ===
-                    AbilityEffectOperation::Minimum
-                ) {
-                    $minimumValue = max(
-                        $minimumValue ?? 0,
-                        $effect->getValue(),
-                    );
+                if ($effect->getOperation() === AbilityEffectOperation::Minimum) {
+                    $minimumValue = max($minimumValue ?? 0, $effect->getValue());
                 }
 
                 /*
@@ -158,5 +151,16 @@ final class CharacterAbilityCalculator
         }
 
         return $newValue;
+    }
+
+    private function applyPermanentAdjustments(Character $character, Ability $ability, int $currentValue): int
+    {
+        foreach ($character->getAbilityAdjustments() as $adjustment) {
+            if ($adjustment->getAbility() === $ability) {
+                $currentValue = $adjustment->apply($currentValue);
+            }
+        }
+
+        return $currentValue;
     }
 }
