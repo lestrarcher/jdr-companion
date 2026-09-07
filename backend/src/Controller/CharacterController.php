@@ -200,6 +200,24 @@ final class CharacterController extends AbstractController
             'playerName' =>
                 $character->getPlayerName(),
             'type' => $character->getType(),
+            'race' => $character->getRace() !== null
+                ? [
+                    'id' => $character->getRace()->getId(),
+                    'name' => $character->getRace()->getName(),
+                ]
+                : null,
+            'totalLevel' => $character->getTotalLevel(),
+            'proficiencyBonus' => $character->getProficiencyBonus(),
+            'classLevels' => array_map(
+                static fn ($level): array => [
+                    'position' => $level->getPosition(),
+                    'classId' => $level->getCharacterClass()->getId(),
+                    'className' => $level->getCharacterClass()->getName(),
+                    'subclassId' => $level->getSubclass()?->getId(),
+                    'subclassName' => $level->getSubclass()?->getName(),
+                ],
+                $character->getClassLevels()->toArray(),
+            ),
             'definition' =>
                 $character->getDefinition(),
         ];

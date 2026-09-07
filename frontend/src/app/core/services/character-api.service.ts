@@ -17,6 +17,16 @@ export interface CharacterApiResponse {
   name: string;
   playerName: string | null;
   type: 'player' | 'npc';
+
+  race: {
+    id: number;
+    name: string;
+  } | null;
+
+  totalLevel: number;
+  proficiencyBonus: number;
+  classLevels: CharacterClassLevelApiResponse[];
+
   definition: Record<string, unknown>;
 }
 interface CharacterCreateApiResponse {
@@ -25,6 +35,14 @@ interface CharacterCreateApiResponse {
 
 interface CharacterListApiResponse {
   characters: CharacterApiResponse[];
+}
+
+export interface CharacterClassLevelApiResponse {
+  position: number;
+  classId: number;
+  className: string;
+  subclassId: number | null;
+  subclassName: string | null;
 }
 
 @Injectable({

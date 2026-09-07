@@ -51,6 +51,14 @@ class CharacterRace
     #[ORM\Column]
     private bool $custom = false;
 
+    /**
+     * Nombre de dons choisis lors de la création.
+     *
+     * Exemple : Humain variant = 1.
+     */
+    #[ORM\Column(options: ['default' => 0])]
+    private int $featChoiceCount = 0;
+
     #[ORM\Column]
     private DateTimeImmutable $createdAt;
 
@@ -178,6 +186,31 @@ class CharacterRace
         $this->touch();
 
         return $this;
+    }
+
+    public function getFeatChoiceCount(): int
+    {
+        return $this->featChoiceCount;
+    }
+
+    public function setFeatChoiceCount(int $featChoiceCount): static
+    {
+        if ($featChoiceCount < 0 || $featChoiceCount > 3) {
+            throw new \InvalidArgumentException(
+                'Le nombre de dons raciaux doit être compris entre 0 et 3.',
+            );
+        }
+
+        $this->featChoiceCount = $featChoiceCount;
+        $this->touch();
+
+        return $this;
+    }
+
+    public function getInheritedFeatChoiceCount(): int
+    {
+        return $this->featChoiceCount
+            + ($this->parentRace?->getInheritedFeatChoiceCount() ?? 0);
     }
 
     public function isCustom(): bool

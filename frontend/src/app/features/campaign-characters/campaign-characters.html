@@ -1,0 +1,190 @@
+<main class="characters-page">
+  <a
+    class="back-link"
+    [routerLink]="['/campaigns', campaignId]"
+  >
+    ← Retour à la campagne
+  </a>
+
+  <header class="page-header">
+    <div>
+      <span class="eyebrow">Effectif de campagne</span>
+      <h1>Personnages</h1>
+
+      <p>
+        Gère les personnages joueurs et non-joueurs de la campagne.
+      </p>
+    </div>
+
+    <a
+      class="create-link"
+      [routerLink]="[
+        '/campaigns',
+        campaignId,
+        'characters',
+        'new'
+      ]"
+    >
+      + Créer un personnage
+    </a>
+  </header>
+
+  <nav
+    class="filters"
+    aria-label="Filtrer les personnages"
+  >
+    <button
+      type="button"
+      [class.active]="filter() === 'all'"
+      (click)="setFilter('all')"
+    >
+      Tous
+      <span>{{ countByType('all') }}</span>
+    </button>
+
+    <button
+      type="button"
+      [class.active]="filter() === 'player'"
+      (click)="setFilter('player')"
+    >
+      PJ
+      <span>{{ countByType('player') }}</span>
+    </button>
+
+    <button
+      type="button"
+      [class.active]="filter() === 'npc'"
+      (click)="setFilter('npc')"
+    >
+      PNJ
+      <span>{{ countByType('npc') }}</span>
+    </button>
+  </nav>
+
+  @if (loading()) {
+    <p class="state-panel">
+      Chargement de l’effectif…
+    </p>
+  } @else if (error()) {
+    <p
+      class="state-panel state-panel--error"
+      role="alert"
+    >
+      {{ error() }}
+    </p>
+  } @else {
+    <section class="character-list">
+      @for (
+        character of filteredCharacters();
+        track character.id
+      ) {
+        <article class="character-card">
+          <div class="character-avatar">
+            {{ character.name.charAt(0).toUpperCase() }}
+          </div>
+
+          <div class="character-content">
+            <div class="character-heading">
+              <div>
+                <span class="character-type">
+                  {{ typeLabel(character) }}
+                </span>
+
+                <h2>{{ character.name }}</h2>
+
+                @if (character.playerName) {
+                  <p>Joué par {{ character.playerName }}</p>
+                }
+              </div>
+
+              <span
+                class="structure-status"
+                [class.structure-status--ready]="
+                  isStructured(character)
+                "
+              >
+                {{
+                  isStructured(character)
+                    ? 'Progression structurée'
+                    : 'Ancienne configuration'
+                }}
+              </span>
+            </div>
+
+            <div class="character-details">
+              <span>
+                <small>Race</small>
+                <strong>
+                  {{ character.race?.name ?? 'Non renseignée' }}
+                </strong>
+              </span>
+
+              <span>
+                <small>Progression</small>
+                <strong>
+                  {{ progressionLabel(character) }}
+                </strong>
+              </span>
+
+              <span>
+                <small>Niveau total</small>
+                <strong>
+                  {{
+                    character.totalLevel > 0
+                      ? character.totalLevel
+                      : '—'
+                  }}
+                </strong>
+              </span>
+
+              <span>
+                <small>Maîtrise</small>
+                <strong>
+                  {{
+                    character.totalLevel > 0
+                      ? '+' + character.proficiencyBonus
+                      : '—'
+                  }}
+                </strong>
+              </span>
+            </div>
+          </div>
+        </article>
+      } @empty {
+        <div class="empty-state">
+          <span class="empty-state__symbol">◇</span>
+
+          <h2>
+            {{
+              characters().length === 0
+                ? 'Aucun personnage'
+                : 'Aucun résultat'
+            }}
+          </h2>
+
+          <p>
+            {{
+              characters().length === 0
+                ? 'Crée le premier personnage de cette campagne.'
+                : 'Aucun personnage ne correspond à ce filtre.'
+            }}
+          </p>
+
+          @if (characters().length === 0) {
+            <a
+              class="create-link"
+              [routerLink]="[
+                '/campaigns',
+                campaignId,
+                'characters',
+                'new'
+              ]"
+            >
+              Créer un personnage
+            </a>
+          }
+        </div>
+      }
+    </section>
+  }
+</main>

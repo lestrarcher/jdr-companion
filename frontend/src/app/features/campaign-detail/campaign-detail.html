@@ -28,6 +28,39 @@
       </p>
     </header>
 
+    <nav
+      class="campaign-navigation"
+      aria-label="Navigation de la campagne"
+    >
+      <span class="campaign-navigation__active">
+        <strong>Sessions</strong>
+        <small>{{ sessions().length }} session(s)</small>
+      </span>
+
+      <a
+        [routerLink]="[
+          '/campaigns',
+          currentCampaign.id,
+          'characters'
+        ]"
+      >
+        <strong>Personnages</strong>
+        <small>Effectif et progression</small>
+      </a>
+
+      <a
+        class="campaign-navigation__create"
+        [routerLink]="[
+          '/campaigns',
+          currentCampaign.id,
+          'characters',
+          'new'
+        ]"
+      >
+        + Créer un personnage
+      </a>
+    </nav>
+
     <section class="creation-panel">
       <div class="section-heading">
         <span class="eyebrow">

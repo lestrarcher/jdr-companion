@@ -51,6 +51,15 @@ class CharacterSessionState
     private DateTimeImmutable $updatedAt;
 
     /**
+     * Indique si le personnage participe actuellement à cette session.
+     *
+     * Un personnage retiré conserve son état et son historique,
+     * mais n’apparaît plus dans les interfaces de la session.
+     */
+    #[ORM\Column(options: ['default' => true])]
+    private bool $participating = true;
+
+    /**
      * @param array<string, mixed> $state
      */
     public function __construct(
@@ -116,6 +125,19 @@ class CharacterSessionState
     {
         $this->state = $state;
         $this->updatedAt = new \DateTimeImmutable();
+
+        return $this;
+    }
+
+    public function isParticipating(): bool
+    {
+        return $this->participating;
+    }
+
+    public function setParticipating(bool $participating): static
+    {
+        $this->participating = $participating;
+        $this->updatedAt = new DateTimeImmutable();
 
         return $this;
     }

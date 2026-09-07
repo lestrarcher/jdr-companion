@@ -21,6 +21,45 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class CharacterSessionStateController extends AbstractController
 {
+    #[Route(
+        '/sessions/{sessionId}/characters',
+        name: 'api_character_session_state_list',
+        requirements: ['sessionId' => '\d+'],
+        methods: ['GET'],
+    )]
+    public function list(
+        int $sessionId,
+        GameSessionRepository $gameSessionRepository,
+        CharacterSessionStateRepository $stateRepository,
+    ): JsonResponse {
+        $gameSession = $gameSessionRepository->find($sessionId);
+
+        if (!$gameSession instanceof GameSession) {
+            return $this->json(
+                ['message' => 'Session introuvable.'],
+                Response::HTTP_NOT_FOUND,
+            );
+        }
+
+        $this->denyAccessUnlessGranted(
+            CampaignVoter::MANAGE,
+            $gameSession->getCampaign(),
+        );
+
+        $states = $stateRepository->findBy(
+            ['gameSession' => $gameSession],
+            ['id' => 'ASC'],
+        );
+
+        return $this->json([
+            'states' => array_map(
+                fn (CharacterSessionState $state): array =>
+                    $this->serializeState($state, true),
+                $states,
+            ),
+        ]);
+    }
+
     /**
      * Crée ou récupère l’état d’un personnage pour une session.
      *
@@ -79,6 +118,9 @@ final class CharacterSessionStateController extends AbstractController
         ]);
 
         if ($existingState instanceof CharacterSessionState) {
+            $existingState->setParticipating(true);
+            $entityManager->flush();
+
             return $this->json(
                 $this->serializeState($existingState, true),
                 Response::HTTP_OK,
@@ -118,6 +160,65 @@ final class CharacterSessionStateController extends AbstractController
         );
     }
 
+    #[Route(
+        '/sessions/{sessionId}/characters/{characterId}',
+        name: 'api_character_session_state_remove',
+        requirements: [
+            'sessionId' => '\d+',
+            'characterId' => '\d+',
+        ],
+        methods: ['DELETE'],
+    )]
+    public function remove(
+        int $sessionId,
+        int $characterId,
+        GameSessionRepository $gameSessionRepository,
+        CharacterRepository $characterRepository,
+        CharacterSessionStateRepository $stateRepository,
+        EntityManagerInterface $entityManager,
+    ): JsonResponse {
+        $gameSession = $gameSessionRepository->find($sessionId);
+        $character = $characterRepository->find($characterId);
+
+        if (!$gameSession instanceof GameSession) {
+            return $this->json(
+                ['message' => 'Session introuvable.'],
+                Response::HTTP_NOT_FOUND,
+            );
+        }
+
+        if (!$character instanceof Character) {
+            return $this->json(
+                ['message' => 'Personnage introuvable.'],
+                Response::HTTP_NOT_FOUND,
+            );
+        }
+
+        $this->denyAccessUnlessGranted(
+            CampaignVoter::MANAGE,
+            $gameSession->getCampaign(),
+        );
+
+        $state = $stateRepository->findOneBy([
+            'gameSession' => $gameSession,
+            'character' => $character,
+        ]);
+
+        if (!$state instanceof CharacterSessionState) {
+            return $this->json(
+                ['message' => 'Ce personnage ne participe pas à cette session.'],
+                Response::HTTP_NOT_FOUND,
+            );
+        }
+
+        $state->setParticipating(false);
+        $entityManager->flush();
+
+        return $this->json(
+            $this->serializeState($state, true),
+        );
+    }
+
     /**
      * Retourne au téléphone toutes les données nécessaires au portail.
      */
@@ -133,11 +234,8 @@ final class CharacterSessionStateController extends AbstractController
     ): JsonResponse {
         $state = $stateRepository->findOneByAccessToken($accessToken);
 
-        if (!$state instanceof CharacterSessionState) {
-            return $this->json(
-                ['message' => 'Lien joueur invalide.'],
-                Response::HTTP_NOT_FOUND,
-            );
+        if (!$state instanceof CharacterSessionState || !$state->isParticipating()) {
+            return $this->json( ['message' => 'Lien joueur invalide.'], Response::HTTP_NOT_FOUND);
         }
 
         return $this->json($this->serializeState($state));
@@ -232,6 +330,7 @@ final class CharacterSessionStateController extends AbstractController
                 'type' => $character->getType(),
                 'definition' => $character->getDefinition(),
             ],
+            'participating' => $state->isParticipating(),
             'state' => $state->getState(),
             'updatedAt' => $state->getUpdatedAt()->format(DATE_ATOM),
         ];

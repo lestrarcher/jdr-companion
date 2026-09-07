@@ -53,8 +53,8 @@ final class DndReferenceInitializer
     private function initializeRaces(): array
     {
         $human = $this->race('human', 'Humain');
+        $variantHuman = $this->race('variant-human', 'Humain variant', $human)->setFeatChoiceCount(1);
         $standardHuman = $this->race('standard-human', 'Humain standard', $human);
-        $variantHuman = $this->race('variant-human', 'Humain variant', $human);
 
         $elf = $this->race('elf', 'Elfe');
         $highElf = $this->race('high-elf', 'Haut-elfe', $elf);

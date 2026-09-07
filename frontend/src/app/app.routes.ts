@@ -64,6 +64,28 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'campaigns/:campaignId/characters',
+        loadComponent: () =>
+          import(
+            './features/campaign-characters/campaign-characters'
+          ).then(
+            (component) =>
+              component.CampaignCharacters,
+          ),
+        canActivate: [authGuard],
+      },
+      {
+        path: 'campaigns/:campaignId/characters/new',
+        loadComponent: () =>
+          import(
+            './features/character-builder/character-builder'
+          ).then(
+            (component) =>
+              component.CharacterBuilder,
+          ),
+        canActivate: [authGuard],
+      },
+      {
         path: 'campaigns/:campaignId',
         loadComponent: () =>
           import(
