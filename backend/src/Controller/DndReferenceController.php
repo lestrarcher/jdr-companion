@@ -87,10 +87,13 @@ final class DndReferenceController extends AbstractController
                     'name' => $feat->getName(),
                     'description' => $feat->getDescription(),
                     'repeatable' => $feat->isRepeatable(),
-                    'requiresAbilityChoice' =>
-                        $feat->requiresAbilityChoice(),
-                    'chosenAbilityIncrease' =>
-                        $feat->getChosenAbilityIncrease(),
+                    'requiresAbilityChoice' => $feat->requiresAbilityChoice(),
+                    'chosenAbilityIncrease' => $feat->getChosenAbilityIncrease(),
+                    'allowedAbilities' => array_map(
+                        static fn (Ability $ability): string =>
+                            $ability->value,
+                        $feat->getAllowedAbilities(),
+                    ),
                 ],
                 $feats,
             ),

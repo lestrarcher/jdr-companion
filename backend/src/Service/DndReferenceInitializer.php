@@ -173,15 +173,118 @@ final class DndReferenceInitializer
         $this->subclass($classes['paladin'], 'vengeance', 'Serment de Vengeance');
     }
 
-    private function initializeFeats(): void
-    {
-        $resilient = $this->feat('resilient', 'Résilient');
-        $resilient
-            ->setRequiresAbilityChoice(true)
-            ->setChosenAbilityIncrease(1);
+private function initializeFeats(): void
+{
+    $resilient = $this->feat(
+        'resilient',
+        'Résilient',
+    );
 
-        $this->feat('war-caster', 'Mage de guerre');
+    $resilient
+        ->setDescription(
+            'Augmente une caractéristique et accorde la maîtrise des jets de sauvegarde associés.',
+        )
+        ->setRequiresAbilityChoice(true)
+        ->setChosenAbilityIncrease(1)
+        ->setAllowedAbilities(...Ability::cases());
+
+    $warCaster = $this->feat(
+        'war-caster',
+        'Mage de guerre',
+    );
+
+    $warCaster
+        ->setDescription(
+            'Améliore la concentration et permet de lancer des sorts plus facilement en plein combat.',
+        )
+        ->setRequiresAbilityChoice(false);
+
+    $observant = $this->feat(
+        'observant',
+        'Observateur',
+    );
+
+    $observant
+        ->setDescription(
+            'Augmente l’Intelligence ou la Sagesse et améliore les capacités d’observation.',
+        )
+        ->setRequiresAbilityChoice(true)
+        ->setChosenAbilityIncrease(1)
+        ->setAllowedAbilities(
+            Ability::Intelligence,
+            Ability::Wisdom,
+        );
+
+    $feyTouched = $this->feat(
+        'fey-touched',
+        'Faveur des Fées',
+    );
+
+    $feyTouched
+        ->setDescription(
+            'Augmente une caractéristique mentale et accorde des sorts liés à la magie féerique.',
+        )
+        ->setRequiresAbilityChoice(true)
+        ->setChosenAbilityIncrease(1)
+        ->setAllowedAbilities(
+            Ability::Intelligence,
+            Ability::Wisdom,
+            Ability::Charisma,
+        );
+
+    /*
+     * Une première version de l’initialiseur avait
+     * incorrectement enregistré Pourfendeur comme
+     * "mage-slayer". On conserve l’entité existante
+     * en corrigeant son slug afin de préserver ses relations.
+     */
+    $featRepository = $this->entityManager
+        ->getRepository(Feat::class);
+
+    $slasher = $featRepository->findOneBy([
+        'slug' => 'slasher',
+    ]);
+
+    if (!$slasher instanceof Feat) {
+        $slasher = $featRepository->findOneBy([
+            'slug' => 'mage-slayer',
+        ]);
+
+        if ($slasher instanceof Feat) {
+            $slasher
+                ->setSlug('slasher')
+                ->setName('Pourfendeur');
+        } else {
+            $slasher = $this->feat(
+                'slasher',
+                'Pourfendeur',
+            );
+        }
     }
+
+    $slasher
+        ->setName('Pourfendeur')
+        ->setDescription(
+            'Augmente la Force ou la Dextérité et améliore les attaques infligeant des dégâts tranchants.',
+        )
+        ->setRequiresAbilityChoice(true)
+        ->setChosenAbilityIncrease(1)
+        ->setAllowedAbilities(
+            Ability::Strength,
+            Ability::Dexterity,
+        );
+
+    $greatWeaponMaster = $this->feat(
+        'great-weapon-master',
+        'Maître des armes à deux mains',
+    );
+
+    $greatWeaponMaster
+        ->setDescription(
+            'Permet une attaque supplémentaire après certains coups décisifs et autorise une attaque lourde moins précise mais plus destructrice.',
+        )
+        ->setRequiresAbilityChoice(false);
+}
 
     private function race(
         string $slug,

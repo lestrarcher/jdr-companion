@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Enum\Ability;
 use App\Repository\FeatRepository;
 use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
@@ -63,6 +64,15 @@ class Feat
 
     #[ORM\Column]
     private DateTimeImmutable $updatedAt;
+
+    /**
+     * @var list<string>
+     */
+    #[ORM\Column(
+        type: 'json',
+        options: ['default' => '[]'],
+    )]
+    private array $allowedAbilities = [];
 
     public function __construct(
         string $slug,
@@ -182,6 +192,7 @@ class Feat
 
         if (!$requiresAbilityChoice) {
             $this->chosenAbilityIncrease = 0;
+            $this->allowedAbilities = [];
         }
 
         $this->touch();
@@ -218,6 +229,63 @@ class Feat
         $this->touch();
 
         return $this;
+    }
+
+    /**
+     * @return list<Ability>
+     */
+    public function getAllowedAbilities(): array
+    {
+        if (!$this->requiresAbilityChoice) {
+            return [];
+        }
+
+        /*
+        * Une liste vide signifie que toutes les
+        * caractéristiques sont autorisées.
+        */
+        if ($this->allowedAbilities === []) {
+            return Ability::cases();
+        }
+
+        return array_map(
+            static fn (string $ability): Ability =>
+                Ability::from($ability),
+            $this->allowedAbilities,
+        );
+    }
+
+    public function setAllowedAbilities(Ability ...$abilities): static
+    {
+        if (
+            $abilities !== []
+            && !$this->requiresAbilityChoice
+        ) {
+            throw new \LogicException(
+                'Le don doit demander une caractéristique avant de limiter les choix autorisés.',
+            );
+        }
+
+        $this->allowedAbilities = array_values(array_unique(
+            array_map(
+                static fn (Ability $ability): string =>
+                    $ability->value,
+                $abilities,
+            ),
+        ));
+
+        $this->touch();
+
+        return $this;
+    }
+
+    public function allowsAbility(Ability $ability): bool
+    {
+        return in_array(
+            $ability,
+            $this->getAllowedAbilities(),
+            true,
+        );
     }
 
     public function isCustom(): bool

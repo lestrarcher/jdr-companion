@@ -1,108 +1,73 @@
 import { Routes } from '@angular/router';
-
 import { authGuard } from '@core/guards/auth-guard';
 
 export const routes: Routes = [
   {
     path: 'login',
     loadComponent: () =>
-      import('./features/login/login').then(
-        (component) => component.Login,
-      ),
+      import('./features/login/login').then(component => component.Login),
   },
-
-  /*
-   * Ces deux interfaces restent volontairement
-   * en dehors du layout MJ.
-   */
   {
     path: 'campaigns/:campaignId/sessions/:sessionId/display',
     loadComponent: () =>
-      import(
-        './features/player-display/player-display'
-      ).then(
-        (component) =>
-          component.PlayerDisplay,
+      import('./features/player-display/player-display').then(
+        component => component.PlayerDisplay,
       ),
     canActivate: [authGuard],
   },
   {
     path: 'campaigns/:campaignId/sessions/:sessionId/player/:accessToken',
     loadComponent: () =>
-      import(
-        './features/player-portal/player-portal'
-      ).then(
-        (component) =>
-          component.PlayerPortal,
+      import('./features/player-portal/player-portal').then(
+        component => component.PlayerPortal,
       ),
   },
-
-  /*
-   * Toutes les pages privées du MJ utilisent
-   * désormais la même enveloppe de navigation.
-   */
   {
     path: '',
     loadComponent: () =>
-      import(
-        './features/mj-layout/mj-layout'
-      ).then(
-        (component) =>
-          component.MjLayout,
-      ),
+      import('./features/mj-layout/mj-layout').then(component => component.MjLayout),
     canActivate: [authGuard],
-
     children: [
       {
         path: 'campaigns',
         loadComponent: () =>
-          import(
-            './features/campaign-list/campaign-list'
-          ).then(
-            (component) =>
-              component.CampaignList,
+          import('./features/campaign-list/campaign-list').then(
+            component => component.CampaignList,
           ),
       },
       {
         path: 'campaigns/:campaignId/characters',
         loadComponent: () =>
-          import(
-            './features/campaign-characters/campaign-characters'
-          ).then(
-            (component) =>
-              component.CampaignCharacters,
+          import('./features/campaign-characters/campaign-characters').then(
+            component => component.CampaignCharacters,
           ),
-        canActivate: [authGuard],
       },
       {
         path: 'campaigns/:campaignId/characters/new',
         loadComponent: () =>
-          import(
-            './features/character-builder/character-builder'
-          ).then(
-            (component) =>
-              component.CharacterBuilder,
+          import('./features/character-builder/character-builder').then(
+            component => component.CharacterBuilder,
           ),
-        canActivate: [authGuard],
       },
       {
         path: 'campaigns/:campaignId',
         loadComponent: () =>
-          import(
-            './features/campaign-detail/campaign-detail'
-          ).then(
-            (component) =>
-              component.CampaignDetail,
+          import('./features/campaign-detail/campaign-detail').then(
+            component => component.CampaignDetail,
           ),
       },
       {
         path: 'campaigns/:campaignId/sessions/:sessionId/control',
         loadComponent: () =>
-          import(
-            './features/control-dashboard/control-dashboard'
-          ).then(
-            (component) =>
-              component.ControlDashboard,
+          import('./features/control-dashboard/control-dashboard').then(
+            component => component.ControlDashboard,
+          ),
+      },
+      {
+        path: 'dnd/reference',
+        loadComponent: () =>
+          import('./features/dnd-reference/feature-manager/feature-manager').then(
+            component => component.FeatureManager,
           ),
       },
       {
@@ -112,7 +77,6 @@ export const routes: Routes = [
       },
     ],
   },
-
   {
     path: '**',
     redirectTo: 'campaigns',

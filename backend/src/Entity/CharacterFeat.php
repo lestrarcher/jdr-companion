@@ -87,21 +87,23 @@ class CharacterFeat
         return $this->chosenAbility;
     }
 
-    public function setChosenAbility(
-        ?Ability $chosenAbility,
-    ): static {
-        if (
-            $chosenAbility !== null
-            && !$this->feat
-                ->requiresAbilityChoice()
-        ) {
+    public function setChosenAbility(?Ability $chosenAbility): static
+    {
+        if ($chosenAbility !== null && !$this->feat->requiresAbilityChoice())
+        {
             throw new \InvalidArgumentException(
                 'Ce don ne demande pas de choix de caractéristique.',
             );
         }
 
-        $this->chosenAbility =
-            $chosenAbility;
+        if ($chosenAbility !== null && !$this->feat->allowsAbility($chosenAbility))
+        {
+            throw new \InvalidArgumentException(
+                sprintf('La caractéristique %s n’est pas autorisée pour le don %s.', $chosenAbility->label(), $this->feat->getName())
+            );
+        }
+
+        $this->chosenAbility = $chosenAbility;
 
         return $this;
     }

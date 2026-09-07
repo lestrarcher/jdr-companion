@@ -368,21 +368,19 @@ final class CharacterBuilderController extends AbstractController
             'proficiencyBonus' =>
                 $character->getProficiencyBonus(),
             'classLevels' => $classLevels,
-            'abilities' => array_map(
-                static fn ($ability): array =>
-                    $ability->toArray(),
+            'abilities' => array_values(array_map(
+                static fn ($ability): array => $ability->toArray(),
                 $abilityCalculator->calculateAll($character),
-            ),
-            'resources' => array_map(
+            )),
+            'resources' => array_values(array_map(
                 static fn ($resource): array => [
                     'slug' => $resource->getSlug(),
                     'name' => $resource->getName(),
                     'maximum' => $resource->getMaximum(),
-                    'rechargeType' =>
-                        $resource->getRechargeType()->value,
+                    'rechargeType' => $resource->getRechargeType()->value,
                 ],
                 $resourceResolver->resolve($character),
-            ),
+            )),
         ];
     }
 }

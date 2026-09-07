@@ -10,6 +10,14 @@ export type AbilityKey =
   | 'wisdom'
   | 'charisma';
 
+export type SpellcastingProgression =
+  | 'none'
+  | 'full'
+  | 'half'
+  | 'artificer'
+  | 'third'
+  | 'pact';
+
 export interface AbilityReference {
   value: AbilityKey;
   label: string;
@@ -40,21 +48,18 @@ export interface ClassReference {
   name: string;
   hitDie: number;
   subclassSelectionLevel: number;
-  spellcastingProgression:
-    | 'none'
-    | 'full'
-    | 'half'
-    | 'artificer'
-    | 'third'
-    | 'pact';
+  spellcastingProgression: SpellcastingProgression;
 }
 
 export interface SubclassReference {
   id: number;
   classId: number;
+  className?: string;
   slug: string;
   name: string;
-  spellcastingProgression: ClassReference['spellcastingProgression'] | null;
+  description?: string | null;
+  spellcastingProgression: SpellcastingProgression | null;
+  custom?: boolean;
 }
 
 export interface FeatReference {
@@ -65,6 +70,7 @@ export interface FeatReference {
   repeatable: boolean;
   requiresAbilityChoice: boolean;
   chosenAbilityIncrease: number;
+  allowedAbilities: AbilityKey[];
 }
 
 export interface DndReferenceResponse {
@@ -75,14 +81,54 @@ export interface DndReferenceResponse {
   feats: FeatReference[];
 }
 
+export interface SpellcastingProgressionChoice {
+  value: SpellcastingProgression;
+  label: string;
+}
+
+export interface SubclassListResponse {
+  subclasses: SubclassReference[];
+  spellcastingProgressions: SpellcastingProgressionChoice[];
+}
+
+export interface SaveSubclassPayload {
+  classId: number;
+  slug: string;
+  name: string;
+  description?: string | null;
+  spellcastingProgression?: SpellcastingProgression | null;
+  custom?: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class DndReferenceApiService {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = '/api';
+  private readonly apiUrl = '/api/dnd';
 
   getReference(): Observable<DndReferenceResponse> {
-    return this.http.get<DndReferenceResponse>(
-      `${this.apiUrl}/dnd/reference`,
+    return this.http.get<DndReferenceResponse>(`${this.apiUrl}/reference`);
+  }
+
+  getSubclasses(): Observable<SubclassListResponse> {
+    return this.http.get<SubclassListResponse>(`${this.apiUrl}/subclasses`);
+  }
+
+  createSubclass(
+    payload: SaveSubclassPayload,
+  ): Observable<{ subclass: SubclassReference }> {
+    return this.http.post<{ subclass: SubclassReference }>(
+      `${this.apiUrl}/subclasses`,
+      payload,
+    );
+  }
+
+  updateSubclass(
+    subclassId: number,
+    payload: Partial<SaveSubclassPayload>,
+  ): Observable<{ subclass: SubclassReference }> {
+    return this.http.patch<{ subclass: SubclassReference }>(
+      `${this.apiUrl}/subclasses/${subclassId}`,
+      payload,
     );
   }
 }

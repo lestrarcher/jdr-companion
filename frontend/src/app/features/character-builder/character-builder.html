@@ -3,23 +3,16 @@
     <div>
       <p class="eyebrow">Effectif de campagne</p>
       <h1>Créer un personnage</h1>
-      <p class="subtitle">
-        Construis le personnage depuis son premier niveau.
-      </p>
+      <p class="subtitle">Construis le personnage depuis son premier niveau.</p>
     </div>
 
-    <a
-      class="back-link"
-      [routerLink]="['/campaigns', campaignId]"
-    >
+    <a class="back-link" [routerLink]="['/campaigns', campaignId]">
       Retour à la campagne
     </a>
   </header>
 
   @if (error()) {
-    <div class="message message--error">
-      {{ error() }}
-    </div>
+    <div class="message message--error">{{ error() }}</div>
   }
 
   @if (createdCharacter(); as character) {
@@ -30,17 +23,13 @@
           <h2>{{ character.name }}</h2>
         </div>
 
-        <span class="level-badge">
-          Niveau {{ character.totalLevel }}
-        </span>
+        <span class="level-badge">Niveau {{ character.totalLevel }}</span>
       </div>
 
       <p>
         {{ character.race.name }}
-        ·
-        {{ character.classLevels[0].className }}
-        ·
-        Maîtrise +{{ character.proficiencyBonus }}
+        · {{ character.classLevels[0].className }}
+        · Maîtrise +{{ character.proficiencyBonus }}
       </p>
 
       <div class="result-abilities">
@@ -69,18 +58,13 @@
   }
 
   @if (loading()) {
-    <div class="loading">
-      Chargement du référentiel D&amp;D…
-    </div>
+    <div class="loading">Chargement du référentiel D&amp;D…</div>
   } @else if (reference()) {
-    <form
-      class="builder-form"
-      [formGroup]="form"
-      (ngSubmit)="submit()"
-    >
+    <form class="builder-form" [formGroup]="form" (ngSubmit)="submit()">
       <section class="form-section">
         <div class="section-heading">
           <span>01</span>
+
           <div>
             <p class="eyebrow">Identité</p>
             <h2>Qui est ce personnage ?</h2>
@@ -109,16 +93,13 @@
 
           <label>
             <span>Identifiant technique</span>
-            <input
-              type="text"
-              formControlName="slug"
-              placeholder="ex. guts"
-            />
+            <input type="text" formControlName="slug" placeholder="ex. guts" />
             <small>Lettres minuscules, chiffres et tirets.</small>
           </label>
 
           <label>
             <span>Type</span>
+
             <select formControlName="type">
               <option value="player">Personnage joueur</option>
               <option value="npc">Personnage non-joueur</option>
@@ -130,6 +111,7 @@
       <section class="form-section">
         <div class="section-heading">
           <span>02</span>
+
           <div>
             <p class="eyebrow">Origines</p>
             <h2>Race et premier niveau</h2>
@@ -139,26 +121,25 @@
         <div class="form-grid form-grid--two">
           <label>
             <span>Race</span>
+
             <select formControlName="raceId">
               <option [ngValue]="0">Choisir une race</option>
 
               @for (race of races(); track race.id) {
-                <option [ngValue]="race.id">
-                  {{ race.name }}
-                </option>
+                <option [ngValue]="race.id">{{ race.name }}</option>
               }
             </select>
           </label>
 
           <label>
             <span>Classe de départ</span>
+
             <select formControlName="classId">
               <option [ngValue]="0">Choisir une classe</option>
 
               @for (characterClass of classes(); track characterClass.id) {
                 <option [ngValue]="characterClass.id">
-                  {{ characterClass.name }}
-                  — d{{ characterClass.hitDie }}
+                  {{ characterClass.name }} — d{{ characterClass.hitDie }}
                 </option>
               }
             </select>
@@ -168,15 +149,12 @@
         @if (startingSubclassRequired()) {
           <label class="standalone-field">
             <span>Sous-classe de départ</span>
+
             <select formControlName="subclassId">
-              <option [ngValue]="0">
-                Choisir une sous-classe
-              </option>
+              <option [ngValue]="0">Choisir une sous-classe</option>
 
               @for (subclass of availableSubclasses(); track subclass.id) {
-                <option [ngValue]="subclass.id">
-                  {{ subclass.name }}
-                </option>
+                <option [ngValue]="subclass.id">{{ subclass.name }}</option>
               }
             </select>
           </label>
@@ -195,8 +173,7 @@
             <div>
               @for (modifier of fixedRacialModifiers(); track modifier.id) {
                 <span>
-                  +{{ modifier.value }}
-                  {{ abilityLabel(modifier.ability) }}
+                  +{{ modifier.value }} {{ abilityLabel(modifier.ability) }}
                 </span>
               }
             </div>
@@ -208,30 +185,18 @@
             <h3>Bonus raciaux au choix</h3>
 
             <div class="form-grid form-grid--two">
-              @for (
-                modifier of requiredRacialModifiers();
-                track modifier.id;
-                let index = $index
-              ) {
+              @for (modifier of requiredRacialModifiers(); track modifier.id; let index = $index) {
                 <label>
-                  <span>
-                    Choix {{ index + 1 }}
-                    · +{{ modifier.value }}
-                  </span>
+                  <span>Choix {{ index + 1 }} · +{{ modifier.value }}</span>
 
                   <select
                     [value]="racialAbilityChoices()[modifier.id] ?? ''"
-                    (change)="setRacialAbilityChoice(
-                      modifier.id,
-                      $any($event.target).value
-                    )"
+                    (change)="setRacialAbilityChoice(modifier.id, $any($event.target).value)"
                   >
                     <option value="">Choisir</option>
 
                     @for (ability of abilities(); track ability.value) {
-                      <option [value]="ability.value">
-                        {{ ability.label }}
-                      </option>
+                      <option [value]="ability.value">{{ ability.label }}</option>
                     }
                   </select>
                 </label>
@@ -244,27 +209,19 @@
           <div class="choice-panel">
             <h3>Don racial</h3>
 
-            @for (
-              choice of racialFeatChoices();
-              track $index;
-              let index = $index
-            ) {
+            @for (choice of racialFeatChoices(); track $index; let index = $index) {
               <div class="feat-choice">
                 <label>
                   <span>Don</span>
+
                   <select
                     [value]="choice.featId ?? ''"
-                    (change)="setFeat(
-                      index,
-                      $any($event.target).value
-                    )"
+                    (change)="setFeat(index, $any($event.target).value)"
                   >
                     <option value="">Choisir un don</option>
 
                     @for (feat of feats(); track feat.id) {
-                      <option [value]="feat.id">
-                        {{ feat.name }}
-                      </option>
+                      <option [value]="feat.id">{{ feat.name }}</option>
                     }
                   </select>
                 </label>
@@ -273,19 +230,15 @@
                   @if (feat.requiresAbilityChoice) {
                     <label>
                       <span>Caractéristique du don</span>
+
                       <select
                         [value]="choice.ability ?? ''"
-                        (change)="setFeatAbility(
-                          index,
-                          $any($event.target).value
-                        )"
+                        (change)="setFeatAbility(index, $any($event.target).value)"
                       >
                         <option value="">Choisir</option>
 
-                        @for (ability of abilities(); track ability.value) {
-                          <option [value]="ability.value">
-                            {{ ability.label }}
-                          </option>
+                        @for (ability of featAbilities(index); track ability.value) {
+                          <option [value]="ability.value">{{ ability.label }}</option>
                         }
                       </select>
                     </label>
@@ -301,12 +254,10 @@
         }
       </section>
 
-      <section
-        class="form-section"
-        formGroupName="abilities"
-      >
+      <section class="form-section" formGroupName="abilities">
         <div class="section-heading">
           <span>03</span>
+
           <div>
             <p class="eyebrow">Caractéristiques</p>
             <h2>Valeurs avant les bonus raciaux</h2>
@@ -314,8 +265,7 @@
         </div>
 
         <p class="information">
-          Saisis les valeurs obtenues avant d’appliquer les bonus de race
-          et les dons.
+          Saisis les valeurs obtenues avant d’appliquer les bonus de race et les dons.
         </p>
 
         <div class="abilities-grid">
@@ -323,6 +273,7 @@
             <label>
               <span>{{ ability.abbreviation }}</span>
               <small>{{ ability.label }}</small>
+
               <input
                 type="number"
                 min="1"
@@ -335,21 +286,12 @@
       </section>
 
       <footer class="form-actions">
-        <a
-          class="secondary-button"
-          [routerLink]="['/campaigns', campaignId]"
-        >
+        <a class="secondary-button" [routerLink]="['/campaigns', campaignId]">
           Annuler
         </a>
 
-        <button
-          type="submit"
-          [disabled]="submitting()"
-        >
-          {{ submitting()
-            ? 'Création en cours…'
-            : 'Créer le personnage niveau 1'
-          }}
+        <button type="submit" [disabled]="submitting()">
+          {{ submitting() ? 'Création en cours…' : 'Créer le personnage niveau 1' }}
         </button>
       </footer>
     </form>

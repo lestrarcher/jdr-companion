@@ -172,6 +172,19 @@ export class CharacterBuilder {
     return this.feats().find((feat) => feat.id === featId) ?? null;
   }
 
+  protected featAbilities(index: number): AbilityReference[] {
+    const feat = this.selectedFeat(index);
+
+    if (!feat) {
+      return [];
+    }
+
+    return this.abilities().filter(
+      (ability) =>
+        feat.allowedAbilities.includes(ability.value),
+    );
+  }
+
   protected setRacialAbilityChoice(
     modifierId: number,
     ability: string,
