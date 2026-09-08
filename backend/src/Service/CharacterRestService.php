@@ -4,38 +4,39 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Entity\Character;
 use App\Entity\CharacterSessionState;
 use App\Entity\RestRequest;
 
-final class CharacterRestService
+final readonly class CharacterRestService
 {
+    public function __construct(
+        private CharacterHitPointCalculator $hitPointCalculator,
+        private CharacterResourceResolver $resourceResolver,
+        private CharacterSessionStateSynchronizer $stateSynchronizer,
+    ) {
+    }
+
     public function apply(
         CharacterSessionState $sessionState,
         string $restType,
     ): void {
-        $state = $sessionState->getState();
+        $character = $sessionState->getCharacter();
 
-        $definition = $sessionState
-            ->getCharacter()
-            ->getDefinition();
+        $state = $this->stateSynchronizer->synchronize(
+            $character,
+            $sessionState->getState(),
+        );
 
         if ($restType === RestRequest::TYPE_SHORT_REST) {
-            $state = $this->applyShortRest(
-                $state,
-                $definition,
-            );
+            $state = $this->applyShortRest($character, $state);
         } elseif ($restType === RestRequest::TYPE_LONG_REST) {
-            $state = $this->applyLongRest(
-                $state,
-                $definition,
-            );
+            $state = $this->applyLongRest($character, $state);
         } else {
-            throw new \InvalidArgumentException(
-                sprintf(
-                    'Type de repos invalide : "%s".',
-                    $restType,
-                ),
-            );
+            throw new \InvalidArgumentException(sprintf(
+                'Type de repos invalide : "%s".',
+                $restType,
+            ));
         }
 
         $sessionState->setState($state);
@@ -43,137 +44,95 @@ final class CharacterRestService
 
     /**
      * @param array<string, mixed> $state
-     * @param array<string, mixed> $definition
      *
      * @return array<string, mixed>
      */
     private function applyShortRest(
+        Character $character,
         array $state,
-        array $definition,
     ): array {
-        $state['resources'] =
-            $this->resetResources(
-                $state['resources'] ?? [],
-                $definition['resources'] ?? [],
-                [
-                    RestRequest::TYPE_SHORT_REST,
-                ],
-            );
+        $state['resources'] = $this->resetResources(
+            $character,
+            $state['resources'] ?? [],
+            [RestRequest::TYPE_SHORT_REST],
+        );
 
         return $state;
     }
 
     /**
      * @param array<string, mixed> $state
-     * @param array<string, mixed> $definition
      *
      * @return array<string, mixed>
      */
     private function applyLongRest(
+        Character $character,
         array $state,
-        array $definition,
     ): array {
-        $maximumHitPoints =
-            $definition['hitPoints']['maximum']
-            ?? null;
+        $hitPoints = $this->hitPointCalculator->calculate($character);
 
-        if (is_int($maximumHitPoints)) {
-            $state['hitPoints']['current'] =
-                $maximumHitPoints;
+        if ($hitPoints->isComplete() && $hitPoints->maximumValue !== null) {
+            $state['hitPoints']['current'] = $hitPoints->maximumValue;
         }
 
         $state['hitPoints']['temporary'] = 0;
 
-        $state['hitDice'] =
-            $this->restoreHitDice(
-                $state['hitDice'] ?? [],
-                $definition['hitDice'] ?? [],
-            );
+        $state['hitDice'] = $this->restoreHitDice(
+            $character,
+            $state['hitDice'] ?? [],
+        );
 
-        $state['resources'] =
-            $this->resetResources(
-                $state['resources'] ?? [],
-                $definition['resources'] ?? [],
-                [
-                    RestRequest::TYPE_SHORT_REST,
-                    RestRequest::TYPE_LONG_REST,
-                ],
-            );
+        $state['resources'] = $this->resetResources(
+            $character,
+            $state['resources'] ?? [],
+            [
+                RestRequest::TYPE_SHORT_REST,
+                RestRequest::TYPE_LONG_REST,
+            ],
+        );
 
         return $state;
     }
 
     /**
      * @param array<int, array<string, mixed>> $states
-     * @param array<int, array<string, mixed>> $definitions
      * @param list<string>                     $resetPeriods
      *
      * @return array<int, array<string, mixed>>
      */
     private function resetResources(
+        Character $character,
         array $states,
-        array $definitions,
         array $resetPeriods,
     ): array {
+        $resolvedResources = $this->resourceResolver->resolve($character);
+
         return array_map(
-            function (array $resourceState) use (
-                $definitions,
+            static function (array $resourceState) use (
+                $resolvedResources,
                 $resetPeriods,
             ): array {
-                $resourceDefinition =
-                    $this->findById(
-                        $definitions,
-                        $resourceState['id'] ?? null,
-                    );
+                $id = $resourceState['id'] ?? null;
 
-                if ($resourceDefinition === null) {
+                if (!is_string($id)) {
                     return $resourceState;
                 }
 
-                $resetPeriod =
-                    $resourceDefinition['resetPeriod']
-                    ?? null;
+                $resource = $resolvedResources[$id] ?? null;
 
-                if (
-                    !is_string($resetPeriod) ||
-                    !in_array(
-                        $resetPeriod,
-                        $resetPeriods,
-                        true,
-                    )
-                ) {
+                if ($resource === null) {
                     return $resourceState;
                 }
 
-                /*
-                 * Les ressources à valeurs stockées,
-                 * comme Présage, doivent recevoir de
-                 * nouvelles valeurs après le repos.
-                 */
-                if (
-                    isset(
-                        $resourceDefinition[
-                            'storedValuesConfig'
-                        ],
-                    )
-                ) {
-                    $resourceState['currentValue'] = 0;
-
-                    unset(
-                        $resourceState['storedValues'],
-                    );
-
+                if (!in_array(
+                    $resource->getRechargeType()->value,
+                    $resetPeriods,
+                    true,
+                )) {
                     return $resourceState;
                 }
 
-                $maximumValue =
-                    $resourceDefinition['maximumValue']
-                    ?? null;
-
-                if (is_int($maximumValue)) {
-                    $resourceState['currentValue'] =
-                        $maximumValue;
-                }
+                $resourceState['currentValue'] = $resource->getMaximum();
 
                 return $resourceState;
             },
@@ -183,40 +142,36 @@ final class CharacterRestService
 
     /**
      * @param array<int, array<string, mixed>> $states
-     * @param array<int, array<string, mixed>> $definitions
      *
      * @return array<int, array<string, mixed>>
      */
     private function restoreHitDice(
+        Character $character,
         array $states,
-        array $definitions,
     ): array {
-        return array_map(
-            function (array $hitDiceState) use (
-                $definitions,
-            ): array {
-                $hitDiceDefinition =
-                    $this->findById(
-                        $definitions,
-                        $hitDiceState['id'] ?? null,
-                    );
+        $maximums = [];
 
-                if ($hitDiceDefinition === null) {
+        foreach ($character->getClassLevels() as $level) {
+            $id = sprintf(
+                'd%d',
+                $level->getCharacterClass()->getHitDie(),
+            );
+
+            $maximums[$id] = ($maximums[$id] ?? 0) + 1;
+        }
+
+        return array_map(
+            static function (array $hitDiceState) use ($maximums): array {
+                $id = $hitDiceState['id'] ?? null;
+
+                if (!is_string($id)) {
                     return $hitDiceState;
                 }
 
-                $maximum =
-                    $hitDiceDefinition['maximum']
-                    ?? null;
+                $maximum = $maximums[$id] ?? null;
+                $current = $hitDiceState['current'] ?? null;
 
-                $current =
-                    $hitDiceState['current']
-                    ?? null;
-
-                if (
-                    !is_int($maximum) ||
-                    !is_int($current)
-                ) {
+                if (!is_int($maximum) || !is_int($current)) {
                     return $hitDiceState;
                 }
 
@@ -234,30 +189,5 @@ final class CharacterRestService
             },
             $states,
         );
-    }
-
-    /**
-     * @param array<int, array<string, mixed>> $items
-     *
-     * @return array<string, mixed>|null
-     */
-    private function findById(
-        array $items,
-        mixed $id,
-    ): ?array {
-        if (!is_string($id)) {
-            return null;
-        }
-
-        foreach ($items as $item) {
-            if (
-                is_array($item) &&
-                ($item['id'] ?? null) === $id
-            ) {
-                return $item;
-            }
-        }
-
-        return null;
     }
 }
