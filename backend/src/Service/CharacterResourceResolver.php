@@ -17,6 +17,7 @@ final readonly class CharacterResourceResolver
     public function __construct(
         private TrackableResourceRuleRepository $ruleRepository,
         private CharacterAbilityCalculator $abilityCalculator,
+        private CharacterFeatureResolver $featureResolver,
     ) {
     }
 
@@ -25,24 +26,80 @@ final readonly class CharacterResourceResolver
      */
     public function resolve(Character $character): array
     {
-        $resolvedRules = [];
+        /** @var array<string, TrackableResourceDefinition> $definitions */
+        $definitions = [];
 
+        /** @var array<string, TrackableResourceRule> $progressionRules */
+        $progressionRules = [];
+
+        /*
+         * Une capacité débloquée peut donner accès directement
+         * à une ressource, sans règle de progression supplémentaire.
+         *
+         * Exemple : Conscience magique, dont le maximum est égal
+         * au bonus de maîtrise.
+         */
+        foreach ($this->featureResolver->resolve($character) as $featureRule) {
+            $definition = $featureRule
+                ->getFeatureDefinition()
+                ->getResourceDefinition();
+
+            if ($definition === null) {
+                continue;
+            }
+
+            $definitions[$definition->getSlug()] = $definition;
+        }
+
+        /*
+         * Les règles de ressource servent :
+         * - aux ressources configurées avant les capacités ;
+         * - aux paliers de maximum, comme Rage ou Présage supérieur.
+         */
         foreach ($this->ruleRepository->findOrderedRules() as $rule) {
-            if ($this->isRuleApplicable($character, $rule)) {
-                $resolvedRules[$rule->getResourceDefinition()->getSlug()] = $rule;
+            if (!$this->isRuleApplicable($character, $rule)) {
+                continue;
+            }
+
+            $definition = $rule->getResourceDefinition();
+            $slug = $definition->getSlug();
+            $currentRule = $progressionRules[$slug] ?? null;
+
+            $definitions[$slug] = $definition;
+
+            if (
+                !$currentRule instanceof TrackableResourceRule
+                || $rule->getUnlockLevel() > $currentRule->getUnlockLevel()
+            ) {
+                $progressionRules[$slug] = $rule;
             }
         }
 
         $resources = [];
 
-        foreach ($resolvedRules as $slug => $rule) {
-            $definition = $rule->getResourceDefinition();
-
+        foreach ($definitions as $slug => $definition) {
             $resources[$slug] = new ResolvedCharacterResource(
-                $definition,
-                $this->resolveMaximum($character, $definition, $rule),
+                definition: $definition,
+                maximum: $this->resolveMaximum(
+                    $character,
+                    $definition,
+                    $progressionRules[$slug] ?? null,
+                ),
             );
         }
+
+        uasort(
+            $resources,
+            static fn (
+                ResolvedCharacterResource $first,
+                ResolvedCharacterResource $second,
+            ): int => $first
+                ->getDefinition()
+                ->getName()
+                <=> $second
+                    ->getDefinition()
+                    ->getName(),
+        );
 
         return $resources;
     }
@@ -54,7 +111,8 @@ final readonly class CharacterResourceResolver
         $characterClass = $rule->getCharacterClass();
 
         if ($characterClass !== null) {
-            return $character->getLevelInClass($characterClass) >= $rule->getUnlockLevel();
+            return $character->getLevelInClass($characterClass)
+                >= $rule->getUnlockLevel();
         }
 
         $subclass = $rule->getCharacterSubclass();
@@ -62,23 +120,21 @@ final readonly class CharacterResourceResolver
         if ($subclass !== null) {
             $characterClass = $subclass->getCharacterClass();
 
-            return
-                $character->getLevelInClass($characterClass) >= $rule->getUnlockLevel()
+            return $character->getLevelInClass($characterClass)
+                >= $rule->getUnlockLevel()
                 && $character->getSubclassFor($characterClass) === $subclass;
         }
 
         $race = $rule->getCharacterRace();
 
         if ($race !== null) {
-            return
-                $character->getTotalLevel() >= $rule->getUnlockLevel()
+            return $character->getTotalLevel() >= $rule->getUnlockLevel()
                 && $this->hasRaceOrParent($character->getRace(), $race);
         }
 
         $feat = $rule->getFeat();
 
-        return
-            $feat !== null
+        return $feat !== null
             && $character->getTotalLevel() >= $rule->getUnlockLevel()
             && $character->hasFeat($feat);
     }
@@ -86,15 +142,14 @@ final readonly class CharacterResourceResolver
     private function resolveMaximum(
         Character $character,
         TrackableResourceDefinition $definition,
-        TrackableResourceRule $rule,
+        ?TrackableResourceRule $progressionRule,
     ): int {
-        if ($rule->getMaximumOverride() !== null) {
-            return $rule->getMaximumOverride();
+        if ($progressionRule?->getMaximumOverride() !== null) {
+            return $progressionRule->getMaximumOverride();
         }
 
         $maximum = match ($definition->getMaximumType()) {
-            ResourceMaximumType::Fixed =>
-                $definition->getBaseMaximum(),
+            ResourceMaximumType::Fixed => $definition->getBaseMaximum(),
 
             ResourceMaximumType::ProficiencyBonus =>
                 $definition->getBaseMaximum()
@@ -120,7 +175,9 @@ final readonly class CharacterResourceResolver
             ));
         }
 
-        $modifier = $this->abilityCalculator->calculate($character, $ability)->modifier();
+        $modifier = $this->abilityCalculator
+            ->calculate($character, $ability)
+            ->modifier();
 
         return $definition->getBaseMaximum()
             + ($modifier * $definition->getMultiplier());
