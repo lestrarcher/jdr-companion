@@ -27,7 +27,7 @@ import {
 
 import {
   CharacterSessionStatePayload,
-  applyCharacterSessionState,
+  characterProfileToCharacter,
   toCharacterSessionStatePayload,
 } from '@core/mappers/character-api.mapper';
 import { Character } from '@core/models/character.model';
@@ -387,27 +387,12 @@ export class PlayerPortal {
             return;
           }
 
-          const definition =
-            campaign.characters.find(
-              (candidate) =>
-                candidate.id ===
-                `character-${response.character.slug}`,
-            );
-
-          if (!definition) {
-            this.loadError.set(
-              'La configuration de ce personnage est introuvable.',
-            );
-
-            this.loading.set(false);
-            return;
-          }
-
           const loadedCharacter =
-            applyCharacterSessionState(
-              definition,
+            characterProfileToCharacter(
+              response.character,
               response.state,
             );
+
 
           this.campaign.set(campaign);
           this.character.set(loadedCharacter);

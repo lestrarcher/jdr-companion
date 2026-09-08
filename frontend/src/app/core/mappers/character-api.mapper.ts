@@ -1,6 +1,4 @@
-import { CampaignConfig } from '@core/models/campaign.model';
 import { Character } from '@core/models/character.model';
-import { CreateCharacterPayload } from '@core/services/character-api.service';
 
 export interface CharacterSessionStatePayload {
   hitPoints: {
@@ -26,57 +24,59 @@ export interface CharacterSessionStatePayload {
   }>;
 }
 
-export function toCreateCharacterPayload(
-  character: Character,
-  campaign: CampaignConfig,
-): CreateCharacterPayload {
-  const player = campaign.players.find(
-    (candidate) => candidate.characterId === character.id,
-  );
+export interface CharacterProfilePayload {
+  slug: string;
+  name: string;
+  type: 'player' | 'npc';
+  totalLevel: number;
 
-  return {
-    slug: character.id.replace(/^character-/, ''),
-    name: character.name,
-    playerName: player?.displayName ?? null,
-    type: character.type === 'pc' ? 'player' : 'npc',
+  hitPoints: {
+    maximumValue: number | null;
+  };
 
-    definition: {
-      className: character.className,
-      level: character.level,
-      portraitUrl: character.portraitUrl ?? null,
+  classSummary: Array<{
+    className: string;
+    level: number;
+    hitDie: number;
+    subclassName: string | null;
+  }>;
 
-      hitPoints: {
-        maximum: character.hitPoints.maximum,
-      },
+  resources: Array<{
+    slug: string;
+    name: string;
+    maximum: number;
+    rechargeType: string;
+  }>;
 
-      hitDice: character.hitDice.map((pool) => ({
-        id: pool.id,
-        die: pool.die,
-        maximum: pool.maximum,
-      })),
-
-      progressions: (character.progressions ?? []).map((progression) => ({
-        id: progression.id,
-        name: progression.name,
-        minimumValue: progression.minimumValue,
-        maximumValue: progression.maximumValue,
-      })),
-
-      resources: character.resources.map((resource) => ({
-        id: resource.id,
-        name: resource.name,
-        shortName: resource.shortName,
-        category: resource.category,
-        resetPeriod: resource.resetPeriod,
-        notesEditable: resource.notesEditable,
-        allowManualIncrease: resource.allowManualIncrease,
-        maximumValue: resource.maximumValue,
-        level: resource.level,
-        displayOrder: resource.displayOrder,
-        unlockCondition: resource.unlockCondition,
-        storedValuesConfig: resource.storedValuesConfig,
-      })),
-    },
+  definition?: {
+    portraitUrl?: string | null;
+    progressions?: Array<{
+      id: string;
+      name: string;
+      minimumValue: number;
+      maximumValue?: number;
+    }>;
+    resources?: Array<{
+      id: string;
+      name: string;
+      shortName?: string;
+      category?: string;
+      resetPeriod?: string;
+      notesEditable?: boolean;
+      allowManualIncrease?: boolean;
+      maximumValue?: number;
+      level?: number;
+      displayOrder?: number;
+      unlockCondition?: {
+        progressionId: string;
+        minimumValue: number;
+      };
+      storedValuesConfig?: {
+        requiredCount: number;
+        minimumValue: number;
+        maximumValue: number;
+      };
+    }>;
   };
 }
 
@@ -109,6 +109,113 @@ export function toCharacterSessionStatePayload(
         ? { storedValues: resource.storedValues }
         : {}),
     })),
+  };
+}
+
+export function characterProfileToCharacter(
+  profile: CharacterProfilePayload,
+  state: CharacterSessionStatePayload,
+): Character {
+  const definition = profile.definition ?? {};
+  const legacyResources = definition.resources ?? [];
+
+  const className = profile.classSummary
+    .map((entry) => {
+      const subclass = entry.subclassName
+        ? ` — ${entry.subclassName}`
+        : '';
+
+      return `${entry.className} ${entry.level}${subclass}`;
+    })
+    .join(' / ');
+
+  const hitDice = profile.classSummary.map((entry) => {
+    const id = `d${entry.hitDie}`;
+    const storedPool = state.hitDice.find(
+      (candidate) => candidate.id === id,
+    );
+
+    return {
+      id,
+      die: id as Character['hitDice'][number]['die'],
+      current: storedPool?.current ?? entry.level,
+      maximum: entry.level,
+    };
+  });
+
+  const progressions = (definition.progressions ?? []).map(
+    (progression) => {
+      const storedProgression = state.progressions.find(
+        (candidate) => candidate.id === progression.id,
+      );
+
+      return {
+        ...progression,
+        currentValue:
+          storedProgression?.currentValue ??
+          progression.minimumValue,
+      };
+    },
+  );
+
+  const resources = profile.resources.map((resource, index) => {
+    const legacyResource = legacyResources.find(
+      (candidate) => candidate.id === resource.slug,
+    );
+
+    const storedResource = state.resources.find(
+      (candidate) => candidate.id === resource.slug,
+    );
+
+    return {
+      id: resource.slug,
+      name: resource.name,
+      shortName: legacyResource?.shortName,
+      category:
+        (legacyResource?.category ??
+          'class-feature') as Character['resources'][number]['category'],
+      resetPeriod:
+        (legacyResource?.resetPeriod ??
+          resource.rechargeType) as Character['resources'][number]['resetPeriod'],
+      notes: storedResource?.notes,
+      notesEditable: legacyResource?.notesEditable,
+      allowManualIncrease:
+        legacyResource?.allowManualIncrease,
+      currentValue:
+        storedResource?.currentValue ??
+        resource.maximum,
+      maximumValue: resource.maximum,
+      level: legacyResource?.level,
+      displayOrder:
+        legacyResource?.displayOrder ?? index,
+      unlockCondition:
+        legacyResource?.unlockCondition,
+      storedValues:
+        storedResource?.storedValues,
+      storedValuesConfig:
+        legacyResource?.storedValuesConfig,
+    };
+  });
+
+  return {
+    id: `character-${profile.slug}`,
+    name: profile.name,
+    type: profile.type === 'player' ? 'pc' : 'npc',
+
+    className,
+    level: profile.totalLevel,
+
+    portraitUrl: definition.portraitUrl ?? undefined,
+
+    hitPoints: {
+      maximum: profile.hitPoints.maximumValue ?? 0,
+      current: state.hitPoints.current,
+      temporary: state.hitPoints.temporary,
+    },
+
+    hitDice,
+    progressions,
+    resources,
   };
 }
 

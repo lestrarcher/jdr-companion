@@ -4,8 +4,6 @@ import {
   MoonState,
   WeatherState,
 } from './live-session-state.model';
-import { CampaignPlayer } from './campaign-player.model';
-import { Character } from './character.model';
 
 export interface CampaignColors {
   primary: string;
@@ -28,9 +26,6 @@ export interface CampaignConfig {
   name: string;
   worldName: string;
   theme: CampaignTheme;
-
-  players: CampaignPlayer[];
-  characters: Character[];
 
   moonPhases: MoonState[];
   weatherStates: WeatherState[];
