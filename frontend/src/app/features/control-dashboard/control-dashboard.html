@@ -106,25 +106,9 @@
               <app-session-characters
                 [campaignId]="backendCampaignId"
                 [sessionId]="backendSessionId"
-                [characters]="importedCharacters()"
-                [initializationRunning]="
-                  characterImportRunning()
-                "
-                [initializationError]="
-                  characterImportError()
-                "
-                [restRequests]="
-                  pendingRestRequests()
-                "
-                [resolvingRestRequestId]="
-                  resolvingRestRequestId()
-                "
-                [restRequestError]="
-                  restRequestError()
-                "
-                (charactersInitialized)="
-                  synchronizeCharacters()
-                "
+                [restRequests]="pendingRestRequests()"
+                [resolvingRestRequestId]="resolvingRestRequestId()"
+                [restRequestError]="restRequestError()"
                 (restRequestResolved)="
                   resolveRestRequest(
                     $event.requestId,

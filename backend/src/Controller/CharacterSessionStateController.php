@@ -13,14 +13,22 @@ use App\Repository\GameSessionRepository;
 use App\Security\Voter\CampaignVoter;
 use Doctrine\ORM\EntityManagerInterface;
 use JsonException;
+use App\Service\CharacterSessionStateFactory;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use App\Service\CharacterProfileSerializer;
 
 final class CharacterSessionStateController extends AbstractController
 {
+
+    public function __construct(
+        private readonly CharacterProfileSerializer $profileSerializer,
+    ) {
+    }
+
     #[Route(
         '/sessions/{sessionId}/characters',
         name: 'api_character_session_state_list',
@@ -61,7 +69,7 @@ final class CharacterSessionStateController extends AbstractController
     }
 
     /**
-     * Crée ou récupère l’état d’un personnage pour une session.
+     * Crée ou réactive l’état d’un personnage pour une session.
      *
      * Cette route est réservée au MJ authentifié.
      */
@@ -77,10 +85,10 @@ final class CharacterSessionStateController extends AbstractController
     public function create(
         int $sessionId,
         int $characterId,
-        Request $request,
         GameSessionRepository $gameSessionRepository,
         CharacterRepository $characterRepository,
         CharacterSessionStateRepository $stateRepository,
+        CharacterSessionStateFactory $stateFactory,
         EntityManagerInterface $entityManager,
     ): JsonResponse {
         $gameSession = $gameSessionRepository->find($sessionId);
@@ -105,7 +113,10 @@ final class CharacterSessionStateController extends AbstractController
             $gameSession->getCampaign(),
         );
 
-        if ($gameSession->getCampaign()->getId() !== $character->getCampaign()->getId()) {
+        if (
+            $gameSession->getCampaign()->getId()
+            !== $character->getCampaign()->getId()
+        ) {
             return $this->json(
                 ['message' => 'Le personnage ne fait pas partie de cette campagne.'],
                 Response::HTTP_BAD_REQUEST,
@@ -128,20 +139,11 @@ final class CharacterSessionStateController extends AbstractController
         }
 
         try {
-            $payload = $request->toArray();
-        } catch (JsonException) {
+            $initialState = $stateFactory->create($character);
+        } catch (\DomainException $exception) {
             return $this->json(
-                ['message' => 'Le corps JSON est invalide.'],
-                Response::HTTP_BAD_REQUEST,
-            );
-        }
-
-        $initialState = $payload['state'] ?? [];
-
-        if (!is_array($initialState)) {
-            return $this->json(
-                ['message' => 'La propriété "state" doit être un objet JSON.'],
-                Response::HTTP_BAD_REQUEST,
+                ['message' => $exception->getMessage()],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
             );
         }
 
@@ -322,14 +324,7 @@ final class CharacterSessionStateController extends AbstractController
                 'name' => $gameSession->getName(),
                 'status' => $gameSession->getStatus(),
             ],
-            'character' => [
-                'id' => $character->getId(),
-                'slug' => $character->getSlug(),
-                'name' => $character->getName(),
-                'playerName' => $character->getPlayerName(),
-                'type' => $character->getType(),
-                'definition' => $character->getDefinition(),
-            ],
+            'character' => $this->profileSerializer->serialize($character),
             'participating' => $state->isParticipating(),
             'state' => $state->getState(),
             'updatedAt' => $state->getUpdatedAt()->format(DATE_ATOM),

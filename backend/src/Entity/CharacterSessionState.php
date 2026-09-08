@@ -8,9 +8,7 @@ use App\Repository\CharacterSessionStateRepository;
 use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
 
-#[ORM\Entity(
-    repositoryClass: CharacterSessionStateRepository::class,
-)]
+#[ORM\Entity(repositoryClass: CharacterSessionStateRepository::class)]
 #[ORM\Table(name: 'character_session_state')]
 #[ORM\UniqueConstraint(
     name: 'uniq_session_character',
@@ -42,7 +40,10 @@ class CharacterSessionState
      * @var array<string, mixed>
      */
     #[ORM\Column(type: 'json')]
-    private array $state;
+    private array $state = [];
+
+    #[ORM\Column(options: ['default' => true])]
+    private bool $participating = true;
 
     #[ORM\Column]
     private DateTimeImmutable $createdAt;
@@ -51,41 +52,19 @@ class CharacterSessionState
     private DateTimeImmutable $updatedAt;
 
     /**
-     * Indique si le personnage participe actuellement à cette session.
-     *
-     * Un personnage retiré conserve son état et son historique,
-     * mais n’apparaît plus dans les interfaces de la session.
-     */
-    #[ORM\Column(options: ['default' => true])]
-    private bool $participating = true;
-
-    /**
      * @param array<string, mixed> $state
      */
     public function __construct(
         GameSession $gameSession,
         Character $character,
-        array $state,
+        array $state = [],
     ) {
-        if (
-            $gameSession->getCampaign() !==
-            $character->getCampaign()
-        ) {
-            throw new \InvalidArgumentException(
-                'La session et le personnage doivent appartenir à la même campagne.',
-            );
-        }
-
         $this->gameSession = $gameSession;
         $this->character = $character;
         $this->state = $state;
-
-        $this->accessToken = bin2hex(
-            random_bytes(32),
-        );
+        $this->accessToken = bin2hex(random_bytes(32));
 
         $now = new DateTimeImmutable();
-
         $this->createdAt = $now;
         $this->updatedAt = $now;
     }
@@ -124,7 +103,7 @@ class CharacterSessionState
     public function setState(array $state): static
     {
         $this->state = $state;
-        $this->updatedAt = new \DateTimeImmutable();
+        $this->touch();
 
         return $this;
     }
@@ -137,7 +116,7 @@ class CharacterSessionState
     public function setParticipating(bool $participating): static
     {
         $this->participating = $participating;
-        $this->updatedAt = new DateTimeImmutable();
+        $this->touch();
 
         return $this;
     }
@@ -150,5 +129,10 @@ class CharacterSessionState
     public function getUpdatedAt(): DateTimeImmutable
     {
         return $this->updatedAt;
+    }
+
+    private function touch(): void
+    {
+        $this->updatedAt = new DateTimeImmutable();
     }
 }

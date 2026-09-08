@@ -1,27 +1,22 @@
 import {
   Component,
+  OnInit,
   computed,
   inject,
   input,
   output,
   signal,
 } from '@angular/core';
+import { forkJoin } from 'rxjs';
+import { finalize } from 'rxjs/operators';
 
 import {
-  forkJoin,
-  of,
-} from 'rxjs';
+  CharacterApiResponse,
+  CharacterApiService,
+} from '@core/services/character-api.service';
 
 import {
-  catchError,
-  finalize,
-} from 'rxjs/operators';
-
-import {
-  ImportedCharacterResult,
-} from '@core/services/campaign-bootstrap.service';
-
-import {
+  CharacterSessionStateApiResponse,
   CharacterSessionStateApiService,
 } from '@core/services/character-session-state-api.service';
 
@@ -44,9 +39,10 @@ export interface RestRequestResolution {
   approved: boolean;
 }
 
-interface HitPointState {
-  current: number;
-  temporary: number;
+interface SessionCharacterView {
+  character: CharacterApiResponse;
+  sessionState: CharacterSessionStateApiResponse | null;
+  participating: boolean;
 }
 
 @Component({
@@ -55,132 +51,185 @@ interface HitPointState {
   templateUrl: './session-characters.html',
   styleUrl: './session-characters.scss',
 })
-export class SessionCharacters {
-  private readonly characterSessionStateApi =
-    inject(CharacterSessionStateApiService);
+export class SessionCharacters implements OnInit {
+  private readonly characterApi = inject(CharacterApiService);
+  private readonly characterSessionStateApi = inject(
+    CharacterSessionStateApiService,
+  );
+  private readonly magicItemApi = inject(MagicItemApiService);
 
-  private readonly magicItemApi =
-    inject(MagicItemApiService);
+  readonly campaignId = input.required<number>();
+  readonly sessionId = input.required<number>();
 
-  readonly campaignId =
-    input.required<number>();
+  readonly restRequests = input.required<RestRequestApiResponse[]>();
+  readonly resolvingRestRequestId = input<number | null>(null);
+  readonly restRequestError = input<string | null>(null);
+  readonly restRequestResolved = output<RestRequestResolution>();
 
-  readonly sessionId =
-    input.required<number>();
+  protected readonly campaignCharacters = signal<CharacterApiResponse[]>([]);
+  protected readonly sessionStates =
+    signal<CharacterSessionStateApiResponse[]>([]);
 
-  readonly characters =
-    input.required<ImportedCharacterResult[]>();
+  protected readonly loading = signal(false);
+  protected readonly refreshingHitPoints = signal(false);
+  protected readonly changingCharacterId = signal<number | null>(null);
+  protected readonly characterActionError = signal<string | null>(null);
+  protected readonly characterActionFeedback = signal<string | null>(null);
 
-  readonly initializationRunning =
-    input(false);
-
-  readonly initializationError =
-    input<string | null>(null);
-
-  readonly restRequests =
-    input.required<RestRequestApiResponse[]>();
-
-  readonly resolvingRestRequestId =
-    input<number | null>(null);
-
-  readonly restRequestError =
-    input<string | null>(null);
-
-  readonly charactersInitialized =
-    output<void>();
-
-  readonly restRequestResolved =
-    output<RestRequestResolution>();
-
-  protected readonly remoteHitPoints =
-    signal<Record<number, HitPointState>>({});
-
-  protected readonly refreshingHitPoints =
-    signal(false);
-
-  protected readonly characterActionError =
-    signal<string | null>(null);
-
-  protected readonly catalog =
-    signal<MagicItemResponse[]>([]);
-
-  protected readonly catalogLoading =
-    signal(false);
-
-  protected readonly selectedCharacter =
-    signal<ImportedCharacterResult | null>(null);
-
-  protected readonly selectedMagicItemId =
-    signal<number | null>(null);
-
-  protected readonly assigningItem =
-    signal(false);
-
-  protected readonly assignmentFeedback =
-    signal<string | null>(null);
+  protected readonly catalog = signal<MagicItemResponse[]>([]);
+  protected readonly catalogLoading = signal(false);
+  protected readonly selectedCharacter = signal<SessionCharacterView | null>(
+    null,
+  );
+  protected readonly selectedMagicItemId = signal<number | null>(null);
+  protected readonly assigningItem = signal(false);
+  protected readonly assignmentFeedback = signal<string | null>(null);
 
   protected readonly statisticsCharacter =
-    signal<ImportedCharacterResult | null>(null);
-
+    signal<SessionCharacterView | null>(null);
   protected readonly statisticsInventory =
-    signal<CharacterMagicItemInventoryResponse | null>(
-      null,
-    );
+    signal<CharacterMagicItemInventoryResponse | null>(null);
+  protected readonly statisticsLoading = signal(false);
 
-  protected readonly statisticsLoading =
-    signal(false);
+  protected readonly characters = computed<SessionCharacterView[]>(() => {
+    const states = this.sessionStates();
 
-  protected readonly hasCharacters =
-    computed(
-      () => this.characters().length > 0,
-    );
+    return this.campaignCharacters().map(character => {
+      const sessionState =
+        states.find(state => state.character.id === character.id) ?? null;
 
-  protected readonly selectedMagicItem =
-    computed(() => {
-      const selectedId =
-        this.selectedMagicItemId();
-
-      if (selectedId === null) {
-        return null;
-      }
-
-      return (
-        this.catalog().find(
-          (magicItem) =>
-            magicItem.id === selectedId,
-        ) ?? null
-      );
+      return {
+        character,
+        sessionState,
+        participating: sessionState?.participating ?? false,
+      };
     });
+  });
 
-  protected initializeCharacters(): void {
-    if (this.initializationRunning()) {
-      return;
-    }
+  protected readonly activeCharacters = computed(() =>
+    this.characters().filter(character => character.participating),
+  );
 
-    this.charactersInitialized.emit();
+  protected readonly availableCharacters = computed(() =>
+    this.characters().filter(character => !character.participating),
+  );
+
+  protected readonly hasCharacters = computed(
+    () => this.campaignCharacters().length > 0,
+  );
+
+  protected readonly hasActiveCharacters = computed(
+    () => this.activeCharacters().length > 0,
+  );
+
+  protected readonly selectedMagicItem = computed(() => {
+    const selectedId = this.selectedMagicItemId();
+
+    return selectedId === null
+      ? null
+      : this.catalog().find(item => item.id === selectedId) ?? null;
+  });
+
+  ngOnInit(): void {
+    this.loadCharacters();
   }
 
   protected resolveRestRequest(
     requestId: number,
     approved: boolean,
   ): void {
-    if (
-      this.resolvingRestRequestId() !==
-      null
-    ) {
+    if (this.resolvingRestRequestId() !== null) {
       return;
     }
 
-    this.restRequestResolved.emit({
-      requestId,
-      approved,
-    });
+    this.restRequestResolved.emit({ requestId, approved });
+  }
+
+  protected addToSession(character: SessionCharacterView): void {
+    if (this.changingCharacterId() !== null) {
+      return;
+    }
+
+    this.changingCharacterId.set(character.character.id);
+    this.clearCharacterFeedback();
+
+    this.characterSessionStateApi
+      .create(this.sessionId(), character.character.id)
+      .pipe(finalize(() => this.changingCharacterId.set(null)))
+      .subscribe({
+        next: state => {
+          this.upsertState(state);
+          this.characterActionFeedback.set(
+            `${character.character.name} participe maintenant à la session.`,
+          );
+        },
+        error: error => {
+          this.characterActionError.set(
+            this.apiError(
+              error,
+              `Impossible d’ajouter ${character.character.name} à la session.`,
+            ),
+          );
+        },
+      });
+  }
+
+  protected removeFromSession(character: SessionCharacterView): void {
+    if (this.changingCharacterId() !== null) {
+      return;
+    }
+
+    this.changingCharacterId.set(character.character.id);
+    this.clearCharacterFeedback();
+
+    this.characterSessionStateApi
+      .remove(this.sessionId(), character.character.id)
+      .pipe(finalize(() => this.changingCharacterId.set(null)))
+      .subscribe({
+        next: state => {
+          this.upsertState(state);
+          this.characterActionFeedback.set(
+            `${character.character.name} a été retiré de cette session.`,
+          );
+        },
+        error: error => {
+          this.characterActionError.set(
+            this.apiError(
+              error,
+              `Impossible de retirer ${character.character.name} de la session.`,
+            ),
+          );
+        },
+      });
+  }
+
+  protected refreshHitPoints(): void {
+    if (this.refreshingHitPoints()) {
+      return;
+    }
+
+    this.refreshingHitPoints.set(true);
+    this.clearCharacterFeedback();
+
+    this.characterSessionStateApi
+      .list(this.sessionId())
+      .pipe(finalize(() => this.refreshingHitPoints.set(false)))
+      .subscribe({
+        next: states => this.sessionStates.set(states),
+        error: error => {
+          this.characterActionError.set(
+            this.apiError(error, 'Impossible d’actualiser les personnages.'),
+          );
+        },
+      });
   }
 
   protected playerPortalUrl(
-    accessToken: string | null,
+    character: SessionCharacterView,
   ): string | null {
-    if (!accessToken) {
+    const accessToken = character.sessionState?.accessToken;
+
+    if (!accessToken || !character.participating) {
       return null;
     }
 
@@ -195,69 +244,37 @@ export class SessionCharacters {
     ].join('/');
   }
 
-  protected characterInitial(
-    characterName: string,
-  ): string {
-    return characterName
-      .trim()
-      .charAt(0)
-      .toUpperCase();
-  }
-
-  protected restTypeLabel(
-    type: 'short-rest' | 'long-rest',
-  ): string {
-    return type === 'short-rest'
-      ? 'Repos court'
-      : 'Repos long';
-  }
-
   protected currentHitPoints(
-    character: ImportedCharacterResult,
-  ): number {
-    return (
-      this.remoteHitPoints()[
-        character.characterId
-      ]?.current
-      ?? character.currentHitPoints
-    );
+    character: SessionCharacterView,
+  ): number | null {
+    return character.sessionState?.state.hitPoints.current ?? null;
   }
 
-  protected temporaryHitPoints(
-    character: ImportedCharacterResult,
-  ): number {
-    return (
-      this.remoteHitPoints()[
-        character.characterId
-      ]?.temporary
-      ?? character.temporaryHitPoints
-    );
+  protected temporaryHitPoints(character: SessionCharacterView): number {
+    return character.sessionState?.state.hitPoints.temporary ?? 0;
   }
 
-  protected hitPointPercentage(
-    character: ImportedCharacterResult,
-  ): number {
-    if (character.maximumHitPoints <= 0) {
+  protected maximumHitPoints(
+    character: SessionCharacterView,
+  ): number | null {
+    return character.sessionState?.character.hitPoints.maximumValue ?? null;
+  }
+
+  protected hitPointPercentage(character: SessionCharacterView): number {
+    const current = this.currentHitPoints(character);
+    const maximum = this.maximumHitPoints(character);
+
+    if (current === null || maximum === null || maximum <= 0) {
       return 0;
     }
 
-    return Math.min(
-      100,
-      Math.max(
-        0,
-        (
-          this.currentHitPoints(character)
-          / character.maximumHitPoints
-        ) * 100,
-      ),
-    );
+    return Math.min(100, Math.max(0, (current / maximum) * 100));
   }
 
   protected hitPointTone(
-    character: ImportedCharacterResult,
+    character: SessionCharacterView,
   ): 'healthy' | 'wounded' | 'critical' {
-    const percentage =
-      this.hitPointPercentage(character);
+    const percentage = this.hitPointPercentage(character);
 
     if (percentage <= 25) {
       return 'critical';
@@ -270,75 +287,33 @@ export class SessionCharacters {
     return 'healthy';
   }
 
-  protected refreshHitPoints(): void {
-    const charactersWithLinks =
-      this.characters().filter(
-        (
-          character,
-        ): character is ImportedCharacterResult & {
-          accessToken: string;
-        } =>
-          typeof character.accessToken ===
-            'string'
-          && character.accessToken.length > 0,
-      );
-
-    if (
-      this.refreshingHitPoints()
-      || charactersWithLinks.length === 0
-    ) {
-      return;
-    }
-
-    this.characterActionError.set(null);
-    this.refreshingHitPoints.set(true);
-
-    forkJoin(
-      charactersWithLinks.map((character) =>
-        this.characterSessionStateApi
-          .getByAccessToken(
-            character.accessToken,
-          )
-          .pipe(
-            catchError(() => of(null)),
-          ),
-      ),
-    )
-      .pipe(
-        finalize(() => {
-          this.refreshingHitPoints.set(false);
-        }),
-      )
-      .subscribe((states) => {
-        const updatedHitPoints = {
-          ...this.remoteHitPoints(),
-        };
-
-        states.forEach((state) => {
-          if (!state) {
-            return;
-          }
-
-          updatedHitPoints[
-            state.character.id
-          ] = {
-            current:
-              state.state.hitPoints.current,
-
-            temporary:
-              state.state.hitPoints.temporary,
-          };
-        });
-
-        this.remoteHitPoints.set(
-          updatedHitPoints,
-        );
-      });
+  protected characterInitial(name: string): string {
+    return name.trim().charAt(0).toUpperCase();
   }
 
-  protected openItemAssignment(
-    character: ImportedCharacterResult,
-  ): void {
+  protected characterSummary(character: CharacterApiResponse): string {
+    const classes = character.classLevels.reduce<Record<string, number>>(
+      (summary, level) => {
+        summary[level.className] = (summary[level.className] ?? 0) + 1;
+        return summary;
+      },
+      {},
+    );
+
+    return Object.entries(classes)
+      .map(([name, level]) => `${name} ${level}`)
+      .join(' / ');
+  }
+
+  protected isChanging(characterId: number): boolean {
+    return this.changingCharacterId() === characterId;
+  }
+
+  protected restTypeLabel(type: 'short-rest' | 'long-rest'): string {
+    return type === 'short-rest' ? 'Repos court' : 'Repos long';
+  }
+
+  protected openItemAssignment(character: SessionCharacterView): void {
     this.selectedCharacter.set(character);
     this.selectedMagicItemId.set(null);
     this.assignmentFeedback.set(null);
@@ -359,30 +334,16 @@ export class SessionCharacters {
     this.assignmentFeedback.set(null);
   }
 
-  protected selectMagicItem(
-    event: Event,
-  ): void {
-    const value = (
-      event.target as HTMLSelectElement
-    ).value;
-
-    this.selectedMagicItemId.set(
-      value ? Number(value) : null,
-    );
+  protected selectMagicItem(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    this.selectedMagicItemId.set(value ? Number(value) : null);
   }
 
   protected assignSelectedItem(): void {
-    const character =
-      this.selectedCharacter();
+    const character = this.selectedCharacter();
+    const magicItemId = this.selectedMagicItemId();
 
-    const magicItemId =
-      this.selectedMagicItemId();
-
-    if (
-      !character
-      || magicItemId === null
-      || this.assigningItem()
-    ) {
+    if (!character || magicItemId === null || this.assigningItem()) {
       return;
     }
 
@@ -391,69 +352,41 @@ export class SessionCharacters {
     this.characterActionError.set(null);
 
     this.magicItemApi
-      .assignToCharacter(
-        character.characterId,
-        {
-          magicItemId,
-        },
-      )
-      .pipe(
-        finalize(() => {
-          this.assigningItem.set(false);
-        }),
-      )
+      .assignToCharacter(character.character.id, { magicItemId })
+      .pipe(finalize(() => this.assigningItem.set(false)))
       .subscribe({
-        next: (ownedItem) => {
+        next: ownedItem => {
           this.assignmentFeedback.set(
-            `${ownedItem.magicItem.name} a été donné à ${character.characterName}.`,
+            `${ownedItem.magicItem.name} a été donné à ${character.character.name}.`,
           );
-
           this.selectedMagicItemId.set(null);
         },
-
-        error: (error) => {
+        error: error => {
           this.characterActionError.set(
-            typeof error.error?.message ===
-              'string'
-              ? error.error.message
-              : 'Impossible d’attribuer cet objet.',
+            this.apiError(error, 'Impossible d’attribuer cet objet.'),
           );
         },
       });
   }
 
-  protected openStatistics(
-    character: ImportedCharacterResult,
-  ): void {
+  protected openStatistics(character: SessionCharacterView): void {
     this.statisticsCharacter.set(character);
     this.statisticsInventory.set(null);
     this.statisticsLoading.set(true);
     this.characterActionError.set(null);
 
     this.magicItemApi
-      .listCharacterItems(
-        character.characterId,
-      )
-      .pipe(
-        finalize(() => {
-          this.statisticsLoading.set(false);
-        }),
-      )
+      .listCharacterItems(character.character.id)
+      .pipe(finalize(() => this.statisticsLoading.set(false)))
       .subscribe({
-        next: (inventory) => {
-          this.statisticsInventory.set(
-            inventory,
-          );
-        },
-
-        error: (error) => {
+        next: inventory => this.statisticsInventory.set(inventory),
+        error: error => {
           this.characterActionError.set(
-            typeof error.error?.message ===
-              'string'
-              ? error.error.message
-              : 'Impossible de charger les caractéristiques.',
+            this.apiError(
+              error,
+              'Impossible de charger les caractéristiques.',
+            ),
           );
-
           this.statisticsCharacter.set(null);
         },
       });
@@ -465,13 +398,9 @@ export class SessionCharacters {
   }
 
   protected abilityLabel(
-    ability:
-      EffectiveAbilityResponse['ability'],
+    ability: EffectiveAbilityResponse['ability'],
   ): string {
-    const labels: Record<
-      EffectiveAbilityResponse['ability'],
-      string
-    > = {
+    const labels: Record<EffectiveAbilityResponse['ability'], string> = {
       strength: 'Force',
       dexterity: 'Dextérité',
       constitution: 'Constitution',
@@ -483,12 +412,44 @@ export class SessionCharacters {
     return labels[ability];
   }
 
-  protected formatModifier(
-    modifier: number,
-  ): string {
-    return modifier >= 0
-      ? `+${modifier}`
-      : `${modifier}`;
+  protected formatModifier(modifier: number): string {
+    return modifier >= 0 ? `+${modifier}` : `${modifier}`;
+  }
+
+  private loadCharacters(): void {
+    this.loading.set(true);
+    this.clearCharacterFeedback();
+
+    forkJoin({
+      characters: this.characterApi.list(this.campaignId()),
+      states: this.characterSessionStateApi.list(this.sessionId()),
+    })
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe({
+        next: result => {
+          this.campaignCharacters.set(result.characters);
+          this.sessionStates.set(result.states);
+        },
+        error: error => {
+          this.characterActionError.set(
+            this.apiError(error, 'Impossible de charger les personnages.'),
+          );
+        },
+      });
+  }
+
+  private upsertState(state: CharacterSessionStateApiResponse): void {
+    this.sessionStates.update(states => {
+      const index = states.findIndex(candidate => candidate.id === state.id);
+
+      if (index === -1) {
+        return [...states, state];
+      }
+
+      return states.map(candidate =>
+        candidate.id === state.id ? state : candidate,
+      );
+    });
   }
 
   private loadCatalog(): void {
@@ -496,24 +457,38 @@ export class SessionCharacters {
 
     this.magicItemApi
       .listCatalog(this.campaignId())
-      .pipe(
-        finalize(() => {
-          this.catalogLoading.set(false);
-        }),
-      )
+      .pipe(finalize(() => this.catalogLoading.set(false)))
       .subscribe({
-        next: (catalog) => {
-          this.catalog.set(catalog);
-        },
-
-        error: (error) => {
+        next: catalog => this.catalog.set(catalog),
+        error: error => {
           this.characterActionError.set(
-            typeof error.error?.message ===
-              'string'
-              ? error.error.message
-              : 'Impossible de charger le catalogue des objets.',
+            this.apiError(
+              error,
+              'Impossible de charger le catalogue des objets.',
+            ),
           );
         },
       });
+  }
+
+  private clearCharacterFeedback(): void {
+    this.characterActionError.set(null);
+    this.characterActionFeedback.set(null);
+  }
+
+  private apiError(error: unknown, fallback: string): string {
+    if (
+      typeof error === 'object'
+      && error !== null
+      && 'error' in error
+      && typeof error.error === 'object'
+      && error.error !== null
+      && 'message' in error.error
+      && typeof error.error.message === 'string'
+    ) {
+      return error.error.message;
+    }
+
+    return fallback;
   }
 }

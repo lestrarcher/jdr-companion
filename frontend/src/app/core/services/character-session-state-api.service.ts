@@ -1,17 +1,14 @@
-import {
-  HttpClient,
-} from '@angular/common/http';
-import {
-  inject,
-  Injectable,
-} from '@angular/core';
-import {
-  Observable,
-} from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
+import { Observable, map } from 'rxjs';
 
 import {
   CharacterSessionStatePayload,
 } from '@core/mappers/character-api.mapper';
+
+import {
+  CharacterProfile,
+} from '@core/services/character-api.service';
 
 import {
   CampaignConfigurationKey,
@@ -22,50 +19,57 @@ export interface CharacterSessionStateApiResponse {
 
   campaign: {
     id: number;
-    configurationKey:
-      CampaignConfigurationKey;
+    configurationKey: CampaignConfigurationKey;
   };
 
   session: {
     id: number;
     name: string;
-    status:
-      | 'draft'
-      | 'live'
-      | 'closed';
+    status: 'draft' | 'live' | 'closed';
   };
 
-  character: {
-    id: number;
-    slug: string;
-    name: string;
-    playerName: string | null;
-    type: 'player' | 'npc';
-    definition: Record<string, unknown>;
-  };
-
+  character: CharacterProfile;
+  participating: boolean;
   state: CharacterSessionStatePayload;
   accessToken?: string;
   updatedAt: string;
+}
+
+interface CharacterSessionStateListResponse {
+  states: CharacterSessionStateApiResponse[];
 }
 
 @Injectable({
   providedIn: 'root',
 })
 export class CharacterSessionStateApiService {
-  private readonly http =
-    inject(HttpClient);
-
+  private readonly http = inject(HttpClient);
   private readonly apiUrl = '/api';
+
+  list(sessionId: number): Observable<CharacterSessionStateApiResponse[]> {
+    return this.http
+      .get<CharacterSessionStateListResponse>(
+        `${this.apiUrl}/sessions/${sessionId}/characters`,
+      )
+      .pipe(map(response => response.states));
+  }
 
   create(
     sessionId: number,
     characterId: number,
-    state: CharacterSessionStatePayload,
   ): Observable<CharacterSessionStateApiResponse> {
     return this.http.post<CharacterSessionStateApiResponse>(
       `${this.apiUrl}/sessions/${sessionId}/characters/${characterId}`,
-      { state },
+      {},
+    );
+  }
+
+  remove(
+    sessionId: number,
+    characterId: number,
+  ): Observable<CharacterSessionStateApiResponse> {
+    return this.http.delete<CharacterSessionStateApiResponse>(
+      `${this.apiUrl}/sessions/${sessionId}/characters/${characterId}`,
     );
   }
 

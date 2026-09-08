@@ -22,7 +22,6 @@ import { MediaManager } from './components/media-manager/media-manager';
 import { FigurePanelMode } from '@core/models/live-session-state.model';
 import { CampaignConfig } from '@core/models/campaign.model';
 import { CampaignConfigurationRegistryService } from '@core/services/campaign-configuration-registry.service';
-import { CampaignBootstrapService, ImportedCharacterResult } from '@core/services/campaign-bootstrap.service';
 import { GameSessionApiResponse, GameSessionApiService, GameSessionStatus } from '@core/services/game-session-api.service';
 import { LiveSessionService } from '@core/services/live-session.service';
 import { RestRequestApiResponse, RestRequestApiService } from '@core/services/rest-request-api.service';
@@ -57,26 +56,17 @@ type DashboardTab =
   styleUrl: './control-dashboard.scss',
 })
 export class ControlDashboard {
-  private readonly route =
-    inject(ActivatedRoute);
+  private readonly route = inject(ActivatedRoute);
 
-  private readonly destroyRef =
-    inject(DestroyRef);
+  private readonly destroyRef = inject(DestroyRef);
 
-  private readonly campaignConfigurationRegistry =
-    inject(CampaignConfigurationRegistryService);
+  private readonly campaignConfigurationRegistry = inject(CampaignConfigurationRegistryService);
 
-  private readonly gameSessionApi =
-    inject(GameSessionApiService);
+  private readonly gameSessionApi = inject(GameSessionApiService);
 
-  private readonly liveSessionService =
-    inject(LiveSessionService);
+  private readonly liveSessionService = inject(LiveSessionService);
 
-  private readonly campaignBootstrapService =
-    inject(CampaignBootstrapService);
-
-  private readonly restRequestApi =
-    inject(RestRequestApiService);
+  private readonly restRequestApi = inject(RestRequestApiService);
 
   protected campaign: CampaignConfig | null =
     null;
@@ -100,15 +90,6 @@ export class ControlDashboard {
 
   protected readonly sessionStatusError =
     signal<string | null>(null);
-
-  protected readonly characterImportRunning =
-    signal(false);
-
-  protected readonly characterImportError =
-    signal<string | null>(null);
-
-  protected readonly importedCharacters =
-    signal<ImportedCharacterResult[]>([]);
 
   protected readonly pendingRestRequests =
     signal<RestRequestApiResponse[]>([]);
@@ -244,64 +225,6 @@ export class ControlDashboard {
     });
   }
 
-  protected synchronizeCharacters(): void {
-    if (this.characterImportRunning()) {
-      return;
-    }
-
-    const campaign = this.campaign;
-
-    if (!campaign) {
-      this.characterImportError.set(
-        'La configuration de la campagne n’est pas chargée.',
-      );
-
-      return;
-    }
-
-    this.characterImportRunning.set(true);
-    this.characterImportError.set(null);
-
-    this.campaignBootstrapService
-      .synchronizeCharacters(
-        campaign,
-        this.backendCampaignId,
-        this.backendSessionId,
-      )
-      .pipe(
-        finalize(() => {
-          this.characterImportRunning.set(
-            false,
-          );
-        }),
-      )
-      .subscribe({
-        next: (characters) => {
-          this.importedCharacters.set(
-            characters,
-          );
-        },
-
-        error: (error: any) => {
-          console.error(
-            'Impossible de synchroniser les personnages.',
-            error,
-          );
-
-          const message =
-            error?.error?.message ??
-            error?.error?.detail ??
-            error?.message;
-
-          this.characterImportError.set(
-            message
-              ? `Synchronisation impossible : ${message}`
-              : 'La synchronisation des personnages a échoué.',
-          );
-        },
-      });
-  }
-
   protected displayUploadedMedia(
     media: UploadedCampaignMedia,
   ): void {
@@ -434,12 +357,6 @@ export class ControlDashboard {
           });
 
           this.initializeRestRequestPolling();
-
-          /*
-          * Cette opération est idempotente :
-          * elle recharge également les liens existants.
-          */
-          this.synchronizeCharacters();
         },
 
         error: (error: any) => {

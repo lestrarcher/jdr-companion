@@ -1,106 +1,69 @@
 <section class="character-management">
   <header class="management-heading">
     <div>
-      <span class="eyebrow">
-        Participants
-      </span>
-
+      <span class="eyebrow">Participants</span>
       <h2>Personnages</h2>
-
       <p>
-        Surveille leur état et gère les objets
+        Ajoute les personnages présents, surveille leurs PV et gère les objets
         distribués pendant la session.
       </p>
     </div>
 
     <div class="heading-actions">
       <span class="character-count">
-        {{ characters().length }}
-        personnage{{
-          characters().length > 1
-            ? 's'
-            : ''
-        }}
+        {{ activeCharacters().length }} / {{ characters().length }}
+        participant{{ activeCharacters().length > 1 ? 's' : '' }}
       </span>
 
-      @if (hasCharacters()) {
+      @if (hasActiveCharacters()) {
         <button
           type="button"
           class="refresh-button"
           [disabled]="refreshingHitPoints()"
           (click)="refreshHitPoints()"
         >
-          {{
-            refreshingHitPoints()
-              ? 'Actualisation…'
-              : 'Actualiser les PV'
-          }}
+          {{ refreshingHitPoints() ? 'Actualisation…' : 'Actualiser les PV' }}
         </button>
       }
     </div>
   </header>
 
+  @if (characterActionFeedback()) {
+    <p class="feedback feedback--success" aria-live="polite">
+      {{ characterActionFeedback() }}
+    </p>
+  }
+
   @if (characterActionError()) {
-    <p
-      class="feedback feedback--error"
-      role="alert"
-    >
+    <p class="feedback feedback--error" role="alert">
       {{ characterActionError() }}
     </p>
   }
 
   @if (restRequests().length > 0) {
-    <section
-      class="rest-request-section"
-      aria-live="assertive"
-    >
+    <section class="rest-request-section" aria-live="assertive">
       <header>
-        <span class="section-label">
-          Action requise
-        </span>
-
+        <span class="section-label">Action requise</span>
         <strong>
           {{ restRequests().length }}
-          demande{{
-            restRequests().length > 1
-              ? 's'
-              : ''
-          }}
+          demande{{ restRequests().length > 1 ? 's' : '' }}
         </strong>
       </header>
 
       <div class="rest-request-list">
-        @for (
-          request of restRequests();
-          track request.id
-        ) {
+        @for (request of restRequests(); track request.id) {
           <article class="rest-request-card">
             <div>
-              <strong>
-                {{ request.character.name }}
-              </strong>
-
-              <small>
-                {{
-                  restTypeLabel(request.type)
-                }}
-              </small>
+              <strong>{{ request.character.name }}</strong>
+              <small>{{ restTypeLabel(request.type) }}</small>
             </div>
 
             <div class="request-actions">
               <button
                 type="button"
                 class="reject-button"
-                [disabled]="
-                  resolvingRestRequestId()
-                  !== null
-                "
-                (click)="
-                  resolveRestRequest(
-                    request.id,
-                    false
-                  )
-                "
+                [disabled]="resolvingRestRequestId() !== null"
+                (click)="resolveRestRequest(request.id, false)"
               >
                 Refuser
               </button>
@@ -108,16 +71,8 @@
               <button
                 type="button"
                 class="approve-button"
-                [disabled]="
-                  resolvingRestRequestId()
-                  !== null
-                "
-                (click)="
-                  resolveRestRequest(
-                    request.id,
-                    true
-                  )
-                "
+                [disabled]="resolvingRestRequestId() !== null"
+                (click)="resolveRestRequest(request.id, true)"
               >
                 Accepter
               </button>
@@ -128,215 +83,245 @@
     </section>
   }
 
-  <section class="character-grid">
-    @for (
-      character of characters();
-      track character.characterId
-    ) {
-      <article class="character-card">
-        <header class="character-card__header">
-          <span
-            class="character-portrait"
-            aria-hidden="true"
-          >
-            {{
-              characterInitial(
-                character.characterName
-              )
-            }}
-          </span>
-
-          <div class="character-identity">
-            <h3>
-              {{ character.characterName }}
-            </h3>
-
-            <small>
-              Personnage #{{ character.characterId }}
-            </small>
-          </div>
-
-          <span
-            class="health-status"
-            [class.health-status--healthy]="
-              hitPointTone(character)
-              === 'healthy'
-            "
-            [class.health-status--wounded]="
-              hitPointTone(character)
-              === 'wounded'
-            "
-            [class.health-status--critical]="
-              hitPointTone(character)
-              === 'critical'
-            "
-          >
-            @switch (
-              hitPointTone(character)
-            ) {
-              @case ('healthy') {
-                Stable
-              }
-
-              @case ('wounded') {
-                Blessé
-              }
-
-              @case ('critical') {
-                Critique
-              }
-            }
-          </span>
-        </header>
-
-        <section class="hit-points">
-          <header>
-            <span>Points de vie</span>
-
-            <strong>
-              {{ currentHitPoints(character) }}
-              /
-              {{ character.maximumHitPoints }}
-            </strong>
-          </header>
-
-          <div
-            class="hit-point-track"
-            role="progressbar"
-            [attr.aria-valuenow]="
-              currentHitPoints(character)
-            "
-            [attr.aria-valuemin]="0"
-            [attr.aria-valuemax]="
-              character.maximumHitPoints
-            "
-            [attr.aria-label]="
-              'Points de vie de '
-              + character.characterName
-            "
-          >
-            <span
-              class="hit-point-value"
-              [class.hit-point-value--healthy]="
-                hitPointTone(character)
-                === 'healthy'
-              "
-              [class.hit-point-value--wounded]="
-                hitPointTone(character)
-                === 'wounded'
-              "
-              [class.hit-point-value--critical]="
-                hitPointTone(character)
-                === 'critical'
-              "
-              [style.width.%]="
-                hitPointPercentage(character)
-              "
-            ></span>
-          </div>
-
-          @if (
-            temporaryHitPoints(character) > 0
-          ) {
-            <span class="temporary-hit-points">
-              +
-              {{
-                temporaryHitPoints(character)
-              }}
-              PV temporaires
-            </span>
-          }
-        </section>
-
-        <footer class="character-actions">
-          @if (
-            playerPortalUrl(
-              character.accessToken
-            );
-            as portalUrl
-          ) {
-            <a
-              class="character-action"
-              [href]="portalUrl"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Ouvrir le portail
-            </a>
-          } @else {
-            <button
-              type="button"
-              class="character-action"
-              disabled
-            >
-              Lien indisponible
-            </button>
-          }
-
-          <button
-            type="button"
-            class="character-action"
-            (click)="openStatistics(character)"
-          >
-            Voir les caractéristiques
-          </button>
-
-          <button
-            type="button"
-            class="character-action character-action--primary"
-            (click)="
-              openItemAssignment(character)
-            "
-          >
-            Donner un objet
-          </button>
-        </footer>
-      </article>
-    } @empty {
-      <div class="empty-state">
-        <span aria-hidden="true">◇</span>
-
-        <p>
-          Aucun personnage initialisé pour
-          cette session.
-        </p>
-      </div>
-    }
-  </section>
-
-  @if (!hasCharacters()) {
-    <button
-      class="initialize-button"
-      type="button"
-      [disabled]="
-        initializationRunning()
-      "
-      (click)="initializeCharacters()"
-    >
-      {{
-        initializationRunning()
-          ? 'Initialisation…'
-          : 'Initialiser les personnages'
-      }}
-    </button>
-  }
-
-  @if (initializationError()) {
-    <p
-      class="feedback feedback--error"
-      role="alert"
-    >
-      {{ initializationError() }}
-    </p>
-  }
-
   @if (restRequestError()) {
-    <p
-      class="feedback feedback--error"
-      role="alert"
-    >
+    <p class="feedback feedback--error" role="alert">
       {{ restRequestError() }}
     </p>
+  }
+
+  @if (loading()) {
+    <div class="empty-state">
+      <span aria-hidden="true">◇</span>
+      <p>Chargement des personnages…</p>
+    </div>
+  } @else if (!hasCharacters()) {
+    <div class="empty-state">
+      <span aria-hidden="true">◇</span>
+      <p>Aucun personnage n’a encore été créé pour cette campagne.</p>
+    </div>
+  } @else {
+    <section class="participant-section">
+      <header class="section-heading">
+        <div>
+          <span class="section-label">Session actuelle</span>
+          <h3>Participants actifs</h3>
+        </div>
+
+        <span class="section-count">{{ activeCharacters().length }}</span>
+      </header>
+
+      <div class="character-grid">
+        @for (
+          character of activeCharacters();
+          track character.character.id
+        ) {
+          <article class="character-card">
+            <header class="character-card__header">
+              <span class="character-portrait" aria-hidden="true">
+                {{ characterInitial(character.character.name) }}
+              </span>
+
+              <div class="character-identity">
+                <h3>{{ character.character.name }}</h3>
+
+                <small>
+                  {{
+                    characterSummary(character.character)
+                    || 'Niveau non renseigné'
+                  }}
+                </small>
+
+                @if (character.character.playerName) {
+                  <small>Joué par {{ character.character.playerName }}</small>
+                }
+              </div>
+
+              @if (
+                currentHitPoints(character) !== null
+                && maximumHitPoints(character) !== null
+              ) {
+                <span
+                  class="health-status"
+                  [class.health-status--healthy]="
+                    hitPointTone(character) === 'healthy'
+                  "
+                  [class.health-status--wounded]="
+                    hitPointTone(character) === 'wounded'
+                  "
+                  [class.health-status--critical]="
+                    hitPointTone(character) === 'critical'
+                  "
+                >
+                  @switch (hitPointTone(character)) {
+                    @case ('healthy') {
+                      Stable
+                    }
+                    @case ('wounded') {
+                      Blessé
+                    }
+                    @case ('critical') {
+                      Critique
+                    }
+                  }
+                </span>
+              }
+            </header>
+
+            @if (
+              currentHitPoints(character) !== null
+              && maximumHitPoints(character) !== null
+            ) {
+              <section class="hit-points">
+                <header>
+                  <span>Points de vie</span>
+                  <strong>
+                    {{ currentHitPoints(character) }}
+                    /
+                    {{ maximumHitPoints(character) }}
+                  </strong>
+                </header>
+
+                <div
+                  class="hit-point-track"
+                  role="progressbar"
+                  [attr.aria-valuenow]="currentHitPoints(character)"
+                  [attr.aria-valuemin]="0"
+                  [attr.aria-valuemax]="maximumHitPoints(character)"
+                  [attr.aria-label]="
+                    'Points de vie de ' + character.character.name
+                  "
+                >
+                  <span
+                    class="hit-point-value"
+                    [class.hit-point-value--healthy]="
+                      hitPointTone(character) === 'healthy'
+                    "
+                    [class.hit-point-value--wounded]="
+                      hitPointTone(character) === 'wounded'
+                    "
+                    [class.hit-point-value--critical]="
+                      hitPointTone(character) === 'critical'
+                    "
+                    [style.width.%]="hitPointPercentage(character)"
+                  ></span>
+                </div>
+
+                @if (temporaryHitPoints(character) > 0) {
+                  <span class="temporary-hit-points">
+                    + {{ temporaryHitPoints(character) }} PV temporaires
+                  </span>
+                }
+              </section>
+            } @else {
+              <p class="missing-hit-points">Maximum de PV incomplet.</p>
+            }
+
+            <footer class="character-actions">
+              @if (playerPortalUrl(character); as portalUrl) {
+                <a
+                  class="character-action"
+                  [href]="portalUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Ouvrir le portail
+                </a>
+              }
+
+              <button
+                type="button"
+                class="character-action"
+                (click)="openStatistics(character)"
+              >
+                Voir les caractéristiques
+              </button>
+
+              <button
+                type="button"
+                class="character-action character-action--primary"
+                (click)="openItemAssignment(character)"
+              >
+                Donner un objet
+              </button>
+
+              <button
+                type="button"
+                class="character-action character-action--danger"
+                [disabled]="changingCharacterId() !== null"
+                (click)="removeFromSession(character)"
+              >
+                {{
+                  isChanging(character.character.id)
+                    ? 'Retrait…'
+                    : 'Retirer'
+                }}
+              </button>
+            </footer>
+          </article>
+        } @empty {
+          <div class="empty-state">
+            <span aria-hidden="true">◇</span>
+            <p>Aucun personnage ne participe encore à cette session.</p>
+          </div>
+        }
+      </div>
+    </section>
+
+    <section class="available-character-section">
+      <header class="section-heading">
+        <div>
+          <span class="section-label">Campagne</span>
+          <h3>Personnages disponibles</h3>
+        </div>
+
+        <span class="section-count">{{ availableCharacters().length }}</span>
+      </header>
+
+      <div class="available-character-list">
+        @for (
+          character of availableCharacters();
+          track character.character.id
+        ) {
+          <article class="available-character">
+            <span class="character-portrait" aria-hidden="true">
+              {{ characterInitial(character.character.name) }}
+            </span>
+
+            <div class="character-identity">
+              <h4>{{ character.character.name }}</h4>
+
+              <small>
+                {{
+                  characterSummary(character.character)
+                  || 'Niveau non renseigné'
+                }}
+              </small>
+
+              @if (character.character.playerName) {
+                <small>{{ character.character.playerName }}</small>
+              }
+            </div>
+
+            <button
+              type="button"
+              class="character-action character-action--primary"
+              [disabled]="changingCharacterId() !== null"
+              (click)="addToSession(character)"
+            >
+              {{
+                isChanging(character.character.id)
+                  ? 'Ajout…'
+                  : 'Ajouter à la session'
+              }}
+            </button>
+          </article>
+        } @empty {
+          <p class="available-character-empty">
+            Tous les personnages de la campagne participent à cette session.
+          </p>
+        }
+      </div>
+    </section>
   }
 </section>
 
@@ -370,7 +355,7 @@
             Attribution à
             <strong>
               {{
-                assignmentCharacter.characterName
+                assignmentCharacter.character.name
               }}
             </strong>
           </p>
@@ -554,7 +539,7 @@
 
           <h2 id="statistics-title">
             {{
-              statisticsCharacter.characterName
+              statisticsCharacter.character.name
             }}
           </h2>
 
