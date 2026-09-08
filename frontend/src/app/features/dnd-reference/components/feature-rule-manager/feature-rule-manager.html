@@ -1,0 +1,296 @@
+<section class="rule-manager">
+  <aside class="rule-manager__editor">
+    <header class="panel-header">
+      <div>
+        <span class="eyebrow">Attribution</span>
+        <h2>
+          {{
+            selectedRule()
+              ? 'Modifier l’attribution'
+              : 'Attribuer une capacité'
+          }}
+        </h2>
+      </div>
+
+      @if (selectedRule()) {
+        <button
+          type="button"
+          class="icon-button"
+          title="Nouvelle attribution"
+          (click)="startCreation()"
+        >
+          +
+        </button>
+      }
+    </header>
+
+    <form class="rule-form" (ngSubmit)="save()">
+      <label class="field">
+        <span>Rechercher une capacité</span>
+        <input
+          type="search"
+          name="featureSearch"
+          placeholder="Nom ou slug…"
+          autocomplete="off"
+          [disabled]="selectedRuleId() !== null"
+          [ngModel]="featureSearch()"
+          (ngModelChange)="featureSearch.set($event)"
+        />
+      </label>
+
+      <label class="field">
+        <span>
+          Capacité
+
+          @if (featureSearch()) {
+            <small>{{ filteredFeatures().length }} résultat(s)</small>
+          }
+        </span>
+
+        <select
+          name="featureDefinitionId"
+          [disabled]="selectedRuleId() !== null"
+          [(ngModel)]="form.featureDefinitionId"
+          (ngModelChange)="featureSelected()"
+        >
+          <option [ngValue]="null">Sélectionner une capacité</option>
+
+          @for (feature of filteredFeatures(); track feature.id) {
+            <option [ngValue]="feature.id">
+              {{ feature.name }} — {{ feature.activationLabel }}
+            </option>
+          }
+        </select>
+      </label>
+
+      @if (featureSearch() && filteredFeatures().length === 0) {
+        <p class="inline-empty">
+          Aucune capacité ne correspond à cette recherche.
+        </p>
+      }
+
+      <label class="field">
+        <span>Type de source</span>
+        <select
+          name="sourceType"
+          [disabled]="selectedRuleId() !== null"
+          [(ngModel)]="form.sourceType"
+          (ngModelChange)="sourceTypeChanged()"
+        >
+          <option value="class">Classe</option>
+          <option value="subclass">Sous-classe</option>
+          <option value="race">Race</option>
+          <option value="feat">Don</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Source</span>
+        <select
+          name="sourceId"
+          [disabled]="selectedRuleId() !== null"
+          [(ngModel)]="form.sourceId"
+        >
+          <option [ngValue]="null">Sélectionner</option>
+
+          @for (source of formSourceOptions(); track source.id) {
+            <option [ngValue]="source.id">{{ source.name }}</option>
+          }
+        </select>
+      </label>
+
+      <div class="compact-grid">
+        <label class="field">
+          <span>Niveau de déblocage</span>
+          <input
+            type="number"
+            name="unlockLevel"
+            min="1"
+            max="20"
+            [(ngModel)]="form.unlockLevel"
+          />
+        </label>
+
+        <label class="field">
+          <span>Ordre d’affichage</span>
+          <input
+            type="number"
+            name="displayOrder"
+            min="0"
+            [(ngModel)]="form.displayOrder"
+          />
+        </label>
+      </div>
+
+      @if (selectedRule(); as rule) {
+        <section class="selection-summary">
+          <span class="eyebrow">Attribution actuelle</span>
+
+          <strong>{{ rule.feature.name }}</strong>
+
+          <span>
+            {{ sourceTypeLabel(rule.sourceType) }} ·
+            {{ rule.sourceName }} ·
+            niveau {{ rule.unlockLevel }}
+          </span>
+        </section>
+      }
+
+      @if (error()) {
+        <p class="message message--error">{{ error() }}</p>
+      }
+
+      @if (success()) {
+        <p class="message message--success">{{ success() }}</p>
+      }
+
+      <footer class="form-actions">
+        @if (selectedRule(); as rule) {
+          <button
+            type="button"
+            class="danger-button"
+            [disabled]="submitting()"
+            (click)="deleteRule(rule)"
+          >
+            Supprimer
+          </button>
+
+          <button
+            type="button"
+            class="secondary-button"
+            (click)="startCreation()"
+          >
+            Annuler
+          </button>
+        }
+
+        <button
+          type="submit"
+          class="primary-button"
+          [disabled]="submitting()"
+        >
+          {{
+            submitting()
+              ? 'Enregistrement…'
+              : selectedRule()
+                ? 'Mettre à jour'
+                : 'Attribuer'
+          }}
+        </button>
+      </footer>
+    </form>
+  </aside>
+
+  <section class="rule-manager__list">
+    <header class="panel-header">
+      <div>
+        <span class="eyebrow">Progressions</span>
+        <h2>Capacités attribuées</h2>
+      </div>
+
+      <span class="counter">
+        {{ filteredRules().length }} / {{ rules().length }}
+      </span>
+    </header>
+
+    <div class="rule-filters">
+      <label class="field">
+        <span>Rechercher</span>
+        <input
+          type="search"
+          placeholder="Capacité ou source…"
+          [ngModel]="ruleSearch()"
+          (ngModelChange)="ruleSearch.set($event)"
+        />
+      </label>
+
+      <label class="field">
+        <span>Type de source</span>
+        <select
+          [ngModel]="sourceTypeFilter()"
+          (ngModelChange)="sourceTypeFilterChanged($event)"
+        >
+          <option value="all">Tous les types</option>
+          <option value="class">Classes</option>
+          <option value="subclass">Sous-classes</option>
+          <option value="race">Races</option>
+          <option value="feat">Dons</option>
+        </select>
+      </label>
+
+      @if (sourceTypeFilter() !== 'all') {
+        <label class="field">
+          <span>Source</span>
+          <select
+            [ngModel]="sourceIdFilter()"
+            (ngModelChange)="sourceIdFilter.set($event)"
+          >
+            <option [ngValue]="null">Toutes</option>
+
+            @for (source of filterSourceOptions(); track source.id) {
+              <option [ngValue]="source.id">
+                {{ source.name }}
+              </option>
+            }
+          </select>
+        </label>
+      }
+
+      <button
+        type="button"
+        class="reset-button"
+        (click)="resetFilters()"
+      >
+        Réinitialiser
+      </button>
+    </div>
+
+    <div class="rule-list">
+      @if (loading()) {
+        <p class="empty-state">Chargement des attributions…</p>
+      } @else if (filteredRules().length === 0) {
+        <p class="empty-state">
+          Aucune attribution ne correspond aux filtres.
+        </p>
+      } @else {
+        @for (rule of filteredRules(); track trackRule($index, rule)) {
+          <article
+            class="rule-card"
+            [class.rule-card--selected]="selectedRuleId() === rule.id"
+          >
+            <button
+              type="button"
+              class="rule-card__content"
+              (click)="selectRule(rule)"
+            >
+              <span
+                class="source-badge"
+                [attr.data-source]="rule.sourceType"
+              >
+                {{ sourceTypeLabel(rule.sourceType) }}
+              </span>
+
+              <strong>{{ rule.feature.name }}</strong>
+              <span class="rule-card__source">{{ rule.sourceName }}</span>
+
+              <span class="rule-card__details">
+                Niveau {{ rule.unlockLevel }}
+                · ordre {{ rule.displayOrder }}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              class="rule-card__delete"
+              title="Supprimer cette attribution"
+              [disabled]="submitting()"
+              (click)="deleteRule(rule)"
+            >
+              ×
+            </button>
+          </article>
+        }
+      }
+    </div>
+  </section>
+</section>

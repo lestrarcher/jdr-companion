@@ -1,0 +1,275 @@
+<section class="reference-manager">
+  <aside class="reference-manager__sidebar">
+    <header class="sidebar-header">
+      <div>
+        <span class="eyebrow">Bibliothèque</span>
+        <h2>Capacités</h2>
+      </div>
+
+      <button
+        type="button"
+        class="icon-button"
+        title="Créer une capacité"
+        (click)="startCreation()"
+      >
+        +
+      </button>
+    </header>
+
+    <div class="filters">
+      <label class="field">
+        <span>Rechercher</span>
+        <input
+          type="search"
+          placeholder="Présage, rage…"
+          [ngModel]="search()"
+          (ngModelChange)="updateSearch($event)"
+        />
+      </label>
+
+      <label class="field">
+        <span>Activation</span>
+        <select
+          [ngModel]="activationFilter()"
+          (ngModelChange)="updateActivationFilter($event)"
+        >
+          <option value="all">Tous les types</option>
+
+          @for (activation of activationTypes(); track activation.value) {
+            <option [ngValue]="activation.value">
+              {{ activation.label }}
+            </option>
+          }
+        </select>
+      </label>
+    </div>
+
+    <div class="feature-list">
+      @if (loading()) {
+        <p class="empty-state">Chargement des capacités…</p>
+      } @else if (filteredFeatures().length === 0) {
+        <p class="empty-state">Aucune capacité trouvée.</p>
+      } @else {
+        @for (
+          feature of filteredFeatures();
+          track trackFeature($index, feature)
+        ) {
+          <button
+            type="button"
+            class="feature-card"
+            [class.feature-card--selected]="
+              selectedFeatureId() === feature.id
+            "
+            (click)="selectFeature(feature)"
+          >
+            <span class="feature-card__activation">
+              {{ activationLabel(feature) }}
+            </span>
+
+            <span class="feature-card__name">
+              {{ feature.name }}
+            </span>
+
+            @if (feature.resourceDefinition; as resource) {
+              <span class="feature-card__resource">
+                {{ resource.name }}
+              </span>
+            }
+          </button>
+        }
+      }
+    </div>
+  </aside>
+
+  <div class="reference-manager__content">
+    <header class="content-header">
+      <div>
+        <span class="eyebrow">
+          {{ selectedFeature() ? 'Modification' : 'Nouvelle capacité' }}
+        </span>
+
+        <h2>
+          {{ selectedFeature()?.name ?? 'Créer une capacité' }}
+        </h2>
+
+        <p>
+          Une capacité décrit ce que le personnage peut faire. Elle peut
+          éventuellement consommer une ressource possédant sa propre jauge.
+        </p>
+      </div>
+
+      @if (selectedFeature()?.custom) {
+        <span class="custom-badge">Personnalisée</span>
+      }
+    </header>
+
+    <form class="feature-form" (ngSubmit)="save()">
+      <div class="form-grid">
+        <label class="field">
+          <span>Nom</span>
+          <input
+            type="text"
+            name="name"
+            placeholder="Ex. Présage"
+            required
+            [(ngModel)]="form.name"
+          />
+        </label>
+
+        <label class="field">
+          <span>Type d’activation</span>
+          <select
+            name="activationType"
+            [(ngModel)]="form.activationType"
+          >
+            @for (activation of activationTypes(); track activation.value) {
+              <option [ngValue]="activation.value">
+                {{ activation.label }}
+              </option>
+            }
+          </select>
+        </label>
+
+        <label class="field field--wide">
+          <span>Slug</span>
+
+          <div class="input-action">
+            <input
+              type="text"
+              name="slug"
+              placeholder="presage"
+              required
+              [(ngModel)]="form.slug"
+            />
+
+            <button type="button" (click)="generateSlug()">
+              Générer
+            </button>
+          </div>
+        </label>
+
+        <label class="field field--wide">
+          <span>Ressource consommée</span>
+          <select
+            name="resourceDefinitionId"
+            [(ngModel)]="form.resourceDefinitionId"
+          >
+            <option [ngValue]="null">
+              Aucune ressource consommable
+            </option>
+
+            @for (resource of resources(); track resource.id) {
+              <option [ngValue]="resource.id">
+                {{ resource.name }}
+              </option>
+            }
+          </select>
+
+          <small>
+            La ressource doit déjà exister avant de pouvoir être liée à la
+            capacité.
+          </small>
+        </label>
+
+        <label class="field field--wide">
+          <span>Description</span>
+          <textarea
+            name="description"
+            rows="8"
+            placeholder="Effet et fonctionnement de la capacité…"
+            [(ngModel)]="form.description"
+          ></textarea>
+        </label>
+      </div>
+
+      <div class="checkbox-group">
+        <label class="checkbox-field">
+          <input
+            type="checkbox"
+            name="visible"
+            [(ngModel)]="form.visible"
+          />
+
+          <span>
+            <strong>Visible sur la fiche</strong>
+            <small>
+              La capacité sera présentée au joueur lorsqu’elle sera débloquée.
+            </small>
+          </span>
+        </label>
+
+        <label class="checkbox-field">
+          <input
+            type="checkbox"
+            name="custom"
+            [(ngModel)]="form.custom"
+          />
+
+          <span>
+            <strong>Contenu personnalisé</strong>
+            <small>
+              Capacité maison ou adaptation différente des règles officielles.
+            </small>
+          </span>
+        </label>
+      </div>
+
+      @if (selectedFeature(); as feature) {
+        <section class="feature-summary">
+          <span class="eyebrow">Résumé</span>
+
+          <dl>
+            <div>
+              <dt>Activation</dt>
+              <dd>{{ activationLabel(feature) }}</dd>
+            </div>
+
+            <div>
+              <dt>Ressource</dt>
+              <dd>
+                {{ feature.resourceDefinition?.name ?? 'Aucune' }}
+              </dd>
+            </div>
+
+            <div>
+              <dt>Affichage</dt>
+              <dd>{{ feature.visible ? 'Visible' : 'Masquée' }}</dd>
+            </div>
+          </dl>
+        </section>
+      }
+
+      @if (error()) {
+        <p class="message message--error">{{ error() }}</p>
+      }
+
+      @if (success()) {
+        <p class="message message--success">{{ success() }}</p>
+      }
+
+      <footer class="form-actions">
+        <button
+          type="button"
+          class="secondary-button"
+          (click)="startCreation()"
+        >
+          Nouvelle capacité
+        </button>
+
+        <button
+          type="submit"
+          class="primary-button"
+          [disabled]="submitting()"
+        >
+          {{
+            submitting()
+              ? 'Enregistrement…'
+              : selectedFeature()
+                ? 'Mettre à jour'
+                : 'Créer la capacité'
+          }}
+        </button>
+      </footer>
+    </form>
+  </div>
+</section>

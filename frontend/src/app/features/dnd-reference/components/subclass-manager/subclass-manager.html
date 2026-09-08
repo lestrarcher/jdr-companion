@@ -1,0 +1,231 @@
+<section class="reference-manager">
+  <aside class="reference-manager__sidebar">
+    <header class="sidebar-header">
+      <div>
+        <span class="eyebrow">Référentiel</span>
+        <h2>Sous-classes</h2>
+      </div>
+
+      <button
+        type="button"
+        class="icon-button"
+        title="Créer une sous-classe"
+        (click)="startCreation()"
+      >
+        +
+      </button>
+    </header>
+
+    <div class="filters">
+      <label class="field">
+        <span>Rechercher</span>
+        <input
+          type="search"
+          placeholder="Divination, artilleur…"
+          [ngModel]="search()"
+          (ngModelChange)="updateSearch($event)"
+        />
+      </label>
+
+      <label class="field">
+        <span>Classe</span>
+        <select
+          [ngModel]="selectedClassFilter()"
+          (ngModelChange)="updateClassFilter($event)"
+        >
+          <option [ngValue]="null">Toutes les classes</option>
+
+          @for (characterClass of classes(); track characterClass.id) {
+            <option [ngValue]="characterClass.id">
+              {{ characterClass.name }}
+            </option>
+          }
+        </select>
+      </label>
+    </div>
+
+    <div class="subclass-list">
+      @if (loading()) {
+        <p class="empty-state">Chargement des sous-classes…</p>
+      } @else if (filteredSubclasses().length === 0) {
+        <p class="empty-state">Aucune sous-classe trouvée.</p>
+      } @else {
+        @for (
+          subclass of filteredSubclasses();
+          track trackSubclass($index, subclass)
+        ) {
+          <button
+            type="button"
+            class="subclass-card"
+            [class.subclass-card--selected]="
+              selectedSubclassId() === subclass.id
+            "
+            (click)="selectSubclass(subclass)"
+          >
+            <span class="subclass-card__class">
+              {{ className(subclass.classId) }}
+            </span>
+
+            <span class="subclass-card__name">
+              {{ subclass.name }}
+            </span>
+
+            @if (subclass.spellcastingProgression) {
+              <span class="subclass-card__details">
+                {{ progressionLabel(subclass.spellcastingProgression) }}
+              </span>
+            }
+          </button>
+        }
+      }
+    </div>
+  </aside>
+
+  <div class="reference-manager__content">
+    <header class="content-header">
+      <div>
+        <span class="eyebrow">
+          {{ selectedSubclass() ? 'Modification' : 'Nouvelle sous-classe' }}
+        </span>
+
+        <h2>
+          {{ selectedSubclass()?.name ?? 'Créer une sous-classe' }}
+        </h2>
+
+        <p>
+          La progression magique sélectionnée ici complète ou remplace celle
+          définie par la classe selon les règles du personnage.
+        </p>
+      </div>
+
+      @if (selectedSubclass()?.custom) {
+        <span class="custom-badge">Personnalisée</span>
+      }
+    </header>
+
+    <form class="subclass-form" (ngSubmit)="save()">
+      <div class="form-grid">
+        <label class="field">
+          <span>Classe parente</span>
+          <select
+            name="classId"
+            required
+            [disabled]="selectedSubclassId() !== null"
+            [(ngModel)]="form.classId"
+          >
+            <option [ngValue]="null">Sélectionner une classe</option>
+
+            @for (characterClass of classes(); track characterClass.id) {
+              <option [ngValue]="characterClass.id">
+                {{ characterClass.name }}
+              </option>
+            }
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Nom</span>
+          <input
+            type="text"
+            name="name"
+            placeholder="Ex. École de divination"
+            required
+            [(ngModel)]="form.name"
+          />
+        </label>
+
+        <label class="field field--wide">
+          <span>Slug</span>
+
+          <div class="input-action">
+            <input
+              type="text"
+              name="slug"
+              placeholder="ecole-de-divination"
+              required
+              [(ngModel)]="form.slug"
+            />
+
+            <button type="button" (click)="generateSlug()">
+              Générer
+            </button>
+          </div>
+        </label>
+
+        <label class="field field--wide">
+          <span>Progression magique ajoutée</span>
+          <select
+            name="spellcastingProgression"
+            [(ngModel)]="form.spellcastingProgression"
+          >
+            <option [ngValue]="null">
+              Aucune progression supplémentaire
+            </option>
+
+            @for (
+              progression of spellcastingProgressions();
+              track progression.value
+            ) {
+              <option [ngValue]="progression.value">
+                {{ progression.label }}
+              </option>
+            }
+          </select>
+        </label>
+
+        <label class="field field--wide">
+          <span>Description</span>
+          <textarea
+            name="description"
+            rows="7"
+            placeholder="Description générale de la sous-classe…"
+            [(ngModel)]="form.description"
+          ></textarea>
+        </label>
+      </div>
+
+      <label class="checkbox-field">
+        <input type="checkbox" name="custom" [(ngModel)]="form.custom" />
+
+        <span>
+          <strong>Contenu personnalisé</strong>
+          <small>
+            Sous-classe maison ou adaptation différente des règles officielles.
+          </small>
+        </span>
+      </label>
+
+      @if (error()) {
+        <p class="message message--error">{{ error() }}</p>
+      }
+
+      @if (success()) {
+        <p class="message message--success">{{ success() }}</p>
+      }
+
+      <footer class="form-actions">
+        <button
+          type="button"
+          class="secondary-button"
+          (click)="startCreation()"
+        >
+          Nouvelle sous-classe
+        </button>
+
+        <button
+          type="submit"
+          class="primary-button"
+          [disabled]="submitting()"
+        >
+          {{
+            submitting()
+              ? 'Enregistrement…'
+              : selectedSubclass()
+                ? 'Mettre à jour'
+                : 'Créer la sous-classe'
+          }}
+        </button>
+      </footer>
+    </form>
+  </div>
+</section>

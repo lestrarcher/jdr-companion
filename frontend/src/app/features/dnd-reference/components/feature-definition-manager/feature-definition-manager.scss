@@ -1,0 +1,371 @@
+:host {
+  display: block;
+  min-height: 0;
+}
+
+.reference-manager {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(0, 2fr);
+  min-height: 650px;
+  border: 1px solid rgba(202, 165, 86, 0.25);
+  background: rgba(8, 8, 14, 0.72);
+}
+
+.reference-manager__sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 1.25rem;
+  border-right: 1px solid rgba(202, 165, 86, 0.2);
+  background:
+    linear-gradient(180deg, rgba(202, 165, 86, 0.05), transparent 14rem),
+    rgba(7, 7, 12, 0.75);
+}
+
+.sidebar-header,
+.content-header,
+.form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.sidebar-header,
+.content-header {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(202, 165, 86, 0.25);
+}
+
+.eyebrow,
+.field > span {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: #d6b45e;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+h2 {
+  margin: 0;
+  color: #f7f1e7;
+  font-family: Georgia, serif;
+  font-size: 1.65rem;
+}
+
+.content-header p {
+  max-width: 50rem;
+  margin: 0.45rem 0 0;
+  color: #aaa3a7;
+  line-height: 1.5;
+}
+
+.icon-button {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid rgba(202, 165, 86, 0.45);
+  background: rgba(202, 165, 86, 0.07);
+  color: #e6c56d;
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+
+.filters {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(202, 165, 86, 0.28);
+  border-radius: 0;
+  background: rgba(5, 5, 10, 0.8);
+  color: #f4efe7;
+  font: inherit;
+  outline: none;
+
+  &:focus {
+    border-color: #d6b45e;
+    box-shadow: 0 0 0 1px rgba(214, 180, 94, 0.22);
+  }
+}
+
+input,
+select {
+  min-height: 2.85rem;
+  padding: 0 0.8rem;
+}
+
+textarea {
+  min-height: 10rem;
+  padding: 0.8rem;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.field {
+  display: block;
+  min-width: 0;
+
+  small {
+    display: block;
+    margin-top: 0.35rem;
+    color: #8f888e;
+    line-height: 1.4;
+  }
+}
+
+.feature-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 0;
+  padding-right: 0.25rem;
+  overflow-y: auto;
+  scrollbar-color: rgba(202, 165, 86, 0.55) transparent;
+  scrollbar-width: thin;
+}
+
+.feature-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(202, 165, 86, 0.18);
+  background: rgba(22, 21, 30, 0.72);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    border-color: rgba(202, 165, 86, 0.45);
+    background: rgba(202, 165, 86, 0.07);
+  }
+}
+
+.feature-card--selected {
+  border-color: #d6b45e;
+  background:
+    linear-gradient(90deg, rgba(202, 165, 86, 0.16), transparent),
+    rgba(22, 21, 30, 0.85);
+}
+
+.feature-card__activation {
+  color: #d6b45e;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.feature-card__name {
+  color: #f5efe4;
+  font-family: Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.feature-card__resource {
+  color: #99929a;
+  font-size: 0.78rem;
+}
+
+.empty-state {
+  padding: 2rem 1rem;
+  border: 1px dashed rgba(202, 165, 86, 0.2);
+  color: #938c91;
+  text-align: center;
+}
+
+.reference-manager__content {
+  min-width: 0;
+  padding: 1.5rem;
+}
+
+.custom-badge {
+  flex: 0 0 auto;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid rgba(113, 191, 137, 0.45);
+  color: #8bd5a1;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.feature-form {
+  margin-top: 1.25rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.field--wide {
+  grid-column: 1 / -1;
+}
+
+.input-action {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+
+  button {
+    min-width: 6rem;
+    border: 1px solid rgba(202, 165, 86, 0.4);
+    border-left: 0;
+    background: rgba(202, 165, 86, 0.1);
+    color: #d6b45e;
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(202, 165, 86, 0.17);
+    }
+  }
+}
+
+.checkbox-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.9rem;
+  border: 1px solid rgba(202, 165, 86, 0.18);
+  cursor: pointer;
+
+  input {
+    width: auto;
+    min-height: 0;
+    margin-top: 0.2rem;
+  }
+
+  strong,
+  small {
+    display: block;
+  }
+
+  strong {
+    color: #eee7dd;
+  }
+
+  small {
+    margin-top: 0.2rem;
+    color: #918a90;
+  }
+}
+
+.feature-summary {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(202, 165, 86, 0.2);
+  background: rgba(5, 5, 10, 0.35);
+
+  dl {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin: 0;
+  }
+
+  div {
+    padding: 0.75rem;
+    border: 1px solid rgba(202, 165, 86, 0.14);
+  }
+
+  dt {
+    color: #8f888e;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  dd {
+    margin: 0.3rem 0 0;
+    color: #eee7dd;
+  }
+}
+
+.message {
+  margin: 1rem 0 0;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid;
+}
+
+.message--error {
+  border-color: rgba(198, 76, 76, 0.55);
+  background: rgba(133, 37, 37, 0.12);
+  color: #ef9d9d;
+}
+
+.message--success {
+  border-color: rgba(83, 177, 112, 0.5);
+  background: rgba(39, 118, 65, 0.12);
+  color: #95d9a9;
+}
+
+.form-actions {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(202, 165, 86, 0.2);
+}
+
+.primary-button,
+.secondary-button {
+  min-height: 2.65rem;
+  padding: 0 1rem;
+  border: 1px solid rgba(202, 165, 86, 0.45);
+  font-weight: 700;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.primary-button {
+  background: #d6b45e;
+  color: #0b0a0e;
+}
+
+.secondary-button {
+  background: transparent;
+  color: #d6b45e;
+}
+
+@media (max-width: 900px) {
+  .reference-manager {
+    grid-template-columns: 1fr;
+  }
+
+  .reference-manager__sidebar {
+    max-height: 30rem;
+    border-right: 0;
+    border-bottom: 1px solid rgba(202, 165, 86, 0.2);
+  }
+
+  .form-grid,
+  .checkbox-group,
+  .feature-summary dl {
+    grid-template-columns: 1fr;
+  }
+
+  .field--wide {
+    grid-column: auto;
+  }
+}

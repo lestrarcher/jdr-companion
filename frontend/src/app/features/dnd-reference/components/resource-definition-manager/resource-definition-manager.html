@@ -1,0 +1,315 @@
+<section class="reference-manager">
+  <aside class="reference-manager__sidebar">
+    <header class="sidebar-header">
+      <div>
+        <span class="eyebrow">Bibliothèque</span>
+        <h2>Ressources</h2>
+      </div>
+
+      <button
+        type="button"
+        class="icon-button"
+        title="Créer une ressource"
+        (click)="startCreation()"
+      >
+        +
+      </button>
+    </header>
+
+    <div class="filters">
+      <label class="field">
+        <span>Rechercher</span>
+        <input
+          type="search"
+          placeholder="Rage, présage…"
+          [ngModel]="search()"
+          (ngModelChange)="updateSearch($event)"
+        />
+      </label>
+
+      <label class="field">
+        <span>Recharge</span>
+        <select
+          [ngModel]="rechargeFilter()"
+          (ngModelChange)="updateRechargeFilter($event)"
+        >
+          <option value="all">Tous les types</option>
+
+          @for (rechargeType of rechargeTypes(); track rechargeType.value) {
+            <option [ngValue]="rechargeType.value">
+              {{ rechargeType.label }}
+            </option>
+          }
+        </select>
+      </label>
+    </div>
+
+    <div class="resource-list">
+      @if (loading()) {
+        <p class="empty-state">Chargement des ressources…</p>
+      } @else if (filteredResources().length === 0) {
+        <p class="empty-state">Aucune ressource trouvée.</p>
+      } @else {
+        @for (
+          resource of filteredResources();
+          track trackResource($index, resource)
+        ) {
+          <button
+            type="button"
+            class="resource-card"
+            [class.resource-card--selected]="
+              selectedResourceId() === resource.id
+            "
+            (click)="selectResource(resource)"
+          >
+            <span class="resource-card__recharge">
+              {{ rechargeLabel(resource.rechargeType) }}
+            </span>
+
+            <span class="resource-card__name">
+              {{ resource.name }}
+            </span>
+
+            <span class="resource-card__maximum">
+              {{ maximumLabel(resource.maximumType) }}
+            </span>
+          </button>
+        }
+      }
+    </div>
+  </aside>
+
+  <div class="reference-manager__content">
+    <header class="content-header">
+      <div>
+        <span class="eyebrow">
+          {{ selectedResource() ? 'Modification' : 'Nouvelle ressource' }}
+        </span>
+
+        <h2>
+          {{ selectedResource()?.name ?? 'Créer une ressource' }}
+        </h2>
+
+        <p>
+          Une ressource représente une jauge consommable : rages, dés de
+          présage, utilisations d’une capacité ou emplacements spéciaux.
+        </p>
+      </div>
+
+      @if (selectedResource()?.custom) {
+        <span class="custom-badge">Personnalisée</span>
+      }
+    </header>
+
+    <form class="resource-form" (ngSubmit)="save()">
+      <div class="form-grid">
+        <label class="field">
+          <span>Nom</span>
+          <input
+            type="text"
+            name="name"
+            placeholder="Ex. Utilisations de Rage"
+            required
+            [(ngModel)]="form.name"
+          />
+        </label>
+
+        <label class="field">
+          <span>Recharge</span>
+          <select
+            name="rechargeType"
+            required
+            [(ngModel)]="form.rechargeType"
+          >
+            <option value="">Sélectionner</option>
+
+            @for (rechargeType of rechargeTypes(); track rechargeType.value) {
+              <option [ngValue]="rechargeType.value">
+                {{ rechargeType.label }}
+              </option>
+            }
+          </select>
+        </label>
+
+        <label class="field field--wide">
+          <span>Slug</span>
+
+          <div class="input-action">
+            <input
+              type="text"
+              name="slug"
+              placeholder="utilisations-de-rage"
+              required
+              [(ngModel)]="form.slug"
+            />
+
+            <button type="button" (click)="generateSlug()">
+              Générer
+            </button>
+          </div>
+        </label>
+
+        <label class="field field--wide">
+          <span>Calcul du maximum</span>
+          <select
+            name="maximumType"
+            required
+            [(ngModel)]="form.maximumType"
+          >
+            @for (maximumType of maximumTypes(); track maximumType.value) {
+              <option [ngValue]="maximumType.value">
+                {{ maximumType.label }}
+              </option>
+            }
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Maximum de base</span>
+          <input
+            type="number"
+            name="baseMaximum"
+            min="0"
+            [(ngModel)]="form.baseMaximum"
+          />
+        </label>
+
+        <label class="field">
+          <span>Multiplicateur</span>
+          <input
+            type="number"
+            name="multiplier"
+            min="1"
+            [(ngModel)]="form.multiplier"
+          />
+        </label>
+
+        <label class="field">
+          <span>Minimum garanti</span>
+          <input
+            type="number"
+            name="minimumMaximum"
+            min="0"
+            [(ngModel)]="form.minimumMaximum"
+          />
+        </label>
+
+        @if (form.maximumType === 'ability_modifier') {
+          <label class="field">
+            <span>Caractéristique</span>
+            <select
+              name="scalingAbility"
+              [(ngModel)]="form.scalingAbility"
+            >
+              <option [ngValue]="null">Sélectionner</option>
+
+              @for (ability of abilities(); track ability.value) {
+                <option [ngValue]="ability.value">
+                  {{ ability.label }} ({{ ability.abbreviation }})
+                </option>
+              }
+            </select>
+          </label>
+        }
+
+        <label class="field field--wide">
+          <span>Description</span>
+          <textarea
+            name="description"
+            rows="6"
+            placeholder="Fonctionnement de la ressource…"
+            [(ngModel)]="form.description"
+          ></textarea>
+        </label>
+      </div>
+
+      <section class="calculation-help">
+        <span class="eyebrow">Calcul</span>
+
+        @if (form.maximumType === 'ability_modifier') {
+          <p>
+            Maximum =
+            <strong>{{ form.baseMaximum }}</strong>
+            +
+            <strong>{{ form.multiplier }}</strong>
+            × modificateur de
+            <strong>{{ abilityLabel(form.scalingAbility) }}</strong>,
+            avec un minimum de
+            <strong>{{ form.minimumMaximum }}</strong>.
+          </p>
+        } @else {
+          <p>
+            Maximum fixe :
+            <strong>{{ form.baseMaximum }}</strong>.
+          </p>
+        }
+      </section>
+
+      <label class="checkbox-field">
+        <input type="checkbox" name="custom" [(ngModel)]="form.custom" />
+
+        <span>
+          <strong>Contenu personnalisé</strong>
+          <small>
+            Ressource maison ou adaptation différente des règles officielles.
+          </small>
+        </span>
+      </label>
+
+      @if (selectedResource(); as resource) {
+        <section class="resource-summary">
+          <span class="eyebrow">Configuration actuelle</span>
+
+          <dl>
+            <div>
+              <dt>Recharge</dt>
+              <dd>{{ rechargeLabel(resource.rechargeType) }}</dd>
+            </div>
+
+            <div>
+              <dt>Maximum</dt>
+              <dd>{{ maximumLabel(resource.maximumType) }}</dd>
+            </div>
+
+            <div>
+              <dt>Caractéristique</dt>
+              <dd>{{ abilityLabel(resource.scalingAbility) }}</dd>
+            </div>
+          </dl>
+        </section>
+      }
+
+      @if (error()) {
+        <p class="message message--error">{{ error() }}</p>
+      }
+
+      @if (success()) {
+        <p class="message message--success">{{ success() }}</p>
+      }
+
+      <footer class="form-actions">
+        <button
+          type="button"
+          class="secondary-button"
+          (click)="startCreation()"
+        >
+          Nouvelle ressource
+        </button>
+
+        <button
+          type="submit"
+          class="primary-button"
+          [disabled]="submitting()"
+        >
+          {{
+            submitting()
+              ? 'Enregistrement…'
+              : selectedResource()
+                ? 'Mettre à jour'
+                : 'Créer la ressource'
+          }}
+        </button>
+      </footer>
+    </form>
+  </div>
+</section>
