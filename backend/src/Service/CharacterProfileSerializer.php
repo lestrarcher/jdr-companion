@@ -17,6 +17,7 @@ final readonly class CharacterProfileSerializer
         private CharacterFeatureResolver $featureResolver,
         private CharacterResourceResolver $resourceResolver,
         private CharacterHitPointCalculator $hitPointCalculator,
+        private CharacterSpellSlotCalculator $spellSlotCalculator,
     ) {
     }
 
@@ -60,15 +61,7 @@ final readonly class CharacterProfileSerializer
                 $this->serializeFeature(...),
                 $this->featureResolver->resolve($character),
             )),
-            'resources' => array_values(array_map(
-                static fn ($resource): array => [
-                    'slug' => $resource->getSlug(),
-                    'name' => $resource->getName(),
-                    'maximum' => $resource->getMaximum(),
-                    'rechargeType' => $resource->getRechargeType()->value,
-                ],
-                $this->resourceResolver->resolve($character),
-            )),
+            'resources' => $this->serializeResources($character),
             'definition' => $character->getDefinition(),
         ];
     }
@@ -179,5 +172,43 @@ final readonly class CharacterProfileSerializer
                 ]
                 : null,
         ];
+    }
+
+    /**
+     * @return list<array{
+     *     slug: string,
+     *     name: string,
+     *     maximum: int,
+     *     rechargeType: string
+     * }>
+     */
+    private function serializeResources(Character $character): array
+    {
+        $resources = [];
+
+        foreach ($this->resourceResolver->resolve($character) as $resource) {
+            $resources[$resource->getSlug()] = [
+                'slug' => $resource->getSlug(),
+                'name' => $resource->getName(),
+                'maximum' => $resource->getMaximum(),
+                'rechargeType' => $resource->getRechargeType()->value,
+            ];
+        }
+
+        foreach ($this->spellSlotCalculator->calculate($character) as $level => $maximum) {
+            $slug = sprintf('spell-slot-%d', $level);
+
+            $resources[$slug] = [
+                'slug' => $slug,
+                'name' => sprintf(
+                    'Emplacements de sorts de niveau %d',
+                    $level,
+                ),
+                'maximum' => $maximum,
+                'rechargeType' => 'long-rest',
+            ];
+        }
+
+        return array_values($resources);
     }
 }

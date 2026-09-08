@@ -14,6 +14,7 @@ final readonly class CharacterRestService
         private CharacterHitPointCalculator $hitPointCalculator,
         private CharacterResourceResolver $resourceResolver,
         private CharacterSessionStateSynchronizer $stateSynchronizer,
+        private CharacterSpellSlotCalculator $spellSlotCalculator,
     ) {
     }
 
@@ -89,6 +90,11 @@ final readonly class CharacterRestService
                 RestRequest::TYPE_SHORT_REST,
                 RestRequest::TYPE_LONG_REST,
             ],
+        );
+
+        $state['resources'] = $this->restoreSpellSlots(
+            $character,
+            $state['resources'],
         );
 
         return $state;
@@ -189,5 +195,38 @@ final readonly class CharacterRestService
             },
             $states,
         );
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $states
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function restoreSpellSlots(
+        Character $character,
+        array $states,
+    ): array {
+        $maximums = $this->spellSlotCalculator->calculate($character);
+
+        foreach ($states as &$state) {
+            $id = (string) ($state['id'] ?? '');
+
+            if (!str_starts_with($id, 'spell-slot-')) {
+                continue;
+            }
+
+            $level = (int) str_replace('spell-slot-', '', $id);
+            $maximum = $maximums[$level] ?? null;
+
+            if ($maximum === null) {
+                continue;
+            }
+
+            $state['currentValue'] = $maximum;
+        }
+
+        unset($state);
+
+        return $states;
     }
 }

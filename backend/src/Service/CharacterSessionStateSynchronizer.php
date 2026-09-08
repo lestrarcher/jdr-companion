@@ -5,17 +5,23 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\Character;
+use App\Repository\CharacterSessionStateRepository;
 
 final readonly class CharacterSessionStateSynchronizer
 {
     public function __construct(
+        private CharacterHitPointCalculator $hitPointCalculator,
         private CharacterResourceResolver $resourceResolver,
+        private CharacterSessionStateRepository $sessionStateRepository,
+        private CharacterSpellSlotCalculator $spellSlotCalculator,
     ) {
     }
 
     /**
-     * Synchronise les données dynamiques avec l'état actuel du personnage
-     * sans restaurer les ressources déjà consommées.
+     * Synchronisation simple utilisée notamment avant un repos.
+     *
+     * Elle ajoute les ressources nouvellement disponibles et conserve
+     * les valeurs courantes existantes.
      *
      * @param array<string, mixed> $state
      *
@@ -23,50 +29,212 @@ final readonly class CharacterSessionStateSynchronizer
      */
     public function synchronize(Character $character, array $state): array
     {
-        $state['resources'] = $this->synchronizeResources(
-            $character,
-            $state['resources'] ?? [],
-        );
+        $maximums = $this->resourceMaximums($character);
+        $resources = $state['resources'] ?? [];
+
+        foreach ($maximums as $id => $maximum) {
+            $index = $this->findStateIndex($resources, $id);
+
+            if ($index === null) {
+                $resources[] = [
+                    'id' => $id,
+                    'currentValue' => $maximum,
+                ];
+
+                continue;
+            }
+
+            $current = (int) ($resources[$index]['currentValue'] ?? 0);
+
+            $resources[$index]['currentValue'] = min(
+                $current,
+                $maximum,
+            );
+        }
+
+        $state['resources'] = $resources;
+
+        return $state;
+    }
+
+    /**
+     * Photographie les maximums dérivés du personnage avant une modification.
+     *
+     * @return array{
+     *     hitPoints: int|null,
+     *     hitDice: array<string, int>,
+     *     resources: array<string, int>
+     * }
+     */
+    public function snapshot(Character $character): array
+    {
+        $hitPoints = $this->hitPointCalculator->calculate($character);
+
+        return [
+            'hitPoints' => $hitPoints->isComplete()
+                ? $hitPoints->maximumValue
+                : null,
+            'hitDice' => $this->hitDiceMaximums($character),
+            'resources' => $this->resourceMaximums($character),
+        ];
+    }
+
+    /**
+     * Applique aux états de session uniquement ce qui vient d'être gagné
+     * grâce au level-up.
+     *
+     * @param array{
+     *     hitPoints: int|null,
+     *     hitDice: array<string, int>,
+     *     resources: array<string, int>
+     * } $before
+     */
+    public function synchronizeAfterLevelUp(
+        Character $character,
+        array $before,
+    ): void {
+        $after = $this->snapshot($character);
+
+        $sessionStates = $this->sessionStateRepository->findBy([
+            'character' => $character,
+        ]);
+
+        foreach ($sessionStates as $sessionState) {
+            $state = $sessionState->getState();
+
+            $state = $this->applyHitPointDelta(
+                $state,
+                $before['hitPoints'],
+                $after['hitPoints'],
+            );
+
+            $state['hitDice'] = $this->applyPoolDeltas(
+                $state['hitDice'] ?? [],
+                $before['hitDice'],
+                $after['hitDice'],
+                'current',
+            );
+
+            $state['resources'] = $this->applyPoolDeltas(
+                $state['resources'] ?? [],
+                $before['resources'],
+                $after['resources'],
+                'currentValue',
+            );
+
+            $sessionState->setState($state);
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $state
+     *
+     * @return array<string, mixed>
+     */
+    private function applyHitPointDelta(
+        array $state,
+        ?int $beforeMaximum,
+        ?int $afterMaximum,
+    ): array {
+        if ($beforeMaximum === null || $afterMaximum === null) {
+            return $state;
+        }
+
+        $current = (int) ($state['hitPoints']['current'] ?? 0);
+        $delta = $afterMaximum - $beforeMaximum;
+
+        $state['hitPoints']['current'] = $delta >= 0
+            ? min($afterMaximum, $current + $delta)
+            : min($current, $afterMaximum);
 
         return $state;
     }
 
     /**
      * @param array<int, array<string, mixed>> $states
+     * @param array<string, int>               $beforeMaximums
+     * @param array<string, int>               $afterMaximums
      *
-     * @return list<array{id: string, currentValue: int}>
+     * @return array<int, array<string, mixed>>
      */
-    private function synchronizeResources(
-        Character $character,
+    private function applyPoolDeltas(
         array $states,
+        array $beforeMaximums,
+        array $afterMaximums,
+        string $currentField,
     ): array {
-        $currentValues = [];
+        foreach ($afterMaximums as $id => $afterMaximum) {
+            $beforeMaximum = $beforeMaximums[$id] ?? 0;
+            $index = $this->findStateIndex($states, $id);
 
-        foreach ($states as $resourceState) {
-            if (
-                !is_array($resourceState)
-                || !isset($resourceState['id'])
-            ) {
+            if ($index === null) {
+                $states[] = [
+                    'id' => $id,
+                    $currentField => $afterMaximum,
+                ];
+
                 continue;
             }
 
-            $currentValues[(string) $resourceState['id']] =
-                (int) ($resourceState['currentValue'] ?? 0);
+            $current = (int) ($states[$index][$currentField] ?? 0);
+            $delta = $afterMaximum - $beforeMaximum;
+
+            $states[$index][$currentField] = $delta >= 0
+                ? min($afterMaximum, $current + $delta)
+                : min($current, $afterMaximum);
         }
 
-        $resources = [];
+        return $states;
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function hitDiceMaximums(Character $character): array
+    {
+        $maximums = [];
+
+        foreach ($character->getClassLevels() as $level) {
+            $id = sprintf(
+                'd%d',
+                $level->getCharacterClass()->getHitDie(),
+            );
+
+            $maximums[$id] = ($maximums[$id] ?? 0) + 1;
+        }
+
+        return $maximums;
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function resourceMaximums(Character $character): array
+    {
+        $maximums = [];
 
         foreach ($this->resourceResolver->resolve($character) as $resource) {
-            $slug = $resource->getSlug();
-
-            $resources[] = [
-                'id' => $slug,
-                'currentValue' => isset($currentValues[$slug])
-                    ? min($currentValues[$slug], $resource->getMaximum())
-                    : $resource->getMaximum(),
-            ];
+            $maximums[$resource->getSlug()] = $resource->getMaximum();
         }
 
-        return $resources;
+        foreach ($this->spellSlotCalculator->calculate($character) as $level => $maximum) {
+            $maximums[sprintf('spell-slot-%d', $level)] = $maximum;
+        }
+
+        return $maximums;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $states
+     */
+    private function findStateIndex(array $states, string $id): ?int
+    {
+        foreach ($states as $index => $state) {
+            if (($state['id'] ?? null) === $id) {
+                return $index;
+            }
+        }
+
+        return null;
     }
 }

@@ -11,6 +11,7 @@ final readonly class CharacterSessionStateFactory
     public function __construct(
         private CharacterHitPointCalculator $hitPointCalculator,
         private CharacterResourceResolver $resourceResolver,
+        private CharacterSpellSlotCalculator $spellSlotCalculator,
     ) {
     }
 
@@ -121,6 +122,15 @@ final readonly class CharacterSessionStateFactory
             $resources[$resource->getSlug()] = [
                 'id' => $resource->getSlug(),
                 'currentValue' => $resource->getMaximum(),
+            ];
+        }
+
+        foreach ($this->spellSlotCalculator->calculate($character) as $level => $maximum) {
+            $id = sprintf('spell-slot-%d', $level);
+
+            $resources[$id] = [
+                'id' => $id,
+                'currentValue' => $maximum,
             ];
         }
 

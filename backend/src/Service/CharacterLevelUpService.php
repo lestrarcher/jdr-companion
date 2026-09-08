@@ -22,6 +22,7 @@ final readonly class CharacterLevelUpService
     public function __construct(
         private EntityManagerInterface $entityManager,
         private CharacterClassLevelRuleRepository $levelRuleRepository,
+        private CharacterSessionStateSynchronizer $stateSynchronizer,
     ) {
     }
 
@@ -42,6 +43,7 @@ final readonly class CharacterLevelUpService
             $hitPointGain,
         ): CharacterClassLevel {
             $this->validateCharacterCanLevelUp($character);
+            $stateBeforeLevelUp = $this->stateSynchronizer->snapshot($character);
 
             $totalLevel = $character->getNextLevelPosition();
             $classLevel = $character->getLevelInClass($characterClass) + 1;
@@ -81,6 +83,12 @@ final readonly class CharacterLevelUpService
 
             $character->addClassLevel($level);
             $this->entityManager->persist($level);
+
+            $this->stateSynchronizer->synchronizeAfterLevelUp(
+                $character,
+                $stateBeforeLevelUp,
+            );
+
             $this->entityManager->flush();
 
             return $level;
