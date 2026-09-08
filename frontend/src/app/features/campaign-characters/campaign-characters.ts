@@ -1,58 +1,36 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { finalize, forkJoin } from 'rxjs';
 import {
-  AbilityAdvancementPayload,
   CharacterApiResponse,
   CharacterApiService,
-  CharacterClassLevel,
-  CharacterProfile,
-  FeatAdvancementPayload,
-  HitPointGainMethod,
-  HitPointHistoryEntryPayload,
-  LevelUpClassOption,
+  CharacterProfile as CharacterProfileModel,
   LevelUpOptions,
-  LevelUpPayload,
+  LevelUpResponse,
+  UpdateHitPointHistoryResponse,
 } from '@core/services/character-api.service';
 import {
-  AbilityKey,
   DndReferenceApiService,
   DndReferenceResponse,
-  FeatReference,
 } from '@core/services/dnd-reference-api.service';
+import { CharacterHitPointHistory } from './components/character-hit-point-history/character-hit-point-history';
+import { CharacterLevelUp } from './components/character-level-up/character-level-up';
+import { CharacterProfile } from './components/character-profile/character-profile';
+import { CharacterRoster } from './components/character-roster/character-roster';
 
-type CharacterFilter = 'all' | 'player' | 'npc';
-type AdvancementMode = 'ability' | 'feat';
-type AbilityIncreaseMode = 'single' | 'double';
-type LevelUpHitPointMethod = Exclude<HitPointGainMethod, 'first_level'>;
-
-interface LevelUpForm {
-  classId: number | null;
-  subclassId: number | null;
-  advancementMode: AdvancementMode;
-  abilityIncreaseMode: AbilityIncreaseMode;
-  firstAbility: AbilityKey | null;
-  secondAbility: AbilityKey | null;
-  featId: number | null;
-  featAbility: AbilityKey | null;
-  hitPointMethod: LevelUpHitPointMethod;
-  hitPointGain: number | null;
-}
-
-interface HitPointHistoryFormEntry {
-  position: number;
-  className: string;
-  hitDie: number;
-  method: HitPointGainMethod;
-  gain: number | null;
-}
+type CharacterEditor = 'level-up' | 'hit-points' | null;
 
 @Component({
   selector: 'app-campaign-characters',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [
+    RouterLink,
+    CharacterRoster,
+    CharacterProfile,
+    CharacterLevelUp,
+    CharacterHitPointHistory,
+  ],
   templateUrl: './campaign-characters.html',
   styleUrl: './campaign-characters.scss',
 })
@@ -67,31 +45,16 @@ export class CampaignCharacters {
 
   protected readonly characters = signal<CharacterApiResponse[]>([]);
   protected readonly reference = signal<DndReferenceResponse | null>(null);
-  protected readonly filter = signal<CharacterFilter>('all');
   protected readonly selectedCharacterId = signal<number | null>(null);
-  protected readonly profile = signal<CharacterProfile | null>(null);
+  protected readonly profile = signal<CharacterProfileModel | null>(null);
   protected readonly levelUpOptions = signal<LevelUpOptions | null>(null);
+  protected readonly activeEditor = signal<CharacterEditor>(null);
 
   protected readonly loading = signal(true);
   protected readonly profileLoading = signal(false);
-  protected readonly submittingLevel = signal(false);
-  protected readonly savingHitPoints = signal(false);
-  protected readonly levelUpOpened = signal(false);
-  protected readonly hitPointHistoryOpened = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly profileError = signal<string | null>(null);
   protected readonly success = signal<string | null>(null);
-
-  protected search = '';
-  protected levelUpForm: LevelUpForm = this.emptyLevelUpForm();
-  protected hitPointHistoryForm: HitPointHistoryFormEntry[] = [];
-
-  protected readonly selectedCharacter = computed(() => {
-    const selectedId = this.selectedCharacterId();
-
-    return this.characters().find(character => character.id === selectedId)
-      ?? null;
-  });
 
   protected readonly abilities = computed(
     () => this.reference()?.abilities ?? [],
@@ -111,453 +74,49 @@ export class CampaignCharacters {
     this.loadCharacters();
   }
 
-  protected filteredCharacters(): CharacterApiResponse[] {
-    const filter = this.filter();
-    const search = this.normalizeSearch(this.search);
-
-    return this.characters().filter(character => {
-      if (filter !== 'all' && character.type !== filter) {
-        return false;
-      }
-
-      if (!search) {
-        return true;
-      }
-
-      return this.normalizeSearch(
-        `${character.name} ${character.playerName ?? ''} ${this.progressionLabel(character)}`,
-      ).includes(search);
-    });
-  }
-
-  protected setFilter(filter: CharacterFilter): void {
-    this.filter.set(filter);
-  }
-
-  protected countByType(type: CharacterFilter): number {
-    if (type === 'all') {
-      return this.characters().length;
-    }
-
-    return this.characters().filter(
-      character => character.type === type,
-    ).length;
-  }
-
   protected selectCharacter(character: CharacterApiResponse): void {
-    if (this.selectedCharacterId() === character.id && this.profile()) {
+    if (
+      this.selectedCharacterId() === character.id
+      && this.profile()
+    ) {
       return;
     }
 
     this.selectedCharacterId.set(character.id);
-    this.profile.set(null);
-    this.levelUpOptions.set(null);
-    this.profileError.set(null);
-    this.success.set(null);
-    this.levelUpOpened.set(false);
-    this.hitPointHistoryOpened.set(false);
-    this.hitPointHistoryForm = [];
-    this.profileLoading.set(true);
-
-    forkJoin({
-      profile: this.characterApi.getProfile(this.campaignId, character.id),
-      options: this.characterApi.getLevelUpOptions(
-        this.campaignId,
-        character.id,
-      ),
-    })
-      .pipe(finalize(() => this.profileLoading.set(false)))
-      .subscribe({
-        next: result => {
-          this.profile.set(result.profile);
-          this.levelUpOptions.set(result.options);
-        },
-        error: error => this.profileError.set(this.errorMessage(error)),
-      });
+    this.loadCharacterDetails(character.id);
   }
 
   protected refreshProfile(): void {
-    const character = this.selectedCharacter();
+    const characterId = this.selectedCharacterId();
 
-    if (character) {
-      this.selectedCharacterId.set(null);
-      this.selectCharacter(character);
+    if (characterId !== null) {
+      this.loadCharacterDetails(characterId);
     }
   }
 
-  protected openLevelUp(): void {
-    const options = this.levelUpOptions();
-
-    if (!options?.canLevelUp) {
-      return;
-    }
-
-    const defaultClass =
-      options.classes.find(option => option.currentLevel > 0)
-      ?? options.classes[0]
-      ?? null;
-
-    this.levelUpForm = this.emptyLevelUpForm();
-    this.levelUpForm.classId = defaultClass?.id ?? null;
-    this.applySelectedClassDefaults();
-    this.hitPointHistoryOpened.set(false);
-    this.levelUpOpened.set(true);
+  protected openEditor(editor: Exclude<CharacterEditor, null>): void {
+    this.activeEditor.set(editor);
     this.profileError.set(null);
     this.success.set(null);
   }
 
-  protected closeLevelUp(): void {
-    this.levelUpOpened.set(false);
-    this.levelUpForm = this.emptyLevelUpForm();
+  protected closeEditor(): void {
+    this.activeEditor.set(null);
   }
 
-  protected selectedClassOption(): LevelUpClassOption | null {
-    const classId = this.levelUpForm.classId;
-
-    return this.levelUpOptions()?.classes.find(
-      option => option.id === classId,
-    ) ?? null;
+  protected levelUpCompleted(response: LevelUpResponse): void {
+    this.applyUpdatedProfile(response.character);
+    this.success.set(response.message);
+    this.activeEditor.set(null);
+    this.reloadLevelUpOptions(response.character.id);
   }
 
-  protected classChanged(): void {
-    this.levelUpForm.subclassId = null;
-    this.levelUpForm.advancementMode = 'ability';
-    this.levelUpForm.abilityIncreaseMode = 'single';
-    this.levelUpForm.firstAbility = null;
-    this.levelUpForm.secondAbility = null;
-    this.levelUpForm.featId = null;
-    this.levelUpForm.featAbility = null;
-    this.levelUpForm.hitPointMethod = 'average';
-    this.levelUpForm.hitPointGain = null;
-    this.applySelectedClassDefaults();
-  }
-
-  protected advancementModeChanged(): void {
-    this.levelUpForm.firstAbility = null;
-    this.levelUpForm.secondAbility = null;
-    this.levelUpForm.featId = null;
-    this.levelUpForm.featAbility = null;
-  }
-
-  protected abilityIncreaseModeChanged(): void {
-    this.levelUpForm.firstAbility = null;
-    this.levelUpForm.secondAbility = null;
-  }
-
-  protected featChanged(): void {
-    this.levelUpForm.featAbility = null;
-  }
-
-  protected hitPointMethodChanged(): void {
-    this.levelUpForm.hitPointGain =
-      this.levelUpForm.hitPointMethod === 'average'
-        ? this.selectedClassOption()?.averageHitPointGain ?? null
-        : null;
-  }
-
-  protected selectedFeat(): FeatReference | null {
-    const featId = this.levelUpForm.featId;
-
-    return this.feats().find(feat => feat.id === featId) ?? null;
-  }
-
-  protected featAbilities(): Array<{
-    value: AbilityKey;
-    label: string;
-    abbreviation: string;
-  }> {
-    const feat = this.selectedFeat();
-
-    if (!feat?.requiresAbilityChoice) {
-      return [];
-    }
-
-    if (feat.allowedAbilities.length === 0) {
-      return this.abilities();
-    }
-
-    return this.abilities().filter(ability =>
-      feat.allowedAbilities.includes(ability.value),
-    );
-  }
-
-  protected submitLevelUp(): void {
-    const profile = this.profile();
-    const classOption = this.selectedClassOption();
-
-    if (!profile || !classOption) {
-      this.profileError.set('La classe est obligatoire.');
-      return;
-    }
-
-    if (classOption.subclassRequired && !this.levelUpForm.subclassId) {
-      this.profileError.set('Une sous-classe doit être sélectionnée.');
-      return;
-    }
-
-    const advancement = classOption.advancementRequired
-      ? this.buildAdvancementPayload()
-      : null;
-
-    if (classOption.advancementRequired && !advancement) {
-      return;
-    }
-
-    const hitPointGain = this.resolveLevelUpHitPointGain(classOption);
-
-    if (hitPointGain === false) {
-      return;
-    }
-
-    const payload: LevelUpPayload = {
-      classId: classOption.id,
-      subclassId: this.levelUpForm.subclassId,
-      advancement,
-      hitPoints: this.levelUpForm.hitPointMethod === 'average'
-        ? { method: 'average' }
-        : {
-            method: this.levelUpForm.hitPointMethod,
-            gain: hitPointGain,
-          },
-    };
-
-    this.submittingLevel.set(true);
-    this.profileError.set(null);
-    this.success.set(null);
-
-    this.characterApi
-      .levelUp(this.campaignId, profile.id, payload)
-      .pipe(finalize(() => this.submittingLevel.set(false)))
-      .subscribe({
-        next: response => {
-          this.profile.set(response.character);
-          this.updateCharacterInList(response.character);
-          this.success.set(response.message);
-          this.levelUpOpened.set(false);
-          this.levelUpForm = this.emptyLevelUpForm();
-          this.reloadLevelUpOptions(response.character.id);
-        },
-        error: error => this.profileError.set(this.errorMessage(error)),
-      });
-  }
-
-  protected openHitPointHistory(): void {
-    const profile = this.profile();
-
-    if (!profile) {
-      return;
-    }
-
-    this.hitPointHistoryForm = profile.classLevels.map(level => {
-      const hitDie = this.levelHitDie(level);
-
-      if (level.position === 1) {
-        return {
-          position: level.position,
-          className: level.className,
-          hitDie,
-          method: 'first_level',
-          gain: hitDie,
-        };
-      }
-
-      const method = level.hitPointGainMethod ?? 'average';
-
-      return {
-        position: level.position,
-        className: level.className,
-        hitDie,
-        method,
-        gain: level.hitPointGain ?? (
-          method === 'average'
-            ? this.averageHitPointGain(hitDie)
-            : null
-        ),
-      };
-    });
-
-    this.levelUpOpened.set(false);
-    this.hitPointHistoryOpened.set(true);
-    this.profileError.set(null);
-    this.success.set(null);
-  }
-
-  protected closeHitPointHistory(): void {
-    this.hitPointHistoryOpened.set(false);
-    this.hitPointHistoryForm = [];
-  }
-
-  protected historyMethodChanged(
-    entry: HitPointHistoryFormEntry,
+  protected hitPointHistoryCompleted(
+    response: UpdateHitPointHistoryResponse,
   ): void {
-    if (entry.position === 1) {
-      entry.method = 'first_level';
-      entry.gain = entry.hitDie;
-      return;
-    }
-
-    entry.gain = entry.method === 'average'
-      ? this.averageHitPointGain(entry.hitDie)
-      : null;
-  }
-
-  protected saveHitPointHistory(): void {
-    const profile = this.profile();
-
-    if (!profile) {
-      return;
-    }
-
-    const levels: HitPointHistoryEntryPayload[] = [];
-
-    for (const entry of this.hitPointHistoryForm) {
-      if (
-        entry.method !== 'average'
-        && entry.method !== 'first_level'
-        && (
-          entry.gain === null
-          || !Number.isInteger(entry.gain)
-          || entry.gain < 1
-          || entry.gain > entry.hitDie
-        )
-      ) {
-        this.profileError.set(
-          `Le gain brut du niveau ${entry.position} doit être compris entre 1 et ${entry.hitDie}.`,
-        );
-        return;
-      }
-
-      levels.push(
-        entry.method === 'average' || entry.method === 'first_level'
-          ? {
-              position: entry.position,
-              method: entry.method,
-            }
-          : {
-              position: entry.position,
-              method: entry.method,
-              gain: entry.gain!,
-            },
-      );
-    }
-
-    this.savingHitPoints.set(true);
-    this.profileError.set(null);
-    this.success.set(null);
-
-    this.characterApi
-      .updateHitPointHistory(
-        this.campaignId,
-        profile.id,
-        { levels },
-      )
-      .pipe(finalize(() => this.savingHitPoints.set(false)))
-      .subscribe({
-        next: response => {
-          this.profile.set(response.character);
-          this.updateCharacterInList(response.character);
-          this.success.set(response.message);
-          this.hitPointHistoryOpened.set(false);
-          this.hitPointHistoryForm = [];
-        },
-        error: error => this.profileError.set(this.errorMessage(error)),
-      });
-  }
-
-  protected hitPointMethodLabel(
-    method: HitPointGainMethod | null | undefined,
-  ): string {
-    if (!method) {
-      return 'Non renseigné';
-    }
-
-    const labels: Record<HitPointGainMethod, string> = {
-      first_level: 'Maximum du dé',
-      average: 'Moyenne',
-      rolled: 'Dé lancé',
-      manual: 'Saisie manuelle',
-    };
-
-    return labels[method];
-  }
-
-  protected averageHitPointGain(hitDie: number): number {
-    return Math.floor(hitDie / 2) + 1;
-  }
-
-  protected typeLabel(character: CharacterApiResponse): string {
-    return character.type === 'player'
-      ? 'Personnage joueur'
-      : 'Personnage non-joueur';
-  }
-
-  protected progressionLabel(character: CharacterApiResponse): string {
-    if (character.totalLevel > 0 && character.classLevels.length > 0) {
-      const classes = new Map<
-        number,
-        { name: string; level: number; subclass: string | null }
-      >();
-
-      for (const classLevel of character.classLevels) {
-        const existing = classes.get(classLevel.classId);
-
-        if (existing) {
-          ++existing.level;
-
-          if (classLevel.subclassName) {
-            existing.subclass = classLevel.subclassName;
-          }
-
-          continue;
-        }
-
-        classes.set(classLevel.classId, {
-          name: classLevel.className,
-          level: 1,
-          subclass: classLevel.subclassName,
-        });
-      }
-
-      return [...classes.values()]
-        .map(entry => {
-          const classLabel = `${entry.name} ${entry.level}`;
-
-          return entry.subclass
-            ? `${classLabel} · ${entry.subclass}`
-            : classLabel;
-        })
-        .join(' / ');
-    }
-
-    return this.legacyProgressionLabel(character);
-  }
-
-  protected isStructured(character: CharacterApiResponse): boolean {
-    return character.totalLevel > 0 && character.classLevels.length > 0;
-  }
-
-  protected modifierLabel(modifier: number): string {
-    return modifier >= 0 ? `+${modifier}` : `${modifier}`;
-  }
-
-  protected rechargeLabel(rechargeType: string): string {
-    return {
-      short_rest: 'Repos court ou long',
-      long_rest: 'Repos long',
-      dawn: 'À l’aube',
-      manual: 'Manuelle',
-      none: 'Aucune',
-      never: 'Jamais',
-    }[rechargeType] ?? rechargeType.replaceAll('_', ' ');
-  }
-
-  protected featureSourceLabel(sourceType: string): string {
-    return {
-      class: 'Classe',
-      subclass: 'Sous-classe',
-      race: 'Race',
-      feat: 'Don',
-    }[sourceType] ?? sourceType;
+    this.applyUpdatedProfile(response.character);
+    this.success.set(response.message);
+    this.activeEditor.set(null);
   }
 
   private loadCharacters(): void {
@@ -571,23 +130,54 @@ export class CampaignCharacters {
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
         next: result => {
-          const characters = [...result.characters].sort((first, second) =>
-            first.name.localeCompare(second.name, 'fr'),
+          const characters = [...result.characters].sort(
+            (first, second) =>
+              first.name.localeCompare(second.name, 'fr'),
           );
 
           this.characters.set(characters);
           this.reference.set(result.reference);
 
-          const firstStructured =
+          const firstCharacter =
             characters.find(character => this.isStructured(character))
             ?? characters[0]
             ?? null;
 
-          if (firstStructured) {
-            this.selectCharacter(firstStructured);
+          if (firstCharacter) {
+            this.selectedCharacterId.set(firstCharacter.id);
+            this.loadCharacterDetails(firstCharacter.id);
           }
         },
         error: error => this.error.set(this.errorMessage(error)),
+      });
+  }
+
+  private loadCharacterDetails(characterId: number): void {
+    this.profileLoading.set(true);
+    this.profileError.set(null);
+    this.success.set(null);
+    this.activeEditor.set(null);
+    this.profile.set(null);
+    this.levelUpOptions.set(null);
+
+    forkJoin({
+      profile: this.characterApi.getProfile(
+        this.campaignId,
+        characterId,
+      ),
+      options: this.characterApi.getLevelUpOptions(
+        this.campaignId,
+        characterId,
+      ),
+    })
+      .pipe(finalize(() => this.profileLoading.set(false)))
+      .subscribe({
+        next: result => {
+          this.profile.set(result.profile);
+          this.levelUpOptions.set(result.options);
+        },
+        error: error =>
+          this.profileError.set(this.errorMessage(error)),
       });
   }
 
@@ -596,11 +186,16 @@ export class CampaignCharacters {
       .getLevelUpOptions(this.campaignId, characterId)
       .subscribe({
         next: options => this.levelUpOptions.set(options),
-        error: error => this.profileError.set(this.errorMessage(error)),
+        error: error =>
+          this.profileError.set(this.errorMessage(error)),
       });
   }
 
-  private updateCharacterInList(profile: CharacterProfile): void {
+  private applyUpdatedProfile(
+    profile: CharacterProfileModel,
+  ): void {
+    this.profile.set(profile);
+
     this.characters.update(characters =>
       characters.map(character =>
         character.id === profile.id
@@ -616,185 +211,13 @@ export class CampaignCharacters {
     );
   }
 
-  private applySelectedClassDefaults(): void {
-    const classOption = this.selectedClassOption();
-
-    if (!classOption) {
-      return;
-    }
-
-    if (classOption.currentSubclass) {
-      this.levelUpForm.subclassId = classOption.currentSubclass.id;
-    }
-
-    this.levelUpForm.hitPointMethod = 'average';
-    this.levelUpForm.hitPointGain = classOption.averageHitPointGain;
-  }
-
-  private resolveLevelUpHitPointGain(
-    classOption: LevelUpClassOption,
-  ): number | false {
-    if (this.levelUpForm.hitPointMethod === 'average') {
-      return classOption.averageHitPointGain;
-    }
-
-    const gain = this.levelUpForm.hitPointGain;
-
-    if (
-      gain === null
-      || !Number.isInteger(gain)
-      || gain < 1
-      || gain > classOption.hitDie
-    ) {
-      this.profileError.set(
-        `Le gain brut de PV doit être compris entre 1 et ${classOption.hitDie}.`,
-      );
-      return false;
-    }
-
-    return gain;
-  }
-
-  private levelHitDie(level: CharacterClassLevel): number {
-    if (level.hitDie) {
-      return level.hitDie;
-    }
-
-    return this.profile()?.classSummary.find(
-      classEntry => classEntry.classId === level.classId,
-    )?.hitDie ?? 0;
-  }
-
-  private buildAdvancementPayload():
-    | AbilityAdvancementPayload
-    | FeatAdvancementPayload
-    | null {
-    if (this.levelUpForm.advancementMode === 'feat') {
-      const feat = this.selectedFeat();
-
-      if (!feat) {
-        this.profileError.set('Un don doit être sélectionné.');
-        return null;
-      }
-
-      if (feat.requiresAbilityChoice && !this.levelUpForm.featAbility) {
-        this.profileError.set(
-          'Une caractéristique doit être sélectionnée pour ce don.',
-        );
-        return null;
-      }
-
-      return {
-        type: 'feat',
-        featId: feat.id,
-        ability: this.levelUpForm.featAbility,
-      };
-    }
-
-    if (!this.levelUpForm.firstAbility) {
-      this.profileError.set(
-        'Une caractéristique doit être sélectionnée.',
-      );
-      return null;
-    }
-
-    if (this.levelUpForm.abilityIncreaseMode === 'single') {
-      return {
-        type: 'ability',
-        increases: [
-          {
-            ability: this.levelUpForm.firstAbility,
-            value: 2,
-          },
-        ],
-      };
-    }
-
-    if (!this.levelUpForm.secondAbility) {
-      this.profileError.set(
-        'La deuxième caractéristique est obligatoire.',
-      );
-      return null;
-    }
-
-    if (
-      this.levelUpForm.firstAbility
-      === this.levelUpForm.secondAbility
-    ) {
-      this.profileError.set(
-        'Choisis deux caractéristiques différentes.',
-      );
-      return null;
-    }
-
-    return {
-      type: 'ability',
-      increases: [
-        {
-          ability: this.levelUpForm.firstAbility,
-          value: 1,
-        },
-        {
-          ability: this.levelUpForm.secondAbility,
-          value: 1,
-        },
-      ],
-    };
-  }
-
-  private emptyLevelUpForm(): LevelUpForm {
-    return {
-      classId: null,
-      subclassId: null,
-      advancementMode: 'ability',
-      abilityIncreaseMode: 'single',
-      firstAbility: null,
-      secondAbility: null,
-      featId: null,
-      featAbility: null,
-      hitPointMethod: 'average',
-      hitPointGain: null,
-    };
-  }
-
-  private legacyProgressionLabel(
+  private isStructured(
     character: CharacterApiResponse,
-  ): string {
-    const className = this.readString(
-      character.definition,
-      ['className', 'classLabel', 'class'],
+  ): boolean {
+    return (
+      character.totalLevel > 0
+      && character.classLevels.length > 0
     );
-
-    const level = character.definition['level'];
-
-    if (className && typeof level === 'number') {
-      return `${className} ${level}`;
-    }
-
-    return className ?? 'Configuration historique';
-  }
-
-  private readString(
-    definition: Record<string, unknown>,
-    keys: string[],
-  ): string | null {
-    for (const key of keys) {
-      const value = definition[key];
-
-      if (typeof value === 'string' && value.trim() !== '') {
-        return value;
-      }
-    }
-
-    return null;
-  }
-
-  private normalizeSearch(value: string): string {
-    return value
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .trim();
   }
 
   private errorMessage(error: unknown): string {

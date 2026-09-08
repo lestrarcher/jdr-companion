@@ -1,0 +1,105 @@
+<section class="history-panel">
+  <header class="panel-header">
+    <div>
+      <span class="eyebrow">Historique</span>
+      <h3>Gains de points de vie</h3>
+      <p>
+        Les valeurs correspondent aux gains bruts avant le modificateur
+        de Constitution.
+      </p>
+    </div>
+
+    <button type="button" class="close-button" (click)="cancel()">×</button>
+  </header>
+
+  @if (error()) {
+    <p class="message message--error">{{ error() }}</p>
+  }
+
+  <div class="history-list">
+    @for (entry of entries; track entry.position) {
+      <article class="history-row">
+        <div class="level-information">
+          <span>Niveau {{ entry.position }}</span>
+          <strong>{{ entry.className }}</strong>
+          <small>d{{ entry.hitDie }}</small>
+        </div>
+
+        @if (entry.position === 1) {
+          <div class="fixed-gain">
+            <span>Maximum du dé de vie</span>
+            <strong>{{ entry.hitDie }} PV</strong>
+          </div>
+        } @else {
+          <label class="field">
+            <span>Méthode</span>
+
+            <select
+              [(ngModel)]="entry.method"
+              (ngModelChange)="methodChanged(entry)"
+            >
+              <option value="average">Valeur moyenne</option>
+              <option value="rolled">Dé lancé</option>
+              <option value="manual">Saisie manuelle</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Gain brut</span>
+
+            <input
+              type="number"
+              [(ngModel)]="entry.gain"
+              [disabled]="entry.method === 'average'"
+              min="1"
+              [max]="entry.hitDie"
+            />
+          </label>
+        }
+      </article>
+    }
+  </div>
+
+  <div class="calculation">
+    <div>
+      <span>Gains bruts</span>
+      <strong>{{ totalBaseValue() }} PV</strong>
+    </div>
+
+    <div>
+      <span>Bonus de Constitution</span>
+      <strong>
+        {{
+          character().hitPoints.constitutionModifier
+            * character().totalLevel
+        }}
+        PV
+      </strong>
+      <small>
+        {{ character().hitPoints.constitutionModifier >= 0 ? '+' : '' }}
+        {{ character().hitPoints.constitutionModifier }}
+        × {{ character().totalLevel }} niveaux
+      </small>
+    </div>
+
+    <div class="projected-total">
+      <span>Nouveau maximum</span>
+      <strong>{{ projectedMaximumValue() }} PV</strong>
+    </div>
+  </div>
+
+  <footer class="actions">
+    <button type="button" class="secondary-button" (click)="cancel()">
+      Annuler
+    </button>
+
+    <button
+      type="button"
+      class="primary-button"
+      [disabled]="saving()"
+      (click)="save()"
+    >
+      {{ saving() ? 'Enregistrement…' : 'Enregistrer les PV' }}
+    </button>
+  </footer>
+</section>

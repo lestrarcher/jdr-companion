@@ -1,0 +1,286 @@
+@let currentCharacter = character();
+
+<header class="profile-header">
+  <div class="profile-identity">
+    <span class="eyebrow">{{ typeLabel(currentCharacter) }}</span>
+    <h2>{{ currentCharacter.name }}</h2>
+
+    @if (currentCharacter.playerName) {
+      <p>Joué par {{ currentCharacter.playerName }}</p>
+    }
+  </div>
+
+  <div class="profile-level">
+    <span>Niveau</span>
+    <strong>{{ currentCharacter.totalLevel }}</strong>
+  </div>
+
+  <div class="profile-actions">
+    <button
+      type="button"
+      class="secondary-button"
+      [disabled]="loading()"
+      (click)="refreshRequested.emit()"
+    >
+      Actualiser
+    </button>
+
+    @if (isStructured(currentCharacter) && !editorOpened()) {
+      <button
+        type="button"
+        class="secondary-button"
+        (click)="hitPointHistoryRequested.emit()"
+      >
+        {{
+          currentCharacter.hitPoints.complete
+            ? 'Modifier les PV'
+            : 'Compléter les PV'
+        }}
+      </button>
+    }
+
+    @if (
+      isStructured(currentCharacter)
+      && canLevelUp()
+      && !editorOpened()
+    ) {
+      <button
+        type="button"
+        class="primary-button"
+        (click)="levelUpRequested.emit()"
+      >
+        Monter de niveau
+      </button>
+    }
+  </div>
+</header>
+
+@if (!isStructured(currentCharacter)) {
+  <section class="legacy-warning">
+    <strong>Configuration historique</strong>
+    <p>
+      Ce personnage utilise encore sa définition JSON. Sa progression
+      normalisée et ses capacités automatiques ne sont pas disponibles.
+    </p>
+  </section>
+}
+
+<ng-content />
+
+<section class="identity-summary">
+  <div>
+    <span>Race</span>
+    <strong>{{ currentCharacter.race?.name ?? 'Non renseignée' }}</strong>
+  </div>
+
+  <div>
+    <span>Progression</span>
+    <strong>{{ progressionLabel(currentCharacter) }}</strong>
+  </div>
+
+  <div>
+    <span>Bonus de maîtrise</span>
+    <strong>+{{ currentCharacter.proficiencyBonus }}</strong>
+  </div>
+
+  <div
+    class="hit-point-summary"
+    [class.hit-point-summary--incomplete]="!currentCharacter.hitPoints.complete"
+  >
+    <span>Points de vie maximums</span>
+
+    @if (currentCharacter.hitPoints.maximumValue !== null) {
+      <strong>{{ currentCharacter.hitPoints.maximumValue }} PV</strong>
+      <small>
+        {{ currentCharacter.hitPoints.baseValue }} de base
+        + {{ currentCharacter.hitPoints.constitutionBonus }} de Constitution
+      </small>
+    } @else {
+      <strong>À compléter</strong>
+      <small>
+        Niveaux manquants :
+        {{ currentCharacter.hitPoints.missingLevelPositions.join(', ') }}
+      </small>
+    }
+  </div>
+</section>
+
+<section class="profile-section">
+  <header class="section-header">
+    <div>
+      <span class="eyebrow">Valeurs effectives</span>
+      <h3>Caractéristiques</h3>
+    </div>
+  </header>
+
+  <div class="ability-grid">
+    @for (ability of currentCharacter.abilities; track ability.ability) {
+      <article class="ability-card">
+        <span class="ability-name">{{ ability.abbreviation }}</span>
+        <strong>{{ ability.effectiveValue }}</strong>
+        <span class="ability-modifier">
+          {{ modifierLabel(ability.modifier) }}
+        </span>
+
+        @if (ability.baseValue !== ability.effectiveValue) {
+          <small>Base {{ ability.baseValue }}</small>
+        }
+
+        @if (ability.maximumValue !== 20) {
+          <small>Maximum {{ ability.maximumValue }}</small>
+        }
+      </article>
+    }
+  </div>
+</section>
+
+<div class="profile-columns">
+  <section class="profile-section">
+    <header class="section-header">
+      <div>
+        <span class="eyebrow">Progression</span>
+        <h3>Classes</h3>
+      </div>
+    </header>
+
+    <div class="summary-list">
+      @for (
+        classEntry of currentCharacter.classSummary;
+        track classEntry.classId
+      ) {
+        <article class="summary-card">
+          <div class="summary-content">
+            <strong>{{ classEntry.className }}</strong>
+
+            @if (classEntry.subclassName) {
+              <span>{{ classEntry.subclassName }}</span>
+            }
+          </div>
+
+          <div class="summary-badges">
+            <span>d{{ classEntry.hitDie }}</span>
+            <b>Niveau {{ classEntry.level }}</b>
+          </div>
+        </article>
+      } @empty {
+        <p class="section-empty">Aucune classe structurée.</p>
+      }
+    </div>
+  </section>
+
+  <section class="profile-section">
+    <header class="section-header">
+      <div>
+        <span class="eyebrow">Personnalisation</span>
+        <h3>Dons</h3>
+      </div>
+    </header>
+
+    <div class="summary-list">
+      @for (feat of currentCharacter.feats; track feat.id) {
+        <article class="summary-card">
+          <div class="summary-content">
+            <strong>{{ feat.name }}</strong>
+
+            @if (
+              abilityLabel(
+                currentCharacter,
+                feat.chosenAbility
+              );
+              as chosenAbility
+            ) {
+              <span>+{{ feat.abilityIncrease }} {{ chosenAbility }}</span>
+            }
+          </div>
+
+          @if (feat.acquiredAtLevel) {
+            <div class="summary-badges">
+              <b>Niveau {{ feat.acquiredAtLevel }}</b>
+            </div>
+          }
+        </article>
+      } @empty {
+        <p class="section-empty">Aucun don.</p>
+      }
+    </div>
+  </section>
+</div>
+
+<section class="profile-section">
+  <header class="section-header">
+    <div>
+      <span class="eyebrow">Jauges calculées</span>
+      <h3>Ressources</h3>
+    </div>
+
+    <span class="section-count">{{ currentCharacter.resources.length }}</span>
+  </header>
+
+  <div class="resource-grid">
+    @for (resource of currentCharacter.resources; track resource.slug) {
+      <article class="resource-card">
+        <div>
+          <strong>{{ resource.name }}</strong>
+          <span>{{ rechargeLabel(resource.rechargeType) }}</span>
+        </div>
+
+        <b>{{ resource.maximum }}</b>
+      </article>
+    } @empty {
+      <p class="section-empty">Aucune ressource débloquée.</p>
+    }
+  </div>
+</section>
+
+<section class="profile-section">
+  <header class="section-header">
+    <div>
+      <span class="eyebrow">Progression automatique</span>
+      <h3>Capacités débloquées</h3>
+    </div>
+
+    <span class="section-count">{{ currentCharacter.features.length }}</span>
+  </header>
+
+  <div class="feature-list">
+    @for (feature of currentCharacter.features; track feature.slug) {
+      <details class="feature-card">
+        <summary>
+          <div class="feature-title">
+            <span class="feature-source">
+              {{ featureSourceLabel(feature.sourceType) }}
+              · {{ feature.sourceName }}
+              · niveau {{ feature.unlockLevel }}
+            </span>
+
+            <h4>{{ feature.name }}</h4>
+          </div>
+
+          <div class="feature-badges">
+            <span>{{ activationLabel(feature.activationType) }}</span>
+
+            @if (feature.resource) {
+              <span class="resource-label">
+                {{ feature.resource.name }}
+              </span>
+            }
+
+            @if (feature.custom) {
+              <span>Personnalisée</span>
+            }
+          </div>
+        </summary>
+
+        @if (feature.description) {
+          <p>{{ feature.description }}</p>
+        } @else {
+          <p class="empty-description">Aucune description renseignée.</p>
+        }
+      </details>
+    } @empty {
+      <p class="section-empty">
+        Aucune capacité n’est encore attribuée à ce personnage.
+      </p>
+    }
+  </div>
+</section>

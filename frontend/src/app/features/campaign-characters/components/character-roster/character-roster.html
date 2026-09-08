@@ -1,0 +1,84 @@
+<aside class="roster-panel">
+  <label class="search-field">
+    <span>Rechercher</span>
+
+    <input
+      type="search"
+      [(ngModel)]="search"
+      placeholder="Personnage, joueur, classe…"
+      autocomplete="off"
+    />
+  </label>
+
+  <nav class="filters" aria-label="Filtrer les personnages">
+    <button
+      type="button"
+      [class.active]="filter() === 'all'"
+      (click)="setFilter('all')"
+    >
+      <span>Tous</span>
+      <b>{{ countByType('all') }}</b>
+    </button>
+
+    <button
+      type="button"
+      [class.active]="filter() === 'player'"
+      (click)="setFilter('player')"
+    >
+      <span>PJ</span>
+      <b>{{ countByType('player') }}</b>
+    </button>
+
+    <button
+      type="button"
+      [class.active]="filter() === 'npc'"
+      (click)="setFilter('npc')"
+    >
+      <span>PNJ</span>
+      <b>{{ countByType('npc') }}</b>
+    </button>
+  </nav>
+
+  <div class="character-list">
+    @for (character of filteredCharacters(); track character.id) {
+      <button
+        type="button"
+        class="character-card"
+        [class.selected]="selectedCharacterId() === character.id"
+        (click)="selectCharacter(character)"
+      >
+        <span class="character-avatar">
+          {{ character.name.charAt(0).toUpperCase() }}
+        </span>
+
+        <span class="character-content">
+          <span class="character-heading">
+            <strong>{{ character.name }}</strong>
+            <small>{{ character.type === 'player' ? 'PJ' : 'PNJ' }}</small>
+          </span>
+
+          @if (character.playerName) {
+            <span class="player-name">{{ character.playerName }}</span>
+          }
+
+          <span class="progression">
+            {{ progressionLabel(character) }}
+          </span>
+
+          <span
+            class="structure-status"
+            [class.structure-status--ready]="isStructured(character)"
+          >
+            {{ isStructured(character) ? 'Structuré' : 'Historique' }}
+          </span>
+        </span>
+      </button>
+    } @empty {
+      <div class="empty-state">
+        <span class="empty-symbol">◇</span>
+        <strong>Aucun résultat</strong>
+        <p>Aucun personnage ne correspond à la recherche.</p>
+      </div>
+    }
+  </div>
+</aside>

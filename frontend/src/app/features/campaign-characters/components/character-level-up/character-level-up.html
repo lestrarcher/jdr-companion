@@ -1,0 +1,269 @@
+<section class="level-up-panel">
+  <header class="panel-header">
+    <div>
+      <span class="eyebrow">Progression</span>
+      <h3>Passage au niveau {{ options().nextTotalLevel }}</h3>
+    </div>
+
+    <button type="button" class="close-button" (click)="cancel()">×</button>
+  </header>
+
+  @if (error()) {
+    <p class="message message--error">{{ error() }}</p>
+  }
+
+  <div class="level-up-grid">
+    <label class="field">
+      <span>Classe choisie</span>
+      <select [(ngModel)]="form.classId" (ngModelChange)="classChanged()">
+        <option [ngValue]="null">Sélectionner une classe</option>
+
+        @for (classOption of options().classes; track classOption.id) {
+          <option [ngValue]="classOption.id">
+            {{ classOption.name }} — niveau
+            {{ classOption.currentLevel }} vers {{ classOption.nextLevel }}
+          </option>
+        }
+      </select>
+    </label>
+
+    @if (selectedClassOption(); as classOption) {
+      <div class="next-level-summary">
+        <span>Niveau total</span>
+        <strong>
+          {{ options().currentTotalLevel }}
+          →
+          {{ options().nextTotalLevel }}
+        </strong>
+
+        <span>Niveau de {{ classOption.name }}</span>
+        <strong>
+          {{ classOption.currentLevel }}
+          →
+          {{ classOption.nextLevel }}
+        </strong>
+      </div>
+
+      @if (classOption.subclassRequired || classOption.currentSubclass) {
+        <label class="field">
+          <span>Sous-classe</span>
+
+          <select
+            [(ngModel)]="form.subclassId"
+            [disabled]="classOption.currentSubclass !== null"
+          >
+            <option [ngValue]="null">Sélectionner une sous-classe</option>
+
+            @for (subclass of classOption.subclasses; track subclass.id) {
+              <option [ngValue]="subclass.id">{{ subclass.name }}</option>
+            }
+          </select>
+
+          @if (classOption.currentSubclass) {
+            <small>
+              La sous-classe {{ classOption.currentSubclass.name }}
+              est déjà acquise.
+            </small>
+          }
+        </label>
+      }
+
+      <section class="hit-point-choice">
+        <header>
+          <div>
+            <span class="eyebrow">Points de vie</span>
+            <h4>Gain du nouveau niveau</h4>
+          </div>
+
+          <span class="hit-die">d{{ classOption.hitDie }}</span>
+        </header>
+
+        <div class="hit-point-fields">
+          <label class="field">
+            <span>Méthode</span>
+            <select
+              [(ngModel)]="form.hitPointMethod"
+              (ngModelChange)="hitPointMethodChanged()"
+            >
+              @for (method of options().hitPointMethods; track method.value) {
+                <option [value]="method.value">{{ method.label }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Gain brut, hors Constitution</span>
+            <input
+              type="number"
+              [(ngModel)]="form.hitPointGain"
+              [disabled]="form.hitPointMethod === 'average'"
+              min="1"
+              [max]="classOption.hitDie"
+            />
+
+            @if (form.hitPointMethod === 'average') {
+              <small>
+                Moyenne officielle du d{{ classOption.hitDie }} :
+                {{ classOption.averageHitPointGain }}
+              </small>
+            } @else {
+              <small>Valeur comprise entre 1 et {{ classOption.hitDie }}.</small>
+            }
+          </label>
+        </div>
+
+        @if (character().hitPoints.maximumValue !== null) {
+          <p class="hit-point-preview">
+            Maximum actuel :
+            <strong>{{ character().hitPoints.maximumValue }} PV</strong>
+
+            · Gain avec Constitution :
+            <strong>
+              {{
+                (form.hitPointMethod === 'average'
+                  ? classOption.averageHitPointGain
+                  : form.hitPointGain ?? 0)
+                + character().hitPoints.constitutionModifier
+              }}
+              PV
+            </strong>
+          </p>
+        }
+      </section>
+
+      @if (classOption.advancementRequired) {
+        <section class="advancement-panel">
+          <header>
+            <span class="eyebrow">Choix de progression</span>
+            <h4>Don ou augmentation de caractéristiques</h4>
+          </header>
+
+          <div class="choice-switch">
+            <button
+              type="button"
+              [class.active]="form.advancementMode === 'ability'"
+              (click)="advancementModeChanged('ability')"
+            >
+              Caractéristiques
+            </button>
+
+            <button
+              type="button"
+              [class.active]="form.advancementMode === 'feat'"
+              (click)="advancementModeChanged('feat')"
+            >
+              Don
+            </button>
+          </div>
+
+          @if (form.advancementMode === 'ability') {
+            <div class="ability-advancement">
+              <label class="field">
+                <span>Répartition</span>
+                <select
+                  [(ngModel)]="form.abilityIncreaseMode"
+                  (ngModelChange)="abilityIncreaseModeChanged()"
+                >
+                  <option value="single">+2 à une caractéristique</option>
+                  <option value="double">+1 à deux caractéristiques</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>
+                  {{
+                    form.abilityIncreaseMode === 'single'
+                      ? 'Caractéristique +2'
+                      : 'Première caractéristique +1'
+                  }}
+                </span>
+
+                <select [(ngModel)]="form.firstAbility">
+                  <option [ngValue]="null">Sélectionner</option>
+
+                  @for (ability of abilities(); track ability.value) {
+                    <option [ngValue]="ability.value">
+                      {{ ability.label }} ({{ ability.abbreviation }})
+                    </option>
+                  }
+                </select>
+              </label>
+
+              @if (form.abilityIncreaseMode === 'double') {
+                <label class="field">
+                  <span>Deuxième caractéristique +1</span>
+
+                  <select [(ngModel)]="form.secondAbility">
+                    <option [ngValue]="null">Sélectionner</option>
+
+                    @for (ability of abilities(); track ability.value) {
+                      <option
+                        [ngValue]="ability.value"
+                        [disabled]="ability.value === form.firstAbility"
+                      >
+                        {{ ability.label }} ({{ ability.abbreviation }})
+                      </option>
+                    }
+                  </select>
+                </label>
+              }
+            </div>
+          } @else {
+            <div class="feat-advancement">
+              <label class="field">
+                <span>Don</span>
+                <select
+                  [(ngModel)]="form.featId"
+                  (ngModelChange)="featChanged()"
+                >
+                  <option [ngValue]="null">Sélectionner un don</option>
+
+                  @for (feat of feats(); track feat.id) {
+                    <option [ngValue]="feat.id">{{ feat.name }}</option>
+                  }
+                </select>
+              </label>
+
+              @if (selectedFeat(); as feat) {
+                @if (feat.description) {
+                  <p class="feat-description">{{ feat.description }}</p>
+                }
+
+                @if (feat.requiresAbilityChoice) {
+                  <label class="field">
+                    <span>Caractéristique du don</span>
+
+                    <select [(ngModel)]="form.featAbility">
+                      <option [ngValue]="null">Sélectionner</option>
+
+                      @for (ability of featAbilities(); track ability.value) {
+                        <option [ngValue]="ability.value">
+                          {{ ability.label }} ({{ ability.abbreviation }})
+                        </option>
+                      }
+                    </select>
+                  </label>
+                }
+              }
+            </div>
+          }
+        </section>
+      }
+    }
+  </div>
+
+  <footer class="level-up-actions">
+    <button type="button" class="secondary-button" (click)="cancel()">
+      Annuler
+    </button>
+
+    <button
+      type="button"
+      class="primary-button"
+      [disabled]="submitting() || !form.classId"
+      (click)="submit()"
+    >
+      {{ submitting() ? 'Progression en cours…' : 'Confirmer le niveau' }}
+    </button>
+  </footer>
+</section>

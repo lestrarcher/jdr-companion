@@ -3,764 +3,109 @@
     <div>
       <span class="eyebrow">Effectif de campagne</span>
       <h1>Personnages</h1>
-      <p>Consulte les fiches et fais évoluer les personnages de la campagne.</p>
+      <p>
+        Consulte les fiches et fais évoluer les personnages
+        de la campagne.
+      </p>
     </div>
 
-    <a class="create-link" [routerLink]="['/campaigns', campaignId, 'characters', 'new']">
+    <a
+      class="create-link"
+      [routerLink]="[
+        '/campaigns',
+        campaignId,
+        'characters',
+        'new'
+      ]"
+    >
       + Créer un personnage
     </a>
   </header>
 
   @if (error()) {
-    <p class="state-panel state-panel--error" role="alert">{{ error() }}</p>
+    <p
+      class="state-panel state-panel--error"
+      role="alert"
+    >
+      {{ error() }}
+    </p>
   } @else if (loading()) {
-    <p class="state-panel">Chargement de l’effectif…</p>
+    <p class="state-panel">
+      Chargement de l’effectif…
+    </p>
   } @else {
     <div class="characters-layout">
-      <aside class="roster-panel">
-        <div class="roster-search">
-          <label>
-            <span>Rechercher</span>
-            <input
-              type="search"
-              [(ngModel)]="search"
-              placeholder="Personnage, joueur, classe…"
-              autocomplete="off"
-            />
-          </label>
-        </div>
-
-        <nav class="filters" aria-label="Filtrer les personnages">
-          <button type="button" [class.active]="filter() === 'all'" (click)="setFilter('all')">
-            Tous <span>{{ countByType('all') }}</span>
-          </button>
-
-          <button type="button" [class.active]="filter() === 'player'" (click)="setFilter('player')">
-            PJ <span>{{ countByType('player') }}</span>
-          </button>
-
-          <button type="button" [class.active]="filter() === 'npc'" (click)="setFilter('npc')">
-            PNJ <span>{{ countByType('npc') }}</span>
-          </button>
-        </nav>
-
-        <div class="character-list">
-          @for (character of filteredCharacters(); track character.id) {
-            <button
-              type="button"
-              class="character-card"
-              [class.selected]="selectedCharacterId() === character.id"
-              (click)="selectCharacter(character)"
-            >
-              <span class="character-avatar">
-                {{ character.name.charAt(0).toUpperCase() }}
-              </span>
-
-              <span class="character-card-content">
-                <span class="character-heading">
-                  <strong>{{ character.name }}</strong>
-                  <small>{{ character.type === 'player' ? 'PJ' : 'PNJ' }}</small>
-                </span>
-
-                @if (character.playerName) {
-                  <span class="player-name">{{ character.playerName }}</span>
-                }
-
-                <span class="progression">{{ progressionLabel(character) }}</span>
-
-                <span
-                  class="structure-status"
-                  [class.structure-status--ready]="isStructured(character)"
-                >
-                  {{ isStructured(character) ? 'Structuré' : 'Historique' }}
-                </span>
-              </span>
-            </button>
-          } @empty {
-            <div class="empty-state compact">
-              <span class="empty-state__symbol">◇</span>
-              <strong>Aucun résultat</strong>
-              <p>Aucun personnage ne correspond à la recherche.</p>
-            </div>
-          }
-        </div>
-      </aside>
+      <app-character-roster
+        [characters]="characters()"
+        [selectedCharacterId]="selectedCharacterId()"
+        (characterSelected)="selectCharacter($event)"
+      />
 
       <section class="profile-panel">
         @if (profileLoading()) {
-          <div class="profile-state">Chargement de la fiche…</div>
-        } @else if (profileError() && !profile()) {
+          <div class="profile-state">
+            Chargement de la fiche…
+          </div>
+        } @else if (profile(); as character) {
+          <app-character-profile
+            [character]="character"
+            [canLevelUp]="levelUpOptions()?.canLevelUp ?? false"
+            [loading]="profileLoading()"
+            [editorOpened]="activeEditor() !== null"
+            (refreshRequested)="refreshProfile()"
+            (levelUpRequested)="openEditor('level-up')"
+            (hitPointHistoryRequested)="openEditor('hit-points')"
+          >
+            @if (success()) {
+              <p class="message message--success">
+                {{ success() }}
+              </p>
+            }
+
+            @if (profileError()) {
+              <p class="message message--error">
+                {{ profileError() }}
+              </p>
+            }
+
+            @if (activeEditor() === 'level-up') {
+              @if (levelUpOptions(); as options) {
+                <app-character-level-up
+                  [campaignId]="campaignId"
+                  [character]="character"
+                  [options]="options"
+                  [abilities]="abilities()"
+                  [feats]="feats()"
+                  (completed)="levelUpCompleted($event)"
+                  (cancelled)="closeEditor()"
+                />
+              }
+            }
+
+            @if (activeEditor() === 'hit-points') {
+              <app-character-hit-point-history
+                [campaignId]="campaignId"
+                [character]="character"
+                (completed)="hitPointHistoryCompleted($event)"
+                (cancelled)="closeEditor()"
+              />
+            }
+          </app-character-profile>
+        } @else if (profileError()) {
           <div class="profile-state profile-state--error">
             <p>{{ profileError() }}</p>
-            <button type="button" class="secondary-button" (click)="refreshProfile()">
+
+            <button
+              type="button"
+              class="secondary-button"
+              (click)="refreshProfile()"
+            >
               Réessayer
             </button>
           </div>
-        } @else if (profile(); as character) {
-          <header class="profile-header">
-            <div class="profile-identity">
-              <span class="eyebrow">{{ typeLabel(character) }}</span>
-              <h2>{{ character.name }}</h2>
-
-              @if (character.playerName) {
-                <p>Joué par {{ character.playerName }}</p>
-              }
-            </div>
-
-            <div class="profile-level">
-              <span>Niveau</span>
-              <strong>{{ character.totalLevel }}</strong>
-            </div>
-
-            <div class="profile-actions">
-              <button
-                type="button"
-                class="secondary-button"
-                [disabled]="profileLoading()"
-                (click)="refreshProfile()"
-              >
-                Actualiser
-              </button>
-
-              @if (isStructured(character) && !hitPointHistoryOpened()) {
-                <button
-                  type="button"
-                  class="secondary-button"
-                  (click)="openHitPointHistory()"
-                >
-                  {{
-                    character.hitPoints.complete
-                      ? 'Modifier les PV'
-                      : 'Compléter les PV'
-                  }}
-                </button>
-              }
-
-              @if (
-                isStructured(character)
-                && levelUpOptions()?.canLevelUp
-                && !levelUpOpened()
-                && !hitPointHistoryOpened()
-              ) {
-                <button type="button" class="primary-button" (click)="openLevelUp()">
-                  Monter de niveau
-                </button>
-              }
-            </div>
-          </header>
-
-          @if (success()) {
-            <p class="message message--success">{{ success() }}</p>
-          }
-
-          @if (profileError()) {
-            <p class="message message--error">{{ profileError() }}</p>
-          }
-
-          @if (!isStructured(character)) {
-            <section class="legacy-warning">
-              <strong>Configuration historique</strong>
-              <p>
-                Ce personnage utilise encore sa définition JSON. Sa progression
-                normalisée et ses capacités automatiques ne sont pas disponibles.
-              </p>
-            </section>
-          }
-
-          @if (levelUpOpened()) {
-            <section class="level-up-panel">
-              <header>
-                <div>
-                  <span class="eyebrow">Progression</span>
-                  <h3>Passage au niveau {{ levelUpOptions()?.nextTotalLevel }}</h3>
-                </div>
-
-                <button type="button" class="close-button" (click)="closeLevelUp()">×</button>
-              </header>
-
-              <div class="level-up-grid">
-                <label class="field">
-                  <span>Classe choisie</span>
-                  <select
-                    [(ngModel)]="levelUpForm.classId"
-                    (ngModelChange)="classChanged()"
-                  >
-                    <option [ngValue]="null">Sélectionner une classe</option>
-
-                    @for (classOption of levelUpOptions()?.classes ?? []; track classOption.id) {
-                      <option [ngValue]="classOption.id">
-                        {{ classOption.name }} — niveau
-                        {{ classOption.currentLevel }} vers
-                        {{ classOption.nextLevel }}
-                      </option>
-                    }
-                  </select>
-                </label>
-
-                @if (selectedClassOption(); as classOption) {
-                  <div class="next-level-summary">
-                    <span>Niveau total</span>
-                    <strong>
-                      {{ levelUpOptions()?.currentTotalLevel }}
-                      →
-                      {{ levelUpOptions()?.nextTotalLevel }}
-                    </strong>
-
-                    <span>Niveau de {{ classOption.name }}</span>
-                    <strong>
-                      {{ classOption.currentLevel }}
-                      →
-                      {{ classOption.nextLevel }}
-                    </strong>
-                  </div>
-
-                  @if (classOption.subclassRequired || classOption.currentSubclass) {
-                    <label class="field">
-                      <span>Sous-classe</span>
-
-                      <select
-                        [(ngModel)]="levelUpForm.subclassId"
-                        [disabled]="classOption.currentSubclass !== null"
-                      >
-                        <option [ngValue]="null">Sélectionner une sous-classe</option>
-
-                        @for (subclass of classOption.subclasses; track subclass.id) {
-                          <option [ngValue]="subclass.id">{{ subclass.name }}</option>
-                        }
-                      </select>
-
-                      @if (classOption.currentSubclass) {
-                        <small>
-                          La sous-classe {{ classOption.currentSubclass.name }}
-                          est déjà acquise.
-                        </small>
-                      }
-                    </label>
-                  }
-
-                  <section class="hit-point-choice">
-                    <header>
-                      <div>
-                        <span class="eyebrow">Points de vie</span>
-                        <h4>Gain du nouveau niveau</h4>
-                      </div>
-
-                      <span class="hit-die">d{{ classOption.hitDie }}</span>
-                    </header>
-
-                    <div class="hit-point-fields">
-                      <label class="field">
-                        <span>Méthode</span>
-                        <select
-                          [(ngModel)]="levelUpForm.hitPointMethod"
-                          (ngModelChange)="hitPointMethodChanged()"
-                        >
-                          @for (
-                            method of levelUpOptions()?.hitPointMethods ?? [];
-                            track method.value
-                          ) {
-                            <option [value]="method.value">{{ method.label }}</option>
-                          }
-                        </select>
-                      </label>
-
-                      <label class="field">
-                        <span>Gain brut, hors Constitution</span>
-                        <input
-                          type="number"
-                          [(ngModel)]="levelUpForm.hitPointGain"
-                          [disabled]="levelUpForm.hitPointMethod === 'average'"
-                          min="1"
-                          [max]="classOption.hitDie"
-                        />
-
-                        @if (levelUpForm.hitPointMethod === 'average') {
-                          <small>
-                            Moyenne officielle du d{{ classOption.hitDie }} :
-                            {{ classOption.averageHitPointGain }}
-                          </small>
-                        } @else {
-                          <small>
-                            Valeur comprise entre 1 et {{ classOption.hitDie }}.
-                          </small>
-                        }
-                      </label>
-                    </div>
-
-                    @if (character.hitPoints.maximumValue !== null) {
-                      <p class="hit-point-preview">
-                        Maximum actuel :
-                        <strong>{{ character.hitPoints.maximumValue }} PV</strong>
-
-                        · Gain avec Constitution :
-                        <strong>
-                          {{
-                            (levelUpForm.hitPointMethod === 'average'
-                              ? classOption.averageHitPointGain
-                              : levelUpForm.hitPointGain ?? 0)
-                            + character.hitPoints.constitutionModifier
-                          }}
-                          PV
-                        </strong>
-                      </p>
-                    }
-                  </section>
-
-                  @if (classOption.advancementRequired) {
-                    <section class="advancement-panel">
-                      <header>
-                        <span class="eyebrow">Choix de progression</span>
-                        <h4>Don ou augmentation de caractéristiques</h4>
-                      </header>
-
-                      <div class="choice-switch">
-                        <button
-                          type="button"
-                          [class.active]="levelUpForm.advancementMode === 'ability'"
-                          (click)="
-                            levelUpForm.advancementMode = 'ability';
-                            advancementModeChanged()
-                          "
-                        >
-                          Caractéristiques
-                        </button>
-
-                        <button
-                          type="button"
-                          [class.active]="levelUpForm.advancementMode === 'feat'"
-                          (click)="
-                            levelUpForm.advancementMode = 'feat';
-                            advancementModeChanged()
-                          "
-                        >
-                          Don
-                        </button>
-                      </div>
-
-                      @if (levelUpForm.advancementMode === 'ability') {
-                        <div class="ability-advancement">
-                          <label class="field">
-                            <span>Répartition</span>
-                            <select
-                              [(ngModel)]="levelUpForm.abilityIncreaseMode"
-                              (ngModelChange)="abilityIncreaseModeChanged()"
-                            >
-                              <option value="single">+2 à une caractéristique</option>
-                              <option value="double">+1 à deux caractéristiques</option>
-                            </select>
-                          </label>
-
-                          <label class="field">
-                            <span>
-                              {{
-                                levelUpForm.abilityIncreaseMode === 'single'
-                                  ? 'Caractéristique +2'
-                                  : 'Première caractéristique +1'
-                              }}
-                            </span>
-
-                            <select [(ngModel)]="levelUpForm.firstAbility">
-                              <option [ngValue]="null">Sélectionner</option>
-
-                              @for (ability of abilities(); track ability.value) {
-                                <option [ngValue]="ability.value">
-                                  {{ ability.label }} ({{ ability.abbreviation }})
-                                </option>
-                              }
-                            </select>
-                          </label>
-
-                          @if (levelUpForm.abilityIncreaseMode === 'double') {
-                            <label class="field">
-                              <span>Deuxième caractéristique +1</span>
-                              <select [(ngModel)]="levelUpForm.secondAbility">
-                                <option [ngValue]="null">Sélectionner</option>
-
-                                @for (ability of abilities(); track ability.value) {
-                                  <option
-                                    [ngValue]="ability.value"
-                                    [disabled]="ability.value === levelUpForm.firstAbility"
-                                  >
-                                    {{ ability.label }} ({{ ability.abbreviation }})
-                                  </option>
-                                }
-                              </select>
-                            </label>
-                          }
-                        </div>
-                      } @else {
-                        <div class="feat-advancement">
-                          <label class="field">
-                            <span>Don</span>
-                            <select
-                              [(ngModel)]="levelUpForm.featId"
-                              (ngModelChange)="featChanged()"
-                            >
-                              <option [ngValue]="null">Sélectionner un don</option>
-
-                              @for (feat of feats(); track feat.id) {
-                                <option [ngValue]="feat.id">{{ feat.name }}</option>
-                              }
-                            </select>
-                          </label>
-
-                          @if (selectedFeat(); as feat) {
-                            @if (feat.description) {
-                              <p class="feat-description">{{ feat.description }}</p>
-                            }
-
-                            @if (feat.requiresAbilityChoice) {
-                              <label class="field">
-                                <span>Caractéristique du don</span>
-                                <select [(ngModel)]="levelUpForm.featAbility">
-                                  <option [ngValue]="null">Sélectionner</option>
-
-                                  @for (ability of featAbilities(); track ability.value) {
-                                    <option [ngValue]="ability.value">
-                                      {{ ability.label }} ({{ ability.abbreviation }})
-                                    </option>
-                                  }
-                                </select>
-                              </label>
-                            }
-                          }
-                        </div>
-                      }
-                    </section>
-                  }
-                }
-              </div>
-
-              <footer class="level-up-actions">
-                <button type="button" class="secondary-button" (click)="closeLevelUp()">
-                  Annuler
-                </button>
-
-                <button
-                  type="button"
-                  class="primary-button"
-                  [disabled]="submittingLevel() || !levelUpForm.classId"
-                  (click)="submitLevelUp()"
-                >
-                  {{
-                    submittingLevel()
-                      ? 'Progression en cours…'
-                      : 'Confirmer le niveau'
-                  }}
-                </button>
-              </footer>
-            </section>
-          }
-
-          @if (hitPointHistoryOpened()) {
-            <section class="level-up-panel hit-point-history">
-              <header>
-                <div>
-                  <span class="eyebrow">Historique</span>
-                  <h3>Gains de points de vie</h3>
-                  <p>
-                    Les valeurs correspondent aux gains bruts avant le
-                    modificateur de Constitution.
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  class="close-button"
-                  (click)="closeHitPointHistory()"
-                >
-                  ×
-                </button>
-              </header>
-
-              <div class="hit-point-history-list">
-                @for (entry of hitPointHistoryForm; track entry.position) {
-                  <article class="hit-point-history-row">
-                    <div class="hit-point-level">
-                      <span>Niveau {{ entry.position }}</span>
-                      <strong>{{ entry.className }}</strong>
-                      <small>d{{ entry.hitDie }}</small>
-                    </div>
-
-                    @if (entry.position === 1) {
-                      <div class="hit-point-fixed">
-                        <span>Maximum du dé de vie</span>
-                        <strong>{{ entry.hitDie }} PV</strong>
-                      </div>
-                    } @else {
-                      <label class="field">
-                        <span>Méthode</span>
-                        <select
-                          [(ngModel)]="entry.method"
-                          (ngModelChange)="historyMethodChanged(entry)"
-                        >
-                          <option value="average">Valeur moyenne</option>
-                          <option value="rolled">Dé lancé</option>
-                          <option value="manual">Saisie manuelle</option>
-                        </select>
-                      </label>
-
-                      <label class="field">
-                        <span>Gain brut</span>
-                        <input
-                          type="number"
-                          [(ngModel)]="entry.gain"
-                          [disabled]="entry.method === 'average'"
-                          min="1"
-                          [max]="entry.hitDie"
-                        />
-                      </label>
-                    }
-                  </article>
-                }
-              </div>
-
-              <div class="hit-point-calculation">
-                <div>
-                  <span>Bonus de Constitution actuel</span>
-                  <strong>
-                    {{ modifierLabel(character.hitPoints.constitutionModifier) }}
-                    par niveau
-                  </strong>
-                </div>
-
-                <div>
-                  <span>Niveaux incomplets</span>
-                  <strong>
-                    {{
-                      character.hitPoints.missingLevelPositions.length > 0
-                        ? character.hitPoints.missingLevelPositions.join(', ')
-                        : 'Aucun'
-                    }}
-                  </strong>
-                </div>
-              </div>
-
-              <footer class="level-up-actions">
-                <button
-                  type="button"
-                  class="secondary-button"
-                  (click)="closeHitPointHistory()"
-                >
-                  Annuler
-                </button>
-
-                <button
-                  type="button"
-                  class="primary-button"
-                  [disabled]="savingHitPoints()"
-                  (click)="saveHitPointHistory()"
-                >
-                  {{
-                    savingHitPoints()
-                      ? 'Enregistrement…'
-                      : 'Enregistrer les PV'
-                  }}
-                </button>
-              </footer>
-            </section>
-          }
-
-          <section class="identity-summary identity-summary--with-hp">
-            <div>
-              <span>Race</span>
-              <strong>{{ character.race?.name ?? 'Non renseignée' }}</strong>
-            </div>
-
-            <div>
-              <span>Progression</span>
-              <strong>{{ progressionLabel(character) }}</strong>
-            </div>
-
-            <div>
-              <span>Bonus de maîtrise</span>
-              <strong>+{{ character.proficiencyBonus }}</strong>
-            </div>
-
-            <div
-              class="hit-point-summary"
-              [class.hit-point-summary--incomplete]="!character.hitPoints.complete"
-            >
-              <span>Points de vie maximums</span>
-
-              @if (character.hitPoints.maximumValue !== null) {
-                <strong>{{ character.hitPoints.maximumValue }} PV</strong>
-                <small>
-                  {{ character.hitPoints.baseValue }} de base
-                  + {{ character.hitPoints.constitutionBonus }} de Constitution
-                </small>
-              } @else {
-                <strong>À compléter</strong>
-                <small>
-                  Niveaux manquants :
-                  {{ character.hitPoints.missingLevelPositions.join(', ') }}
-                </small>
-              }
-            </div>
-          </section>
-
-          <section class="profile-section">
-            <header class="section-header">
-              <div>
-                <span class="eyebrow">Valeurs effectives</span>
-                <h3>Caractéristiques</h3>
-              </div>
-            </header>
-
-            <div class="ability-grid">
-              @for (ability of character.abilities; track ability.ability) {
-                <article class="ability-card">
-                  <span>{{ ability.abbreviation }}</span>
-                  <strong>{{ ability.effectiveValue }}</strong>
-                  <small>{{ modifierLabel(ability.modifier) }}</small>
-
-                  @if (ability.baseValue !== ability.effectiveValue) {
-                    <em>Base {{ ability.baseValue }}</em>
-                  }
-
-                  @if (ability.maximumValue !== 20) {
-                    <em>Maximum {{ ability.maximumValue }}</em>
-                  }
-                </article>
-              }
-            </div>
-          </section>
-
-          <section class="profile-columns">
-            <section class="profile-section">
-              <header class="section-header">
-                <div>
-                  <span class="eyebrow">Progression</span>
-                  <h3>Classes</h3>
-                </div>
-              </header>
-
-              <div class="summary-list">
-                @for (classEntry of character.classSummary; track classEntry.classId) {
-                  <article>
-                    <div>
-                      <strong>{{ classEntry.className }}</strong>
-
-                      @if (classEntry.subclassName) {
-                        <span>{{ classEntry.subclassName }}</span>
-                      }
-                    </div>
-
-                    <b>Niveau {{ classEntry.level }}</b>
-                  </article>
-                } @empty {
-                  <p class="section-empty">Aucune classe structurée.</p>
-                }
-              </div>
-            </section>
-
-            <section class="profile-section">
-              <header class="section-header">
-                <div>
-                  <span class="eyebrow">Personnalisation</span>
-                  <h3>Dons</h3>
-                </div>
-              </header>
-
-              <div class="summary-list">
-                @for (feat of character.feats; track feat.id) {
-                  <article>
-                    <div>
-                      <strong>{{ feat.name }}</strong>
-
-                      @if (feat.chosenAbility) {
-                        <span>{{ feat.chosenAbility }}</span>
-                      }
-                    </div>
-
-                    @if (feat.acquiredAtLevel) {
-                      <b>Niveau {{ feat.acquiredAtLevel }}</b>
-                    }
-                  </article>
-                } @empty {
-                  <p class="section-empty">Aucun don.</p>
-                }
-              </div>
-            </section>
-          </section>
-
-          <section class="profile-section">
-            <header class="section-header">
-              <div>
-                <span class="eyebrow">Jauges calculées</span>
-                <h3>Ressources</h3>
-              </div>
-            </header>
-
-            <div class="resource-grid">
-              @for (resource of character.resources; track resource.slug) {
-                <article class="resource-card">
-                  <div>
-                    <strong>{{ resource.name }}</strong>
-                    <span>{{ rechargeLabel(resource.rechargeType) }}</span>
-                  </div>
-
-                  <b>{{ resource.maximum }}</b>
-                </article>
-              } @empty {
-                <p class="section-empty">Aucune ressource débloquée.</p>
-              }
-            </div>
-          </section>
-
-          <section class="profile-section">
-            <header class="section-header">
-              <div>
-                <span class="eyebrow">Progression automatique</span>
-                <h3>Capacités débloquées</h3>
-              </div>
-
-              <span class="section-count">{{ character.features.length }}</span>
-            </header>
-
-            <div class="feature-list">
-              @for (feature of character.features; track feature.slug) {
-                <article class="feature-card">
-                  <header>
-                    <div>
-                      <span class="feature-source">
-                        {{ featureSourceLabel(feature.sourceType) }}
-                        · {{ feature.sourceName }}
-                        · niveau {{ feature.unlockLevel }}
-                      </span>
-
-                      <h4>{{ feature.name }}</h4>
-                    </div>
-
-                    <div class="feature-badges">
-                      <span>{{ feature.activationType }}</span>
-
-                      @if (feature.resource) {
-                        <span class="resource-label">
-                          {{ feature.resource.name }}
-                        </span>
-                      }
-
-                      @if (feature.custom) {
-                        <span>Personnalisée</span>
-                      }
-                    </div>
-                  </header>
-
-                  @if (feature.description) {
-                    <p>{{ feature.description }}</p>
-                  }
-                </article>
-              } @empty {
-                <p class="section-empty">
-                  Aucune capacité n’est encore attribuée à ce personnage.
-                </p>
-              }
-            </div>
-          </section>
         } @else {
           <div class="profile-state">
-            <span class="empty-state__symbol">◇</span>
+            <span class="empty-symbol">◇</span>
             <h2>Sélectionne un personnage</h2>
             <p>Sa fiche détaillée apparaîtra ici.</p>
           </div>
