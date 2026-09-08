@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\Character;
+use App\Entity\CharacterClassLevel;
 use App\Entity\CharacterFeatureRule;
 use App\Entity\CharacterFeat;
-use App\Entity\CharacterClassLevel;
 use App\Enum\Ability;
 
 final readonly class CharacterProfileSerializer
@@ -16,6 +16,7 @@ final readonly class CharacterProfileSerializer
         private CharacterAbilityCalculator $abilityCalculator,
         private CharacterFeatureResolver $featureResolver,
         private CharacterResourceResolver $resourceResolver,
+        private CharacterHitPointCalculator $hitPointCalculator,
     ) {
     }
 
@@ -40,6 +41,7 @@ final readonly class CharacterProfileSerializer
                 : null,
             'totalLevel' => $character->getTotalLevel(),
             'proficiencyBonus' => $character->getProficiencyBonus(),
+            'hitPoints' => $this->hitPointCalculator->calculate($character)->toArray(),
             'classLevels' => array_map(
                 $this->serializeClassLevel(...),
                 $character->getClassLevels()->toArray(),
@@ -47,9 +49,7 @@ final readonly class CharacterProfileSerializer
             'classSummary' => $this->serializeClassSummary($character),
             'abilities' => array_map(
                 fn (Ability $ability): array =>
-                    $this->abilityCalculator
-                        ->calculate($character, $ability)
-                        ->toArray(),
+                    $this->abilityCalculator->calculate($character, $ability)->toArray(),
                 Ability::cases(),
             ),
             'feats' => array_map(
@@ -78,14 +78,20 @@ final readonly class CharacterProfileSerializer
      */
     private function serializeClassLevel(CharacterClassLevel $level): array
     {
+        $method = $level->getHitPointGainMethod();
+
         return [
             'position' => $level->getPosition(),
             'classId' => $level->getCharacterClass()->getId(),
             'classSlug' => $level->getCharacterClass()->getSlug(),
             'className' => $level->getCharacterClass()->getName(),
+            'hitDie' => $level->getCharacterClass()->getHitDie(),
             'subclassId' => $level->getSubclass()?->getId(),
             'subclassSlug' => $level->getSubclass()?->getSlug(),
             'subclassName' => $level->getSubclass()?->getName(),
+            'hitPointGain' => $level->getHitPointGain(),
+            'hitPointGainMethod' => $method?->value,
+            'hitPointGainMethodLabel' => $method?->label(),
         ];
     }
 
@@ -112,6 +118,7 @@ final readonly class CharacterProfileSerializer
                     'classSlug' => $characterClass->getSlug(),
                     'className' => $characterClass->getName(),
                     'level' => 0,
+                    'hitDie' => $characterClass->getHitDie(),
                     'subclassId' => $subclass?->getId(),
                     'subclassSlug' => $subclass?->getSlug(),
                     'subclassName' => $subclass?->getName(),

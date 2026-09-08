@@ -7,8 +7,11 @@ import {
   AbilityAdvancementPayload,
   CharacterApiResponse,
   CharacterApiService,
+  CharacterClassLevel,
   CharacterProfile,
   FeatAdvancementPayload,
+  HitPointGainMethod,
+  HitPointHistoryEntryPayload,
   LevelUpClassOption,
   LevelUpOptions,
   LevelUpPayload,
@@ -23,6 +26,7 @@ import {
 type CharacterFilter = 'all' | 'player' | 'npc';
 type AdvancementMode = 'ability' | 'feat';
 type AbilityIncreaseMode = 'single' | 'double';
+type LevelUpHitPointMethod = Exclude<HitPointGainMethod, 'first_level'>;
 
 interface LevelUpForm {
   classId: number | null;
@@ -33,6 +37,16 @@ interface LevelUpForm {
   secondAbility: AbilityKey | null;
   featId: number | null;
   featAbility: AbilityKey | null;
+  hitPointMethod: LevelUpHitPointMethod;
+  hitPointGain: number | null;
+}
+
+interface HitPointHistoryFormEntry {
+  position: number;
+  className: string;
+  hitDie: number;
+  method: HitPointGainMethod;
+  gain: number | null;
 }
 
 @Component({
@@ -61,22 +75,31 @@ export class CampaignCharacters {
   protected readonly loading = signal(true);
   protected readonly profileLoading = signal(false);
   protected readonly submittingLevel = signal(false);
+  protected readonly savingHitPoints = signal(false);
   protected readonly levelUpOpened = signal(false);
+  protected readonly hitPointHistoryOpened = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly profileError = signal<string | null>(null);
   protected readonly success = signal<string | null>(null);
 
   protected search = '';
   protected levelUpForm: LevelUpForm = this.emptyLevelUpForm();
+  protected hitPointHistoryForm: HitPointHistoryFormEntry[] = [];
 
   protected readonly selectedCharacter = computed(() => {
     const selectedId = this.selectedCharacterId();
 
-    return this.characters().find(character => character.id === selectedId) ?? null;
+    return this.characters().find(character => character.id === selectedId)
+      ?? null;
   });
 
-  protected readonly abilities = computed(() => this.reference()?.abilities ?? []);
-  protected readonly feats = computed(() => this.reference()?.feats ?? []);
+  protected readonly abilities = computed(
+    () => this.reference()?.abilities ?? [],
+  );
+
+  protected readonly feats = computed(
+    () => this.reference()?.feats ?? [],
+  );
 
   public constructor() {
     if (!Number.isInteger(this.campaignId) || this.campaignId < 1) {
@@ -116,7 +139,9 @@ export class CampaignCharacters {
       return this.characters().length;
     }
 
-    return this.characters().filter(character => character.type === type).length;
+    return this.characters().filter(
+      character => character.type === type,
+    ).length;
   }
 
   protected selectCharacter(character: CharacterApiResponse): void {
@@ -130,11 +155,16 @@ export class CampaignCharacters {
     this.profileError.set(null);
     this.success.set(null);
     this.levelUpOpened.set(false);
+    this.hitPointHistoryOpened.set(false);
+    this.hitPointHistoryForm = [];
     this.profileLoading.set(true);
 
     forkJoin({
       profile: this.characterApi.getProfile(this.campaignId, character.id),
-      options: this.characterApi.getLevelUpOptions(this.campaignId, character.id),
+      options: this.characterApi.getLevelUpOptions(
+        this.campaignId,
+        character.id,
+      ),
     })
       .pipe(finalize(() => this.profileLoading.set(false)))
       .subscribe({
@@ -170,6 +200,7 @@ export class CampaignCharacters {
     this.levelUpForm = this.emptyLevelUpForm();
     this.levelUpForm.classId = defaultClass?.id ?? null;
     this.applySelectedClassDefaults();
+    this.hitPointHistoryOpened.set(false);
     this.levelUpOpened.set(true);
     this.profileError.set(null);
     this.success.set(null);
@@ -183,7 +214,9 @@ export class CampaignCharacters {
   protected selectedClassOption(): LevelUpClassOption | null {
     const classId = this.levelUpForm.classId;
 
-    return this.levelUpOptions()?.classes.find(option => option.id === classId) ?? null;
+    return this.levelUpOptions()?.classes.find(
+      option => option.id === classId,
+    ) ?? null;
   }
 
   protected classChanged(): void {
@@ -194,6 +227,8 @@ export class CampaignCharacters {
     this.levelUpForm.secondAbility = null;
     this.levelUpForm.featId = null;
     this.levelUpForm.featAbility = null;
+    this.levelUpForm.hitPointMethod = 'average';
+    this.levelUpForm.hitPointGain = null;
     this.applySelectedClassDefaults();
   }
 
@@ -211,6 +246,13 @@ export class CampaignCharacters {
 
   protected featChanged(): void {
     this.levelUpForm.featAbility = null;
+  }
+
+  protected hitPointMethodChanged(): void {
+    this.levelUpForm.hitPointGain =
+      this.levelUpForm.hitPointMethod === 'average'
+        ? this.selectedClassOption()?.averageHitPointGain ?? null
+        : null;
   }
 
   protected selectedFeat(): FeatReference | null {
@@ -261,10 +303,22 @@ export class CampaignCharacters {
       return;
     }
 
+    const hitPointGain = this.resolveLevelUpHitPointGain(classOption);
+
+    if (hitPointGain === false) {
+      return;
+    }
+
     const payload: LevelUpPayload = {
       classId: classOption.id,
       subclassId: this.levelUpForm.subclassId,
       advancement,
+      hitPoints: this.levelUpForm.hitPointMethod === 'average'
+        ? { method: 'average' }
+        : {
+            method: this.levelUpForm.hitPointMethod,
+            gain: hitPointGain,
+          },
     };
 
     this.submittingLevel.set(true);
@@ -285,6 +339,150 @@ export class CampaignCharacters {
         },
         error: error => this.profileError.set(this.errorMessage(error)),
       });
+  }
+
+  protected openHitPointHistory(): void {
+    const profile = this.profile();
+
+    if (!profile) {
+      return;
+    }
+
+    this.hitPointHistoryForm = profile.classLevels.map(level => {
+      const hitDie = this.levelHitDie(level);
+
+      if (level.position === 1) {
+        return {
+          position: level.position,
+          className: level.className,
+          hitDie,
+          method: 'first_level',
+          gain: hitDie,
+        };
+      }
+
+      const method = level.hitPointGainMethod ?? 'average';
+
+      return {
+        position: level.position,
+        className: level.className,
+        hitDie,
+        method,
+        gain: level.hitPointGain ?? (
+          method === 'average'
+            ? this.averageHitPointGain(hitDie)
+            : null
+        ),
+      };
+    });
+
+    this.levelUpOpened.set(false);
+    this.hitPointHistoryOpened.set(true);
+    this.profileError.set(null);
+    this.success.set(null);
+  }
+
+  protected closeHitPointHistory(): void {
+    this.hitPointHistoryOpened.set(false);
+    this.hitPointHistoryForm = [];
+  }
+
+  protected historyMethodChanged(
+    entry: HitPointHistoryFormEntry,
+  ): void {
+    if (entry.position === 1) {
+      entry.method = 'first_level';
+      entry.gain = entry.hitDie;
+      return;
+    }
+
+    entry.gain = entry.method === 'average'
+      ? this.averageHitPointGain(entry.hitDie)
+      : null;
+  }
+
+  protected saveHitPointHistory(): void {
+    const profile = this.profile();
+
+    if (!profile) {
+      return;
+    }
+
+    const levels: HitPointHistoryEntryPayload[] = [];
+
+    for (const entry of this.hitPointHistoryForm) {
+      if (
+        entry.method !== 'average'
+        && entry.method !== 'first_level'
+        && (
+          entry.gain === null
+          || !Number.isInteger(entry.gain)
+          || entry.gain < 1
+          || entry.gain > entry.hitDie
+        )
+      ) {
+        this.profileError.set(
+          `Le gain brut du niveau ${entry.position} doit être compris entre 1 et ${entry.hitDie}.`,
+        );
+        return;
+      }
+
+      levels.push(
+        entry.method === 'average' || entry.method === 'first_level'
+          ? {
+              position: entry.position,
+              method: entry.method,
+            }
+          : {
+              position: entry.position,
+              method: entry.method,
+              gain: entry.gain!,
+            },
+      );
+    }
+
+    this.savingHitPoints.set(true);
+    this.profileError.set(null);
+    this.success.set(null);
+
+    this.characterApi
+      .updateHitPointHistory(
+        this.campaignId,
+        profile.id,
+        { levels },
+      )
+      .pipe(finalize(() => this.savingHitPoints.set(false)))
+      .subscribe({
+        next: response => {
+          this.profile.set(response.character);
+          this.updateCharacterInList(response.character);
+          this.success.set(response.message);
+          this.hitPointHistoryOpened.set(false);
+          this.hitPointHistoryForm = [];
+        },
+        error: error => this.profileError.set(this.errorMessage(error)),
+      });
+  }
+
+  protected hitPointMethodLabel(
+    method: HitPointGainMethod | null | undefined,
+  ): string {
+    if (!method) {
+      return 'Non renseigné';
+    }
+
+    const labels: Record<HitPointGainMethod, string> = {
+      first_level: 'Maximum du dé',
+      average: 'Moyenne',
+      rolled: 'Dé lancé',
+      manual: 'Saisie manuelle',
+    };
+
+    return labels[method];
+  }
+
+  protected averageHitPointGain(hitDie: number): number {
+    return Math.floor(hitDie / 2) + 1;
   }
 
   protected typeLabel(character: CharacterApiResponse): string {
@@ -323,7 +521,10 @@ export class CampaignCharacters {
       return [...classes.values()]
         .map(entry => {
           const classLabel = `${entry.name} ${entry.level}`;
-          return entry.subclass ? `${classLabel} · ${entry.subclass}` : classLabel;
+
+          return entry.subclass
+            ? `${classLabel} · ${entry.subclass}`
+            : classLabel;
         })
         .join(' / ');
     }
@@ -418,9 +619,50 @@ export class CampaignCharacters {
   private applySelectedClassDefaults(): void {
     const classOption = this.selectedClassOption();
 
-    if (classOption?.currentSubclass) {
+    if (!classOption) {
+      return;
+    }
+
+    if (classOption.currentSubclass) {
       this.levelUpForm.subclassId = classOption.currentSubclass.id;
     }
+
+    this.levelUpForm.hitPointMethod = 'average';
+    this.levelUpForm.hitPointGain = classOption.averageHitPointGain;
+  }
+
+  private resolveLevelUpHitPointGain(
+    classOption: LevelUpClassOption,
+  ): number | false {
+    if (this.levelUpForm.hitPointMethod === 'average') {
+      return classOption.averageHitPointGain;
+    }
+
+    const gain = this.levelUpForm.hitPointGain;
+
+    if (
+      gain === null
+      || !Number.isInteger(gain)
+      || gain < 1
+      || gain > classOption.hitDie
+    ) {
+      this.profileError.set(
+        `Le gain brut de PV doit être compris entre 1 et ${classOption.hitDie}.`,
+      );
+      return false;
+    }
+
+    return gain;
+  }
+
+  private levelHitDie(level: CharacterClassLevel): number {
+    if (level.hitDie) {
+      return level.hitDie;
+    }
+
+    return this.profile()?.classSummary.find(
+      classEntry => classEntry.classId === level.classId,
+    )?.hitDie ?? 0;
   }
 
   private buildAdvancementPayload():
@@ -450,7 +692,9 @@ export class CampaignCharacters {
     }
 
     if (!this.levelUpForm.firstAbility) {
-      this.profileError.set('Une caractéristique doit être sélectionnée.');
+      this.profileError.set(
+        'Une caractéristique doit être sélectionnée.',
+      );
       return null;
     }
 
@@ -467,12 +711,19 @@ export class CampaignCharacters {
     }
 
     if (!this.levelUpForm.secondAbility) {
-      this.profileError.set('La deuxième caractéristique est obligatoire.');
+      this.profileError.set(
+        'La deuxième caractéristique est obligatoire.',
+      );
       return null;
     }
 
-    if (this.levelUpForm.firstAbility === this.levelUpForm.secondAbility) {
-      this.profileError.set('Choisis deux caractéristiques différentes.');
+    if (
+      this.levelUpForm.firstAbility
+      === this.levelUpForm.secondAbility
+    ) {
+      this.profileError.set(
+        'Choisis deux caractéristiques différentes.',
+      );
       return null;
     }
 
@@ -501,14 +752,19 @@ export class CampaignCharacters {
       secondAbility: null,
       featId: null,
       featAbility: null,
+      hitPointMethod: 'average',
+      hitPointGain: null,
     };
   }
 
-  private legacyProgressionLabel(character: CharacterApiResponse): string {
+  private legacyProgressionLabel(
+    character: CharacterApiResponse,
+  ): string {
     const className = this.readString(
       character.definition,
       ['className', 'classLabel', 'class'],
     );
+
     const level = character.definition['level'];
 
     if (className && typeof level === 'number') {

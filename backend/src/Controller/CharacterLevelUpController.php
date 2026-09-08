@@ -11,6 +11,7 @@ use App\Entity\CharacterClass;
 use App\Entity\CharacterSubclass;
 use App\Entity\Feat;
 use App\Enum\Ability;
+use App\Enum\HitPointGainMethod;
 use App\Repository\CharacterClassLevelRuleRepository;
 use App\Repository\CharacterRepository;
 use App\Security\Voter\CampaignVoter;
@@ -36,8 +37,7 @@ final class CharacterLevelUpController extends AbstractController
 {
     #[Route('/options', name: 'api_character_level_up_options', methods: ['GET'])]
     public function options(
-        #[MapEntity(id: 'campaignId')]
-        Campaign $campaign,
+        #[MapEntity(id: 'campaignId')] Campaign $campaign,
         int $characterId,
         CharacterRepository $characterRepository,
         CharacterClassLevelRuleRepository $levelRuleRepository,
@@ -63,6 +63,20 @@ final class CharacterLevelUpController extends AbstractController
             'canLevelUp' => $character->getTotalLevel() < 20,
             'currentTotalLevel' => $character->getTotalLevel(),
             'nextTotalLevel' => min(20, $character->getTotalLevel() + 1),
+            'hitPointMethods' => [
+                [
+                    'value' => HitPointGainMethod::Average->value,
+                    'label' => HitPointGainMethod::Average->label(),
+                ],
+                [
+                    'value' => HitPointGainMethod::Rolled->value,
+                    'label' => HitPointGainMethod::Rolled->label(),
+                ],
+                [
+                    'value' => HitPointGainMethod::Manual->value,
+                    'label' => HitPointGainMethod::Manual->label(),
+                ],
+            ],
             'classes' => array_map(
                 function (CharacterClass $characterClass) use (
                     $character,
@@ -92,6 +106,9 @@ final class CharacterLevelUpController extends AbstractController
                         'id' => $characterClass->getId(),
                         'slug' => $characterClass->getSlug(),
                         'name' => $characterClass->getName(),
+                        'hitDie' => $characterClass->getHitDie(),
+                        'averageHitPointGain' =>
+                            intdiv($characterClass->getHitDie(), 2) + 1,
                         'currentLevel' => $currentClassLevel,
                         'nextLevel' => $nextClassLevel,
                         'subclassSelectionLevel' => $selectionLevel,
@@ -123,8 +140,7 @@ final class CharacterLevelUpController extends AbstractController
 
     #[Route('', name: 'api_character_level_up', methods: ['POST'])]
     public function levelUp(
-        #[MapEntity(id: 'campaignId')]
-        Campaign $campaign,
+        #[MapEntity(id: 'campaignId')] Campaign $campaign,
         int $characterId,
         Request $request,
         CharacterRepository $characterRepository,
@@ -164,7 +180,9 @@ final class CharacterLevelUpController extends AbstractController
             ->find($classId);
 
         if (!$characterClass instanceof CharacterClass) {
-            return $this->validationError('La classe sélectionnée est introuvable.');
+            return $this->validationError(
+                'La classe sélectionnée est introuvable.',
+            );
         }
 
         $subclass = $this->resolveSubclass(
@@ -185,12 +203,23 @@ final class CharacterLevelUpController extends AbstractController
             return $advancement;
         }
 
+        $hitPoints = $this->resolveHitPoints(
+            $payload['hitPoints'] ?? null,
+            $characterClass,
+        );
+
+        if ($hitPoints instanceof JsonResponse) {
+            return $hitPoints;
+        }
+
         try {
             $level = $levelUpService->levelUp(
                 character: $character,
                 characterClass: $characterClass,
                 subclass: $subclass,
                 advancement: $advancement,
+                hitPointGainMethod: $hitPoints['method'],
+                hitPointGain: $hitPoints['gain'],
             );
         } catch (\LogicException $exception) {
             return $this->validationError($exception->getMessage());
@@ -210,11 +239,73 @@ final class CharacterLevelUpController extends AbstractController
                     'className' => $level->getCharacterClass()->getName(),
                     'subclassId' => $level->getSubclass()?->getId(),
                     'subclassName' => $level->getSubclass()?->getName(),
+                    'hitPointGain' => $level->getHitPointGain(),
+                    'hitPointGainMethod' =>
+                        $level->getHitPointGainMethod()?->value,
                 ],
                 'character' => $serializer->serialize($character),
             ],
             Response::HTTP_CREATED,
         );
+    }
+
+    /**
+     * @return array{method: HitPointGainMethod, gain: int|null}|JsonResponse
+     */
+    private function resolveHitPoints(
+        mixed $payload,
+        CharacterClass $characterClass,
+    ): array|JsonResponse {
+        if ($payload === null) {
+            return [
+                'method' => HitPointGainMethod::Average,
+                'gain' => null,
+            ];
+        }
+
+        if (!is_array($payload)) {
+            return $this->validationError(
+                'Le choix des points de vie est invalide.',
+            );
+        }
+
+        $method = HitPointGainMethod::tryFrom(
+            (string) ($payload['method'] ?? ''),
+        );
+
+        if (
+            $method === null
+            || $method === HitPointGainMethod::FirstLevel
+        ) {
+            return $this->validationError(
+                'La méthode de gain de points de vie est invalide.',
+            );
+        }
+
+        if ($method === HitPointGainMethod::Average) {
+            return [
+                'method' => $method,
+                'gain' => null,
+            ];
+        }
+
+        $gain = $this->integer($payload['gain'] ?? null);
+
+        if (
+            $gain === null
+            || $gain < 1
+            || $gain > $characterClass->getHitDie()
+        ) {
+            return $this->validationError(sprintf(
+                'Le gain brut de PV doit être compris entre 1 et %d.',
+                $characterClass->getHitDie(),
+            ));
+        }
+
+        return [
+            'method' => $method,
+            'gain' => $gain,
+        ];
     }
 
     private function resolveSubclass(
@@ -228,7 +319,9 @@ final class CharacterLevelUpController extends AbstractController
         $subclassId = $this->integer($subclassId);
 
         if ($subclassId === null || $subclassId <= 0) {
-            return $this->validationError('La sous-classe sélectionnée est invalide.');
+            return $this->validationError(
+                'La sous-classe sélectionnée est invalide.',
+            );
         }
 
         $subclass = $entityManager
@@ -237,7 +330,9 @@ final class CharacterLevelUpController extends AbstractController
 
         return $subclass instanceof CharacterSubclass
             ? $subclass
-            : $this->validationError('La sous-classe sélectionnée est introuvable.');
+            : $this->validationError(
+                'La sous-classe sélectionnée est introuvable.',
+            );
     }
 
     private function resolveAdvancement(
@@ -249,7 +344,9 @@ final class CharacterLevelUpController extends AbstractController
         }
 
         if (!is_array($payload)) {
-            return $this->validationError('Le choix de progression est invalide.');
+            return $this->validationError(
+                'Le choix de progression est invalide.',
+            );
         }
 
         return match ($payload['type'] ?? null) {
@@ -287,11 +384,15 @@ final class CharacterLevelUpController extends AbstractController
                 );
             }
 
-            $ability = Ability::tryFrom((string) ($increase['ability'] ?? ''));
+            $ability = Ability::tryFrom(
+                (string) ($increase['ability'] ?? ''),
+            );
 
             return $ability !== null
                 ? LevelAdvancementSelection::increaseOneAbility($ability)
-                : $this->validationError('La caractéristique sélectionnée est invalide.');
+                : $this->validationError(
+                    'La caractéristique sélectionnée est invalide.',
+                );
         }
 
         if (count($increases) === 2) {
@@ -350,16 +451,22 @@ final class CharacterLevelUpController extends AbstractController
             return $this->validationError('Le don est obligatoire.');
         }
 
-        $feat = $entityManager->getRepository(Feat::class)->find($featId);
+        $feat = $entityManager
+            ->getRepository(Feat::class)
+            ->find($featId);
 
         if (!$feat instanceof Feat) {
-            return $this->validationError('Le don sélectionné est introuvable.');
+            return $this->validationError(
+                'Le don sélectionné est introuvable.',
+            );
         }
 
         $chosenAbility = null;
 
         if (($payload['ability'] ?? null) !== null) {
-            $chosenAbility = Ability::tryFrom((string) $payload['ability']);
+            $chosenAbility = Ability::tryFrom(
+                (string) $payload['ability'],
+            );
 
             if ($chosenAbility === null) {
                 return $this->validationError(
@@ -375,7 +482,10 @@ final class CharacterLevelUpController extends AbstractController
         }
 
         try {
-            return LevelAdvancementSelection::feat($feat, $chosenAbility);
+            return LevelAdvancementSelection::feat(
+                $feat,
+                $chosenAbility,
+            );
         } catch (\LogicException $exception) {
             return $this->validationError($exception->getMessage());
         }

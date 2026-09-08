@@ -3,6 +3,12 @@ import { inject, Injectable } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { AbilityKey } from './dnd-reference-api.service';
 
+export type HitPointGainMethod =
+  | 'first_level'
+  | 'average'
+  | 'rolled'
+  | 'manual';
+
 export interface CreateCharacterPayload {
   slug: string;
   name: string;
@@ -22,9 +28,13 @@ export interface CharacterClassLevel {
   classId: number;
   classSlug?: string;
   className: string;
+  hitDie?: number;
   subclassId: number | null;
   subclassSlug?: string | null;
   subclassName: string | null;
+  hitPointGain?: number | null;
+  hitPointGainMethod?: HitPointGainMethod | null;
+  hitPointGainMethodLabel?: string | null;
 }
 
 export interface CharacterClassSummary {
@@ -32,9 +42,19 @@ export interface CharacterClassSummary {
   classSlug: string;
   className: string;
   level: number;
+  hitDie: number;
   subclassId: number | null;
   subclassSlug: string | null;
   subclassName: string | null;
+}
+
+export interface CharacterHitPoints {
+  maximumValue: number | null;
+  baseValue: number;
+  constitutionModifier: number;
+  constitutionBonus: number;
+  complete: boolean;
+  missingLevelPositions: number[];
 }
 
 export interface CharacterAbilityScore {
@@ -100,6 +120,7 @@ export interface CharacterApiResponse {
 }
 
 export interface CharacterProfile extends CharacterApiResponse {
+  hitPoints: CharacterHitPoints;
   classSummary: CharacterClassSummary[];
   abilities: CharacterAbilityScore[];
   feats: CharacterFeatSummary[];
@@ -117,6 +138,8 @@ export interface LevelUpClassOption {
   id: number;
   slug: string;
   name: string;
+  hitDie: number;
+  averageHitPointGain: number;
   currentLevel: number;
   nextLevel: number;
   subclassSelectionLevel: number;
@@ -126,10 +149,16 @@ export interface LevelUpClassOption {
   advancementRequired: boolean;
 }
 
+export interface HitPointMethodOption {
+  value: Exclude<HitPointGainMethod, 'first_level'>;
+  label: string;
+}
+
 export interface LevelUpOptions {
   canLevelUp: boolean;
   currentTotalLevel: number;
   nextTotalLevel: number;
+  hitPointMethods: HitPointMethodOption[];
   classes: LevelUpClassOption[];
 }
 
@@ -151,15 +180,36 @@ export type LevelAdvancementPayload =
   | AbilityAdvancementPayload
   | FeatAdvancementPayload;
 
+export interface LevelUpHitPointPayload {
+  method: Exclude<HitPointGainMethod, 'first_level'>;
+  gain?: number;
+}
+
 export interface LevelUpPayload {
   classId: number;
   subclassId: number | null;
   advancement: LevelAdvancementPayload | null;
+  hitPoints: LevelUpHitPointPayload;
 }
 
 export interface LevelUpResponse {
   message: string;
   level: CharacterClassLevel;
+  character: CharacterProfile;
+}
+
+export interface HitPointHistoryEntryPayload {
+  position: number;
+  method: HitPointGainMethod;
+  gain?: number;
+}
+
+export interface UpdateHitPointHistoryPayload {
+  levels: HitPointHistoryEntryPayload[];
+}
+
+export interface UpdateHitPointHistoryResponse {
+  message: string;
   character: CharacterProfile;
 }
 
@@ -227,6 +277,17 @@ export class CharacterApiService {
   ): Observable<LevelUpResponse> {
     return this.http.post<LevelUpResponse>(
       `${this.apiUrl}/campaigns/${campaignId}/characters/${characterId}/level-up`,
+      payload,
+    );
+  }
+
+  updateHitPointHistory(
+    campaignId: number,
+    characterId: number,
+    payload: UpdateHitPointHistoryPayload,
+  ): Observable<UpdateHitPointHistoryResponse> {
+    return this.http.put<UpdateHitPointHistoryResponse>(
+      `${this.apiUrl}/campaigns/${campaignId}/characters/${characterId}/hit-points/history`,
       payload,
     );
   }

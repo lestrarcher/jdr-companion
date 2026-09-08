@@ -13,6 +13,7 @@ use App\Entity\CharacterFeat;
 use App\Entity\CharacterSubclass;
 use App\Enum\AbilityAdjustmentOperation;
 use App\Enum\AbilityAdjustmentSource;
+use App\Enum\HitPointGainMethod;
 use App\Repository\CharacterClassLevelRuleRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -29,12 +30,16 @@ final readonly class CharacterLevelUpService
         CharacterClass $characterClass,
         ?CharacterSubclass $subclass = null,
         ?LevelAdvancementSelection $advancement = null,
+        ?HitPointGainMethod $hitPointGainMethod = null,
+        ?int $hitPointGain = null,
     ): CharacterClassLevel {
         return $this->entityManager->wrapInTransaction(function () use (
             $character,
             $characterClass,
             $subclass,
             $advancement,
+            $hitPointGainMethod,
+            $hitPointGain,
         ): CharacterClassLevel {
             $this->validateCharacterCanLevelUp($character);
 
@@ -54,18 +59,24 @@ final readonly class CharacterLevelUpService
             );
 
             if ($advancement !== null) {
-                $this->applyAdvancementChoice(
-                    $character,
-                    $advancement,
-                    $totalLevel,
-                );
+                $this->applyAdvancementChoice($character, $advancement, $totalLevel);
             }
+
+            [$resolvedHitPointGain, $resolvedHitPointGainMethod] =
+                $this->resolveHitPointGain(
+                    $characterClass,
+                    $totalLevel,
+                    $hitPointGainMethod,
+                    $hitPointGain,
+                );
 
             $level = new CharacterClassLevel(
                 character: $character,
                 characterClass: $characterClass,
                 position: $totalLevel,
                 subclass: $subclass,
+                hitPointGain: $resolvedHitPointGain,
+                hitPointGainMethod: $resolvedHitPointGainMethod,
             );
 
             $character->addClassLevel($level);
@@ -113,6 +124,75 @@ final readonly class CharacterLevelUpService
                 $characterClass->getName(),
             ));
         }
+    }
+
+    /**
+     * @return array{int, HitPointGainMethod}
+     */
+    private function resolveHitPointGain(
+        CharacterClass $characterClass,
+        int $totalLevel,
+        ?HitPointGainMethod $method,
+        ?int $gain,
+    ): array {
+        if ($totalLevel === 1) {
+            if (
+                $method !== null
+                && $method !== HitPointGainMethod::FirstLevel
+            ) {
+                throw new \DomainException(
+                    'Le premier niveau utilise obligatoirement le maximum du dé de vie.',
+                );
+            }
+
+            if ($gain !== null && $gain !== $characterClass->getHitDie()) {
+                throw new \DomainException(
+                    'Le gain de PV du premier niveau doit correspondre au maximum du dé de vie.',
+                );
+            }
+
+            return [
+                $characterClass->getHitDie(),
+                HitPointGainMethod::FirstLevel,
+            ];
+        }
+
+        $method ??= HitPointGainMethod::Average;
+
+        if ($method === HitPointGainMethod::FirstLevel) {
+            throw new \DomainException(
+                'La méthode du premier niveau ne peut pas être utilisée après le niveau 1.',
+            );
+        }
+
+        if ($method === HitPointGainMethod::Average) {
+            $average = intdiv($characterClass->getHitDie(), 2) + 1;
+
+            if ($gain !== null && $gain !== $average) {
+                throw new \DomainException(sprintf(
+                    'La valeur moyenne d’un d%d est %d.',
+                    $characterClass->getHitDie(),
+                    $average,
+                ));
+            }
+
+            return [$average, $method];
+        }
+
+        if ($gain === null) {
+            throw new \DomainException(
+                'Le résultat du dé de vie doit être renseigné.',
+            );
+        }
+
+        if ($gain < 1 || $gain > $characterClass->getHitDie()) {
+            throw new \DomainException(sprintf(
+                'Le gain brut de PV doit être compris entre 1 et %d.',
+                $characterClass->getHitDie(),
+            ));
+        }
+
+        return [$gain, $method];
     }
 
     private function applyAdvancementChoice(
