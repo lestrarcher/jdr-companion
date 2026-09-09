@@ -95,6 +95,30 @@ export interface FeatReference {
   custom: boolean;
 }
 
+export interface ProgressionStageReference {
+  id: number;
+  label: string;
+  minimumValue: number;
+  maximumValue: number | null;
+  iconUrl: string | null;
+  displayOrder: number;
+}
+
+export interface ProgressionReference {
+  id: number;
+  slug: string;
+  name: string;
+  description: string | null;
+  minimumValue: number;
+  maximumValue: number | null;
+  accentColor: string | null;
+  gainLabel: string | null;
+  spendLabel: string | null;
+  custom: boolean;
+  bulkAdjustmentEnabled: boolean;
+  stages: ProgressionStageReference[];
+}
+
 export interface DndReferenceResponse {
   abilities: AbilityReference[];
   races: RaceReference[];
@@ -174,6 +198,31 @@ export interface SaveFeatPayload {
   chosenAbilityIncrease: number;
   allowedAbilities: AbilityKey[];
   custom: boolean;
+}
+
+export interface ProgressionListResponse {
+  progressions: ProgressionReference[];
+}
+
+export interface SaveProgressionPayload {
+  slug: string;
+  name: string;
+  description: string | null;
+  minimumValue: number;
+  maximumValue: number | null;
+  accentColor: string | null;
+  gainLabel: string | null;
+  spendLabel: string | null;
+  bulkAdjustmentEnabled: boolean;
+  custom: boolean;
+}
+
+export interface SaveProgressionStagePayload {
+  label: string;
+  minimumValue: number;
+  maximumValue: number | null;
+  iconUrl: string | null;
+  displayOrder: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -303,5 +352,93 @@ export class DndReferenceApiService {
     return this.http.delete<{ message: string }>(
       `${this.apiUrl}/feats/${featId}`,
     );
+  }
+
+  getProgressions(): Observable<ProgressionListResponse> {
+    return this.http.get<ProgressionListResponse>(
+      `${this.apiUrl}/progressions`,
+    );
+  }
+
+  createProgression(
+    payload: SaveProgressionPayload,
+  ): Observable<ProgressionReference> {
+    return this.http
+      .post<{
+        message: string;
+        progression: ProgressionReference;
+      }>(
+        `${this.apiUrl}/progressions`,
+        payload,
+      )
+      .pipe(map(response => response.progression));
+  }
+
+  updateProgression(
+    progressionId: number,
+    payload: Partial<SaveProgressionPayload>,
+  ): Observable<ProgressionReference> {
+    return this.http
+      .patch<{
+        message: string;
+        progression: ProgressionReference;
+      }>(
+        `${this.apiUrl}/progressions/${progressionId}`,
+        payload,
+      )
+      .pipe(map(response => response.progression));
+  }
+
+  deleteProgression(
+    progressionId: number,
+  ): Observable<{ message: string }> {
+    return this.http.delete<{ message: string }>(
+      `${this.apiUrl}/progressions/${progressionId}`,
+    );
+  }
+
+  createProgressionStage(
+    progressionId: number,
+    payload: SaveProgressionStagePayload,
+  ): Observable<ProgressionReference> {
+    return this.http
+      .post<{
+        message: string;
+        progression: ProgressionReference;
+      }>(
+        `${this.apiUrl}/progressions/${progressionId}/stages`,
+        payload,
+      )
+      .pipe(map(response => response.progression));
+  }
+
+  updateProgressionStage(
+    progressionId: number,
+    stageId: number,
+    payload: Partial<SaveProgressionStagePayload>,
+  ): Observable<ProgressionReference> {
+    return this.http
+      .patch<{
+        message: string;
+        progression: ProgressionReference;
+      }>(
+        `${this.apiUrl}/progressions/${progressionId}/stages/${stageId}`,
+        payload,
+      )
+      .pipe(map(response => response.progression));
+  }
+
+  deleteProgressionStage(
+    progressionId: number,
+    stageId: number,
+  ): Observable<ProgressionReference> {
+    return this.http
+      .delete<{
+        message: string;
+        progression: ProgressionReference;
+      }>(
+        `${this.apiUrl}/progressions/${progressionId}/stages/${stageId}`,
+      )
+      .pipe(map(response => response.progression));
   }
 }

@@ -1,0 +1,90 @@
+<section class="progressions-editor">
+  <header class="progressions-editor__header">
+    <div>
+      <span class="eyebrow">Progressions</span>
+      <h2>Progressions du personnage</h2>
+      <p>
+        Attribue ou retire les progressions narratives liées à ce personnage.
+      </p>
+    </div>
+
+    <button
+      type="button"
+      class="secondary-button"
+      (click)="cancelled.emit()"
+    >
+      Fermer
+    </button>
+  </header>
+
+  <div class="progressions-editor__content">
+    <section class="assigned-panel">
+      <h3>Progressions attribuées</h3>
+
+      @if (assigned().length === 0) {
+        <p class="empty-state">
+          Aucune progression attribuée.
+        </p>
+      } @else {
+        <div class="progression-list">
+          @for (progression of assigned(); track progression.id) {
+            <article class="progression-card">
+              <div>
+                <strong>{{ progression.name }}</strong>
+
+                <span>
+                  Minimum : {{ progression.minimumValue }}
+                  @if (progression.maximumValue !== null) {
+                    · Maximum : {{ progression.maximumValue }}
+                  }
+                </span>
+              </div>
+
+              <button
+                type="button"
+                class="danger-button"
+                [disabled]="submitting()"
+                (click)="remove(progression.definitionId)"
+              >
+                Retirer
+              </button>
+            </article>
+          }
+        </div>
+      }
+    </section>
+
+    <section class="add-panel">
+      <h3>Ajouter une progression</h3>
+
+      <label>
+        Progression
+        <select
+          [disabled]="submitting()"
+          (change)="selectProgression($any($event.target).value)"
+        >
+          <option value="">
+            Sélectionner…
+          </option>
+
+          @for (progression of available(); track progression.id) {
+            @if (!isAssigned(progression.id)) {
+              <option [value]="progression.id">
+                {{ progression.name }}
+              </option>
+            }
+          }
+        </select>
+      </label>
+
+      <button
+        type="button"
+        class="primary-button"
+        [disabled]="selectedProgressionId() === null || submitting()"
+        (click)="add()"
+      >
+        Ajouter
+      </button>
+    </section>
+  </div>
+</section>

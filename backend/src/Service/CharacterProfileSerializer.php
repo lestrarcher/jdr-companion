@@ -57,6 +57,38 @@ final readonly class CharacterProfileSerializer
                 $this->serializeFeat(...),
                 $character->getFeats()->toArray(),
             ),
+            'progressions' => array_map(
+                static function ($characterProgression): array {
+                    $definition =
+                        $characterProgression->getProgressionDefinition();
+
+                    return [
+                        'id' => $characterProgression->getId(),
+                        'definitionId' => $definition->getId(),
+                        'slug' => $definition->getSlug(),
+                        'name' => $definition->getName(),
+                        'description' =>$definition->getDescription(),
+                        'minimumValue' =>$definition->getMinimumValue(),
+                        'maximumValue' =>$definition->getMaximumValue(),
+                        'accentColor' =>$definition->getAccentColor(),
+                        'gainLabel' =>$definition->getGainLabel(),
+                        'spendLabel' =>$definition->getSpendLabel(),
+                        'bulkAdjustmentEnabled' => $definition->isBulkAdjustmentEnabled(),
+                        'stages' => array_map(
+                            static fn ($stage): array => [
+                                'id' => $stage->getId(),
+                                'label' => $stage->getLabel(),
+                                'minimumValue' => $stage->getMinimumValue(),
+                                'maximumValue' => $stage->getMaximumValue(),
+                                'iconUrl' => $stage->getIconUrl(),
+                                'displayOrder' => $stage->getDisplayOrder(),
+                            ],
+                            $definition->getStages()->toArray(),
+                        ),
+                    ];
+                },
+                $character->getProgressions()->toArray(),
+            ),
             'features' => array_values(array_map(
                 $this->serializeFeature(...),
                 $this->featureResolver->resolve($character),

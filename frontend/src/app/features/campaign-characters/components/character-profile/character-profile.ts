@@ -17,6 +17,7 @@ export class CharacterProfile {
   readonly loading = input(false);
   readonly editorOpened = input(false);
 
+  readonly progressionsRequested = output<void>();
   readonly refreshRequested = output<void>();
   readonly levelUpRequested = output<void>();
   readonly hitPointHistoryRequested = output<void>();

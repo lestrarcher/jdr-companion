@@ -106,6 +106,13 @@ class Character
     private Collection $feats;
 
     /**
+     * @var Collection<int, CharacterProgression>
+     */
+    #[ORM\OneToMany(mappedBy: 'character', targetEntity: CharacterProgression::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OrderBy(['id' => 'ASC'])]
+    private Collection $progressions;
+
+    /**
      * @var Collection<int, CharacterRaceAbilityChoice>
      */
     #[ORM\OneToMany(mappedBy: 'character', targetEntity: CharacterRaceAbilityChoice::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
@@ -142,6 +149,7 @@ class Character
         $this->magicItems  = new ArrayCollection();
         $this->classLevels = new ArrayCollection();
         $this->feats = new ArrayCollection();
+        $this->progressions = new ArrayCollection();
         $this->raceAbilityChoices = new ArrayCollection();
         $this->abilityAdjustments = new ArrayCollection();
 
@@ -504,6 +512,67 @@ class Character
             if (
                 $characterFeat->getFeat()
                 === $feat
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return Collection<int, CharacterProgression>
+     */
+    public function getProgressions(): Collection
+    {
+        return $this->progressions;
+    }
+
+    public function addProgression(
+        CharacterProgression $progression,
+    ): static {
+        if ($progression->getCharacter() !== $this) {
+            throw new \InvalidArgumentException(
+                'Cette progression appartient à un autre personnage.',
+            );
+        }
+
+        foreach ($this->progressions as $existingProgression) {
+            if (
+                $existingProgression->getProgressionDefinition()
+                === $progression->getProgressionDefinition()
+            ) {
+                throw new \InvalidArgumentException(
+                    sprintf(
+                        'Le personnage possède déjà la progression %s.',
+                        $progression
+                            ->getProgressionDefinition()
+                            ->getName(),
+                    ),
+                );
+            }
+        }
+
+        $this->progressions->add($progression);
+
+        return $this;
+    }
+
+    public function removeProgression(
+        CharacterProgression $progression,
+    ): static {
+        $this->progressions->removeElement($progression);
+
+        return $this;
+    }
+
+    public function hasProgression(
+        ProgressionDefinition $progressionDefinition,
+    ): bool {
+        foreach ($this->progressions as $progression) {
+            if (
+                $progression->getProgressionDefinition()
+                === $progressionDefinition
             ) {
                 return true;
             }

@@ -40,7 +40,7 @@
 
 .manager-tabs {
   display: grid;
-  grid-template-columns: repeat(7, minmax(130px, 1fr));
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   margin: 1rem 0;
   border: 1px solid rgba(202, 165, 86, 0.22);
   overflow-x: auto;

@@ -55,6 +55,7 @@
             (refreshRequested)="refreshProfile()"
             (levelUpRequested)="openEditor('level-up')"
             (hitPointHistoryRequested)="openEditor('hit-points')"
+            (progressionsRequested)="openEditor('progressions')"
           >
             @if (success()) {
               <p class="message message--success">
@@ -90,7 +91,20 @@
                 (cancelled)="closeEditor()"
               />
             }
+
+            @if (activeEditor() === 'progressions') {
+              <app-character-progressions
+                [assigned]="character.progressions"
+                [available]="progressions()"
+                [submitting]="progressionSubmitting()"
+                (progressionAdded)="addProgression($event)"
+                (progressionRemoved)="removeProgression($event)"
+                (cancelled)="closeEditor()"
+              />
+            }
+
           </app-character-profile>
+
         } @else if (profileError()) {
           <div class="profile-state profile-state--error">
             <p>{{ profileError() }}</p>

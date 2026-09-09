@@ -23,6 +23,8 @@ use App\Service\CharacterProfileSerializer;
 use App\Service\CharacterLevelUpOptionsService;
 use App\Service\CharacterLevelUpRequestResolver;
 use App\Service\CharacterLevelUpService;
+use App\Entity\ProgressionDefinition;
+use App\Repository\ProgressionDefinitionRepository;
 
 final class CharacterSessionStateController extends AbstractController
 {
@@ -304,6 +306,160 @@ final class CharacterSessionStateController extends AbstractController
 
         return $this->json(
             $this->serializeState($state, true),
+        );
+    }
+
+    #[Route(
+        '/sessions/{sessionId}/characters/{characterId}/progressions/{progressionId}',
+        name: 'api_character_session_state_progression_update',
+        requirements: [
+            'sessionId' => '\d+',
+            'characterId' => '\d+',
+            'progressionId' => '\d+',
+        ],
+        methods: ['PATCH'],
+    )]
+    public function updateProgression(
+        int $sessionId,
+        int $characterId,
+        int $progressionId,
+        Request $request,
+        GameSessionRepository $gameSessionRepository,
+        CharacterRepository $characterRepository,
+        ProgressionDefinitionRepository $progressionRepository,
+        CharacterSessionStateRepository $stateRepository,
+        EntityManagerInterface $entityManager,
+    ): JsonResponse {
+        $gameSession = $gameSessionRepository->find($sessionId);
+        $character = $characterRepository->find($characterId);
+        $progression = $progressionRepository->find($progressionId);
+
+        if (!$gameSession instanceof GameSession) {
+            return $this->json(
+                ['message' => 'Session introuvable.'],
+                Response::HTTP_NOT_FOUND,
+            );
+        }
+
+        if (!$character instanceof Character) {
+            return $this->json(
+                ['message' => 'Personnage introuvable.'],
+                Response::HTTP_NOT_FOUND,
+            );
+        }
+
+        if (!$progression instanceof ProgressionDefinition) {
+            return $this->json(
+                ['message' => 'Progression introuvable.'],
+                Response::HTTP_NOT_FOUND,
+            );
+        }
+
+        $this->denyAccessUnlessGranted(
+            CampaignVoter::MANAGE,
+            $gameSession->getCampaign(),
+        );
+
+        if (
+            $gameSession->getCampaign()->getId()
+            !== $character->getCampaign()->getId()
+        ) {
+            return $this->json(
+                ['message' => 'Le personnage ne fait pas partie de cette campagne.'],
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        if (!$character->hasProgression($progression)) {
+            return $this->json(
+                ['message' => 'Le personnage ne possède pas cette progression.'],
+                Response::HTTP_NOT_FOUND,
+            );
+        }
+
+        $sessionState = $stateRepository->findOneBy([
+            'gameSession' => $gameSession,
+            'character' => $character,
+        ]);
+
+        if (
+            !$sessionState instanceof CharacterSessionState
+            || !$sessionState->isParticipating()
+        ) {
+            return $this->json(
+                ['message' => 'Ce personnage ne participe pas à cette session.'],
+                Response::HTTP_NOT_FOUND,
+            );
+        }
+
+        try {
+            $payload = $request->toArray();
+        } catch (JsonException) {
+            return $this->json(
+                ['message' => 'Le corps JSON est invalide.'],
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        $currentValue = $payload['currentValue'] ?? null;
+
+        if (!is_int($currentValue)) {
+            return $this->json(
+                ['message' => 'La propriété "currentValue" doit être un entier.'],
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        if ($currentValue < $progression->getMinimumValue()) {
+            return $this->json(
+                ['message' => 'La valeur est inférieure au minimum de la progression.'],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
+
+        if (
+            $progression->getMaximumValue() !== null
+            && $currentValue > $progression->getMaximumValue()
+        ) {
+            return $this->json(
+                ['message' => 'La valeur dépasse le maximum de la progression.'],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
+
+        $state = $sessionState->getState();
+        $progressions = $state['progressions'] ?? [];
+        $found = false;
+
+        foreach ($progressions as &$progressionState) {
+            if (
+                ($progressionState['id'] ?? null)
+                !== $progression->getSlug()
+            ) {
+                continue;
+            }
+
+            $progressionState['currentValue'] = $currentValue;
+            $found = true;
+            break;
+        }
+
+        unset($progressionState);
+
+        if (!$found) {
+            $progressions[] = [
+                'id' => $progression->getSlug(),
+                'currentValue' => $currentValue,
+            ];
+        }
+
+        $state['progressions'] = $progressions;
+        $sessionState->setState($state);
+
+        $entityManager->flush();
+
+        return $this->json(
+            $this->serializeState($sessionState, true),
         );
     }
 

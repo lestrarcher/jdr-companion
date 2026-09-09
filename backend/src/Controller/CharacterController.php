@@ -218,6 +218,24 @@ final class CharacterController extends AbstractController
                 ],
                 $character->getClassLevels()->toArray(),
             ),
+            'progressions' => array_map(
+                static function ($characterProgression): array {
+                    $definition =
+                        $characterProgression->getProgressionDefinition();
+
+                    return [
+                        'id' => $characterProgression->getId(),
+                        'definitionId' => $definition->getId(),
+                        'slug' => $definition->getSlug(),
+                        'name' => $definition->getName(),
+                        'minimumValue' =>
+                            $definition->getMinimumValue(),
+                        'maximumValue' =>
+                            $definition->getMaximumValue(),
+                    ];
+                },
+                $character->getProgressions()->toArray(),
+            ),
             'definition' =>
                 $character->getDefinition(),
         ];

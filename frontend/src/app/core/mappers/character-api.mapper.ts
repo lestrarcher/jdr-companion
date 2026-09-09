@@ -41,6 +41,27 @@ export interface CharacterProfilePayload {
     subclassName: string | null;
   }>;
 
+  progressions: Array<{
+    definitionId: number;
+    slug: string;
+    name: string;
+    description: string | null;
+    minimumValue: number;
+    maximumValue: number | null;
+    accentColor: string | null;
+    gainLabel: string | null;
+    spendLabel: string | null;
+    bulkAdjustmentEnabled: boolean;
+    stages: Array<{
+      id: number;
+      label: string;
+      minimumValue: number;
+      maximumValue: number | null;
+      iconUrl: string | null;
+      displayOrder: number;
+    }>;
+  }>;
+
   resources: Array<{
     slug: string;
     name: string;
@@ -50,12 +71,6 @@ export interface CharacterProfilePayload {
 
   definition?: {
     portraitUrl?: string | null;
-    progressions?: Array<{
-      id: string;
-      name: string;
-      minimumValue: number;
-      maximumValue?: number;
-    }>;
     resources?: Array<{
       id: string;
       name: string;
@@ -143,18 +158,61 @@ export function characterProfileToCharacter(
     };
   });
 
-  const progressions = (definition.progressions ?? []).map(
+  const progressions = profile.progressions.map(
     (progression) => {
-      const storedProgression = state.progressions.find(
-        (candidate) => candidate.id === progression.id,
-      );
+      const storedProgression =
+        state.progressions.find(
+          (candidate) =>
+            candidate.id === progression.slug,
+        );
 
       return {
-        ...progression,
+        id: progression.slug,
+        name: progression.name,
+        minimumValue:
+          progression.minimumValue,
+        maximumValue:
+          progression.maximumValue ??
+          undefined,
         currentValue:
           storedProgression?.currentValue ??
           progression.minimumValue,
-      };
+
+        accentColor:
+          progression.accentColor ??
+          undefined,
+
+        states: progression.stages
+          .filter(
+            (stage) => stage.iconUrl !== null,
+          )
+          .sort(
+            (first, second) =>
+              first.displayOrder -
+              second.displayOrder,
+          )
+          .map((stage) => ({
+            label: stage.label,
+            minimumValue:
+              stage.minimumValue,
+            maximumValue:
+              stage.maximumValue ??
+              undefined,
+            iconUrl: stage.iconUrl!,
+          })),
+
+        bulkAdjustment:
+          progression.bulkAdjustmentEnabled &&
+          progression.gainLabel &&
+          progression.spendLabel
+            ? {
+                gainLabel:
+                  progression.gainLabel,
+                spendLabel:
+                  progression.spendLabel,
+              }
+            : undefined,
+        };
     },
   );
 

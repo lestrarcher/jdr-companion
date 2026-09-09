@@ -1,0 +1,369 @@
+<section class="manager">
+  <aside class="library">
+    <div class="library-header">
+      <div>
+        <span class="eyebrow">Bibliothèque</span>
+        <h2>Progressions</h2>
+      </div>
+
+      <button
+        type="button"
+        class="icon-button"
+        title="Nouvelle progression"
+        (click)="startNew()"
+      >
+        +
+      </button>
+    </div>
+
+    <input
+      class="search"
+      type="search"
+      placeholder="Rechercher..."
+      [ngModel]="search()"
+      (ngModelChange)="updateSearch($event)"
+    />
+
+    <div class="library-list">
+      @if (loading()) {
+        <p class="empty">Chargement...</p>
+      } @else if (filteredProgressions().length === 0) {
+        <p class="empty">
+          Aucune progression.
+        </p>
+      }
+
+      @for (
+        progression of filteredProgressions();
+        track progression.id
+      ) {
+        <button
+          type="button"
+          class="library-item"
+          [class.selected]="
+            progression.id === selectedProgressionId()
+          "
+          (click)="selectProgression(progression)"
+        >
+          <span class="item-title">
+            {{ progression.name }}
+          </span>
+
+          <span class="item-meta">
+            {{ progression.stages.length }}
+            palier{{ progression.stages.length > 1 ? 's' : '' }}
+
+            @if (progression.custom) {
+              · Personnalisée
+            }
+          </span>
+        </button>
+      }
+    </div>
+  </aside>
+
+  <div class="editor">
+    <header class="editor-header">
+      <div>
+        <span class="eyebrow">
+          {{
+            selectedProgression()
+              ? 'Édition'
+              : 'Nouvelle progression'
+          }}
+        </span>
+
+        <h2>
+          {{
+            form.name
+              || 'Progression sans nom'
+          }}
+        </h2>
+      </div>
+    </header>
+
+    @if (error()) {
+      <div class="message error">
+        {{ error() }}
+      </div>
+    }
+
+    @if (success()) {
+      <div class="message success">
+        {{ success() }}
+      </div>
+    }
+
+    <div class="form-grid">
+      <label>
+        <span>Nom</span>
+        <input
+          type="text"
+          [(ngModel)]="form.name"
+          (blur)="
+            !form.slug && generateSlug()
+          "
+        />
+      </label>
+
+      <label>
+        <span>Slug</span>
+        <input
+          type="text"
+          [(ngModel)]="form.slug"
+        />
+      </label>
+
+      <label class="full">
+        <span>Description</span>
+        <textarea
+          rows="4"
+          [(ngModel)]="form.description"
+        ></textarea>
+      </label>
+
+      <label>
+        <span>Valeur minimale</span>
+        <input
+          type="number"
+          [(ngModel)]="form.minimumValue"
+        />
+      </label>
+
+      <label>
+        <span>Valeur maximale</span>
+        <input
+          type="number"
+          placeholder="Illimitée"
+          [(ngModel)]="form.maximumValue"
+        />
+      </label>
+
+      <label class="checkbox-field">
+        <input
+          type="checkbox"
+          [(ngModel)]="form.bulkAdjustmentEnabled"
+          name="bulkAdjustmentEnabled"
+        />
+        <span>Autoriser les ajustements importants</span>
+      </label>
+
+      @if (form.bulkAdjustmentEnabled) {
+        <label>
+          <span>Libellé de gain</span>
+          <input
+            type="text"
+            [(ngModel)]="form.gainLabel"
+            name="gainLabel"
+          />
+        </label>
+
+        <label>
+          <span>Libellé de dépense</span>
+          <input
+            type="text"
+            [(ngModel)]="form.spendLabel"
+            name="spendLabel"
+          />
+        </label>
+      }
+
+      <label>
+        <span>Couleur d’accent</span>
+        <input
+          type="text"
+          placeholder="#7f1d1d"
+          [(ngModel)]="form.accentColor"
+        />
+      </label>
+
+      <label class="checkbox-field">
+        <input
+          type="checkbox"
+          [(ngModel)]="form.custom"
+        />
+
+        <span>Progression personnalisée</span>
+      </label>
+    </div>
+
+    <div class="actions">
+      @if (selectedProgression()) {
+        <button
+          type="button"
+          class="danger"
+          [disabled]="deleting()"
+          (click)="deleteProgression()"
+        >
+          Supprimer
+        </button>
+      }
+
+      <button
+        type="button"
+        class="primary"
+        [disabled]="submitting()"
+        (click)="save()"
+      >
+        {{
+          submitting()
+            ? 'Enregistrement...'
+            : 'Enregistrer'
+        }}
+      </button>
+    </div>
+
+    <section class="stages">
+      <div class="section-header">
+        <div>
+          <span class="eyebrow">
+            États narratifs
+          </span>
+          <h3>Paliers</h3>
+        </div>
+
+        @if (selectedProgression()) {
+          <button
+            type="button"
+            class="secondary"
+            (click)="startNewStage()"
+          >
+            + Ajouter un palier
+          </button>
+        }
+      </div>
+
+      @if (!selectedProgression()) {
+        <p class="empty stage-empty">
+          Enregistre d’abord la progression pour ajouter ses paliers.
+        </p>
+      } @else {
+        <div class="stage-list">
+          @for (
+            stage of selectedProgression()!.stages;
+            track stage.id
+          ) {
+            <article
+              class="stage-card"
+              (click)="editStage(stage)"
+            >
+              <div>
+                <strong>
+                  {{ stage.label }}
+                </strong>
+
+                <span>
+                  {{ stage.minimumValue }}
+                  –
+                  {{
+                    stage.maximumValue
+                      ?? '∞'
+                  }}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                class="stage-delete"
+                title="Supprimer"
+                (click)="
+                  $event.stopPropagation();
+                  deleteStage(stage)
+                "
+              >
+                ×
+              </button>
+            </article>
+          }
+        </div>
+
+        <div class="stage-editor">
+          <h4>
+            {{
+              stageForm.id === null
+                ? 'Nouveau palier'
+                : 'Modifier le palier'
+            }}
+          </h4>
+
+          <div class="form-grid">
+            <label class="full">
+              <span>Nom</span>
+              <input
+                type="text"
+                [(ngModel)]="stageForm.label"
+              />
+            </label>
+
+            <label>
+              <span>Minimum</span>
+              <input
+                type="number"
+                [(ngModel)]="
+                  stageForm.minimumValue
+                "
+              />
+            </label>
+
+            <label>
+              <span>Maximum</span>
+              <input
+                type="number"
+                placeholder="Illimité"
+                [(ngModel)]="
+                  stageForm.maximumValue
+                "
+              />
+            </label>
+
+            <label>
+              <span>Ordre d’affichage</span>
+              <input
+                type="number"
+                min="0"
+                [(ngModel)]="
+                  stageForm.displayOrder
+                "
+              />
+            </label>
+
+            <label>
+              <span>URL d’icône</span>
+              <input
+                type="text"
+                [(ngModel)]="
+                  stageForm.iconUrl
+                "
+              />
+            </label>
+          </div>
+
+          <div class="actions stage-actions">
+            <button
+              type="button"
+              class="secondary"
+              (click)="startNewStage()"
+            >
+              Réinitialiser
+            </button>
+
+            <button
+              type="button"
+              class="primary"
+              [disabled]="stageSubmitting()"
+              (click)="saveStage()"
+            >
+              {{
+                stageSubmitting()
+                  ? 'Enregistrement...'
+                  : stageForm.id === null
+                    ? 'Ajouter le palier'
+                    : 'Mettre à jour'
+              }}
+            </button>
+          </div>
+        </div>
+      }
+    </section>
+  </div>
+</section>

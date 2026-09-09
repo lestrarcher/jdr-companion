@@ -78,6 +78,28 @@ export interface CharacterFeatSummary {
   acquiredAtLevel: number | null;
 }
 
+export interface CharacterProgressionSummary {
+  id: number;
+  definitionId: number;
+  slug: string;
+  name: string;
+  description: string | null;
+  minimumValue: number;
+  maximumValue: number | null;
+  accentColor: string | null;
+  gainLabel: string | null;
+  spendLabel: string | null;
+  bulkAdjustmentEnabled: boolean;
+  stages: Array<{
+    id: number;
+    label: string;
+    minimumValue: number;
+    maximumValue: number | null;
+    iconUrl: string | null;
+    displayOrder: number;
+  }>;
+}
+
 export interface CharacterFeatureSummary {
   id: number;
   slug: string;
@@ -116,6 +138,7 @@ export interface CharacterApiResponse {
   totalLevel: number;
   proficiencyBonus: number;
   classLevels: CharacterClassLevel[];
+  progressions: CharacterProgressionSummary[];
   definition: Record<string, unknown>;
 }
 
@@ -227,6 +250,14 @@ interface CharacterProfileApiResponse {
   character: CharacterProfile;
 }
 
+interface CharacterProgressionListApiResponse {
+  progressions: CharacterProgressionSummary[];
+}
+
+interface CharacterProgressionApiResponse {
+  progression: CharacterProgressionSummary;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CharacterApiService {
   private readonly http = inject(HttpClient);
@@ -250,6 +281,40 @@ export class CharacterApiService {
         `${this.apiUrl}/campaigns/${campaignId}/characters`,
       )
       .pipe(map(response => response.characters));
+  }
+
+  getProgressions(
+    campaignId: number,
+    characterId: number,
+  ): Observable<CharacterProgressionSummary[]> {
+    return this.http
+      .get<CharacterProgressionListApiResponse>(
+        `${this.apiUrl}/campaigns/${campaignId}/characters/${characterId}/progressions`,
+      )
+      .pipe(map(response => response.progressions));
+  }
+
+  addProgression(
+    campaignId: number,
+    characterId: number,
+    progressionId: number,
+  ): Observable<CharacterProgressionSummary> {
+    return this.http
+      .post<CharacterProgressionApiResponse>(
+        `${this.apiUrl}/campaigns/${campaignId}/characters/${characterId}/progressions/${progressionId}`,
+        {},
+      )
+      .pipe(map(response => response.progression));
+  }
+
+  removeProgression(
+    campaignId: number,
+    characterId: number,
+    progressionId: number,
+  ): Observable<void> {
+    return this.http.delete<void>(
+      `${this.apiUrl}/campaigns/${campaignId}/characters/${characterId}/progressions/${progressionId}`,
+    );
   }
 
   getProfile(

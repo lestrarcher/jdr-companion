@@ -14,13 +14,19 @@ import {
 import {
   DndReferenceApiService,
   DndReferenceResponse,
+  ProgressionReference,
 } from '@core/services/dnd-reference-api.service';
 import { CharacterHitPointHistory } from './components/character-hit-point-history/character-hit-point-history';
 import { CharacterLevelUp } from './components/character-level-up/character-level-up';
 import { CharacterProfile } from './components/character-profile/character-profile';
 import { CharacterRoster } from './components/character-roster/character-roster';
+import { CharacterProgressions } from './components/character-progressions/character-progressions';
 
-type CharacterEditor = 'level-up' | 'hit-points' | null;
+type CharacterEditor =
+  | 'level-up'
+  | 'hit-points'
+  | 'progressions'
+  | null;
 
 @Component({
   selector: 'app-campaign-characters',
@@ -31,6 +37,7 @@ type CharacterEditor = 'level-up' | 'hit-points' | null;
     CharacterProfile,
     CharacterLevelUp,
     CharacterHitPointHistory,
+    CharacterProgressions,
   ],
   templateUrl: './campaign-characters.html',
   styleUrl: './campaign-characters.scss',
@@ -44,13 +51,14 @@ export class CampaignCharacters {
     this.route.snapshot.paramMap.get('campaignId'),
   );
   protected readonly levelUpSubmitting = signal(false);
+  protected readonly progressionSubmitting = signal(false);
   protected readonly characters = signal<CharacterApiResponse[]>([]);
   protected readonly reference = signal<DndReferenceResponse | null>(null);
   protected readonly selectedCharacterId = signal<number | null>(null);
   protected readonly profile = signal<CharacterProfileModel | null>(null);
   protected readonly levelUpOptions = signal<LevelUpOptions | null>(null);
   protected readonly activeEditor = signal<CharacterEditor>(null);
-
+  protected readonly progressions = signal<ProgressionReference[]>([]);
   protected readonly loading = signal(true);
   protected readonly profileLoading = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -86,6 +94,7 @@ export class CampaignCharacters {
     }
 
     this.levelUpSubmitting.set(true);
+
     this.profileError.set(null);
 
     this.characterApi
@@ -161,6 +170,7 @@ export class CampaignCharacters {
     forkJoin({
       characters: this.characterApi.list(this.campaignId),
       reference: this.referenceApi.getReference(),
+      progressions: this.referenceApi.getProgressions(),
     })
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
@@ -172,6 +182,7 @@ export class CampaignCharacters {
 
           this.characters.set(characters);
           this.reference.set(result.reference);
+          this.progressions.set(result.progressions.progressions);
 
           const firstCharacter =
             characters.find(character => this.isStructured(character))
@@ -261,5 +272,79 @@ export class CampaignCharacters {
     }
 
     return 'Une erreur inattendue est survenue.';
+  }
+
+  protected addProgression(
+    progressionId: number,
+  ): void {
+    const characterId =
+      this.selectedCharacterId();
+
+    if (characterId === null) {
+      return;
+    }
+
+    this.progressionSubmitting.set(true);
+    this.profileError.set(null);
+    this.success.set(null);
+
+    this.characterApi
+      .addProgression(
+        this.campaignId,
+        characterId,
+        progressionId,
+      )
+      .pipe(
+        finalize(() =>
+          this.progressionSubmitting.set(false),
+        ),
+      )
+      .subscribe({
+        next: () => {
+          this.success.set('Progression attribuée.');
+          this.loadCharacterDetails(characterId);
+        },
+        error: error =>
+          this.profileError.set(
+            this.errorMessage(error),
+          ),
+      });
+  }
+
+  protected removeProgression(
+    progressionId: number,
+  ): void {
+    const characterId =
+      this.selectedCharacterId();
+
+    if (characterId === null) {
+      return;
+    }
+
+    this.progressionSubmitting.set(true);
+    this.profileError.set(null);
+    this.success.set(null);
+
+    this.characterApi
+      .removeProgression(
+        this.campaignId,
+        characterId,
+        progressionId,
+      )
+      .pipe(
+        finalize(() =>
+          this.progressionSubmitting.set(false),
+        ),
+      )
+      .subscribe({
+        next: () => {
+          this.success.set('Progression retirée.');
+          this.loadCharacterDetails(characterId);
+        },
+        error: error =>
+          this.profileError.set(
+            this.errorMessage(error),
+          ),
+      });
   }
 }

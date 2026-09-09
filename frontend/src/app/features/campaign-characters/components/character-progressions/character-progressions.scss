@@ -1,0 +1,147 @@
+:host {
+  display: block;
+}
+
+.progressions-editor {
+  display: grid;
+  gap: 1.25rem;
+  padding: 1.25rem;
+  border: 1px solid rgba(202, 165, 86, .25);
+  background: rgba(8, 8, 14, .82);
+}
+
+.progressions-editor__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+
+  h2 {
+    margin: .2rem 0 .35rem;
+    font-family: Georgia, serif;
+    color: #f7f1e7;
+  }
+
+  p {
+    margin: 0;
+    color: #aaa3a7;
+  }
+}
+
+.eyebrow {
+  font-size: .75rem;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: #d6b45e;
+}
+
+.progressions-editor__content {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(240px, 1fr);
+  gap: 1rem;
+}
+
+.assigned-panel,
+.add-panel {
+  padding: 1rem;
+  border: 1px solid rgba(202, 165, 86, .18);
+  background: rgba(18, 17, 26, .72);
+
+  h3 {
+    margin: 0 0 1rem;
+    color: #f7f1e7;
+  }
+}
+
+.progression-list {
+  display: grid;
+  gap: .75rem;
+}
+
+.progression-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .85rem;
+  border: 1px solid rgba(202, 165, 86, .18);
+  background: rgba(10, 10, 16, .75);
+
+  div {
+    display: grid;
+    gap: .25rem;
+  }
+
+  strong {
+    color: #f7f1e7;
+  }
+
+  span {
+    font-size: .85rem;
+    color: #aaa3a7;
+  }
+}
+
+.add-panel {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+
+  label {
+    display: grid;
+    gap: .4rem;
+    color: #d8d1c5;
+  }
+
+  select {
+    width: 100%;
+    padding: .65rem .75rem;
+    border: 1px solid rgba(202, 165, 86, .28);
+    background: rgba(5, 5, 10, .8);
+    color: #f7f1e7;
+
+    &:focus {
+      outline: 1px solid #d6b45e;
+    }
+  }
+}
+
+.primary-button,
+.secondary-button,
+.danger-button {
+  padding: .6rem .9rem;
+  border: 1px solid rgba(202, 165, 86, .35);
+  background: transparent;
+  color: #f7f1e7;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: .45;
+    cursor: default;
+  }
+}
+
+.primary-button {
+  background: rgba(214, 180, 94, .12);
+  border-color: #d6b45e;
+}
+
+.danger-button {
+  border-color: rgba(185, 80, 80, .55);
+  color: #e7a3a3;
+}
+
+.empty-state {
+  margin: 0;
+  color: #aaa3a7;
+}
+
+@media (max-width: 900px) {
+  .progressions-editor__content {
+    grid-template-columns: 1fr;
+  }
+
+  .progressions-editor__header {
+    flex-direction: column;
+  }
+}

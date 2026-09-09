@@ -6,15 +6,17 @@ import { RaceManager } from '../components/race-manager/race-manager';
 import { ResourceDefinitionManager } from '../components/resource-definition-manager/resource-definition-manager';
 import { SubclassManager } from '../components/subclass-manager/subclass-manager';
 import { FeatManager } from '../components/feat-manager/feat-manager';
+import { ProgressionManager } from '../components/progression-manager/progression-manager';
 
 type ManagerSection =
   | 'classes'
   | 'races'
   | 'subclasses'
+  | 'feats'
+  | 'progressions'
   | 'features'
   | 'resources'
-  | 'rules'
-  | 'feats';
+  | 'rules';
 
 interface ManagerTab {
   section: ManagerSection;
@@ -33,6 +35,7 @@ interface ManagerTab {
     ResourceDefinitionManager,
     FeatureRuleManager,
     FeatManager,
+    ProgressionManager,
   ],
   templateUrl: './feature-manager.html',
   styleUrl: './feature-manager.scss',
@@ -60,6 +63,11 @@ export class FeatureManager {
       section: 'feats',
       label: 'Dons',
       description: 'Talents et améliorations spéciales',
+    },
+    {
+      section: 'progressions',
+      label: 'Progressions',
+      description: 'Jauges narratives et paliers',
     },
     {
       section: 'features',

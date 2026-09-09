@@ -52,9 +52,69 @@ final readonly class CharacterSessionStateSynchronizer
             );
         }
 
+        $progressions = $state['progressions'] ?? [];
+
+        foreach ($character->getProgressions() as $characterProgression) {
+            $definition =
+                $characterProgression->getProgressionDefinition();
+
+            $id = $definition->getSlug();
+            $index = $this->findStateIndex($progressions, $id);
+
+            if ($index !== null) {
+                continue;
+            }
+
+            $progressions[] = [
+                'id' => $id,
+                'currentValue' => $definition->getMinimumValue(),
+            ];
+        }
+
+        $state['progressions'] = $progressions;
+
         $state['resources'] = $resources;
 
         return $state;
+    }
+
+    /**
+     * Initialise dans les états de session les progressions
+     * attribuées au personnage qui n'existent pas encore.
+     *
+     * Les valeurs existantes ne sont jamais modifiées.
+     */
+    public function initializeMissingProgressions(
+        Character $character,
+    ): void {
+        $sessionStates = $this->sessionStateRepository->findBy([
+            'character' => $character,
+        ]);
+
+        foreach ($sessionStates as $sessionState) {
+            $state = $sessionState->getState();
+            $progressions = $state['progressions'] ?? [];
+
+            foreach ($character->getProgressions() as $characterProgression) {
+                $definition =
+                    $characterProgression->getProgressionDefinition();
+
+                $id = $definition->getSlug();
+
+                if ($this->findStateIndex($progressions, $id) !== null) {
+                    continue;
+                }
+
+                $progressions[] = [
+                    'id' => $id,
+                    'currentValue' =>
+                        $definition->getMinimumValue(),
+                ];
+            }
+
+            $state['progressions'] = $progressions;
+            $sessionState->setState($state);
+        }
     }
 
     /**

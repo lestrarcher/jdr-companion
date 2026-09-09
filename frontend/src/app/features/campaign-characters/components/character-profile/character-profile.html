@@ -39,6 +39,16 @@
       </button>
     }
 
+    @if (isStructured(currentCharacter) && !editorOpened()) {
+      <button
+        type="button"
+        class="secondary-button"
+        (click)="progressionsRequested.emit()"
+      >
+        Progressions
+      </button>
+    }
+
     @if (
       isStructured(currentCharacter)
       && canLevelUp()

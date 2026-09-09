@@ -69,22 +69,15 @@ final readonly class CharacterSessionStateFactory
      */
     private function createProgressions(Character $character): array
     {
-        $progressions = $character->getDefinition()['progressions'] ?? [];
-
-        if (!is_array($progressions)) {
-            return [];
-        }
-
         $state = [];
 
-        foreach ($progressions as $progression) {
-            if (!is_array($progression) || !isset($progression['id'])) {
-                continue;
-            }
+        foreach ($character->getProgressions() as $characterProgression) {
+            $definition =
+                $characterProgression->getProgressionDefinition();
 
             $state[] = [
-                'id' => (string) $progression['id'],
-                'currentValue' => (int) ($progression['minimumValue'] ?? 0),
+                'id' => $definition->getSlug(),
+                'currentValue' => $definition->getMinimumValue(),
             ];
         }
 
