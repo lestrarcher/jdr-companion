@@ -7,7 +7,7 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import {
   CharacterWalletComponent,
 } from './components/character-wallet/character-wallet';
@@ -42,7 +42,6 @@ import { CampaignConfig } from '@core/models/campaign.model';
 import {
   CampaignConfigurationRegistryService,
 } from '@core/services/campaign-configuration-registry.service';
-
 import {
   CharacterProgressions,
   ProgressionChange,
@@ -78,6 +77,7 @@ type PlayerPortalTab =
     CharacterWalletComponent,
     CharacterMagicItems,
     RestControls,
+    RouterLink,
   ],
   templateUrl: './player-portal.html',
   styleUrl: './player-portal.scss',
@@ -85,64 +85,30 @@ type PlayerPortalTab =
 export class PlayerPortal {
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
+  protected readonly accessToken = this.route.snapshot.paramMap.get('accessToken') ?? '';
 
-  protected readonly accessToken =
-    this.route.snapshot.paramMap.get(
-      'accessToken',
-    ) ?? '';
+  private readonly characterStateService = inject(CharacterStateService);
+  private readonly characterSessionStateApi = inject(CharacterSessionStateApiService);
+  private readonly restRequestApi = inject(RestRequestApiService);
+  private readonly campaignConfigurationRegistry = inject(CampaignConfigurationRegistryService);
 
-  private readonly characterStateService = inject(
-    CharacterStateService,
-  );
+  protected readonly characterState = this.characterStateService.character;
 
-  private readonly characterSessionStateApi = inject(
-    CharacterSessionStateApiService,
-  );
-
-  private readonly restRequestApi = inject(
-    RestRequestApiService,
-  );
-
-  private readonly campaignConfigurationRegistry =
-    inject(CampaignConfigurationRegistryService);
-
-  protected readonly campaign =
-    signal<CampaignConfig | null>(null);
-
-  protected readonly characterState =
-    this.characterStateService.character;
-
-  protected readonly character =
-    signal<Character | null>(null);
-
-  protected readonly sessionStatus =
-    signal<SessionStatus | null>(null);
-
+  protected readonly campaign = signal<CampaignConfig | null>(null);
+  protected readonly character = signal<Character | null>(null);
+  protected readonly sessionStatus = signal<SessionStatus | null>(null);
   protected readonly loading = signal(true);
+  protected readonly loadError = signal<string | null>(null);
+  protected readonly restFeedback = signal<string | null>(null);
+  protected readonly saveStatus = signal<SaveStatus>('idle');
+  protected readonly levelUpAllowed = signal(false);
+  private readonly latestRestRequest = signal<RestRequestApiResponse | null>(null);
+  private readonly restRequestSubmitting = signal(false);
+  private readonly handledRestRequest = signal<string | null>(null);
 
-  protected readonly loadError =
-    signal<string | null>(null);
+  private readonly remoteSynchronization = new Subject<CharacterSessionStatePayload>();
 
-  protected readonly restFeedback =
-    signal<string | null>(null);
-
-  protected readonly saveStatus =
-    signal<SaveStatus>('idle');
-
-  private readonly latestRestRequest =
-    signal<RestRequestApiResponse | null>(null);
-
-  private readonly restRequestSubmitting =
-    signal(false);
-
-  private readonly handledRestRequest =
-    signal<string | null>(null);
-
-  private readonly remoteSynchronization =
-    new Subject<CharacterSessionStatePayload>();
-
-  private readonly remoteSynchronizationEnabled =
-    signal(false);
+  private readonly remoteSynchronizationEnabled = signal(false);
 
   private readonly campaignId =
     this.route.snapshot.paramMap.get(
@@ -153,10 +119,7 @@ export class PlayerPortal {
     this.route.snapshot.paramMap.get(
       'sessionId',
     ) ?? '';
-
-  protected readonly activeTab =
-    signal<PlayerPortalTab>('status');
-
+  protected readonly activeTab = signal<PlayerPortalTab>('status');
   protected readonly sortedResources = computed(() => {
     const character = this.characterState();
 
@@ -195,7 +158,6 @@ export class PlayerPortal {
           second.displayOrder,
       );
   });
-
   protected readonly storedValueResources = computed(() =>
     this.sortedResources().filter(
       (resource) =>
@@ -203,7 +165,6 @@ export class PlayerPortal {
         undefined,
     ),
   );
-
   protected readonly pendingRestRequest = computed(() => {
     const request =
       this.latestRestRequest();
@@ -212,7 +173,6 @@ export class PlayerPortal {
       ? request
       : undefined;
   });
-
   protected readonly closedMessage = computed(() => {
     return this.sessionStatus() === 'closed'
       ? 'Cette session est terminée.'
@@ -397,9 +357,8 @@ export class PlayerPortal {
           this.campaign.set(campaign);
           this.character.set(loadedCharacter);
 
-          this.sessionStatus.set(
-            response.session.status,
-          );
+          this.sessionStatus.set(response.session.status);
+          this.levelUpAllowed.set(response.levelUpAllowed);
 
           this.characterStateService.initialize(
             campaign.id,
@@ -407,8 +366,7 @@ export class PlayerPortal {
             false,
           );
 
-          this.remoteSynchronizationEnabled
-            .set(true);
+          this.remoteSynchronizationEnabled.set(true);
 
           this.loading.set(false);
         },

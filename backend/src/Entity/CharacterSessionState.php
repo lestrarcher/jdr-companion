@@ -45,6 +45,9 @@ class CharacterSessionState
     #[ORM\Column(options: ['default' => true])]
     private bool $participating = true;
 
+    #[ORM\Column(options: ['default' => false])]
+    private bool $levelUpAllowed = false;
+
     #[ORM\Column]
     private DateTimeImmutable $createdAt;
 
@@ -117,6 +120,18 @@ class CharacterSessionState
     {
         $this->participating = $participating;
         $this->touch();
+
+        return $this;
+    }
+
+    public function isLevelUpAllowed(): bool
+    {
+        return $this->levelUpAllowed;
+    }
+
+    public function setLevelUpAllowed(bool $levelUpAllowed): self
+    {
+        $this->levelUpAllowed = $levelUpAllowed;
 
         return $this;
     }

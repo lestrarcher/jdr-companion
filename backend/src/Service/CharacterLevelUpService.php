@@ -23,6 +23,7 @@ final readonly class CharacterLevelUpService
         private EntityManagerInterface $entityManager,
         private CharacterClassLevelRuleRepository $levelRuleRepository,
         private CharacterSessionStateSynchronizer $stateSynchronizer,
+        private CharacterMulticlassEligibilityService $multiclassEligibility,
     ) {
     }
 
@@ -44,6 +45,15 @@ final readonly class CharacterLevelUpService
         ): CharacterClassLevel {
             $this->validateCharacterCanLevelUp($character);
             $stateBeforeLevelUp = $this->stateSynchronizer->snapshot($character);
+
+            $this->validateCharacterCanLevelUp($character);
+            $this->validateMulticlassEligibility(
+                $character,
+                $characterClass,
+            );
+
+            $stateBeforeLevelUp =
+            $this->stateSynchronizer->snapshot($character);
 
             $totalLevel = $character->getNextLevelPosition();
             $classLevel = $character->getLevelInClass($characterClass) + 1;
@@ -102,6 +112,32 @@ final readonly class CharacterLevelUpService
                 'Ce personnage a déjà atteint le niveau maximum.',
             );
         }
+    }
+
+    private function validateMulticlassEligibility(
+        Character $character,
+        CharacterClass $characterClass,
+    ): void {
+        if (
+            $this->multiclassEligibility->canTakeLevel(
+                $character,
+                $characterClass,
+            )
+        ) {
+            return;
+        }
+
+        $requirements =
+            $this->multiclassEligibility->missingRequirements(
+                $character,
+                $characterClass,
+            );
+
+        throw new \DomainException(sprintf(
+            'Le personnage ne remplit pas les prérequis pour se multiclasser en %s : %s.',
+            $characterClass->getName(),
+            implode(' ou ', $requirements),
+        ));
     }
 
     private function validateAdvancementChoice(

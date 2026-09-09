@@ -67,8 +67,8 @@ export class SessionCharacters implements OnInit {
   readonly restRequestResolved = output<RestRequestResolution>();
 
   protected readonly campaignCharacters = signal<CharacterApiResponse[]>([]);
-  protected readonly sessionStates =
-    signal<CharacterSessionStateApiResponse[]>([]);
+  protected readonly sessionStates = signal<CharacterSessionStateApiResponse[]>([]);
+  protected readonly changingLevelUpPermissionId = signal<number | null>(null);
 
   protected readonly loading = signal(false);
   protected readonly refreshingHitPoints = signal(false);
@@ -201,6 +201,67 @@ export class SessionCharacters implements OnInit {
           );
         },
       });
+  }
+
+  protected toggleLevelUpPermission(
+    character: SessionCharacterView,
+  ): void {
+    const state = character.sessionState;
+
+    if (
+      !state
+      || !character.participating
+      || this.changingLevelUpPermissionId() !== null
+    ) {
+      return;
+    }
+
+    const allowed = !state.levelUpAllowed;
+
+    this.changingLevelUpPermissionId.set(
+      character.character.id,
+    );
+    this.clearCharacterFeedback();
+
+    this.characterSessionStateApi
+      .setLevelUpPermission(
+        this.sessionId(),
+        character.character.id,
+        allowed,
+      )
+      .pipe(
+        finalize(() =>
+          this.changingLevelUpPermissionId.set(null),
+        ),
+      )
+      .subscribe({
+        next: updatedState => {
+          this.upsertState(updatedState);
+
+          this.characterActionFeedback.set(
+            allowed
+              ? `La montée de niveau de ${character.character.name} est autorisée.`
+              : `L’autorisation de montée de niveau de ${character.character.name} a été retirée.`,
+          );
+        },
+        error: error => {
+          this.characterActionError.set(
+            this.apiError(
+              error,
+              `Impossible de modifier l’autorisation de montée de niveau de ${character.character.name}.`,
+            ),
+          );
+        },
+      });
+  }
+
+  protected isChangingLevelUpPermission(
+    characterId: number,
+  ): boolean {
+    return (
+      this.changingLevelUpPermissionId()
+      === characterId
+    );
   }
 
   protected refreshHitPoints(): void {

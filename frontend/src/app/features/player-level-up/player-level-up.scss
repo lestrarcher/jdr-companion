@@ -1,0 +1,57 @@
+:host {
+  display: block;
+  height: 100vh;
+  overflow-y: auto;
+  background:
+    radial-gradient(
+      circle at top,
+      rgba(120, 95, 55, 0.08),
+      transparent 38rem
+    ),
+    #0c0c0d;
+  color: #e7e1d7;
+}
+
+.player-level-up {
+  width: min(1100px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 2rem 0 4rem;
+}
+
+.back-link {
+  display: inline-flex;
+  margin-bottom: 2rem;
+  color: #c6a45c;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.page-header {
+  margin-bottom: 1.5rem;
+
+  h1 {
+    margin: 0.25rem 0 0;
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 500;
+  }
+}
+
+.eyebrow {
+  color: #c6a45c;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.state-panel {
+  padding: 1rem;
+  border: 1px solid rgba(198, 164, 92, 0.25);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.state-panel--error {
+  border-color: rgba(190, 90, 90, 0.45);
+}

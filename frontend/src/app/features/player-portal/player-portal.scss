@@ -320,3 +320,48 @@
   display: grid;
   gap: 1.5rem;
 }
+
+.level-up-callout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(198, 164, 92, 0.45);
+  background: rgba(198, 164, 92, 0.08);
+
+  > div {
+    display: grid;
+    gap: 0.2rem;
+  }
+
+  strong {
+    font-size: 1rem;
+  }
+
+  small {
+    opacity: 0.75;
+  }
+}
+
+.level-up-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(198, 164, 92, 0.7);
+  background: rgba(198, 164, 92, 0.16);
+  color: #e7d5a4;
+  padding: 0.75rem 1rem;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
+
+  &:hover {
+    border-color: rgba(198, 164, 92, 0.95);
+    background: rgba(198, 164, 92, 0.26);
+  }
+}

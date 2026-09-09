@@ -147,6 +147,8 @@ export interface LevelUpClassOption {
   currentSubclass: LevelUpSubclassOption | null;
   subclasses: LevelUpSubclassOption[];
   advancementRequired: boolean;
+  eligible: boolean;
+  multiclassRequirements: string[];
 }
 
 export interface HitPointMethodOption {

@@ -181,6 +181,32 @@
             </button>
           </nav>
 
+
+        @if (
+          activeTab() === 'status'
+          && levelUpAllowed()
+        ) {
+          <section class="level-up-callout">
+            <div>
+              <span class="eyebrow">
+                Progression
+              </span>
+
+              <strong>
+                Une montée de niveau est disponible.
+              </strong>
+
+              <small>
+                Le MJ t’autorise à faire évoluer ce personnage.
+              </small>
+            </div>
+
+            <a class="level-up-button" [routerLink]="['level-up']" >
+              Monter de niveau
+            </a>
+          </section>
+        }
+
           <div class="portal-tab-content">
             @switch (activeTab()) {
               @case ('status') {

@@ -246,6 +246,32 @@
 
               <button
                 type="button"
+                class="character-action character-action--level-up"
+                [class.character-action--level-up-active]="
+                  character.sessionState?.levelUpAllowed
+                "
+                [disabled]="
+                  changingLevelUpPermissionId() !== null
+                "
+                (click)="toggleLevelUpPermission(character)"
+              >
+                @if (
+                  isChangingLevelUpPermission(
+                    character.character.id
+                  )
+                ) {
+                  Modification…
+                } @else if (
+                  character.sessionState?.levelUpAllowed
+                ) {
+                  Retirer l’autorisation
+                } @else {
+                  Autoriser le niveau
+                }
+              </button>
+
+              <button
+                type="button"
                 class="character-action character-action--danger"
                 [disabled]="changingCharacterId() !== null"
                 (click)="removeFromSession(character)"

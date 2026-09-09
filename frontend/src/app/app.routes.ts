@@ -16,6 +16,16 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
+    path: 'campaigns/:campaignId/sessions/:sessionId/player/:accessToken/level-up',
+    loadComponent: () =>
+      import(
+        './features/player-level-up/player-level-up'
+      ).then(
+        (component) =>
+          component.PlayerLevelUp,
+      ),
+  },
+  {
     path: 'campaigns/:campaignId/sessions/:sessionId/player/:accessToken',
     loadComponent: () =>
       import('./features/player-portal/player-portal').then(

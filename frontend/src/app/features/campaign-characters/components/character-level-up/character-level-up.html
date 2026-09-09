@@ -19,10 +19,14 @@
         <option [ngValue]="null">Sélectionner une classe</option>
 
         @for (classOption of options().classes; track classOption.id) {
-          <option [ngValue]="classOption.id">
-            {{ classOption.name }} — niveau
-            {{ classOption.currentLevel }} vers {{ classOption.nextLevel }}
-          </option>
+          @if (classOption.eligible) {
+            <option [ngValue]="classOption.id">
+              {{ classOption.name }} — niveau
+              {{ classOption.currentLevel }}
+              vers
+              {{ classOption.nextLevel }}
+            </option>
+          }
         }
       </select>
     </label>
@@ -44,27 +48,29 @@
         </strong>
       </div>
 
-      @if (classOption.subclassRequired || classOption.currentSubclass) {
+      @if (
+        classOption.subclassRequired
+        && !classOption.currentSubclass
+      ) {
         <label class="field">
           <span>Sous-classe</span>
 
           <select
             [(ngModel)]="form.subclassId"
-            [disabled]="classOption.currentSubclass !== null"
           >
-            <option [ngValue]="null">Sélectionner une sous-classe</option>
+            <option [ngValue]="null">
+              Sélectionner une sous-classe
+            </option>
 
-            @for (subclass of classOption.subclasses; track subclass.id) {
-              <option [ngValue]="subclass.id">{{ subclass.name }}</option>
+            @for (
+              subclass of classOption.subclasses;
+              track subclass.id
+            ) {
+              <option [ngValue]="subclass.id">
+                {{ subclass.name }}
+              </option>
             }
           </select>
-
-          @if (classOption.currentSubclass) {
-            <small>
-              La sous-classe {{ classOption.currentSubclass.name }}
-              est déjà acquise.
-            </small>
-          }
         </label>
       }
 

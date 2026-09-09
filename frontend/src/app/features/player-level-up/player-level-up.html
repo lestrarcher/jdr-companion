@@ -1,0 +1,35 @@
+<main class="player-level-up">
+  <a
+    class="back-link"
+    [routerLink]="playerPortalRoute"
+  >
+    ← Retour au personnage
+  </a>
+
+  <header class="page-header">
+    <span class="eyebrow">Progression</span>
+    <h1>Montée de niveau</h1>
+  </header>
+
+  @if (loading()) {
+    <p class="state-panel">
+      Chargement des possibilités d’évolution…
+    </p>
+  } @else if (error()) {
+    <p class="state-panel state-panel--error">
+      {{ error() }}
+    </p>
+  } @else if (profile(); as character) {
+    @if (options(); as options) {
+      <app-character-level-up
+        [character]="character"
+        [options]="options"
+        [abilities]="abilities()"
+        [feats]="feats()"
+        [submitting]="submitting()"
+        (submitted)="submitLevelUp($event)"
+        (cancelled)="returnToPortal()"
+      />
+    }
+  }
+</main>

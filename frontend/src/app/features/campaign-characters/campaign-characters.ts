@@ -9,6 +9,7 @@ import {
   LevelUpOptions,
   LevelUpResponse,
   UpdateHitPointHistoryResponse,
+  LevelUpPayload,
 } from '@core/services/character-api.service';
 import {
   DndReferenceApiService,
@@ -42,7 +43,7 @@ export class CampaignCharacters {
   protected readonly campaignId = Number(
     this.route.snapshot.paramMap.get('campaignId'),
   );
-
+  protected readonly levelUpSubmitting = signal(false);
   protected readonly characters = signal<CharacterApiResponse[]>([]);
   protected readonly reference = signal<DndReferenceResponse | null>(null);
   protected readonly selectedCharacterId = signal<number | null>(null);
@@ -72,6 +73,40 @@ export class CampaignCharacters {
     }
 
     this.loadCharacters();
+  }
+
+  protected submitLevelUp(
+    payload: LevelUpPayload,
+  ): void {
+    const characterId =
+      this.selectedCharacterId();
+
+    if (characterId === null) {
+      return;
+    }
+
+    this.levelUpSubmitting.set(true);
+    this.profileError.set(null);
+
+    this.characterApi
+      .levelUp(
+        this.campaignId,
+        characterId,
+        payload,
+      )
+      .pipe(
+        finalize(() =>
+          this.levelUpSubmitting.set(false),
+        ),
+      )
+      .subscribe({
+        next: response =>
+          this.levelUpCompleted(response),
+        error: error =>
+          this.profileError.set(
+            this.errorMessage(error),
+          ),
+      });
   }
 
   protected selectCharacter(character: CharacterApiResponse): void {

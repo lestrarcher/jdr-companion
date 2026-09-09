@@ -20,6 +20,9 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Service\CharacterProfileSerializer;
+use App\Service\CharacterLevelUpOptionsService;
+use App\Service\CharacterLevelUpRequestResolver;
+use App\Service\CharacterLevelUpService;
 
 final class CharacterSessionStateController extends AbstractController
 {
@@ -214,10 +217,281 @@ final class CharacterSessionStateController extends AbstractController
         }
 
         $state->setParticipating(false);
+        $state->setLevelUpAllowed(false);
         $entityManager->flush();
 
         return $this->json(
             $this->serializeState($state, true),
+        );
+    }
+
+    #[Route(
+        '/sessions/{sessionId}/characters/{characterId}/level-up-permission',
+        name: 'api_character_session_state_level_up_permission',
+        requirements: [
+            'sessionId' => '\d+',
+            'characterId' => '\d+',
+        ],
+        methods: ['PATCH'],
+    )]
+    public function updateLevelUpPermission(
+        int $sessionId,
+        int $characterId,
+        Request $request,
+        GameSessionRepository $gameSessionRepository,
+        CharacterRepository $characterRepository,
+        CharacterSessionStateRepository $stateRepository,
+        EntityManagerInterface $entityManager,
+    ): JsonResponse {
+        $gameSession = $gameSessionRepository->find($sessionId);
+        $character = $characterRepository->find($characterId);
+
+        if (!$gameSession instanceof GameSession) {
+            return $this->json(
+                ['message' => 'Session introuvable.'],
+                Response::HTTP_NOT_FOUND,
+            );
+        }
+
+        if (!$character instanceof Character) {
+            return $this->json(
+                ['message' => 'Personnage introuvable.'],
+                Response::HTTP_NOT_FOUND,
+            );
+        }
+
+        $this->denyAccessUnlessGranted(
+            CampaignVoter::MANAGE,
+            $gameSession->getCampaign(),
+        );
+
+        $state = $stateRepository->findOneBy([
+            'gameSession' => $gameSession,
+            'character' => $character,
+        ]);
+
+        if (
+            !$state instanceof CharacterSessionState
+            || !$state->isParticipating()
+        ) {
+            return $this->json(
+                ['message' => 'Ce personnage ne participe pas à cette session.'],
+                Response::HTTP_NOT_FOUND,
+            );
+        }
+
+        try {
+            $payload = $request->toArray();
+        } catch (JsonException) {
+            return $this->json(
+                ['message' => 'Le corps JSON est invalide.'],
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        $allowed = $payload['allowed'] ?? null;
+
+        if (!is_bool($allowed)) {
+            return $this->json(
+                ['message' => 'La propriété "allowed" doit être un booléen.'],
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        $state->setLevelUpAllowed($allowed);
+
+        $entityManager->flush();
+
+        return $this->json(
+            $this->serializeState($state, true),
+        );
+    }
+
+    #[Route(
+        '/public/characters/{accessToken}/level-up/options',
+        name: 'api_public_character_level_up_options',
+        requirements: ['accessToken' => '[a-f0-9]{64}'],
+        methods: ['GET'],
+    )]
+    public function publicLevelUpOptions(
+        string $accessToken,
+        CharacterSessionStateRepository $stateRepository,
+        CharacterLevelUpOptionsService $optionsService,
+    ): JsonResponse {
+        $state = $stateRepository->findOneByAccessToken(
+            $accessToken,
+        );
+
+        if (
+            !$state instanceof CharacterSessionState
+            || !$state->isParticipating()
+        ) {
+            return $this->json(
+                ['message' => 'Lien joueur invalide.'],
+                Response::HTTP_NOT_FOUND,
+            );
+        }
+
+        if (
+            $state->getGameSession()->getStatus()
+            !== GameSession::STATUS_LIVE
+        ) {
+            return $this->json(
+                ['message' => 'Cette session n’est pas ouverte.'],
+                Response::HTTP_CONFLICT,
+            );
+        }
+
+        if (!$state->isLevelUpAllowed()) {
+            return $this->json(
+                [
+                    'message' =>
+                        'La montée de niveau n’a pas été autorisée par le MJ.',
+                ],
+                Response::HTTP_FORBIDDEN,
+            );
+        }
+
+        return $this->json(
+            $optionsService->getOptions(
+                $state->getCharacter(),
+            ),
+        );
+    }
+
+    #[Route(
+        '/public/characters/{accessToken}/level-up',
+        name: 'api_public_character_level_up',
+        requirements: ['accessToken' => '[a-f0-9]{64}'],
+        methods: ['POST'],
+    )]
+    public function publicLevelUp(
+        string $accessToken,
+        Request $request,
+        CharacterSessionStateRepository $stateRepository,
+        CharacterLevelUpRequestResolver $requestResolver,
+        CharacterLevelUpService $levelUpService,
+        EntityManagerInterface $entityManager,
+    ): JsonResponse {
+        $state = $stateRepository->findOneByAccessToken(
+            $accessToken,
+        );
+
+        if (
+            !$state instanceof CharacterSessionState
+            || !$state->isParticipating()
+        ) {
+            return $this->json(
+                ['message' => 'Lien joueur invalide.'],
+                Response::HTTP_NOT_FOUND,
+            );
+        }
+
+        if (
+            $state->getGameSession()->getStatus()
+            !== GameSession::STATUS_LIVE
+        ) {
+            return $this->json(
+                ['message' => 'Cette session n’est pas ouverte.'],
+                Response::HTTP_CONFLICT,
+            );
+        }
+
+        if (!$state->isLevelUpAllowed()) {
+            return $this->json(
+                [
+                    'message' =>
+                        'La montée de niveau n’a pas été autorisée par le MJ.',
+                ],
+                Response::HTTP_FORBIDDEN,
+            );
+        }
+
+        try {
+            $payload = $request->toArray();
+        } catch (JsonException) {
+            return $this->json(
+                ['message' => 'Le corps JSON est invalide.'],
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        try {
+            $selection = $requestResolver->resolve(
+                $payload,
+            );
+
+            $character = $state->getCharacter();
+            $characterClass =
+                $selection['characterClass'];
+
+            $level = $levelUpService->levelUp(
+                character: $character,
+                characterClass: $characterClass,
+                subclass: $selection['subclass'],
+                advancement: $selection['advancement'],
+                hitPointGainMethod:
+                    $selection['hitPointGainMethod'],
+                hitPointGain:
+                    $selection['hitPointGain'],
+            );
+        } catch (
+            \InvalidArgumentException
+            | \LogicException
+            | \DomainException $exception
+        ) {
+            return $this->json(
+                ['message' => $exception->getMessage()],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
+
+        $state->setLevelUpAllowed(false);
+
+        $entityManager->flush();
+
+        return $this->json(
+            [
+                'message' => sprintf(
+                    '%s atteint le niveau %d de %s.',
+                    $character->getName(),
+                    $character->getLevelInClass(
+                        $characterClass,
+                    ),
+                    $characterClass->getName(),
+                ),
+                'level' => [
+                    'position' =>
+                        $level->getPosition(),
+                    'classId' =>
+                        $level
+                            ->getCharacterClass()
+                            ->getId(),
+                    'className' =>
+                        $level
+                            ->getCharacterClass()
+                            ->getName(),
+                    'subclassId' =>
+                        $level
+                            ->getSubclass()
+                            ?->getId(),
+                    'subclassName' =>
+                        $level
+                            ->getSubclass()
+                            ?->getName(),
+                    'hitPointGain' =>
+                        $level->getHitPointGain(),
+                    'hitPointGainMethod' =>
+                        $level
+                            ->getHitPointGainMethod()
+                            ?->value,
+                ],
+                'character' =>
+                    $this->profileSerializer
+                        ->serialize($character),
+                'levelUpAllowed' => false,
+            ],
+            Response::HTTP_CREATED,
         );
     }
 
@@ -326,6 +600,7 @@ final class CharacterSessionStateController extends AbstractController
             ],
             'character' => $this->profileSerializer->serialize($character),
             'participating' => $state->isParticipating(),
+            'levelUpAllowed' => $state->isLevelUpAllowed(),
             'state' => $state->getState(),
             'updatedAt' => $state->getUpdatedAt()->format(DATE_ATOM),
         ];

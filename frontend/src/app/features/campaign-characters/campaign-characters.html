@@ -71,12 +71,12 @@
             @if (activeEditor() === 'level-up') {
               @if (levelUpOptions(); as options) {
                 <app-character-level-up
-                  [campaignId]="campaignId"
                   [character]="character"
                   [options]="options"
                   [abilities]="abilities()"
                   [feats]="feats()"
-                  (completed)="levelUpCompleted($event)"
+                  [submitting]="levelUpSubmitting()"
+                  (submitted)="submitLevelUp($event)"
                   (cancelled)="closeEditor()"
                 />
               }

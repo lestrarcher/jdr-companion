@@ -803,3 +803,15 @@
     display: none;
   }
 }
+
+.character-action--level-up {
+  border-color: rgba(120, 185, 220, 0.35);
+  background: rgba(120, 185, 220, 0.06);
+  color: #9ac8e1;
+}
+
+.character-action--level-up-active {
+  border-color: rgba(120, 185, 220, 0.65);
+  background: rgba(120, 185, 220, 0.16);
+  color: #c5e4f5;
+}

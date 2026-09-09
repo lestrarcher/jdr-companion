@@ -12,7 +12,6 @@ use App\Entity\CharacterSubclass;
 use App\Entity\Feat;
 use App\Enum\Ability;
 use App\Enum\HitPointGainMethod;
-use App\Repository\CharacterClassLevelRuleRepository;
 use App\Repository\CharacterRepository;
 use App\Security\Voter\CampaignVoter;
 use App\Service\CharacterLevelUpService;
@@ -25,6 +24,8 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use App\Service\CharacterLevelUpOptionsService;
+use App\Service\CharacterLevelUpRequestResolver;
 
 #[Route(
     '/campaigns/{campaignId}/characters/{characterId}/level-up',
@@ -35,15 +36,22 @@ use Symfony\Component\Routing\Attribute\Route;
 )]
 final class CharacterLevelUpController extends AbstractController
 {
-    #[Route('/options', name: 'api_character_level_up_options', methods: ['GET'])]
+    #[Route(
+        '/options',
+        name: 'api_character_level_up_options',
+        methods: ['GET'],
+    )]
     public function options(
-        #[MapEntity(id: 'campaignId')] Campaign $campaign,
+        #[MapEntity(id: 'campaignId')]
+        Campaign $campaign,
         int $characterId,
         CharacterRepository $characterRepository,
-        CharacterClassLevelRuleRepository $levelRuleRepository,
-        EntityManagerInterface $entityManager,
+        CharacterLevelUpOptionsService $optionsService,
     ): JsonResponse {
-        $this->denyAccessUnlessGranted(CampaignVoter::MANAGE, $campaign);
+        $this->denyAccessUnlessGranted(
+            CampaignVoter::MANAGE,
+            $campaign,
+        );
 
         $character = $this->findCharacter(
             $campaign,
@@ -55,87 +63,9 @@ final class CharacterLevelUpController extends AbstractController
             return $character;
         }
 
-        $classes = $entityManager
-            ->getRepository(CharacterClass::class)
-            ->findBy([], ['name' => 'ASC']);
-
-        return $this->json([
-            'canLevelUp' => $character->getTotalLevel() < 20,
-            'currentTotalLevel' => $character->getTotalLevel(),
-            'nextTotalLevel' => min(20, $character->getTotalLevel() + 1),
-            'hitPointMethods' => [
-                [
-                    'value' => HitPointGainMethod::Average->value,
-                    'label' => HitPointGainMethod::Average->label(),
-                ],
-                [
-                    'value' => HitPointGainMethod::Rolled->value,
-                    'label' => HitPointGainMethod::Rolled->label(),
-                ],
-                [
-                    'value' => HitPointGainMethod::Manual->value,
-                    'label' => HitPointGainMethod::Manual->label(),
-                ],
-            ],
-            'classes' => array_map(
-                function (CharacterClass $characterClass) use (
-                    $character,
-                    $levelRuleRepository,
-                    $entityManager,
-                ): array {
-                    $currentClassLevel = $character->getLevelInClass($characterClass);
-                    $nextClassLevel = $currentClassLevel + 1;
-                    $currentSubclass = $character->getSubclassFor($characterClass);
-                    $selectionLevel = $characterClass->getSubclassSelectionLevel();
-                    $subclassRequired = $currentSubclass === null
-                        && $nextClassLevel >= $selectionLevel;
-
-                    $subclasses = $entityManager
-                        ->getRepository(CharacterSubclass::class)
-                        ->findBy(
-                            ['characterClass' => $characterClass],
-                            ['name' => 'ASC'],
-                        );
-
-                    $levelRule = $levelRuleRepository->findForClassLevel(
-                        $characterClass,
-                        $nextClassLevel,
-                    );
-
-                    return [
-                        'id' => $characterClass->getId(),
-                        'slug' => $characterClass->getSlug(),
-                        'name' => $characterClass->getName(),
-                        'hitDie' => $characterClass->getHitDie(),
-                        'averageHitPointGain' =>
-                            intdiv($characterClass->getHitDie(), 2) + 1,
-                        'currentLevel' => $currentClassLevel,
-                        'nextLevel' => $nextClassLevel,
-                        'subclassSelectionLevel' => $selectionLevel,
-                        'subclassRequired' => $subclassRequired,
-                        'currentSubclass' => $currentSubclass !== null
-                            ? [
-                                'id' => $currentSubclass->getId(),
-                                'slug' => $currentSubclass->getSlug(),
-                                'name' => $currentSubclass->getName(),
-                            ]
-                            : null,
-                        'subclasses' => array_map(
-                            static fn (CharacterSubclass $subclass): array => [
-                                'id' => $subclass->getId(),
-                                'slug' => $subclass->getSlug(),
-                                'name' => $subclass->getName(),
-                            ],
-                            $subclasses,
-                        ),
-                        'advancementRequired' =>
-                            $levelRule?->requiresAbilityScoreImprovementOrFeat()
-                            ?? false,
-                    ];
-                },
-                $classes,
-            ),
-        ]);
+        return $this->json(
+            $optionsService->getOptions($character),
+        );
     }
 
     #[Route('', name: 'api_character_level_up', methods: ['POST'])]
@@ -147,6 +77,7 @@ final class CharacterLevelUpController extends AbstractController
         EntityManagerInterface $entityManager,
         CharacterLevelUpService $levelUpService,
         CharacterProfileSerializer $serializer,
+        CharacterLevelUpRequestResolver $requestResolver,
     ): JsonResponse {
         $this->denyAccessUnlessGranted(CampaignVoter::MANAGE, $campaign);
 
@@ -169,60 +100,43 @@ final class CharacterLevelUpController extends AbstractController
             );
         }
 
-        $classId = $this->integer($payload['classId'] ?? null);
-
-        if ($classId === null || $classId <= 0) {
-            return $this->validationError('La classe est obligatoire.');
-        }
-
-        $characterClass = $entityManager
-            ->getRepository(CharacterClass::class)
-            ->find($classId);
-
-        if (!$characterClass instanceof CharacterClass) {
-            return $this->validationError(
-                'La classe sélectionnée est introuvable.',
+        try {
+            $payload = $request->toArray();
+        } catch (JsonException) {
+            return $this->json(
+                ['message' => 'Le corps JSON est invalide.'],
+                Response::HTTP_BAD_REQUEST,
             );
         }
 
-        $subclass = $this->resolveSubclass(
-            $payload['subclassId'] ?? null,
-            $entityManager,
-        );
-
-        if ($subclass instanceof JsonResponse) {
-            return $subclass;
+        try {
+            $selection = $requestResolver->resolve(
+                $payload,
+            );
+        } catch (\InvalidArgumentException $exception) {
+            return $this->validationError(
+                $exception->getMessage(),
+            );
         }
 
-        $advancement = $this->resolveAdvancement(
-            $payload['advancement'] ?? null,
-            $entityManager,
-        );
-
-        if ($advancement instanceof JsonResponse) {
-            return $advancement;
-        }
-
-        $hitPoints = $this->resolveHitPoints(
-            $payload['hitPoints'] ?? null,
-            $characterClass,
-        );
-
-        if ($hitPoints instanceof JsonResponse) {
-            return $hitPoints;
-        }
+        $characterClass =
+            $selection['characterClass'];
 
         try {
             $level = $levelUpService->levelUp(
                 character: $character,
                 characterClass: $characterClass,
-                subclass: $subclass,
-                advancement: $advancement,
-                hitPointGainMethod: $hitPoints['method'],
-                hitPointGain: $hitPoints['gain'],
+                subclass: $selection['subclass'],
+                advancement: $selection['advancement'],
+                hitPointGainMethod:
+                    $selection['hitPointGainMethod'],
+                hitPointGain:
+                    $selection['hitPointGain'],
             );
-        } catch (\LogicException $exception) {
-            return $this->validationError($exception->getMessage());
+        } catch (\LogicException|\DomainException $exception) {
+            return $this->validationError(
+                $exception->getMessage(),
+            );
         }
 
         return $this->json(

@@ -8,6 +8,9 @@ import {
 
 import {
   CharacterProfile,
+  LevelUpOptions,
+  LevelUpPayload,
+  LevelUpResponse,
 } from '@core/services/character-api.service';
 
 import {
@@ -30,6 +33,7 @@ export interface CharacterSessionStateApiResponse {
 
   character: CharacterProfile;
   participating: boolean;
+  levelUpAllowed: boolean;
   state: CharacterSessionStatePayload;
   accessToken?: string;
   updatedAt: string;
@@ -81,6 +85,24 @@ export class CharacterSessionStateApiService {
     );
   }
 
+  getLevelUpOptions(
+    accessToken: string,
+  ): Observable<LevelUpOptions> {
+    return this.http.get<LevelUpOptions>(
+      `${this.apiUrl}/public/characters/${accessToken}/level-up/options`,
+    );
+  }
+
+  levelUp(
+    accessToken: string,
+    payload: LevelUpPayload,
+  ): Observable<LevelUpResponse> {
+    return this.http.post<LevelUpResponse>(
+      `${this.apiUrl}/public/characters/${accessToken}/level-up`,
+      payload,
+    );
+  }
+
   updateByAccessToken(
     accessToken: string,
     state: CharacterSessionStatePayload,
@@ -88,6 +110,17 @@ export class CharacterSessionStateApiService {
     return this.http.patch<CharacterSessionStateApiResponse>(
       `${this.apiUrl}/public/characters/${accessToken}`,
       { state },
+    );
+  }
+
+  setLevelUpPermission(
+    sessionId: number,
+    characterId: number,
+    allowed: boolean,
+  ): Observable<CharacterSessionStateApiResponse> {
+    return this.http.patch<CharacterSessionStateApiResponse>(
+      `${this.apiUrl}/sessions/${sessionId}/characters/${characterId}/level-up-permission`,
+      { allowed },
     );
   }
 }

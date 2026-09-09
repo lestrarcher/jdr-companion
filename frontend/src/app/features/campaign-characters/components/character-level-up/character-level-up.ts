@@ -1,23 +1,20 @@
-import { HttpErrorResponse } from '@angular/common/http';
-import { Component, inject, input, OnInit, output, signal } from '@angular/core';
+import { Component, input, OnInit, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   AbilityAdvancementPayload,
-  CharacterApiService,
   CharacterProfile,
   FeatAdvancementPayload,
   HitPointGainMethod,
   LevelUpClassOption,
   LevelUpOptions,
   LevelUpPayload,
-  LevelUpResponse,
 } from '@core/services/character-api.service';
 import {
   AbilityKey,
   AbilityReference,
   FeatReference,
 } from '@core/services/dnd-reference-api.service';
-import { finalize } from 'rxjs';
+
 
 type AdvancementMode = 'ability' | 'feat';
 type AbilityIncreaseMode = 'single' | 'double';
@@ -44,18 +41,15 @@ interface LevelUpForm {
   styleUrl: './character-level-up.scss',
 })
 export class CharacterLevelUp implements OnInit {
-  private readonly characterApi = inject(CharacterApiService);
-
-  readonly campaignId = input.required<number>();
   readonly character = input.required<CharacterProfile>();
   readonly options = input.required<LevelUpOptions>();
   readonly abilities = input.required<AbilityReference[]>();
   readonly feats = input.required<FeatReference[]>();
 
-  readonly completed = output<LevelUpResponse>();
+  readonly submitted = output<LevelUpPayload>();
   readonly cancelled = output<void>();
 
-  protected readonly submitting = signal(false);
+  readonly submitting = input(false);
   protected readonly error = signal<string | null>(null);
   protected form: LevelUpForm = this.emptyForm();
 
@@ -168,16 +162,8 @@ export class CharacterLevelUp implements OnInit {
           },
     };
 
-    this.submitting.set(true);
     this.error.set(null);
-
-    this.characterApi
-      .levelUp(this.campaignId(), this.character().id, payload)
-      .pipe(finalize(() => this.submitting.set(false)))
-      .subscribe({
-        next: response => this.completed.emit(response),
-        error: error => this.error.set(this.errorMessage(error)),
-      });
+    this.submitted.emit(payload);
   }
 
   protected cancel(): void {
@@ -303,13 +289,5 @@ export class CharacterLevelUp implements OnInit {
       hitPointMethod: 'average',
       hitPointGain: null,
     };
-  }
-
-  private errorMessage(error: unknown): string {
-    if (error instanceof HttpErrorResponse) {
-      return error.error?.message ?? 'La montée de niveau a échoué.';
-    }
-
-    return 'Une erreur inattendue est survenue.';
   }
 }
