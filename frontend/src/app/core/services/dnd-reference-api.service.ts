@@ -92,6 +92,7 @@ export interface FeatReference {
   requiresAbilityChoice: boolean;
   chosenAbilityIncrease: number;
   allowedAbilities: AbilityKey[];
+  custom: boolean;
 }
 
 export interface DndReferenceResponse {
@@ -157,6 +158,22 @@ export interface SaveSubclassPayload {
   description?: string | null;
   spellcastingProgression?: SpellcastingProgression | null;
   custom?: boolean;
+}
+
+export interface FeatListResponse {
+  feats: FeatReference[];
+  abilities: AbilityReference[];
+}
+
+export interface SaveFeatPayload {
+  slug: string;
+  name: string;
+  description: string | null;
+  repeatable: boolean;
+  requiresAbilityChoice: boolean;
+  chosenAbilityIncrease: number;
+  allowedAbilities: AbilityKey[];
+  custom: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -252,6 +269,39 @@ export class DndReferenceApiService {
     return this.http.patch<{ subclass: SubclassReference }>(
       `${this.apiUrl}/subclasses/${subclassId}`,
       payload,
+    );
+  }
+
+  getFeats(): Observable<FeatListResponse> {
+    return this.http.get<FeatListResponse>(
+      `${this.apiUrl}/feats`,
+    );
+  }
+
+  createFeat(
+    payload: SaveFeatPayload,
+  ): Observable<{ feat: FeatReference }> {
+    return this.http.post<{ feat: FeatReference }>(
+      `${this.apiUrl}/feats`,
+      payload,
+    );
+  }
+
+  updateFeat(
+    featId: number,
+    payload: Partial<SaveFeatPayload>,
+  ): Observable<{ feat: FeatReference }> {
+    return this.http.patch<{ feat: FeatReference }>(
+      `${this.apiUrl}/feats/${featId}`,
+      payload,
+    );
+  }
+
+  deleteFeat(
+    featId: number,
+  ): Observable<{ message: string }> {
+    return this.http.delete<{ message: string }>(
+      `${this.apiUrl}/feats/${featId}`,
     );
   }
 }

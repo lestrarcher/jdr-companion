@@ -5,6 +5,7 @@ import { FeatureRuleManager } from '../components/feature-rule-manager/feature-r
 import { RaceManager } from '../components/race-manager/race-manager';
 import { ResourceDefinitionManager } from '../components/resource-definition-manager/resource-definition-manager';
 import { SubclassManager } from '../components/subclass-manager/subclass-manager';
+import { FeatManager } from '../components/feat-manager/feat-manager';
 
 type ManagerSection =
   | 'classes'
@@ -12,7 +13,8 @@ type ManagerSection =
   | 'subclasses'
   | 'features'
   | 'resources'
-  | 'rules';
+  | 'rules'
+  | 'feats';
 
 interface ManagerTab {
   section: ManagerSection;
@@ -30,6 +32,7 @@ interface ManagerTab {
     FeatureDefinitionManager,
     ResourceDefinitionManager,
     FeatureRuleManager,
+    FeatManager,
   ],
   templateUrl: './feature-manager.html',
   styleUrl: './feature-manager.scss',
@@ -52,6 +55,11 @@ export class FeatureManager {
       section: 'subclasses',
       label: 'Sous-classes',
       description: 'Spécialisations et progressions',
+    },
+    {
+      section: 'feats',
+      label: 'Dons',
+      description: 'Talents et améliorations spéciales',
     },
     {
       section: 'features',

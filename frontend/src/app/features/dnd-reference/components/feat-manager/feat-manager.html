@@ -1,0 +1,338 @@
+<section class="reference-manager">
+  <aside class="reference-manager__sidebar">
+    <header class="sidebar-header">
+      <div>
+        <span class="eyebrow">Bibliothèque</span>
+        <h2>Dons</h2>
+      </div>
+
+      <button
+        type="button"
+        class="icon-button"
+        title="Créer un don"
+        (click)="startCreation()"
+      >
+        +
+      </button>
+    </header>
+
+    <div class="filters">
+      <label class="field">
+        <span>Rechercher</span>
+        <input
+          type="search"
+          placeholder="Résilient, chanceux…"
+          [ngModel]="search()"
+          (ngModelChange)="updateSearch($event)"
+        />
+      </label>
+    </div>
+
+    <div class="feature-list">
+      @if (loading()) {
+        <p class="empty-state">Chargement des dons…</p>
+      } @else if (filteredFeats().length === 0) {
+        <p class="empty-state">Aucun don trouvé.</p>
+      } @else {
+        @for (feat of filteredFeats(); track feat.id) {
+          <button
+            type="button"
+            class="feature-card"
+            [class.feature-card--selected]="selectedFeatId() === feat.id"
+            (click)="selectFeat(feat)"
+          >
+            <span class="feature-card__activation">
+              @if (feat.custom) {
+                Personnalisé
+              } @else {
+                Référence
+              }
+            </span>
+
+            <span class="feature-card__name">
+              {{ feat.name }}
+            </span>
+
+            @if (feat.repeatable) {
+              <span class="feature-card__resource">
+                Répétable
+              </span>
+            }
+          </button>
+        }
+      }
+    </div>
+  </aside>
+
+  <div class="reference-manager__content">
+    <header class="content-header">
+      <div>
+        <span class="eyebrow">
+          {{ selectedFeat() ? 'Modification' : 'Nouveau don' }}
+        </span>
+
+        <h2>
+          {{ selectedFeat()?.name ?? 'Créer un don' }}
+        </h2>
+
+        <p>
+          Un don représente une amélioration spéciale du personnage. Il peut
+          être répétable ou inclure une augmentation de caractéristique.
+        </p>
+      </div>
+
+      @if (selectedFeat()?.custom) {
+        <span class="custom-badge">Personnalisé</span>
+      }
+    </header>
+
+    <form class="feature-form" (ngSubmit)="save()">
+      <div class="form-grid">
+        <label class="field">
+          <span>Nom</span>
+          <input
+            type="text"
+            name="name"
+            placeholder="Ex. Résilient"
+            required
+            [(ngModel)]="form.name"
+          />
+        </label>
+
+        <label class="field">
+          <span>Slug</span>
+
+          <div class="input-action">
+            <input
+              type="text"
+              name="slug"
+              placeholder="resilient"
+              required
+              [(ngModel)]="form.slug"
+            />
+
+            <button
+              type="button"
+              class="secondary-button"
+              (click)="generateSlug()"
+            >
+              Générer
+            </button>
+          </div>
+        </label>
+
+        <label class="field field--wide">
+          <span>Description</span>
+          <textarea
+            name="description"
+            rows="6"
+            placeholder="Description du don…"
+            [(ngModel)]="form.description"
+          ></textarea>
+        </label>
+      </div>
+
+      <section class="form-section">
+        <header>
+          <span class="eyebrow">Comportement</span>
+          <h3>Règles du don</h3>
+        </header>
+
+        <div class="checkbox-grid">
+          <label class="checkbox-card">
+            <input
+              type="checkbox"
+              name="repeatable"
+              [(ngModel)]="form.repeatable"
+            />
+
+            <span>
+              <strong>Répétable</strong>
+              <small>
+                Le personnage peut sélectionner ce don plusieurs fois.
+              </small>
+            </span>
+          </label>
+
+          <label class="checkbox-card">
+            <input
+              type="checkbox"
+              name="requiresAbilityChoice"
+              [(ngModel)]="form.requiresAbilityChoice"
+              (ngModelChange)="abilityChoiceChanged()"
+            />
+
+            <span>
+              <strong>Choix de caractéristique</strong>
+              <small>
+                Le joueur doit choisir une caractéristique associée au don.
+              </small>
+            </span>
+          </label>
+
+          <label class="checkbox-card">
+            <input
+              type="checkbox"
+              name="custom"
+              [(ngModel)]="form.custom"
+            />
+
+            <span>
+              <strong>Personnalisé</strong>
+              <small>
+                Le don appartient au contenu personnalisé de l'application.
+              </small>
+            </span>
+          </label>
+        </div>
+      </section>
+
+      @if (form.requiresAbilityChoice) {
+        <section class="form-section">
+          <header>
+            <span class="eyebrow">Caractéristique</span>
+            <h3>Augmentation associée</h3>
+          </header>
+
+          <div class="form-grid">
+            <label class="field">
+              <span>Augmentation</span>
+
+              <select
+                name="chosenAbilityIncrease"
+                [(ngModel)]="form.chosenAbilityIncrease"
+              >
+                <option [ngValue]="0">Aucune</option>
+                <option [ngValue]="1">+1</option>
+                <option [ngValue]="2">+2</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="ability-choice">
+            <div class="ability-choice__header">
+              <div>
+                <span class="eyebrow">Restriction</span>
+                <h3>Caractéristiques autorisées</h3>
+              </div>
+
+              <p>
+                Si aucune caractéristique n'est cochée, elles sont toutes
+                autorisées.
+              </p>
+            </div>
+
+            <div class="ability-grid">
+              @for (ability of abilities(); track ability.value) {
+                <label class="ability-card">
+                  <input
+                    type="checkbox"
+                    [checked]="abilitySelected(ability.value)"
+                    (change)="toggleAbility(
+                      ability.value,
+                      $any($event.target).checked
+                    )"
+                  />
+
+                  <span class="ability-card__abbr">
+                    {{ ability.abbreviation }}
+                  </span>
+
+                  <span class="ability-card__label">
+                    {{ ability.label }}
+                  </span>
+                </label>
+              }
+            </div>
+          </div>
+        </section>
+      }
+
+      <section class="summary">
+        <span class="eyebrow">Résumé</span>
+
+        <div class="summary-grid">
+          <div>
+            <small>Nom</small>
+            <strong>{{ form.name || '—' }}</strong>
+          </div>
+
+          <div>
+            <small>Répétable</small>
+            <strong>{{ form.repeatable ? 'Oui' : 'Non' }}</strong>
+          </div>
+
+          <div>
+            <small>Choix de caractéristique</small>
+            <strong>
+              {{ form.requiresAbilityChoice ? 'Oui' : 'Non' }}
+            </strong>
+          </div>
+
+          <div>
+            <small>Augmentation</small>
+            <strong>
+              @if (form.requiresAbilityChoice && form.chosenAbilityIncrease) {
+                +{{ form.chosenAbilityIncrease }}
+              } @else {
+                —
+              }
+            </strong>
+          </div>
+        </div>
+      </section>
+
+      @if (error()) {
+        <p class="message message--error">
+          {{ error() }}
+        </p>
+      }
+
+      @if (success()) {
+        <p class="message message--success">
+          {{ success() }}
+        </p>
+      }
+
+      <footer class="form-actions">
+        @if (selectedFeat()) {
+          <button
+            type="button"
+            class="danger-button"
+            [disabled]="deleting() || submitting()"
+            (click)="deleteSelectedFeat()"
+          >
+            {{ deleting() ? 'Suppression…' : 'Supprimer' }}
+          </button>
+        }
+
+        <div class="form-actions__right">
+          @if (selectedFeat()) {
+            <button
+              type="button"
+              class="secondary-button"
+              [disabled]="submitting()"
+              (click)="startCreation()"
+            >
+              Nouveau
+            </button>
+          }
+
+          <button
+            type="submit"
+            class="primary-button"
+            [disabled]="submitting() || deleting()"
+          >
+            {{
+              submitting()
+                ? 'Enregistrement…'
+                : selectedFeat()
+                  ? 'Enregistrer'
+                  : 'Créer le don'
+            }}
+          </button>
+        </div>
+      </footer>
+    </form>
+  </div>
+</section>

@@ -40,7 +40,7 @@
 
 .manager-tabs {
   display: grid;
-  grid-template-columns: repeat(6, minmax(130px, 1fr));
+  grid-template-columns: repeat(7, minmax(130px, 1fr));
   margin: 1rem 0;
   border: 1px solid rgba(202, 165, 86, 0.22);
   overflow-x: auto;
@@ -95,20 +95,6 @@
 
 .manager-content {
   min-width: 0;
-}
-
-@media (max-width: 1400px) {
-  .manager-tabs {
-    grid-template-columns: repeat(3, minmax(180px, 1fr));
-  }
-
-  .manager-tab:nth-child(3) {
-    border-right: 0;
-  }
-
-  .manager-tab:nth-child(-n + 3) {
-    border-bottom: 1px solid rgba(202, 165, 86, 0.18);
-  }
 }
 
 @media (max-width: 760px) {
