@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { finalize } from 'rxjs/operators';
+import { DndReferenceApiService, ProgressionReference } from '@core/services/dnd-reference-api.service';
 
 import {
   CharacterApiResponse,
@@ -52,6 +53,13 @@ interface SessionCharacterView {
   styleUrl: './session-characters.scss',
 })
 export class SessionCharacters implements OnInit {
+  private readonly progressionReferenceApi = inject(DndReferenceApiService);
+  private readonly progressionReferences = signal<ProgressionReference[]>([]);
+  private progressionRequestRevision = 0;
+  protected readonly progressionReferenceLoading = signal(false);
+  protected readonly progressionReferenceError = signal<string | null>(null);
+  protected readonly expandedStageIds = signal<ReadonlySet<number>>(new Set());
+  protected readonly adjustmentDirections = ['gain', 'loss'] as const;
   private readonly characterApi = inject(CharacterApiService);
   private readonly characterSessionStateApi = inject(
     CharacterSessionStateApiService,
@@ -71,7 +79,7 @@ export class SessionCharacters implements OnInit {
   protected readonly changingLevelUpPermissionId = signal<number | null>(null);
 
   protected readonly loading = signal(false);
-  protected readonly refreshingHitPoints = signal(false);
+  protected readonly refreshingCharacters = signal(false);
   protected readonly changingCharacterId = signal<number | null>(null);
   protected readonly characterActionError = signal<string | null>(null);
   protected readonly characterActionFeedback = signal<string | null>(null);
@@ -85,8 +93,39 @@ export class SessionCharacters implements OnInit {
   protected readonly assigningItem = signal(false);
   protected readonly assignmentFeedback = signal<string | null>(null);
 
-  protected readonly statisticsCharacter =
-    signal<SessionCharacterView | null>(null);
+  private readonly statisticsCharacterId = signal<number | null>(null);
+  private readonly progressionCharacterId = signal<number | null>(null);
+  private readonly selectedProgressionSlug = signal<string | null>(null);
+  protected readonly progressionTab = signal<'phases' | 'actions'>('phases');
+  protected readonly selectedProgression = computed(() =>
+    this.progressionDetails().find(entry => entry.slug === this.selectedProgressionSlug())
+      ?? this.progressionDetails()[0] ?? null,
+  );
+  protected readonly progressionCharacter = computed(() =>
+    this.characters().find(entry => entry.character.id === this.progressionCharacterId()) ?? null,
+  );
+  private inventoryRequestRevision = 0;
+  protected readonly statisticsError = signal<string | null>(null);
+  protected readonly statisticsCharacter = computed(() =>
+    this.characters().find(entry => entry.character.id === this.statisticsCharacterId()) ?? null,
+  );
+  protected readonly statisticsProfile = computed(() =>
+    this.statisticsCharacter()?.sessionState?.character ?? null,
+  );
+  protected readonly progressionDetails = computed(() => {
+    const session = this.progressionCharacter()?.sessionState;
+    return (session?.character.progressions ?? []).map(progression => {
+      const reference = this.progressionReferences().find(definition => definition.id === progression.definitionId);
+      const current = session?.state.progressions.find(value => value.id === progression.slug)?.currentValue ?? null;
+      const stages = [...(reference?.stages ?? [])].sort((a, b) => a.minimumValue - b.minimumValue);
+      const stage = current === null ? null : stages.find(candidate =>
+        current >= candidate.minimumValue
+        && (candidate.maximumValue === null || current <= candidate.maximumValue),
+      );
+      return { ...progression, ...(reference ?? {}), current, stage, stages, referenceAvailable: reference !== undefined,
+        adjustmentRules: [...(reference?.adjustmentRules ?? [])].sort((a, b) => a.displayOrder - b.displayOrder || a.id - b.id) };
+    });
+  });
   protected readonly statisticsInventory =
     signal<CharacterMagicItemInventoryResponse | null>(null);
   protected readonly statisticsLoading = signal(false);
@@ -264,17 +303,17 @@ export class SessionCharacters implements OnInit {
     );
   }
 
-  protected refreshHitPoints(): void {
-    if (this.refreshingHitPoints()) {
+  protected refreshCharacters(): void {
+    if (this.refreshingCharacters()) {
       return;
     }
 
-    this.refreshingHitPoints.set(true);
+    this.refreshingCharacters.set(true);
     this.clearCharacterFeedback();
 
     this.characterSessionStateApi
       .list(this.sessionId())
-      .pipe(finalize(() => this.refreshingHitPoints.set(false)))
+      .pipe(finalize(() => this.refreshingCharacters.set(false)))
       .subscribe({
         next: states => this.sessionStates.set(states),
         error: error => {
@@ -431,31 +470,98 @@ export class SessionCharacters implements OnInit {
   }
 
   protected openStatistics(character: SessionCharacterView): void {
-    this.statisticsCharacter.set(character);
+    this.closeProgression();
+    this.statisticsCharacterId.set(character.character.id);
+    const revision = ++this.inventoryRequestRevision;
+    this.statisticsError.set(null);
+    this.refreshCharacters();
     this.statisticsInventory.set(null);
     this.statisticsLoading.set(true);
     this.characterActionError.set(null);
 
     this.magicItemApi
       .listCharacterItems(character.character.id)
-      .pipe(finalize(() => this.statisticsLoading.set(false)))
+      .pipe(finalize(() => {
+        if (revision === this.inventoryRequestRevision) this.statisticsLoading.set(false);
+      }))
       .subscribe({
-        next: inventory => this.statisticsInventory.set(inventory),
+        next: inventory => {
+          if (revision === this.inventoryRequestRevision) this.statisticsInventory.set(inventory);
+        },
         error: error => {
-          this.characterActionError.set(
+          if (revision !== this.inventoryRequestRevision) return;
+          this.statisticsError.set(
             this.apiError(
               error,
               'Impossible de charger les caractéristiques.',
             ),
           );
-          this.statisticsCharacter.set(null);
         },
       });
   }
 
   protected closeStatistics(): void {
-    this.statisticsCharacter.set(null);
+    ++this.inventoryRequestRevision;
+    this.statisticsCharacterId.set(null);
     this.statisticsInventory.set(null);
+    this.statisticsLoading.set(false);
+    this.statisticsError.set(null);
+  }
+
+  protected openProgression(character: SessionCharacterView): void {
+    this.closeStatistics();
+    this.selectedProgressionSlug.set(null);
+    this.progressionTab.set('phases');
+    this.expandedStageIds.set(new Set());
+    this.progressionCharacterId.set(character.character.id);
+    this.refreshCharacters();
+    this.loadProgressionReferences();
+  }
+
+  protected loadProgressionReferences(): void {
+    const revision = ++this.progressionRequestRevision;
+    this.progressionReferences.set([]);
+    this.progressionReferenceError.set(null);
+    this.progressionReferenceLoading.set(true);
+    this.progressionReferenceApi.getProgressions()
+      .pipe(finalize(() => {
+        if (revision === this.progressionRequestRevision) this.progressionReferenceLoading.set(false);
+      }))
+      .subscribe({
+        next: response => {
+          if (revision === this.progressionRequestRevision) this.progressionReferences.set(response.progressions);
+        },
+        error: error => {
+          if (revision === this.progressionRequestRevision) this.progressionReferenceError.set(this.apiError(error, 'Impossible de charger le référentiel des progressions.'));
+        },
+      });
+  }
+
+  protected closeProgression(): void {
+    ++this.progressionRequestRevision;
+    this.progressionReferences.set([]);
+    this.progressionReferenceLoading.set(false);
+    this.progressionReferenceError.set(null);
+    this.expandedStageIds.set(new Set());
+    this.progressionCharacterId.set(null);
+  }
+
+  protected selectProgression(event: Event): void {
+    this.selectedProgressionSlug.set((event.target as HTMLSelectElement).value);
+    this.progressionTab.set('phases');
+    this.expandedStageIds.set(new Set());
+  }
+
+  protected toggleStage(id: number): void {
+    this.expandedStageIds.update(ids => {
+      const next = new Set(ids);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  protected hasAdjustmentRules(direction: 'gain' | 'loss'): boolean {
+    return this.selectedProgression()?.adjustmentRules.some(rule => rule.direction === direction) ?? false;
   }
 
   protected abilityLabel(

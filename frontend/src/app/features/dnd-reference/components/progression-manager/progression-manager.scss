@@ -179,6 +179,7 @@ h4 {
 }
 
 input,
+select,
 textarea {
   width: 100%;
   box-sizing: border-box;
@@ -195,7 +196,8 @@ textarea {
   }
 }
 
-input {
+input,
+select {
   min-height: 2.85rem;
   padding: 0 0.8rem;
 }
@@ -362,6 +364,15 @@ textarea {
   }
 }
 
+.rule-summary {
+  flex: 1;
+  min-width: 0;
+  padding-block: 0.5rem;
+  text-align: left;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .stage-editor {
   margin-top: 1rem;
   padding: 1rem;
@@ -387,6 +398,62 @@ textarea {
   padding: 2rem 1rem;
   border: 1px dashed rgba(202, 165, 86, 0.2);
   text-align: center;
+}
+
+.editor-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+  margin-bottom: 1.5rem;
+  padding: 0.3rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.75rem;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.editor-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 2.8rem;
+  border: 0;
+  border-radius: 0.55rem;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  opacity: 0.65;
+  transition:
+    background 150ms ease,
+    opacity 150ms ease;
+
+  &:hover:not(:disabled) {
+    opacity: 0.9;
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  &.active {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.25;
+  }
+}
+
+.tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.55rem;
+  height: 1.55rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+  font-size: 0.75rem;
 }
 
 @media (max-width: 900px) {

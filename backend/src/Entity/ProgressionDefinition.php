@@ -61,6 +61,37 @@ class ProgressionDefinition
     #[ORM\OrderBy(['displayOrder' => 'ASC', 'minimumValue' => 'ASC'])]
     private Collection $stages;
 
+    /** @var Collection<int, ProgressionAdjustmentRule> */
+    #[ORM\OneToMany(mappedBy: 'progressionDefinition', targetEntity: ProgressionAdjustmentRule::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OrderBy(['displayOrder' => 'ASC', 'id' => 'ASC'])]
+    private Collection $adjustmentRules;
+
+    /** @return Collection<int, ProgressionAdjustmentRule> */
+    public function getAdjustmentRules(): Collection
+    {
+        return $this->adjustmentRules;
+    }
+
+    public function addAdjustmentRule(ProgressionAdjustmentRule $rule): self
+    {
+        if ($rule->getProgressionDefinition() !== $this) {
+            throw new \DomainException('Cette règle appartient à une autre progression.');
+        }
+        if (!$this->adjustmentRules->contains($rule)) {
+            $this->adjustmentRules->add($rule);
+            $this->touch();
+        }
+        return $this;
+    }
+
+    public function removeAdjustmentRule(ProgressionAdjustmentRule $rule): self
+    {
+        if ($this->adjustmentRules->removeElement($rule)) {
+            $this->touch();
+        }
+        return $this;
+    }
+
     #[ORM\Column(options: ['default' => false])]
     private bool $bulkAdjustmentEnabled = false;
 
@@ -76,6 +107,7 @@ class ProgressionDefinition
         $this->createdAt = $now;
         $this->updatedAt = $now;
         $this->stages = new ArrayCollection();
+        $this->adjustmentRules = new ArrayCollection();
     }
 
     public function getId(): ?int

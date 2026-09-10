@@ -108,7 +108,7 @@ export interface CharacterFeatureSummary {
   activationType: string;
   visible: boolean;
   custom: boolean;
-  sourceType: 'class' | 'subclass' | 'race' | 'feat';
+  sourceType: 'class' | 'subclass' | 'race' | 'feat' | 'progression';
   sourceId: number;
   sourceName: string;
   unlockLevel: number;

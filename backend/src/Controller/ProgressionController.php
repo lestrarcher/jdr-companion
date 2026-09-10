@@ -6,6 +6,8 @@ namespace App\Controller;
 
 use App\Entity\ProgressionDefinition;
 use App\Entity\ProgressionStage;
+use App\Entity\ProgressionAdjustmentRule;
+use App\Enum\ProgressionAdjustmentDirection;
 use Doctrine\ORM\EntityManagerInterface;
 use JsonException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -17,6 +19,71 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/dnd/progressions')]
 final class ProgressionController extends AbstractController
 {
+    #[Route('/{progressionId}/adjustment-rules', name: 'api_dnd_progression_rules_create', requirements: ['progressionId' => '\d+'], defaults: ['ruleId' => null], methods: ['POST'])]
+    #[Route('/{progressionId}/adjustment-rules/{ruleId}', name: 'api_dnd_progression_rules_update', requirements: ['progressionId' => '\d+', 'ruleId' => '\d+'], methods: ['PATCH'])]
+    #[Route('/{progressionId}/adjustment-rules/{ruleId}', name: 'api_dnd_progression_rules_delete', requirements: ['progressionId' => '\d+', 'ruleId' => '\d+'], methods: ['DELETE'])]
+    public function mutateAdjustmentRule(int $progressionId, Request $request, EntityManagerInterface $entityManager, ?int $ruleId): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('ROLE_USER');
+        $progression = $entityManager->getRepository(ProgressionDefinition::class)->find($progressionId);
+        if (!$progression instanceof ProgressionDefinition) {
+            return $this->json(['message' => 'Progression introuvable.'], Response::HTTP_NOT_FOUND);
+        }
+        $rule = $ruleId !== null ? $entityManager->getRepository(ProgressionAdjustmentRule::class)->findOneBy([
+            'id' => $ruleId, 'progressionDefinition' => $progression,
+        ]) : null;
+        if ($ruleId !== null && !$rule instanceof ProgressionAdjustmentRule) {
+            return $this->json(['message' => 'Règle introuvable.'], Response::HTTP_NOT_FOUND);
+        }
+        if ($request->isMethod('DELETE')) {
+            $progression->removeAdjustmentRule($rule);
+            $entityManager->remove($rule);
+        } else {
+            $payload = $this->payload($request);
+            if ($payload instanceof JsonResponse) {
+                return $payload;
+            }
+            try {
+                // Validate a detached candidate before changing the managed entity.
+                $directionValue = array_key_exists('direction', $payload) ? $payload['direction'] : $rule?->getDirection()->value;
+                $direction = is_string($directionValue) ? ProgressionAdjustmentDirection::tryFrom($directionValue) : null;
+                if ($direction === null) {
+                    throw new \InvalidArgumentException('La direction doit être gain ou loss.');
+                }
+                foreach (['description', 'adjustmentLabel', 'triggerType'] as $field) {
+                    if (array_key_exists($field, $payload) && !is_string($payload[$field]) && !($field === 'triggerType' && $payload[$field] === null)) {
+                        throw new \InvalidArgumentException(sprintf('Le champ %s doit être textuel.', $field));
+                    }
+                }
+                $order = array_key_exists('displayOrder', $payload) ? $this->integer($payload['displayOrder']) : ($rule?->getDisplayOrder() ?? 0);
+                if ($order === null) {
+                    throw new \InvalidArgumentException('L’ordre d’affichage doit être entier.');
+                }
+                $candidate = new ProgressionAdjustmentRule($progression, $direction,
+                    $payload['description'] ?? $rule?->getDescription() ?? '',
+                    $payload['adjustmentLabel'] ?? $rule?->getAdjustmentLabel() ?? '');
+                $candidate->setTriggerType(array_key_exists('triggerType', $payload) ? $payload['triggerType'] : $rule?->getTriggerType());
+                $candidate->setDisplayOrder($order);
+                if ($rule === null) {
+                    $rule = $candidate;
+                    $progression->addAdjustmentRule($rule);
+                    $entityManager->persist($rule);
+                } else {
+                    $rule->setDirection($candidate->getDirection())
+                        ->setDescription($candidate->getDescription())
+                        ->setAdjustmentLabel($candidate->getAdjustmentLabel())
+                        ->setTriggerType($candidate->getTriggerType())
+                        ->setDisplayOrder($candidate->getDisplayOrder());
+                }
+            } catch (\InvalidArgumentException|\LogicException $exception) {
+                return $this->validationError($exception->getMessage());
+            }
+        }
+        $entityManager->flush();
+        return $this->json(['progression' => $this->serializeProgression($progression)],
+            $request->isMethod('POST') ? Response::HTTP_CREATED : Response::HTTP_OK);
+    }
+
     #[Route('', name: 'api_dnd_progressions_list', methods: ['GET'])]
     public function list(
         EntityManagerInterface $entityManager,
@@ -540,6 +607,12 @@ final class ProgressionController extends AbstractController
         ProgressionStage $stage,
         array $payload,
     ): void {
+        if (array_key_exists('description', $payload)) {
+            if ($payload['description'] !== null && !is_string($payload['description'])) {
+                throw new \InvalidArgumentException('La description du palier doit être textuelle.');
+            }
+            $stage->setDescription($payload['description']);
+        }
         if (array_key_exists('label', $payload)) {
             $stage->setLabel(
                 (string) $payload['label'],
@@ -691,6 +764,7 @@ final class ProgressionController extends AbstractController
             'spendLabel' => $progression->getSpendLabel(),
             'bulkAdjustmentEnabled' => $progression->isBulkAdjustmentEnabled(),
             'custom' => $progression->isCustom(),
+            'adjustmentRules' => $this->serializeAdjustmentRules($progression),
             'stages' => array_map(
                 $this->serializeStage(...),
                 $progression->getStages()->toArray(),
@@ -707,11 +781,28 @@ final class ProgressionController extends AbstractController
         return [
             'id' => $stage->getId(),
             'label' => $stage->getLabel(),
+            'description' => $stage->getDescription(),
             'minimumValue' => $stage->getMinimumValue(),
             'maximumValue' => $stage->getMaximumValue(),
             'iconUrl' => $stage->getIconUrl(),
             'displayOrder' => $stage->getDisplayOrder(),
         ];
+    }
+
+    /** GM/reference data only: deliberately not used by CharacterProfileSerializer. */
+    private function serializeAdjustmentRules(ProgressionDefinition $progression): array
+    {
+        $rules = $progression->getAdjustmentRules()->toArray();
+        usort($rules, static fn (ProgressionAdjustmentRule $a, ProgressionAdjustmentRule $b): int =>
+            [$a->getDisplayOrder(), $a->getId()] <=> [$b->getDisplayOrder(), $b->getId()]);
+        return array_map(static fn (ProgressionAdjustmentRule $rule): array => [
+            'id' => $rule->getId(),
+            'direction' => $rule->getDirection()->value,
+            'triggerType' => $rule->getTriggerType(),
+            'description' => $rule->getDescription(),
+            'adjustmentLabel' => $rule->getAdjustmentLabel(),
+            'displayOrder' => $rule->getDisplayOrder(),
+        ], $rules);
     }
 
     /**

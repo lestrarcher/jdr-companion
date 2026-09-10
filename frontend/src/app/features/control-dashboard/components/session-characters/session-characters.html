@@ -19,10 +19,10 @@
         <button
           type="button"
           class="refresh-button"
-          [disabled]="refreshingHitPoints()"
-          (click)="refreshHitPoints()"
+          [disabled]="refreshingCharacters()"
+          (click)="refreshCharacters()"
         >
-          {{ refreshingHitPoints() ? 'Actualisation…' : 'Actualiser les PV' }}
+          {{ refreshingCharacters() ? 'Actualisation…' : 'Actualiser les personnages' }}
         </button>
       }
     </div>
@@ -235,6 +235,12 @@
               >
                 Voir les caractéristiques
               </button>
+
+              @if ((character.sessionState?.character?.progressions?.length ?? 0) > 0) {
+                <button type="button" class="character-action" (click)="openProgression(character)">
+                  Voir la progression
+                </button>
+              }
 
               <button
                 type="button"
@@ -541,6 +547,168 @@
   </div>
 }
 
+@if (progressionCharacter(); as selected) {
+  <div class="modal-backdrop" role="presentation" (click)="closeProgression()">
+    <section class="modal-panel gm-progressions" role="dialog" aria-modal="true" aria-labelledby="progression-title" (click)="$event.stopPropagation()">
+      <header class="modal-header">
+        <div>
+          <span class="eyebrow">Progression · Consultation</span>
+          <h2 id="progression-title">{{ selected.sessionState?.character?.name ?? selected.character.name }}</h2>
+        </div>
+        <button type="button" class="modal-close" aria-label="Fermer" (click)="closeProgression()">×</button>
+      </header>
+      @if (characterActionError()) {
+        <p class="feedback feedback--error" role="alert">{{ characterActionError() }}</p>
+      }
+      @if (selectedProgression(); as progression) {
+        @if (progressionDetails().length > 1) {
+          <select aria-label="Progression consultée" [value]="progression.slug" (change)="selectProgression($event)">
+            @for (entry of progressionDetails(); track entry.slug) {
+              <option [value]="entry.slug">{{ entry.name }}</option>
+            }
+          </select>
+        }
+        <section [style.--progression-accent]="progression.accentColor || '#80619a'">
+          <header class="progression-summary">
+            <div class="progression-summary__identity">
+              <span class="eyebrow">Progression actuelle</span>
+              <strong>{{ progression.name }}</strong>
+            </div>
+
+            <div class="progression-summary__value">
+              <span>Valeur</span>
+              <b>{{ progression.current ?? '—' }}</b>
+            </div>
+
+            <div class="progression-summary__icon">
+              @if (progression.stage?.iconUrl; as icon) {
+                <img [src]="icon" alt="" />
+              }
+            </div>
+          </header>
+
+          <nav class="progression-tabs" aria-label="Informations de progression">
+            <button
+              type="button"
+              class="progression-tab"
+              [attr.aria-pressed]="progressionTab() === 'phases'"
+              (click)="progressionTab.set('phases')"
+            >
+              Phases
+            </button>
+
+            <button
+              type="button"
+              class="progression-tab"
+              [attr.aria-pressed]="progressionTab() === 'actions'"
+              (click)="progressionTab.set('actions')"
+            >
+              Actions
+            </button>
+          </nav>
+          @if (progressionReferenceLoading()) {
+            <p class="modal-empty" role="status">Chargement du référentiel…</p>
+          } @else if (progressionReferenceError()) {
+            <p class="feedback feedback--error" role="alert">{{ progressionReferenceError() }}</p>
+            <button type="button" class="character-action" (click)="loadProgressionReferences()">Réessayer</button>
+          } @else if (!progression.referenceAvailable) {
+            <p class="modal-empty">Définition de progression indisponible.</p>
+          } @else if (progressionTab() === 'actions') {
+            @for (direction of adjustmentDirections; track direction) {
+              <section class="progression-rules">
+                <h3>{{ direction === 'gain' ? (progression.gainLabel || 'Gagner des points') : (progression.spendLabel || 'Perdre des points') }}</h3>
+                <table>
+                  <thead><tr><th>Type</th><th>Déclencheur / description</th><th>Variation</th></tr></thead>
+                  <tbody>
+                    @for (rule of progression.adjustmentRules; track rule.id) {
+                      @if (rule.direction === direction) {
+                        <tr><td>{{ rule.triggerType }}</td><td>{{ rule.description }}</td><td>{{ rule.adjustmentLabel }}</td></tr>
+                      }
+                    }
+                  </tbody>
+                </table>
+                @if (!hasAdjustmentRules(direction)) { <p class="modal-empty">Aucune règle renseignée.</p> }
+              </section>
+            }
+          } @else {
+          <ul class="progression-stages">
+            @for (stage of progression.stages; track stage.id) {
+              <li [class.current-stage]="progression.stage?.id === stage.id" [attr.aria-current]="progression.stage?.id === stage.id ? 'step' : null">
+                @if (stage.description) {
+                  <button
+                    type="button"
+                    class="stage-heading stage-heading--expandable"
+                    [attr.aria-expanded]="expandedStageIds().has(stage.id)"
+                    [attr.aria-controls]="'stage-description-' + stage.id"
+                    (click)="toggleStage(stage.id)"
+                  >
+                    <div class="stage-heading__content">
+                      <strong>{{ stage.label }}</strong>
+                      <small>
+                        Cliquer pour
+                        {{
+                          expandedStageIds().has(stage.id)
+                            ? 'masquer les effets'
+                            : 'voir les effets'
+                        }}
+                      </small>
+                    </div>
+
+                    <div class="stage-heading__meta">
+                      <span class="stage-range">
+                        {{ stage.minimumValue }}
+                        {{
+                          stage.maximumValue === null
+                            ? '+'
+                            : '–' + stage.maximumValue
+                        }}
+                      </span>
+
+                      <span
+                        class="stage-chevron"
+                        [class.stage-chevron--open]="expandedStageIds().has(stage.id)"
+                        aria-hidden="true"
+                      >
+                        ›
+                      </span>
+                    </div>
+                  </button>
+
+                  <div
+                    class="stage-description"
+                    [id]="'stage-description-' + stage.id"
+                    [hidden]="!expandedStageIds().has(stage.id)"
+                  >
+                    {{ stage.description }}
+                  </div>
+                } @else {
+                  <div class="stage-heading">
+                    <div class="stage-heading__content">
+                      <strong>{{ stage.label }}</strong>
+                    </div>
+
+                    <div class="stage-heading__meta">
+                      <span class="stage-range">
+                        {{ stage.minimumValue }}
+                        {{
+                          stage.maximumValue === null
+                            ? '+'
+                            : '–' + stage.maximumValue
+                        }}
+                      </span>
+                    </div>
+                  </div>
+                }
+              </li>
+            } @empty { <li>Aucun palier configuré.</li> }
+          </ul>
+          }
+        </section>
+      } @else { <p class="modal-empty">Aucune progression attribuée.</p> }
+    </section>
+  </div>
+}
+
 @if (
   statisticsCharacter();
   as statisticsCharacter
@@ -560,18 +728,17 @@
       <header class="modal-header">
         <div>
           <span class="eyebrow">
-            Fiche technique
+            Caractéristiques
           </span>
 
           <h2 id="statistics-title">
             {{
-              statisticsCharacter.character.name
+              statisticsProfile()?.name ?? statisticsCharacter.character.name
             }}
           </h2>
 
           <p>
-            Caractéristiques après application
-            des objets équipés.
+            Caractéristiques après application des objets équipés.
           </p>
         </div>
 
@@ -585,6 +752,9 @@
         </button>
       </header>
 
+      @if (statisticsError()) {
+        <p class="feedback feedback--error" role="alert">{{ statisticsError() }}</p>
+      }
       @if (statisticsLoading()) {
         <p class="modal-empty">
           Calcul des caractéristiques…

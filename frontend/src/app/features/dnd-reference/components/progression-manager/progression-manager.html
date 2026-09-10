@@ -28,9 +28,7 @@
       @if (loading()) {
         <p class="empty">Chargement...</p>
       } @else if (filteredProgressions().length === 0) {
-        <p class="empty">
-          Aucune progression.
-        </p>
+        <p class="empty">Aucune progression.</p>
       }
 
       @for (
@@ -94,276 +92,503 @@
       </div>
     }
 
-    <div class="form-grid">
-      <label>
-        <span>Nom</span>
-        <input
-          type="text"
-          [(ngModel)]="form.name"
-          (blur)="
-            !form.slug && generateSlug()
-          "
-        />
-      </label>
-
-      <label>
-        <span>Slug</span>
-        <input
-          type="text"
-          [(ngModel)]="form.slug"
-        />
-      </label>
-
-      <label class="full">
-        <span>Description</span>
-        <textarea
-          rows="4"
-          [(ngModel)]="form.description"
-        ></textarea>
-      </label>
-
-      <label>
-        <span>Valeur minimale</span>
-        <input
-          type="number"
-          [(ngModel)]="form.minimumValue"
-        />
-      </label>
-
-      <label>
-        <span>Valeur maximale</span>
-        <input
-          type="number"
-          placeholder="Illimitée"
-          [(ngModel)]="form.maximumValue"
-        />
-      </label>
-
-      <label class="checkbox-field">
-        <input
-          type="checkbox"
-          [(ngModel)]="form.bulkAdjustmentEnabled"
-          name="bulkAdjustmentEnabled"
-        />
-        <span>Autoriser les ajustements importants</span>
-      </label>
-
-      @if (form.bulkAdjustmentEnabled) {
-        <label>
-          <span>Libellé de gain</span>
-          <input
-            type="text"
-            [(ngModel)]="form.gainLabel"
-            name="gainLabel"
-          />
-        </label>
-
-        <label>
-          <span>Libellé de dépense</span>
-          <input
-            type="text"
-            [(ngModel)]="form.spendLabel"
-            name="spendLabel"
-          />
-        </label>
-      }
-
-      <label>
-        <span>Couleur d’accent</span>
-        <input
-          type="text"
-          placeholder="#7f1d1d"
-          [(ngModel)]="form.accentColor"
-        />
-      </label>
-
-      <label class="checkbox-field">
-        <input
-          type="checkbox"
-          [(ngModel)]="form.custom"
-        />
-
-        <span>Progression personnalisée</span>
-      </label>
-    </div>
-
-    <div class="actions">
-      @if (selectedProgression()) {
-        <button
-          type="button"
-          class="danger"
-          [disabled]="deleting()"
-          (click)="deleteProgression()"
-        >
-          Supprimer
-        </button>
-      }
+    <nav
+      class="editor-tabs"
+      aria-label="Sections de la progression"
+    >
+      <button
+        type="button"
+        class="editor-tab"
+        [class.active]="activeTab() === 'general'"
+        (click)="selectTab('general')"
+      >
+        Général
+      </button>
 
       <button
         type="button"
-        class="primary"
-        [disabled]="submitting()"
-        (click)="save()"
+        class="editor-tab"
+        [class.active]="activeTab() === 'stages'"
+        [disabled]="!selectedProgression()"
+        (click)="selectTab('stages')"
       >
-        {{
-          submitting()
-            ? 'Enregistrement...'
-            : 'Enregistrer'
-        }}
-      </button>
-    </div>
+        Paliers
 
-    <section class="stages">
-      <div class="section-header">
-        <div>
-          <span class="eyebrow">
-            États narratifs
+        @if (selectedProgression()) {
+          <span class="tab-count">
+            {{ selectedProgression()!.stages.length }}
           </span>
-          <h3>Paliers</h3>
-        </div>
+        }
+      </button>
 
+      <button
+        type="button"
+        class="editor-tab"
+        [class.active]="activeTab() === 'rules'"
+        [disabled]="!selectedProgression()"
+        (click)="selectTab('rules')"
+      >
+        Règles
+
+        @if (selectedProgression()) {
+          <span class="tab-count">
+            {{
+              selectedProgression()!.adjustmentRules.length
+            }}
+          </span>
+        }
+      </button>
+    </nav>
+
+    @if (activeTab() === 'general') {
+      <div class="form-grid">
+        <label>
+          <span>Nom</span>
+          <input
+            type="text"
+            [(ngModel)]="form.name"
+            (blur)="
+              !form.slug && generateSlug()
+            "
+          />
+        </label>
+
+        <label>
+          <span>Slug</span>
+          <input
+            type="text"
+            [(ngModel)]="form.slug"
+          />
+        </label>
+
+        <label class="full">
+          <span>Description</span>
+          <textarea
+            rows="4"
+            [(ngModel)]="form.description"
+          ></textarea>
+        </label>
+
+        <label>
+          <span>Valeur minimale</span>
+          <input
+            type="number"
+            [(ngModel)]="form.minimumValue"
+          />
+        </label>
+
+        <label>
+          <span>Valeur maximale</span>
+          <input
+            type="number"
+            placeholder="Illimitée"
+            [(ngModel)]="form.maximumValue"
+          />
+        </label>
+
+        <label class="checkbox-field">
+          <input
+            type="checkbox"
+            [(ngModel)]="form.bulkAdjustmentEnabled"
+            name="bulkAdjustmentEnabled"
+          />
+
+          <span>
+            Autoriser les ajustements importants
+          </span>
+        </label>
+
+        @if (form.bulkAdjustmentEnabled) {
+          <label>
+            <span>Libellé de gain</span>
+            <input
+              type="text"
+              [(ngModel)]="form.gainLabel"
+              name="gainLabel"
+            />
+          </label>
+
+          <label>
+            <span>Libellé de dépense</span>
+            <input
+              type="text"
+              [(ngModel)]="form.spendLabel"
+              name="spendLabel"
+            />
+          </label>
+        }
+
+        <label>
+          <span>Couleur d’accent</span>
+          <input
+            type="text"
+            placeholder="#7f1d1d"
+            [(ngModel)]="form.accentColor"
+          />
+        </label>
+
+        <label class="checkbox-field">
+          <input
+            type="checkbox"
+            [(ngModel)]="form.custom"
+          />
+
+          <span>Progression personnalisée</span>
+        </label>
+      </div>
+
+      <div class="actions">
         @if (selectedProgression()) {
           <button
             type="button"
-            class="secondary"
-            (click)="startNewStage()"
+            class="danger"
+            [disabled]="deleting()"
+            (click)="deleteProgression()"
           >
-            + Ajouter un palier
+            Supprimer
           </button>
         }
+
+        <button
+          type="button"
+          class="primary"
+          [disabled]="submitting()"
+          (click)="save()"
+        >
+          {{
+            submitting()
+              ? 'Enregistrement...'
+              : 'Enregistrer'
+          }}
+        </button>
       </div>
+    }
 
-      @if (!selectedProgression()) {
-        <p class="empty stage-empty">
-          Enregistre d’abord la progression pour ajouter ses paliers.
-        </p>
-      } @else {
-        <div class="stage-list">
-          @for (
-            stage of selectedProgression()!.stages;
-            track stage.id
-          ) {
-            <article
-              class="stage-card"
-              (click)="editStage(stage)"
-            >
-              <div>
-                <strong>
-                  {{ stage.label }}
-                </strong>
+    @if (activeTab() === 'stages') {
+      <section class="stages">
+        <div class="section-header">
+          <div>
+            <span class="eyebrow">
+              États narratifs
+            </span>
 
-                <span>
-                  {{ stage.minimumValue }}
-                  –
-                  {{
-                    stage.maximumValue
-                      ?? '∞'
-                  }}
-                </span>
-              </div>
-
-              <button
-                type="button"
-                class="stage-delete"
-                title="Supprimer"
-                (click)="
-                  $event.stopPropagation();
-                  deleteStage(stage)
-                "
-              >
-                ×
-              </button>
-            </article>
-          }
-        </div>
-
-        <div class="stage-editor">
-          <h4>
-            {{
-              stageForm.id === null
-                ? 'Nouveau palier'
-                : 'Modifier le palier'
-            }}
-          </h4>
-
-          <div class="form-grid">
-            <label class="full">
-              <span>Nom</span>
-              <input
-                type="text"
-                [(ngModel)]="stageForm.label"
-              />
-            </label>
-
-            <label>
-              <span>Minimum</span>
-              <input
-                type="number"
-                [(ngModel)]="
-                  stageForm.minimumValue
-                "
-              />
-            </label>
-
-            <label>
-              <span>Maximum</span>
-              <input
-                type="number"
-                placeholder="Illimité"
-                [(ngModel)]="
-                  stageForm.maximumValue
-                "
-              />
-            </label>
-
-            <label>
-              <span>Ordre d’affichage</span>
-              <input
-                type="number"
-                min="0"
-                [(ngModel)]="
-                  stageForm.displayOrder
-                "
-              />
-            </label>
-
-            <label>
-              <span>URL d’icône</span>
-              <input
-                type="text"
-                [(ngModel)]="
-                  stageForm.iconUrl
-                "
-              />
-            </label>
+            <h3>Paliers</h3>
           </div>
 
-          <div class="actions stage-actions">
+          @if (selectedProgression()) {
             <button
               type="button"
               class="secondary"
               (click)="startNewStage()"
             >
-              Réinitialiser
+              + Ajouter un palier
             </button>
+          }
+        </div>
 
+        @if (!selectedProgression()) {
+          <p class="empty stage-empty">
+            Enregistre d’abord la progression pour
+            ajouter ses paliers.
+          </p>
+        } @else {
+          <div class="stage-list">
+            @for (
+              stage of selectedProgression()!.stages;
+              track stage.id
+            ) {
+              <article
+                class="stage-card"
+                (click)="editStage(stage)"
+              >
+                <div>
+                  <strong>
+                    {{ stage.label }}
+                  </strong>
+
+                  <span>
+                    {{ stage.minimumValue }}
+                    –
+                    {{
+                      stage.maximumValue
+                        ?? '∞'
+                    }}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  class="stage-delete"
+                  title="Supprimer"
+                  (click)="
+                    $event.stopPropagation();
+                    deleteStage(stage)
+                  "
+                >
+                  ×
+                </button>
+              </article>
+            }
+          </div>
+
+          <div class="stage-editor">
+            <h4>
+              {{
+                stageForm.id === null
+                  ? 'Nouveau palier'
+                  : 'Modifier le palier'
+              }}
+            </h4>
+
+            <div class="form-grid">
+              <label class="full">
+                <span>Nom</span>
+                <input
+                  type="text"
+                  [(ngModel)]="stageForm.label"
+                />
+              </label>
+
+              <label class="full">
+                <span>Description / effets</span>
+                <textarea
+                  rows="5"
+                  [(ngModel)]="stageForm.description"
+                ></textarea>
+              </label>
+
+              <label>
+                <span>Minimum</span>
+                <input
+                  type="number"
+                  [(ngModel)]="
+                    stageForm.minimumValue
+                  "
+                />
+              </label>
+
+              <label>
+                <span>Maximum</span>
+                <input
+                  type="number"
+                  placeholder="Illimité"
+                  [(ngModel)]="
+                    stageForm.maximumValue
+                  "
+                />
+              </label>
+
+              <label>
+                <span>Ordre d’affichage</span>
+                <input
+                  type="number"
+                  min="0"
+                  [(ngModel)]="
+                    stageForm.displayOrder
+                  "
+                />
+              </label>
+
+              <label>
+                <span>URL d’icône</span>
+                <input
+                  type="text"
+                  [(ngModel)]="
+                    stageForm.iconUrl
+                  "
+                />
+              </label>
+            </div>
+
+            <div class="actions stage-actions">
+              <button
+                type="button"
+                class="secondary"
+                (click)="startNewStage()"
+              >
+                Réinitialiser
+              </button>
+
+              <button
+                type="button"
+                class="primary"
+                [disabled]="stageSubmitting()"
+                (click)="saveStage()"
+              >
+                {{
+                  stageSubmitting()
+                    ? 'Enregistrement...'
+                    : stageForm.id === null
+                      ? 'Ajouter le palier'
+                      : 'Mettre à jour'
+                }}
+              </button>
+            </div>
+          </div>
+        }
+      </section>
+    }
+
+    @if (
+      activeTab() === 'rules'
+      && selectedProgression()
+    ) {
+      <section class="stages">
+        <div class="section-header">
+          <div>
+            <span class="eyebrow">
+              Évolution narrative
+            </span>
+
+            <h3>Règles de progression</h3>
+          </div>
+
+          <button
+            type="button"
+            class="secondary"
+            [disabled]="ruleSubmitting()"
+            (click)="newRule()"
+          >
+            + Ajouter une règle
+          </button>
+        </div>
+
+        @for (
+          direction of ruleDirections;
+          track direction
+        ) {
+          <h4>
+            {{
+              direction === 'gain'
+                ? 'Gain'
+                : 'Perte'
+            }}
+          </h4>
+
+          @for (
+            rule of rulesFor(direction);
+            track rule.id
+          ) {
+            <article class="stage-card">
+              <button
+                type="button"
+                class="secondary rule-summary"
+                [disabled]="ruleSubmitting()"
+                (click)="editRule(rule)"
+              >
+                @if (rule.triggerType) {
+                  <strong>
+                    {{ rule.triggerType }} ·
+                  </strong>
+                }
+
+                {{ rule.description }}
+                —
+                {{ rule.adjustmentLabel }}
+              </button>
+
+              <button
+                type="button"
+                class="stage-delete"
+                aria-label="Supprimer la règle"
+                [disabled]="ruleSubmitting()"
+                (click)="deleteRule(rule)"
+              >
+                ×
+              </button>
+            </article>
+          } @empty {
+            <p class="empty">
+              Aucune règle renseignée.
+            </p>
+          }
+        }
+
+        <div class="stage-editor">
+          <h4>
+            {{
+              ruleForm.id === null
+                ? 'Nouvelle règle'
+                : 'Modifier la règle'
+            }}
+          </h4>
+
+          <div class="form-grid">
+            <label>
+              <span>Direction</span>
+
+              <select
+                [(ngModel)]="ruleForm.direction"
+              >
+                <option value="gain">
+                  Gain
+                </option>
+
+                <option value="loss">
+                  Perte
+                </option>
+              </select>
+            </label>
+
+            <label>
+              <span>Type / déclenchement</span>
+              <input
+                maxlength="120"
+                placeholder="Automatique, JdS Sagesse…"
+                [(ngModel)]="ruleForm.triggerType"
+              />
+            </label>
+
+            <label class="full">
+              <span>Description</span>
+              <textarea
+                rows="3"
+                required
+                [(ngModel)]="ruleForm.description"
+              ></textarea>
+            </label>
+
+            <label>
+              <span>Variation</span>
+              <input
+                maxlength="255"
+                required
+                placeholder="+3, +1 à +3, +1 si échec…"
+                [(ngModel)]="
+                  ruleForm.adjustmentLabel
+                "
+              />
+            </label>
+
+            <label>
+              <span>Ordre</span>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                [(ngModel)]="
+                  ruleForm.displayOrder
+                "
+              />
+            </label>
+          </div>
+
+          <div class="actions">
             <button
               type="button"
               class="primary"
-              [disabled]="stageSubmitting()"
-              (click)="saveStage()"
+              [disabled]="ruleSubmitting()"
+              (click)="saveRule()"
             >
               {{
-                stageSubmitting()
-                  ? 'Enregistrement...'
-                  : stageForm.id === null
-                    ? 'Ajouter le palier'
-                    : 'Mettre à jour'
+                ruleSubmitting()
+                  ? 'Enregistrement…'
+                  : 'Enregistrer la règle'
               }}
             </button>
           </div>
         </div>
-      }
-    </section>
+      </section>
+    }
   </div>
 </section>

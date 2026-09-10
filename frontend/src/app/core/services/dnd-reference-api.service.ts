@@ -98,6 +98,7 @@ export interface FeatReference {
 export interface ProgressionStageReference {
   id: number;
   label: string;
+  description: string | null;
   minimumValue: number;
   maximumValue: number | null;
   iconUrl: string | null;
@@ -117,6 +118,19 @@ export interface ProgressionReference {
   custom: boolean;
   bulkAdjustmentEnabled: boolean;
   stages: ProgressionStageReference[];
+  adjustmentRules: ProgressionAdjustmentRuleReference[];
+}
+
+export interface SaveProgressionAdjustmentRulePayload {
+  direction: 'gain' | 'loss';
+  triggerType: string | null;
+  description: string;
+  adjustmentLabel: string;
+  displayOrder: number;
+}
+
+export interface ProgressionAdjustmentRuleReference extends SaveProgressionAdjustmentRulePayload {
+  id: number;
 }
 
 export interface DndReferenceResponse {
@@ -219,6 +233,7 @@ export interface SaveProgressionPayload {
 
 export interface SaveProgressionStagePayload {
   label: string;
+  description: string | null;
   minimumValue: number;
   maximumValue: number | null;
   iconUrl: string | null;
@@ -229,6 +244,21 @@ export interface SaveProgressionStagePayload {
 export class DndReferenceApiService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = '/api/dnd';
+
+  createProgressionAdjustmentRule(progressionId: number, payload: SaveProgressionAdjustmentRulePayload): Observable<ProgressionReference> {
+    return this.http.post<{ progression: ProgressionReference }>(`${this.apiUrl}/progressions/${progressionId}/adjustment-rules`, payload)
+      .pipe(map(response => response.progression));
+  }
+
+  updateProgressionAdjustmentRule(progressionId: number, ruleId: number, payload: Partial<SaveProgressionAdjustmentRulePayload>): Observable<ProgressionReference> {
+    return this.http.patch<{ progression: ProgressionReference }>(`${this.apiUrl}/progressions/${progressionId}/adjustment-rules/${ruleId}`, payload)
+      .pipe(map(response => response.progression));
+  }
+
+  deleteProgressionAdjustmentRule(progressionId: number, ruleId: number): Observable<ProgressionReference> {
+    return this.http.delete<{ progression: ProgressionReference }>(`${this.apiUrl}/progressions/${progressionId}/adjustment-rules/${ruleId}`)
+      .pipe(map(response => response.progression));
+  }
 
   getReference(): Observable<DndReferenceResponse> {
     return this.http.get<DndReferenceResponse>(`${this.apiUrl}/reference`);

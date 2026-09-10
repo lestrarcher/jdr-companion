@@ -6,6 +6,8 @@ import {
   ProgressionStageReference,
   SaveProgressionPayload,
   SaveProgressionStagePayload,
+  ProgressionAdjustmentRuleReference,
+  SaveProgressionAdjustmentRulePayload,
 } from '../../../../core/services/dnd-reference-api.service';
 
 interface ProgressionForm {
@@ -24,11 +26,14 @@ interface ProgressionForm {
 interface StageForm {
   id: number | null;
   label: string;
+  description: string;
   minimumValue: number;
   maximumValue: number | null;
   iconUrl: string;
   displayOrder: number;
 }
+
+type ProgressionEditorTab = 'general' | 'stages' | 'rules';
 
 @Component({
   selector: 'app-progression-manager',
@@ -42,11 +47,15 @@ export class ProgressionManager {
 
   readonly progressions = signal<ProgressionReference[]>([]);
   readonly selectedProgressionId = signal<number | null>(null);
+  readonly activeTab = signal<ProgressionEditorTab>('general');
   readonly search = signal('');
   readonly loading = signal(false);
   readonly submitting = signal(false);
   readonly deleting = signal(false);
   readonly stageSubmitting = signal(false);
+  readonly ruleSubmitting = signal(false);
+  readonly ruleDirections = ['gain', 'loss'] as const;
+  ruleForm: SaveProgressionAdjustmentRulePayload & { id: number | null } = this.emptyRuleForm();
   readonly error = signal<string | null>(null);
   readonly success = signal<string | null>(null);
 
@@ -96,9 +105,19 @@ export class ProgressionManager {
     });
   }
 
+  selectTab(tab: ProgressionEditorTab): void {
+    if (tab !== 'general' && !this.selectedProgression()) {
+      return;
+    }
+
+    this.activeTab.set(tab);
+    this.clearMessages();
+  }
+
   selectProgression(
     progression: ProgressionReference,
   ): void {
+    this.activeTab.set('general');
     this.selectedProgressionId.set(progression.id);
 
     this.form = {
@@ -115,14 +134,24 @@ export class ProgressionManager {
     };
 
     this.stageForm = this.emptyStageForm();
+    this.ruleForm = this.emptyRuleForm();
     this.clearMessages();
   }
 
   startNew(): void {
+    this.activeTab.set('general');
     this.selectedProgressionId.set(null);
     this.form = this.emptyForm();
     this.stageForm = this.emptyStageForm();
+    this.ruleForm = this.emptyRuleForm();
     this.clearMessages();
+  }
+
+  private refreshSelectedProgression(
+    progression: ProgressionReference,
+  ): void {
+    this.replaceProgression(progression);
+    this.selectedProgressionId.set(progression.id);
   }
 
   save(): void {
@@ -215,6 +244,7 @@ export class ProgressionManager {
     this.stageForm = {
       id: stage.id,
       label: stage.label,
+      description: stage.description ?? '',
       minimumValue: stage.minimumValue,
       maximumValue: stage.maximumValue,
       iconUrl: stage.iconUrl ?? '',
@@ -260,6 +290,7 @@ export class ProgressionManager {
     this.stageSubmitting.set(true);
     this.clearMessages();
 
+    const editing = this.stageForm.id !== null;
     const request = this.stageForm.id === null
       ? this.api.createProgressionStage(
           progression.id,
@@ -273,10 +304,9 @@ export class ProgressionManager {
 
     request.subscribe({
       next: updatedProgression => {
-        this.replaceProgression(updatedProgression);
-        this.selectProgression(updatedProgression);
+        this.refreshSelectedProgression(updatedProgression);
         this.success.set(
-          this.stageForm.id === null
+          !editing
             ? 'Palier ajouté.'
             : 'Palier mis à jour.',
         );
@@ -315,8 +345,7 @@ export class ProgressionManager {
       stage.id,
     ).subscribe({
       next: updatedProgression => {
-        this.replaceProgression(updatedProgression);
-        this.selectProgression(updatedProgression);
+        this.refreshSelectedProgression(updatedProgression);
         this.success.set('Palier supprimé.');
       },
       error: error => {
@@ -391,6 +420,7 @@ export class ProgressionManager {
   private stagePayload(): SaveProgressionStagePayload {
     return {
       label: this.stageForm.label.trim(),
+      description: this.stageForm.description.trim() || null,
       minimumValue:
         this.stageForm.minimumValue,
       maximumValue:
@@ -421,6 +451,7 @@ export class ProgressionManager {
     return {
       id: null,
       label: '',
+      description: '',
       minimumValue: 0,
       maximumValue: null,
       iconUrl: '',
@@ -431,5 +462,76 @@ export class ProgressionManager {
   private clearMessages(): void {
     this.error.set(null);
     this.success.set(null);
+  }
+
+  rulesFor(direction: 'gain' | 'loss'): ProgressionAdjustmentRuleReference[] {
+    return (this.selectedProgression()?.adjustmentRules ?? [])
+      .filter(rule => rule.direction === direction)
+      .sort((a, b) => a.displayOrder - b.displayOrder || a.id - b.id);
+  }
+
+  newRule(): void {
+    this.ruleForm = this.emptyRuleForm();
+    this.clearMessages();
+  }
+
+  editRule(rule: ProgressionAdjustmentRuleReference): void {
+    if (this.ruleSubmitting()) return;
+    this.ruleForm = { ...rule };
+    this.clearMessages();
+  }
+
+  saveRule(): void {
+    const progression = this.selectedProgression();
+    if (!progression || this.ruleSubmitting()) return;
+    const { id, ...fields } = this.ruleForm;
+    const payload = { ...fields, description: fields.description.trim(),
+      adjustmentLabel: fields.adjustmentLabel.trim(), triggerType: fields.triggerType?.trim() || null };
+    if (!payload.description || !payload.adjustmentLabel || !Number.isInteger(payload.displayOrder) || payload.displayOrder < 0) {
+      this.error.set('Description, variation et ordre entier positif ou nul sont obligatoires.');
+      return;
+    }
+    this.ruleSubmitting.set(true);
+    this.clearMessages();
+    const request = id === null
+      ? this.api.createProgressionAdjustmentRule(progression.id, payload)
+      : this.api.updateProgressionAdjustmentRule(progression.id, id, payload);
+    request.subscribe({
+      next: updated => {
+        this.replaceProgression(updated);
+        if (this.selectedProgressionId() === progression.id) {
+          this.ruleForm = this.emptyRuleForm();
+          this.success.set(id === null ? 'Règle ajoutée.' : 'Règle mise à jour.');
+        }
+        this.ruleSubmitting.set(false);
+      },
+      error: error => {
+        this.error.set(error?.error?.message ?? 'Impossible d’enregistrer la règle.');
+        this.ruleSubmitting.set(false);
+      },
+    });
+  }
+
+  deleteRule(rule: ProgressionAdjustmentRuleReference): void {
+    const progression = this.selectedProgression();
+    if (!progression || this.ruleSubmitting() || !confirm('Supprimer cette règle de progression ?')) return;
+    this.ruleSubmitting.set(true);
+    this.clearMessages();
+    this.api.deleteProgressionAdjustmentRule(progression.id, rule.id).subscribe({
+      next: updated => {
+        this.replaceProgression(updated);
+        if (this.selectedProgressionId() === progression.id && this.ruleForm.id === rule.id) this.ruleForm = this.emptyRuleForm();
+        this.ruleSubmitting.set(false);
+        this.success.set('Règle supprimée.');
+      },
+      error: error => {
+        this.error.set(error?.error?.message ?? 'Impossible de supprimer la règle.');
+        this.ruleSubmitting.set(false);
+      },
+    });
+  }
+
+  private emptyRuleForm(): SaveProgressionAdjustmentRulePayload & { id: number | null } {
+    return { id: null, direction: 'gain', triggerType: null, description: '', adjustmentLabel: '', displayOrder: 0 };
   }
 }
