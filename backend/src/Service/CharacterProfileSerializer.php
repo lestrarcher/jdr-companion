@@ -22,10 +22,14 @@ final readonly class CharacterProfileSerializer
     }
 
     /**
+     * @param array<string, int> $progressionValues Valeurs courantes par slug.
+     *
      * @return array<string, mixed>
      */
-    public function serialize(Character $character): array
-    {
+    public function serialize(
+        Character $character,
+        array $progressionValues = [],
+    ): array {
         return [
             'id' => $character->getId(),
             'campaignId' => $character->getCampaign()->getId(),
@@ -91,9 +95,9 @@ final readonly class CharacterProfileSerializer
             ),
             'features' => array_values(array_map(
                 $this->serializeFeature(...),
-                $this->featureResolver->resolve($character),
+                $this->featureResolver->resolve($character, $progressionValues),
             )),
-            'resources' => $this->serializeResources($character),
+            'resources' => $this->serializeResources($character, $progressionValues),
             'definition' => $character->getDefinition(),
         ];
     }
@@ -207,6 +211,8 @@ final readonly class CharacterProfileSerializer
     }
 
     /**
+     * @param array<string, int> $progressionValues
+     *
      * @return list<array{
      *     slug: string,
      *     name: string,
@@ -214,11 +220,13 @@ final readonly class CharacterProfileSerializer
      *     rechargeType: string
      * }>
      */
-    private function serializeResources(Character $character): array
-    {
+    private function serializeResources(
+        Character $character,
+        array $progressionValues,
+    ): array {
         $resources = [];
 
-        foreach ($this->resourceResolver->resolve($character) as $resource) {
+        foreach ($this->resourceResolver->resolve($character, $progressionValues) as $resource) {
             $resources[$resource->getSlug()] = [
                 'slug' => $resource->getSlug(),
                 'name' => $resource->getName(),

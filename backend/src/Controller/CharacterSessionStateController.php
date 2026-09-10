@@ -14,6 +14,7 @@ use App\Security\Voter\CampaignVoter;
 use Doctrine\ORM\EntityManagerInterface;
 use JsonException;
 use App\Service\CharacterSessionStateFactory;
+use App\Service\CharacterSessionStateSynchronizer;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -31,6 +32,7 @@ final class CharacterSessionStateController extends AbstractController
 
     public function __construct(
         private readonly CharacterProfileSerializer $profileSerializer,
+        private readonly CharacterSessionStateSynchronizer $stateSynchronizer,
     ) {
     }
 
@@ -454,7 +456,9 @@ final class CharacterSessionStateController extends AbstractController
         }
 
         $state['progressions'] = $progressions;
-        $sessionState->setState($state);
+        $sessionState->setState(
+            $this->stateSynchronizer->synchronizeResources($character, $state),
+        );
 
         $entityManager->flush();
 
@@ -644,7 +648,10 @@ final class CharacterSessionStateController extends AbstractController
                 ],
                 'character' =>
                     $this->profileSerializer
-                        ->serialize($character),
+                        ->serialize(
+                            $character,
+                            $this->extractProgressionValues($state->getState()),
+                        ),
                 'levelUpAllowed' => false,
             ],
             Response::HTTP_CREATED,
@@ -722,7 +729,25 @@ final class CharacterSessionStateController extends AbstractController
             );
         }
 
-        $state->setState($newState);
+        $resources = $newState['resources'] ?? [];
+
+        if (!is_array($resources)) {
+            return $this->json(
+                ['message' => 'La propriété "resources" doit être un tableau.'],
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        $oldState = $state->getState();
+        $newState['resources'] = $this->preserveHistoricalResources(
+            $oldState['resources'] ?? [],
+            $resources,
+        );
+
+        $state->setState($this->stateSynchronizer->synchronizeResources(
+            $state->getCharacter(),
+            $newState,
+        ));
 
         $entityManager->flush();
 
@@ -754,7 +779,10 @@ final class CharacterSessionStateController extends AbstractController
                 'name' => $gameSession->getName(),
                 'status' => $gameSession->getStatus(),
             ],
-            'character' => $this->profileSerializer->serialize($character),
+            'character' => $this->profileSerializer->serialize(
+                $character,
+                $this->extractProgressionValues($state->getState()),
+            ),
             'participating' => $state->isParticipating(),
             'levelUpAllowed' => $state->isLevelUpAllowed(),
             'state' => $state->getState(),
@@ -766,5 +794,66 @@ final class CharacterSessionStateController extends AbstractController
         }
 
         return $data;
+    }
+
+    /**
+     * @param array<string, mixed> $state
+     *
+     * @return array<string, int>
+     */
+    private function extractProgressionValues(array $state): array
+    {
+        $progressions = $state['progressions'] ?? [];
+
+        if (!is_array($progressions)) {
+            return [];
+        }
+
+        $values = [];
+
+        foreach ($progressions as $progression) {
+            if (
+                !is_array($progression)
+                || !is_string($progression['id'] ?? null)
+                || $progression['id'] === ''
+                || !is_int($progression['currentValue'] ?? null)
+            ) {
+                continue;
+            }
+
+            $values[$progression['id']] = $progression['currentValue'];
+        }
+
+        return $values;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $historicalResources
+     * @param array<int, array<string, mixed>> $incomingResources
+     * @return array<int, array<string, mixed>>
+     */
+    private function preserveHistoricalResources(
+        array $historicalResources,
+        array $incomingResources,
+    ): array {
+        $incomingSlugs = [];
+
+        foreach ($incomingResources as $resource) {
+            $slug = $resource['id'] ?? null;
+
+            if (is_string($slug)) {
+                $incomingSlugs[$slug] = true;
+            }
+        }
+
+        foreach ($historicalResources as $resource) {
+            $slug = $resource['id'] ?? null;
+
+            if (!is_string($slug) || !isset($incomingSlugs[$slug])) {
+                $incomingResources[] = $resource;
+            }
+        }
+
+        return $incomingResources;
     }
 }

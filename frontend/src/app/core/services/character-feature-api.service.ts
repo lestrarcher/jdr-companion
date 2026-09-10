@@ -10,7 +10,7 @@ export type FeatureActivationType =
   | 'free_action'
   | 'special';
 
-export type FeatureSourceType = 'class' | 'subclass' | 'race' | 'feat';
+export type FeatureSourceType = 'class' | 'subclass' | 'race' | 'feat' | 'progression';
 
 export interface EnumChoice<T extends string = string> {
   value: T;
@@ -60,6 +60,7 @@ export interface CharacterFeatureRule {
   sourceId: number;
   sourceName: string;
   unlockLevel: number;
+  progressionThreshold: number | null;
   displayOrder: number;
 }
 
@@ -108,11 +109,13 @@ export interface CreateFeatureRulePayload {
   sourceType: FeatureSourceType;
   sourceId: number;
   unlockLevel: number;
+  progressionThreshold?: number;
   displayOrder: number;
 }
 
 export interface UpdateFeatureRulePayload {
   unlockLevel?: number;
+  progressionThreshold?: number;
   displayOrder?: number;
 }
 

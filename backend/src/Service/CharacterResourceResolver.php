@@ -22,10 +22,14 @@ final readonly class CharacterResourceResolver
     }
 
     /**
+     * @param array<string, int> $progressionValues Valeurs courantes par slug.
+     *
      * @return array<string, ResolvedCharacterResource>
      */
-    public function resolve(Character $character): array
-    {
+    public function resolve(
+        Character $character,
+        array $progressionValues = [],
+    ): array {
         /** @var array<string, TrackableResourceDefinition> $definitions */
         $definitions = [];
 
@@ -39,7 +43,7 @@ final readonly class CharacterResourceResolver
          * Exemple : Conscience magique, dont le maximum est égal
          * au bonus de maîtrise.
          */
-        foreach ($this->featureResolver->resolve($character) as $featureRule) {
+        foreach ($this->featureResolver->resolve($character, $progressionValues) as $featureRule) {
             $definition = $featureRule
                 ->getFeatureDefinition()
                 ->getResourceDefinition();

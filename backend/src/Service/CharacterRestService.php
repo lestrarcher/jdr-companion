@@ -7,6 +7,9 @@ namespace App\Service;
 use App\Entity\Character;
 use App\Entity\CharacterSessionState;
 use App\Entity\RestRequest;
+use App\Entity\TrackableResourceDefinition;
+use App\Enum\ResourceMaximumType;
+use App\Repository\TrackableResourceDefinitionRepository;
 
 final readonly class CharacterRestService
 {
@@ -15,6 +18,8 @@ final readonly class CharacterRestService
         private CharacterResourceResolver $resourceResolver,
         private CharacterSessionStateSynchronizer $stateSynchronizer,
         private CharacterSpellSlotCalculator $spellSlotCalculator,
+        private TrackableResourceDefinitionRepository $resourceDefinitionRepository,
+        private CharacterAbilityCalculator $abilityCalculator,
     ) {
     }
 
@@ -24,7 +29,7 @@ final readonly class CharacterRestService
     ): void {
         $character = $sessionState->getCharacter();
 
-        $state = $this->stateSynchronizer->synchronize(
+        $state = $this->stateSynchronizer->synchronizeResources(
             $character,
             $sessionState->getState(),
         );
@@ -56,6 +61,7 @@ final readonly class CharacterRestService
             $character,
             $state['resources'] ?? [],
             [RestRequest::TYPE_SHORT_REST],
+            $this->stateSynchronizer->extractProgressionValues($state),
         );
 
         return $state;
@@ -90,6 +96,7 @@ final readonly class CharacterRestService
                 RestRequest::TYPE_SHORT_REST,
                 RestRequest::TYPE_LONG_REST,
             ],
+            $this->stateSynchronizer->extractProgressionValues($state),
         );
 
         $state['resources'] = $this->restoreSpellSlots(
@@ -103,6 +110,7 @@ final readonly class CharacterRestService
     /**
      * @param array<int, array<string, mixed>> $states
      * @param list<string>                     $resetPeriods
+     * @param array<string, int>               $progressionValues
      *
      * @return array<int, array<string, mixed>>
      */
@@ -110,12 +118,34 @@ final readonly class CharacterRestService
         Character $character,
         array $states,
         array $resetPeriods,
+        array $progressionValues,
     ): array {
-        $resolvedResources = $this->resourceResolver->resolve($character);
+        $resolvedResources = $this->resourceResolver->resolve($character, $progressionValues);
+        $historicalSlugs = [];
+
+        foreach ($states as $resourceState) {
+            $id = $resourceState['id'] ?? null;
+
+            if (is_string($id) && !isset($resolvedResources[$id])) {
+                $historicalSlugs[$id] = $id;
+            }
+        }
+
+        $historicalDefinitions = [];
+
+        if ($historicalSlugs !== []) {
+            foreach ($this->resourceDefinitionRepository->findBy([
+                'slug' => array_values($historicalSlugs),
+            ]) as $definition) {
+                $historicalDefinitions[$definition->getSlug()] = $definition;
+            }
+        }
 
         return array_map(
-            static function (array $resourceState) use (
+            function (array $resourceState) use (
+                $character,
                 $resolvedResources,
+                $historicalDefinitions,
                 $resetPeriods,
             ): array {
                 $id = $resourceState['id'] ?? null;
@@ -125,24 +155,50 @@ final readonly class CharacterRestService
                 }
 
                 $resource = $resolvedResources[$id] ?? null;
+                $definition = $resource?->getDefinition()
+                    ?? $historicalDefinitions[$id] ?? null;
 
-                if ($resource === null) {
+                if ($definition === null) {
                     return $resourceState;
                 }
 
                 if (!in_array(
-                    $resource->getRechargeType()->value,
+                    $definition->getRechargeType()->value,
                     $resetPeriods,
                     true,
                 )) {
                     return $resourceState;
                 }
 
-                $resourceState['currentValue'] = $resource->getMaximum();
+                $resourceState['currentValue'] = $resource?->getMaximum()
+                    ?? $this->historicalResourceMaximum($character, $definition);
 
                 return $resourceState;
             },
             $states,
+        );
+    }
+
+    private function historicalResourceMaximum(
+        Character $character,
+        TrackableResourceDefinition $definition,
+    ): int {
+        $scalingValue = match ($definition->getMaximumType()) {
+            ResourceMaximumType::Fixed => 0,
+            ResourceMaximumType::ProficiencyBonus => $character->getProficiencyBonus(),
+            ResourceMaximumType::AbilityModifier => $this->abilityCalculator->calculate(
+                $character,
+                $definition->getScalingAbility()
+                    ?? throw new \LogicException(sprintf(
+                        'La ressource "%s" ne possède aucune caractéristique de calcul.',
+                        $definition->getName(),
+                    )),
+            )->modifier(),
+        };
+
+        return max(
+            $definition->getMinimumMaximum(),
+            $definition->getBaseMaximum() + $scalingValue * $definition->getMultiplier(),
         );
     }
 

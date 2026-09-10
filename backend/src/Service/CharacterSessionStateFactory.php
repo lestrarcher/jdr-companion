@@ -30,14 +30,21 @@ final readonly class CharacterSessionStateFactory
             ));
         }
 
+        $progressions = $this->createProgressions($character);
+        $progressionValues = [];
+
+        foreach ($progressions as $progression) {
+            $progressionValues[$progression['id']] = $progression['currentValue'];
+        }
+
         return [
             'hitPoints' => [
                 'current' => $hitPoints->maximumValue,
                 'temporary' => 0,
             ],
             'hitDice' => $this->createHitDice($character),
-            'progressions' => $this->createProgressions($character),
-            'resources' => $this->createResources($character),
+            'progressions' => $progressions,
+            'resources' => $this->createResources($character, $progressionValues),
         ];
     }
 
@@ -87,8 +94,10 @@ final readonly class CharacterSessionStateFactory
     /**
      * @return list<array{id: string, currentValue: int}>
      */
-    private function createResources(Character $character): array
-    {
+    private function createResources(
+        Character $character,
+        array $progressionValues,
+    ): array {
         $resources = [];
 
         /*
@@ -111,7 +120,7 @@ final readonly class CharacterSessionStateFactory
             }
         }
 
-        foreach ($this->resourceResolver->resolve($character) as $resource) {
+        foreach ($this->resourceResolver->resolve($character, $progressionValues) as $resource) {
             $resources[$resource->getSlug()] = [
                 'id' => $resource->getSlug(),
                 'currentValue' => $resource->getMaximum(),

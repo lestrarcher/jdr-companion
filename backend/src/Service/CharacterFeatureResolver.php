@@ -19,17 +19,22 @@ final readonly class CharacterFeatureResolver
     /**
      * Retourne une seule règle applicable par capacité.
      *
-     * Lorsqu’une même capacité possède plusieurs paliers,
-     * la règle ayant le niveau de déblocage le plus élevé est conservée.
+     * Les règles historiques conservent leur sélection par niveau.
+     * Pour une même progression, le plus grand seuil applicable est conservé.
+     * Entre une progression et une autre source, la première règle est conservée.
+     *
+     * @param array<string, int> $progressionValues Valeurs courantes par slug.
      *
      * @return array<string, CharacterFeatureRule>
      */
-    public function resolve(Character $character): array
-    {
+    public function resolve(
+        Character $character,
+        array $progressionValues = [],
+    ): array {
         $resolvedRules = [];
 
         foreach ($this->ruleRepository->findOrdered() as $rule) {
-            if (!$this->isRuleApplicable($character, $rule)) {
+            if (!$this->isRuleApplicable($character, $rule, $progressionValues)) {
                 continue;
             }
 
@@ -38,7 +43,7 @@ final readonly class CharacterFeatureResolver
 
             if (
                 !$currentRule instanceof CharacterFeatureRule
-                || $rule->getUnlockLevel() > $currentRule->getUnlockLevel()
+                || $this->shouldReplaceRule($currentRule, $rule)
             ) {
                 $resolvedRules[$slug] = $rule;
             }
@@ -69,10 +74,43 @@ final readonly class CharacterFeatureResolver
         return $resolvedRules;
     }
 
+    private function shouldReplaceRule(
+        CharacterFeatureRule $currentRule,
+        CharacterFeatureRule $rule,
+    ): bool {
+        $progression = $rule->getProgressionDefinition();
+        $currentProgression = $currentRule->getProgressionDefinition();
+
+        if ($progression !== null || $currentProgression !== null) {
+            return $progression !== null
+                && $progression === $currentProgression
+                && $rule->getProgressionThreshold()
+                    > $currentRule->getProgressionThreshold();
+        }
+
+        return $rule->getUnlockLevel() > $currentRule->getUnlockLevel();
+    }
+
+    /**
+     * @param array<string, int> $progressionValues
+     */
     private function isRuleApplicable(
         Character $character,
         CharacterFeatureRule $rule,
+        array $progressionValues,
     ): bool {
+        $progression = $rule->getProgressionDefinition();
+
+        if ($progression !== null) {
+            $slug = $progression->getSlug();
+            $threshold = $rule->getProgressionThreshold();
+
+            return $character->hasProgression($progression)
+                && $threshold !== null
+                && array_key_exists($slug, $progressionValues)
+                && $progressionValues[$slug] >= $threshold;
+        }
+
         $characterClass = $rule->getCharacterClass();
 
         if ($characterClass !== null) {

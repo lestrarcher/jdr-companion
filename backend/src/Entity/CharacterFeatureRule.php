@@ -25,6 +25,14 @@ use Doctrine\ORM\Mapping as ORM;
     name: 'uniq_feat_feature_level',
     columns: ['feat_id', 'feature_definition_id', 'unlock_level'],
 )]
+#[ORM\UniqueConstraint(
+    name: 'uniq_progression_feature_threshold',
+    columns: [
+        'progression_definition_id',
+        'feature_definition_id',
+        'progression_threshold',
+    ],
+)]
 class CharacterFeatureRule
 {
     #[ORM\Id]
@@ -51,6 +59,13 @@ class CharacterFeatureRule
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
     private ?Feat $feat = null;
+
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
+    private ?ProgressionDefinition $progressionDefinition = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $progressionThreshold = null;
 
     /**
      * Niveau dans la classe ou sous-classe concernée.
@@ -121,6 +136,27 @@ class CharacterFeatureRule
         return $rule;
     }
 
+    public static function forProgression(
+        CharacterFeatureDefinition $featureDefinition,
+        ProgressionDefinition $progressionDefinition,
+        int $progressionThreshold,
+        int $displayOrder = 0,
+    ): self {
+        $rule = new self(
+            $featureDefinition,
+            1,
+            $displayOrder,
+        );
+
+        $rule->progressionDefinition =
+            $progressionDefinition;
+        $rule->setProgressionThreshold(
+            $progressionThreshold,
+        );
+
+        return $rule;
+    }
+
     public function getId(): ?int
     {
         return $this->id;
@@ -149,6 +185,31 @@ class CharacterFeatureRule
     public function getFeat(): ?Feat
     {
         return $this->feat;
+    }
+
+    public function getProgressionDefinition(): ?ProgressionDefinition
+    {
+        return $this->progressionDefinition;
+    }
+
+    public function getProgressionThreshold(): ?int
+    {
+        return $this->progressionThreshold;
+    }
+
+    public function setProgressionThreshold(
+        int $progressionThreshold,
+    ): static {
+        if ($progressionThreshold < 0) {
+            throw new \InvalidArgumentException(
+                'Le seuil de progression ne peut pas être négatif.',
+            );
+        }
+
+        $this->progressionThreshold =
+            $progressionThreshold;
+
+        return $this;
     }
 
     public function getUnlockLevel(): int
@@ -194,6 +255,7 @@ class CharacterFeatureRule
             $this->characterSubclass !== null => 'subclass',
             $this->characterRace !== null => 'race',
             $this->feat !== null => 'feat',
+            $this->progressionDefinition !== null => 'progression',
             default => throw new \LogicException('La capacité ne possède aucune source.'),
         };
     }
@@ -205,6 +267,7 @@ class CharacterFeatureRule
             'subclass' => $this->characterSubclass?->getId(),
             'race' => $this->characterRace?->getId(),
             'feat' => $this->feat?->getId(),
+            'progression' => $this->progressionDefinition?->getId(),
         };
 
         return $id ?? throw new \LogicException('La source de la capacité n’est pas persistée.');
@@ -217,6 +280,7 @@ class CharacterFeatureRule
             'subclass' => $this->characterSubclass->getName(),
             'race' => $this->characterRace->getName(),
             'feat' => $this->feat->getName(),
+            'progression' => $this->progressionDefinition->getName(),
         };
     }
 }

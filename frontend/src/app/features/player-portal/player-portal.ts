@@ -5,6 +5,7 @@ import {
   effect,
   inject,
   signal,
+  untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -17,6 +18,7 @@ import {
   EMPTY,
   Subject,
   catchError,
+  concatMap,
   debounceTime,
   finalize,
   of,
@@ -31,6 +33,7 @@ import {
   toCharacterSessionStatePayload,
 } from '@core/mappers/character-api.mapper';
 import { Character } from '@core/models/character.model';
+import { CharacterFeatureSummary } from '@core/services/character-api.service';
 import { RestType } from '@core/models/rest-request.model';
 import { CharacterSessionStateApiService } from '@core/services/character-session-state-api.service';
 import { CharacterStateService } from '@core/services/character-state.service';
@@ -106,7 +109,17 @@ export class PlayerPortal {
   private readonly restRequestSubmitting = signal(false);
   private readonly handledRestRequest = signal<string | null>(null);
 
-  private readonly remoteSynchronization = new Subject<CharacterSessionStatePayload>();
+  private readonly remoteSynchronization = new Subject<{
+    state: CharacterSessionStatePayload;
+    revision: number;
+    generation: number;
+  }>();
+  private lastQueuedRevision = 0;
+  private loadGeneration = 0;
+  protected readonly features = signal<CharacterFeatureSummary[]>([]);
+  protected readonly visibleFeatures = computed(() =>
+    this.features().filter((feature) => feature.visible),
+  );
 
   private readonly remoteSynchronizationEnabled = signal(false);
 
@@ -198,21 +211,24 @@ export class PlayerPortal {
     this.loadCharacter();
 
     effect(() => {
+      const revision = this.characterStateService.revision();
       const character =
-        this.characterState();
+        untracked(this.characterState);
 
       if (
         !this.remoteSynchronizationEnabled() ||
-        !character
+        !character || revision === this.lastQueuedRevision
       ) {
         return;
       }
 
-      this.remoteSynchronization.next(
-        toCharacterSessionStatePayload(
-          character,
-        ),
-      );
+      this.lastQueuedRevision = revision;
+      this.saveStatus.set('saving');
+      this.remoteSynchronization.next({
+        state: toCharacterSessionStatePayload(character),
+        revision,
+        generation: this.loadGeneration,
+      });
     });
   }
 
@@ -289,6 +305,7 @@ export class PlayerPortal {
   private loadCharacter(
     displayLoading = true,
   ): void {
+    const generation = ++this.loadGeneration;
     if (displayLoading) {
       this.loading.set(true);
       this.loadError.set(null);
@@ -303,6 +320,7 @@ export class PlayerPortal {
       )
       .subscribe({
         next: (response) => {
+          if (generation !== this.loadGeneration) return;
           if (
             String(response.campaign.id) !==
             this.campaignId
@@ -356,6 +374,7 @@ export class PlayerPortal {
 
           this.campaign.set(campaign);
           this.character.set(loadedCharacter);
+          this.features.set(response.character.features);
 
           this.sessionStatus.set(response.session.status);
           this.levelUpAllowed.set(response.levelUpAllowed);
@@ -365,6 +384,7 @@ export class PlayerPortal {
             loadedCharacter,
             false,
           );
+          this.lastQueuedRevision = this.characterStateService.revision();
 
           this.remoteSynchronizationEnabled.set(true);
 
@@ -398,19 +418,33 @@ export class PlayerPortal {
       .pipe(
         debounceTime(400),
 
-        tap(() => {
-          this.saveStatus.set(
-            'saving',
-          );
-        }),
+        concatMap(({ state, revision, generation }) => {
+          const isCurrent = () =>
+            generation === this.loadGeneration &&
+            revision === this.characterStateService.revision();
 
-        switchMap((state) =>
-          this.characterSessionStateApi
+          if (!isCurrent()) return EMPTY;
+
+          return this.characterSessionStateApi
             .updateByAccessToken(
               this.accessToken,
               state,
             )
             .pipe(
+              tap((response) => {
+                if (!isCurrent()) return;
+
+                const character = characterProfileToCharacter(
+                  response.character,
+                  response.state,
+                );
+                this.characterStateService.applyServerState(character);
+                this.character.set(character);
+                this.features.set(response.character.features);
+                this.sessionStatus.set(response.session.status);
+                this.levelUpAllowed.set(response.levelUpAllowed);
+                this.saveStatus.set('saved');
+              }),
               catchError(
                 (error: unknown) => {
                   console.error(
@@ -418,25 +452,19 @@ export class PlayerPortal {
                     error,
                   );
 
-                  this.saveStatus.set(
-                    'error',
-                  );
+                  if (isCurrent()) this.saveStatus.set('error');
 
                   return EMPTY;
                 },
               ),
-            ),
-        ),
+            );
+        }),
 
         takeUntilDestroyed(
           this.destroyRef,
         ),
       )
-      .subscribe(() => {
-        this.saveStatus.set(
-          'saved',
-        );
-      });
+      .subscribe();
   }
 // TODO: remplacer ce polling temporaire par des événements Mercure.
   private initializeRestRequestPolling(): void {

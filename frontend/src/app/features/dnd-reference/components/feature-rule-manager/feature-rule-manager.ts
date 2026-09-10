@@ -12,6 +12,7 @@ import {
   ClassReference,
   DndReferenceApiService,
   FeatReference,
+  ProgressionReference,
   RaceReference,
   SubclassReference,
 } from '../../../../core/services/dnd-reference-api.service';
@@ -26,6 +27,7 @@ interface RuleForm {
   sourceType: FeatureSourceType;
   sourceId: number | null;
   unlockLevel: number;
+  progressionThreshold: number | null;
   displayOrder: number;
 }
 
@@ -46,6 +48,7 @@ export class FeatureRuleManager {
   protected readonly subclasses = signal<SubclassReference[]>([]);
   protected readonly features = signal<CharacterFeatureDefinition[]>([]);
   protected readonly rules = signal<CharacterFeatureRule[]>([]);
+  protected readonly progressions = signal<ProgressionReference[]>([]);
 
   protected readonly selectedRuleId = signal<number | null>(null);
   protected readonly featureSearch = signal('');
@@ -120,6 +123,22 @@ export class FeatureRuleManager {
     return this.sourceOptions(this.form.sourceType);
   }
 
+  protected formStages() {
+    return [...(this.progressions().find(
+      progression => progression.id === this.form.sourceId,
+    )?.stages ?? [])].sort((a, b) => a.minimumValue - b.minimumValue);
+  }
+
+  protected hasMatchingStage(): boolean {
+    return this.formStages().some(
+      stage => stage.minimumValue === this.form.progressionThreshold,
+    );
+  }
+
+  protected sourceChanged(): void {
+    this.form.progressionThreshold = null;
+  }
+
   protected readonly filterSourceOptions = computed(() => {
     const sourceType = this.sourceTypeFilter();
 
@@ -150,6 +169,8 @@ export class FeatureRuleManager {
       sourceType: rule.sourceType,
       sourceId: rule.sourceId,
       unlockLevel: rule.unlockLevel,
+      progressionThreshold:
+        rule.progressionThreshold ?? null,
       displayOrder: rule.displayOrder,
     };
     this.featureSearch.set('');
@@ -177,12 +198,23 @@ export class FeatureRuleManager {
     }
 
     const selectedId = this.selectedRuleId();
+    if (this.form.sourceType === 'progression' && !this.hasMatchingStage()) {
+      this.error.set('Sélectionnez une phase : le seuil enregistré sera sa valeur minimale.');
+      return;
+    }
     this.submitting.set(true);
     this.clearMessages();
 
     if (selectedId !== null) {
       this.featureApi.updateRule(selectedId, {
-        unlockLevel: Number(this.form.unlockLevel),
+        ...(this.form.sourceType === 'progression'
+          ? {
+              progressionThreshold:
+                Number(this.form.progressionThreshold),
+            }
+          : {
+              unlockLevel: Number(this.form.unlockLevel),
+            }),
         displayOrder: Number(this.form.displayOrder),
       }).subscribe({
         next: response => {
@@ -204,6 +236,11 @@ export class FeatureRuleManager {
       unlockLevel: Number(this.form.unlockLevel),
       displayOrder: Number(this.form.displayOrder),
     };
+
+    if (this.form.sourceType === 'progression') {
+      payload.progressionThreshold =
+        Number(this.form.progressionThreshold);
+    }
 
     this.featureApi.createRule(payload).subscribe({
       next: response => {
@@ -248,6 +285,7 @@ export class FeatureRuleManager {
 
   protected sourceTypeChanged(): void {
     this.form.sourceId = null;
+    this.sourceChanged();
   }
 
   protected sourceTypeFilterChanged(
@@ -273,6 +311,7 @@ export class FeatureRuleManager {
       subclass: 'Sous-classe',
       race: 'Race',
       feat: 'Don',
+      progression: 'Progression',
     }[sourceType];
   }
 
@@ -295,11 +334,13 @@ export class FeatureRuleManager {
       subclasses: this.referenceApi.getSubclasses(),
       features: this.featureApi.getFeatures(),
       rules: this.featureApi.getRules(),
+      progressions: this.referenceApi.getProgressions(),
     }).subscribe({
       next: result => {
         this.classes.set(this.sortByName(result.reference.classes));
         this.races.set(this.sortByName(result.reference.races));
         this.feats.set(this.sortByName(result.reference.feats));
+        this.progressions.set(this.sortByName(result.progressions.progressions));
         this.subclasses.set(
           this.sortByName(result.subclasses.subclasses),
         );
@@ -340,6 +381,12 @@ export class FeatureRuleManager {
 
       case 'feat':
         return this.feats().map(item => ({
+          id: item.id,
+          name: item.name,
+        }));
+
+      case 'progression':
+        return this.progressions().map(item => ({
           id: item.id,
           name: item.name,
         }));
@@ -398,6 +445,7 @@ export class FeatureRuleManager {
       sourceType: 'class',
       sourceId: null,
       unlockLevel: 1,
+      progressionThreshold: null,
       displayOrder: 0,
     };
   }

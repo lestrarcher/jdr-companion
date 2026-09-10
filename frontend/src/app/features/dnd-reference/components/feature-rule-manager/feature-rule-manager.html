@@ -81,6 +81,7 @@
           <option value="subclass">Sous-classe</option>
           <option value="race">Race</option>
           <option value="feat">Don</option>
+          <option value="progression">Progression</option>
         </select>
       </label>
 
@@ -90,6 +91,7 @@
           name="sourceId"
           [disabled]="selectedRuleId() !== null"
           [(ngModel)]="form.sourceId"
+          (ngModelChange)="sourceChanged()"
         >
           <option [ngValue]="null">Sélectionner</option>
 
@@ -100,16 +102,44 @@
       </label>
 
       <div class="compact-grid">
-        <label class="field">
-          <span>Niveau de déblocage</span>
-          <input
-            type="number"
-            name="unlockLevel"
-            min="1"
-            max="20"
-            [(ngModel)]="form.unlockLevel"
-          />
-        </label>
+        @if (form.sourceType === 'progression') {
+          <label class="field">
+            <span>Phase de déblocage</span>
+            <select
+              name="progressionThreshold"
+              [(ngModel)]="form.progressionThreshold"
+            >
+              <option [ngValue]="null">Sélectionner une phase</option>
+              @if (form.progressionThreshold !== null && !hasMatchingStage()) {
+                <option [ngValue]="form.progressionThreshold" disabled>
+                  Seuil actuel {{ form.progressionThreshold }} — aucune phase correspondante
+                </option>
+              }
+              @for (stage of formStages(); track stage.id) {
+                <option [ngValue]="stage.minimumValue">
+                  {{ stage.label }} · {{ stage.minimumValue }}{{ stage.maximumValue === null ? '+' : '–' + stage.maximumValue }}
+                </option>
+              }
+            </select>
+            @if (hasMatchingStage()) {
+              <small>Seuil enregistré : {{ form.progressionThreshold }}</small>
+            }
+            @if (formStages().length === 0) {
+              <small>Choisissez une progression possédant des phases.</small>
+            }
+          </label>
+        } @else {
+          <label class="field">
+            <span>Niveau de déblocage</span>
+            <input
+              type="number"
+              name="unlockLevel"
+              min="1"
+              max="20"
+              [(ngModel)]="form.unlockLevel"
+            />
+          </label>
+        }
 
         <label class="field">
           <span>Ordre d’affichage</span>
@@ -131,7 +161,11 @@
           <span>
             {{ sourceTypeLabel(rule.sourceType) }} ·
             {{ rule.sourceName }} ·
-            niveau {{ rule.unlockLevel }}
+            @if (rule.sourceType === 'progression') {
+              seuil {{ rule.progressionThreshold }}
+            } @else {
+              niveau {{ rule.unlockLevel }}
+            }
           </span>
         </section>
       }
@@ -215,6 +249,7 @@
           <option value="subclass">Sous-classes</option>
           <option value="race">Races</option>
           <option value="feat">Dons</option>
+          <option value="progression">Progression</option>
         </select>
       </label>
 
@@ -274,7 +309,11 @@
               <span class="rule-card__source">{{ rule.sourceName }}</span>
 
               <span class="rule-card__details">
-                Niveau {{ rule.unlockLevel }}
+                @if (rule.sourceType === 'progression') {
+                  Seuil {{ rule.progressionThreshold }}
+                } @else {
+                  Niveau {{ rule.unlockLevel }}
+                }
                 · ordre {{ rule.displayOrder }}
               </span>
             </button>

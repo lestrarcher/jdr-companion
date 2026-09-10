@@ -12,6 +12,15 @@ export class CharacterStateService {
   readonly character =
     this.currentCharacter.asReadonly();
 
+  private readonly localRevision = signal(0);
+  readonly revision = this.localRevision.asReadonly();
+
+  applyServerState(character: Character): void {
+    const nextCharacter = this.cloneCharacter(character);
+    this.currentCharacter.set(nextCharacter);
+    this.saveLocally(nextCharacter);
+  }
+
   private storageKey = '';
   private channel?: BroadcastChannel;
 
@@ -21,6 +30,7 @@ export class CharacterStateService {
     loadLocalState = true,
   ): void {
     this.channel?.close();
+    this.localRevision.update((revision) => revision + 1);
 
     this.storageKey =
       `jdr-companion:${campaignId}:characters:${character.id}:state`;
@@ -57,6 +67,7 @@ export class CharacterStateService {
       this.currentCharacter.set(
         synchronizedCharacter,
       );
+      this.localRevision.update((revision) => revision + 1);
 
       this.saveLocally(
         synchronizedCharacter,
@@ -584,6 +595,7 @@ export class CharacterStateService {
     this.currentCharacter.set(
       nextCharacter,
     );
+    this.localRevision.update((revision) => revision + 1);
 
     this.saveLocally(
       nextCharacter,

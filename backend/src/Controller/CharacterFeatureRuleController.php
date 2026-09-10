@@ -10,6 +10,7 @@ use App\Entity\CharacterFeatureRule;
 use App\Entity\CharacterRace;
 use App\Entity\CharacterSubclass;
 use App\Entity\Feat;
+use App\Entity\ProgressionDefinition;
 use App\Repository\CharacterFeatureRuleRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use JsonException;
@@ -23,12 +24,16 @@ use Symfony\Component\Routing\Attribute\Route;
 final class CharacterFeatureRuleController extends AbstractController
 {
     #[Route('', name: 'api_dnd_feature_rule_list', methods: ['GET'])]
-    public function list(CharacterFeatureRuleRepository $repository): JsonResponse
-    {
+    public function list(
+        CharacterFeatureRuleRepository $repository,
+    ): JsonResponse {
         $this->denyAccessUnlessGranted('ROLE_USER');
 
         return $this->json([
-            'rules' => array_map($this->serializeRule(...), $repository->findOrdered()),
+            'rules' => array_map(
+                $this->serializeRule(...),
+                $repository->findOrdered(),
+            ),
         ]);
     }
 
@@ -57,6 +62,7 @@ final class CharacterFeatureRuleController extends AbstractController
         }
 
         $sourceType = (string) ($payload['sourceType'] ?? '');
+
         $source = $this->resolveSource(
             $sourceType,
             $payload['sourceId'] ?? null,
@@ -67,10 +73,19 @@ final class CharacterFeatureRuleController extends AbstractController
             return $source;
         }
 
-        $unlockLevel = $this->integer($payload['unlockLevel'] ?? 1);
-        $displayOrder = $this->integer($payload['displayOrder'] ?? 0);
+        $unlockLevel = $this->integer(
+            $payload['unlockLevel'] ?? 1,
+        );
 
-        if ($unlockLevel === null || $unlockLevel < 1 || $unlockLevel > 20) {
+        $displayOrder = $this->integer(
+            $payload['displayOrder'] ?? 0,
+        );
+
+        if (
+            $unlockLevel === null
+            || $unlockLevel < 1
+            || $unlockLevel > 20
+        ) {
             return $this->validationError(
                 'Le niveau de déblocage doit être compris entre 1 et 20.',
             );
@@ -82,29 +97,90 @@ final class CharacterFeatureRuleController extends AbstractController
             );
         }
 
+        $progressionThreshold = null;
+
+        if ($sourceType === 'progression') {
+            $progressionThreshold = $this->integer(
+                $payload['progressionThreshold'] ?? null,
+            );
+
+            if ($progressionThreshold === null) {
+                return $this->validationError(
+                    'Le seuil de progression est invalide.',
+                );
+            }
+
+            if (!$source instanceof ProgressionDefinition) {
+                return $this->validationError(
+                    'La progression sélectionnée est invalide.',
+                );
+            }
+
+            if (
+                $progressionThreshold
+                < $source->getMinimumValue()
+            ) {
+                return $this->validationError(
+                    sprintf(
+                        'Le seuil doit être supérieur ou égal à %d.',
+                        $source->getMinimumValue(),
+                    ),
+                );
+            }
+
+            $maximumValue = $source->getMaximumValue();
+
+            if (
+                $maximumValue !== null
+                && $progressionThreshold > $maximumValue
+            ) {
+                return $this->validationError(
+                    sprintf(
+                        'Le seuil doit être inférieur ou égal à %d.',
+                        $maximumValue,
+                    ),
+                );
+            }
+        }
+
         $sourceProperty = match ($sourceType) {
             'class' => 'characterClass',
             'subclass' => 'characterSubclass',
             'race' => 'characterRace',
             'feat' => 'feat',
+            'progression' => 'progressionDefinition',
             default => null,
         };
 
         if ($sourceProperty === null) {
-            return $this->validationError('Le type de source est invalide.');
+            return $this->validationError(
+                'Le type de source est invalide.',
+            );
+        }
+
+        $criteria = [
+            'featureDefinition' => $feature,
+            $sourceProperty => $source,
+        ];
+
+        if ($sourceType === 'progression') {
+            $criteria['progressionThreshold'] =
+                $progressionThreshold;
+        } else {
+            $criteria['unlockLevel'] = $unlockLevel;
         }
 
         $existingRule = $entityManager
             ->getRepository(CharacterFeatureRule::class)
-            ->findOneBy([
-                'featureDefinition' => $feature,
-                $sourceProperty => $source,
-                'unlockLevel' => $unlockLevel,
-            ]);
+            ->findOneBy($criteria);
 
         if ($existingRule !== null) {
             return $this->json(
-                ['message' => 'Cette capacité est déjà attribuée à cette source à ce niveau.'],
+                [
+                    'message' => $sourceType === 'progression'
+                        ? 'Cette capacité est déjà attribuée à cette progression à ce seuil.'
+                        : 'Cette capacité est déjà attribuée à cette source à ce niveau.',
+                ],
                 Response::HTTP_CONFLICT,
             );
         }
@@ -135,12 +211,21 @@ final class CharacterFeatureRuleController extends AbstractController
                     $unlockLevel,
                     $displayOrder,
                 ),
+                'progression' =>
+                    CharacterFeatureRule::forProgression(
+                        $feature,
+                        $source,
+                        $progressionThreshold,
+                        $displayOrder,
+                    ),
             };
 
             $entityManager->persist($rule);
             $entityManager->flush();
         } catch (\InvalidArgumentException|\LogicException $exception) {
-            return $this->validationError($exception->getMessage());
+            return $this->validationError(
+                $exception->getMessage(),
+            );
         }
 
         return $this->json(
@@ -181,20 +266,91 @@ final class CharacterFeatureRuleController extends AbstractController
 
         try {
             if (array_key_exists('unlockLevel', $payload)) {
-                $unlockLevel = $this->integer($payload['unlockLevel']);
+                $unlockLevel = $this->integer(
+                    $payload['unlockLevel'],
+                );
 
                 if ($unlockLevel === null) {
-                    return $this->validationError('Le niveau de déblocage est invalide.');
+                    return $this->validationError(
+                        'Le niveau de déblocage est invalide.',
+                    );
                 }
 
                 $rule->setUnlockLevel($unlockLevel);
             }
 
+            if (
+                array_key_exists(
+                    'progressionThreshold',
+                    $payload,
+                )
+            ) {
+                if ($rule->sourceType() !== 'progression') {
+                    return $this->validationError(
+                        'Cette attribution n’est pas liée à une progression.',
+                    );
+                }
+
+                $progressionThreshold = $this->integer(
+                    $payload['progressionThreshold'],
+                );
+
+                if ($progressionThreshold === null) {
+                    return $this->validationError(
+                        'Le seuil de progression est invalide.',
+                    );
+                }
+
+                $progression =
+                    $rule->getProgressionDefinition();
+
+                if ($progression === null) {
+                    return $this->validationError(
+                        'La progression sélectionnée est invalide.',
+                    );
+                }
+
+                if (
+                    $progressionThreshold
+                    < $progression->getMinimumValue()
+                ) {
+                    return $this->validationError(
+                        sprintf(
+                            'Le seuil doit être supérieur ou égal à %d.',
+                            $progression->getMinimumValue(),
+                        ),
+                    );
+                }
+
+                $maximumValue =
+                    $progression->getMaximumValue();
+
+                if (
+                    $maximumValue !== null
+                    && $progressionThreshold > $maximumValue
+                ) {
+                    return $this->validationError(
+                        sprintf(
+                            'Le seuil doit être inférieur ou égal à %d.',
+                            $maximumValue,
+                        ),
+                    );
+                }
+
+                $rule->setProgressionThreshold(
+                    $progressionThreshold,
+                );
+            }
+
             if (array_key_exists('displayOrder', $payload)) {
-                $displayOrder = $this->integer($payload['displayOrder']);
+                $displayOrder = $this->integer(
+                    $payload['displayOrder'],
+                );
 
                 if ($displayOrder === null) {
-                    return $this->validationError('L’ordre d’affichage est invalide.');
+                    return $this->validationError(
+                        'L’ordre d’affichage est invalide.',
+                    );
                 }
 
                 $rule->setDisplayOrder($displayOrder);
@@ -202,7 +358,9 @@ final class CharacterFeatureRuleController extends AbstractController
 
             $entityManager->flush();
         } catch (\InvalidArgumentException|\LogicException $exception) {
-            return $this->validationError($exception->getMessage());
+            return $this->validationError(
+                $exception->getMessage(),
+            );
         }
 
         return $this->json([
@@ -236,14 +394,22 @@ final class CharacterFeatureRuleController extends AbstractController
         $entityManager->remove($rule);
         $entityManager->flush();
 
-        return $this->json(null, Response::HTTP_NO_CONTENT);
+        return $this->json(
+            null,
+            Response::HTTP_NO_CONTENT,
+        );
     }
 
     private function resolveSource(
         string $sourceType,
         mixed $sourceId,
         EntityManagerInterface $entityManager,
-    ): CharacterClass|CharacterSubclass|CharacterRace|Feat|JsonResponse {
+    ): CharacterClass
+        | CharacterSubclass
+        | CharacterRace
+        | Feat
+        | ProgressionDefinition
+        | JsonResponse {
         return match ($sourceType) {
             'class' => $this->findEntity(
                 CharacterClass::class,
@@ -269,7 +435,15 @@ final class CharacterFeatureRuleController extends AbstractController
                 'Le don sélectionné est introuvable.',
                 $entityManager,
             ),
-            default => $this->validationError('Le type de source est invalide.'),
+            'progression' => $this->findEntity(
+                ProgressionDefinition::class,
+                $sourceId,
+                'La progression sélectionnée est introuvable.',
+                $entityManager,
+            ),
+            default => $this->validationError(
+                'Le type de source est invalide.',
+            ),
         };
     }
 
@@ -289,19 +463,25 @@ final class CharacterFeatureRuleController extends AbstractController
         $id = $this->integer($id);
 
         if ($id === null || $id <= 0) {
-            return $this->validationError($errorMessage);
+            return $this->validationError(
+                $errorMessage,
+            );
         }
 
-        $entity = $entityManager->getRepository($entityClass)->find($id);
+        $entity = $entityManager
+            ->getRepository($entityClass)
+            ->find($id);
 
-        return $entity ?? $this->validationError($errorMessage);
+        return $entity
+            ?? $this->validationError($errorMessage);
     }
 
     /**
      * @return array<string, mixed>|JsonResponse
      */
-    private function payload(Request $request): array|JsonResponse
-    {
+    private function payload(
+        Request $request,
+    ): array|JsonResponse {
         try {
             return $request->toArray();
         } catch (JsonException) {
@@ -315,8 +495,9 @@ final class CharacterFeatureRuleController extends AbstractController
     /**
      * @return array<string, mixed>
      */
-    private function serializeRule(CharacterFeatureRule $rule): array
-    {
+    private function serializeRule(
+        CharacterFeatureRule $rule,
+    ): array {
         $feature = $rule->getFeatureDefinition();
 
         return [
@@ -325,13 +506,16 @@ final class CharacterFeatureRuleController extends AbstractController
                 'id' => $feature->getId(),
                 'slug' => $feature->getSlug(),
                 'name' => $feature->getName(),
-                'activationType' => $feature->getActivationType()->value,
+                'activationType' =>
+                    $feature->getActivationType()->value,
                 'hasResource' => $feature->usesResource(),
             ],
             'sourceType' => $rule->sourceType(),
             'sourceId' => $rule->sourceId(),
             'sourceName' => $rule->sourceName(),
             'unlockLevel' => $rule->getUnlockLevel(),
+            'progressionThreshold' =>
+                $rule->getProgressionThreshold(),
             'displayOrder' => $rule->getDisplayOrder(),
         ];
     }
@@ -342,17 +526,24 @@ final class CharacterFeatureRuleController extends AbstractController
             return $value;
         }
 
-        if (!is_string($value) && !is_float($value)) {
+        if (
+            !is_string($value)
+            && !is_float($value)
+        ) {
             return null;
         }
 
-        $result = filter_var($value, FILTER_VALIDATE_INT);
+        $result = filter_var(
+            $value,
+            FILTER_VALIDATE_INT,
+        );
 
         return $result !== false ? $result : null;
     }
 
-    private function validationError(string $message): JsonResponse
-    {
+    private function validationError(
+        string $message,
+    ): JsonResponse {
         return $this->json(
             ['message' => $message],
             Response::HTTP_UNPROCESSABLE_ENTITY,

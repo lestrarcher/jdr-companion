@@ -18,7 +18,7 @@ final readonly class CharacterSessionStateSynchronizer
     }
 
     /**
-     * Synchronisation simple utilisée notamment avant un repos.
+     * Synchronisation complète, avec initialisation des progressions manquantes.
      *
      * Elle ajoute les ressources nouvellement disponibles et conserve
      * les valeurs courantes existantes.
@@ -29,7 +29,39 @@ final readonly class CharacterSessionStateSynchronizer
      */
     public function synchronize(Character $character, array $state): array
     {
-        $maximums = $this->resourceMaximums($character);
+        $progressions = $state['progressions'] ?? [];
+
+        foreach ($character->getProgressions() as $characterProgression) {
+            $definition = $characterProgression->getProgressionDefinition();
+            $id = $definition->getSlug();
+
+            if ($this->findStateIndex($progressions, $id) !== null) {
+                continue;
+            }
+
+            $progressions[] = [
+                'id' => $id,
+                'currentValue' => $definition->getMinimumValue(),
+            ];
+        }
+
+        $state['progressions'] = $progressions;
+
+        return $this->synchronizeResources($character, $state);
+    }
+
+    /**
+     * Conserve les historiques et ne touche jamais aux progressions.
+     *
+     * @param array<string, mixed> $state
+     * @return array<string, mixed>
+     */
+    public function synchronizeResources(Character $character, array $state): array
+    {
+        $maximums = $this->resourceMaximums(
+            $character,
+            $this->extractProgressionValues($state),
+        );
         $resources = $state['resources'] ?? [];
 
         foreach ($maximums as $id => $maximum) {
@@ -52,30 +84,39 @@ final readonly class CharacterSessionStateSynchronizer
             );
         }
 
-        $progressions = $state['progressions'] ?? [];
-
-        foreach ($character->getProgressions() as $characterProgression) {
-            $definition =
-                $characterProgression->getProgressionDefinition();
-
-            $id = $definition->getSlug();
-            $index = $this->findStateIndex($progressions, $id);
-
-            if ($index !== null) {
-                continue;
-            }
-
-            $progressions[] = [
-                'id' => $id,
-                'currentValue' => $definition->getMinimumValue(),
-            ];
-        }
-
-        $state['progressions'] = $progressions;
-
         $state['resources'] = $resources;
 
         return $state;
+    }
+
+    /**
+     * @param array<string, mixed> $state
+     * @return array<string, int>
+     */
+    public function extractProgressionValues(array $state): array
+    {
+        $progressions = $state['progressions'] ?? [];
+
+        if (!is_array($progressions)) {
+            return [];
+        }
+
+        $values = [];
+
+        foreach ($progressions as $progression) {
+            if (
+                !is_array($progression)
+                || !is_string($progression['id'] ?? null)
+                || $progression['id'] === ''
+                || !is_int($progression['currentValue'] ?? null)
+            ) {
+                continue;
+            }
+
+            $values[$progression['id']] = $progression['currentValue'];
+        }
+
+        return $values;
     }
 
     /**
@@ -269,11 +310,13 @@ final readonly class CharacterSessionStateSynchronizer
     /**
      * @return array<string, int>
      */
-    private function resourceMaximums(Character $character): array
-    {
+    private function resourceMaximums(
+        Character $character,
+        array $progressionValues = [],
+    ): array {
         $maximums = [];
 
-        foreach ($this->resourceResolver->resolve($character) as $resource) {
+        foreach ($this->resourceResolver->resolve($character, $progressionValues) as $resource) {
             $maximums[$resource->getSlug()] = $resource->getMaximum();
         }
 
