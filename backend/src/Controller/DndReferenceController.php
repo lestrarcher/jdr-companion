@@ -21,7 +21,7 @@ final class DndReferenceController extends AbstractController
     #[Route('', name: 'api_dnd_reference', methods: ['GET'])]
     public function show(EntityManagerInterface $entityManager): JsonResponse
     {
-        $this->denyAccessUnlessGranted('ROLE_USER');
+        // $this->denyAccessUnlessGranted('ROLE_USER');
 
         $races = $entityManager
             ->getRepository(CharacterRace::class)
