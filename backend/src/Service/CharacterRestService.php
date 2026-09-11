@@ -222,35 +222,31 @@ final readonly class CharacterRestService
             $maximums[$id] = ($maximums[$id] ?? 0) + 1;
         }
 
-        return array_map(
-            static function (array $hitDiceState) use ($maximums): array {
-                $id = $hitDiceState['id'] ?? null;
+        // One allowance for the character, allocated largest die first.
+        // Sort maxima only: retain the stored pool order and metadata.
+        $remaining = max(1, intdiv($character->getTotalLevel(), 2));
+        uksort($maximums, static fn (string $a, string $b): int =>
+            (int) substr($b, 1) <=> (int) substr($a, 1));
 
-                if (!is_string($id)) {
-                    return $hitDiceState;
+        foreach ($maximums as $id => $maximum) {
+            foreach ($states as $index => $hitDiceState) {
+                if (($hitDiceState['id'] ?? null) !== $id) {
+                    continue;
                 }
-
-                $maximum = $maximums[$id] ?? null;
                 $current = $hitDiceState['current'] ?? null;
 
-                if (!is_int($maximum) || !is_int($current)) {
-                    return $hitDiceState;
+                if (!is_int($current)) {
+                    continue;
                 }
 
-                $recovered = max(
-                    1,
-                    (int) floor($maximum / 2),
-                );
+                $recovered = min($remaining, max(0, $maximum - $current));
+                $states[$index]['current'] = min($maximum, $current + $recovered);
+                $remaining -= $recovered;
+                break;
+            }
+        }
 
-                $hitDiceState['current'] = min(
-                    $maximum,
-                    $current + $recovered,
-                );
-
-                return $hitDiceState;
-            },
-            $states,
-        );
+        return $states;
     }
 
     /**

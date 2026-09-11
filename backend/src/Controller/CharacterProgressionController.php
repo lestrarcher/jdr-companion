@@ -101,7 +101,7 @@ final class CharacterProgressionController extends AbstractController
         $entityManager->persist($progression);
 
         $sessionStateSynchronizer
-            ->initializeMissingProgressions($character);
+            ->synchronizeProgressionAssignment($character, $progressionDefinition);
 
         $entityManager->flush();
 

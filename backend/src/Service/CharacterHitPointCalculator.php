@@ -18,7 +18,11 @@ final readonly class CharacterHitPointCalculator
     public function calculate(Character $character): ResolvedCharacterHitPoints
     {
         $baseValue = 0;
+        $total = 0;
         $missingLevelPositions = [];
+        $constitutionModifier = $this->abilityCalculator
+            ->calculate($character, Ability::Constitution)
+            ->modifier();
 
         foreach ($character->getClassLevels() as $level) {
             $gain = $level->getHitPointGain();
@@ -29,11 +33,8 @@ final readonly class CharacterHitPointCalculator
             }
 
             $baseValue += $gain;
+            $total += max(1, $gain + $constitutionModifier);
         }
-
-        $constitutionModifier = $this->abilityCalculator
-            ->calculate($character, Ability::Constitution)
-            ->modifier();
 
         $constitutionBonus = $constitutionModifier * $character->getTotalLevel();
 
@@ -42,7 +43,7 @@ final readonly class CharacterHitPointCalculator
          * on refuse d’annoncer un maximum potentiellement faux.
          */
         $maximumValue = $missingLevelPositions === []
-            ? max($character->getTotalLevel(), $baseValue + $constitutionBonus)
+            ? $total
             : null;
 
         return new ResolvedCharacterHitPoints(

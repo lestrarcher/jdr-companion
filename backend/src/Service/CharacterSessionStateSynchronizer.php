@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\Character;
+use App\Entity\CharacterSessionState;
+use App\Entity\ProgressionDefinition;
 use App\Repository\CharacterSessionStateRepository;
 
 final readonly class CharacterSessionStateSynchronizer
@@ -120,13 +122,13 @@ final readonly class CharacterSessionStateSynchronizer
     }
 
     /**
-     * Initialise dans les états de session les progressions
-     * attribuées au personnage qui n'existent pas encore.
+     * Initialise la progression attribuée et ses nouvelles ressources actives.
      *
      * Les valeurs existantes ne sont jamais modifiées.
      */
-    public function initializeMissingProgressions(
+    public function synchronizeProgressionAssignment(
         Character $character,
+        ProgressionDefinition $definition,
     ): void {
         $sessionStates = $this->sessionStateRepository->findBy([
             'character' => $character,
@@ -136,16 +138,8 @@ final readonly class CharacterSessionStateSynchronizer
             $state = $sessionState->getState();
             $progressions = $state['progressions'] ?? [];
 
-            foreach ($character->getProgressions() as $characterProgression) {
-                $definition =
-                    $characterProgression->getProgressionDefinition();
-
-                $id = $definition->getSlug();
-
-                if ($this->findStateIndex($progressions, $id) !== null) {
-                    continue;
-                }
-
+            $id = $definition->getSlug();
+            if ($this->findStateIndex($progressions, $id) === null) {
                 $progressions[] = [
                     'id' => $id,
                     'currentValue' =>
@@ -154,6 +148,22 @@ final readonly class CharacterSessionStateSynchronizer
             }
 
             $state['progressions'] = $progressions;
+
+            // Exclude resources already available independently of this assignment.
+            // In particular, do not repair unrelated missing or stale resource state.
+            $otherValues = $this->extractProgressionValues($state);
+            unset($otherValues[$id]);
+            $unrelatedMaximums = $this->resourceMaximums($character, $otherValues);
+            $synchronized = $this->synchronizeResources($character, $state);
+            foreach ($synchronized['resources'] as $resourceState) {
+                $slug = $resourceState['id'];
+                if (
+                    !array_key_exists($slug, $unrelatedMaximums)
+                    && $this->findStateIndex($state['resources'] ?? [], $slug) === null
+                ) {
+                    $state['resources'][] = $resourceState;
+                }
+            }
             $sessionState->setState($state);
         }
     }
@@ -161,13 +171,15 @@ final readonly class CharacterSessionStateSynchronizer
     /**
      * Photographie les maximums dérivés du personnage avant une modification.
      *
+     * @param array<string, int> $progressionValues Valeurs explicites de la session.
+     *
      * @return array{
      *     hitPoints: int|null,
      *     hitDice: array<string, int>,
      *     resources: array<string, int>
      * }
      */
-    public function snapshot(Character $character): array
+    public function snapshot(Character $character, array $progressionValues = []): array
     {
         $hitPoints = $this->hitPointCalculator->calculate($character);
 
@@ -176,32 +188,49 @@ final readonly class CharacterSessionStateSynchronizer
                 ? $hitPoints->maximumValue
                 : null,
             'hitDice' => $this->hitDiceMaximums($character),
-            'resources' => $this->resourceMaximums($character),
+            'resources' => $this->resourceMaximums($character, $progressionValues),
         ];
+    }
+
+    /**
+     * Capture each session's explicit progression context before changing the character.
+     *
+     * @return list<array{sessionState: CharacterSessionState, before: array{
+     *     hitPoints: int|null, hitDice: array<string, int>, resources: array<string, int>
+     * }}>
+     */
+    public function snapshotForLevelUp(Character $character): array
+    {
+        $snapshots = [];
+        foreach ($this->sessionStateRepository->findBy(['character' => $character]) as $sessionState) {
+            $snapshots[] = [
+                'sessionState' => $sessionState,
+                'before' => $this->snapshot($character, $this->extractProgressionValues($sessionState->getState())),
+            ];
+        }
+
+        return $snapshots;
     }
 
     /**
      * Applique aux états de session uniquement ce qui vient d'être gagné
      * grâce au level-up.
      *
-     * @param array{
+     * @param list<array{sessionState: CharacterSessionState, before: array{
      *     hitPoints: int|null,
      *     hitDice: array<string, int>,
      *     resources: array<string, int>
-     * } $before
+     * }}> $snapshots
      */
     public function synchronizeAfterLevelUp(
         Character $character,
-        array $before,
+        array $snapshots,
     ): void {
-        $after = $this->snapshot($character);
-
-        $sessionStates = $this->sessionStateRepository->findBy([
-            'character' => $character,
-        ]);
-
-        foreach ($sessionStates as $sessionState) {
+        foreach ($snapshots as $snapshot) {
+            $sessionState = $snapshot['sessionState'];
+            $before = $snapshot['before'];
             $state = $sessionState->getState();
+            $after = $this->snapshot($character, $this->extractProgressionValues($state));
 
             $state = $this->applyHitPointDelta(
                 $state,

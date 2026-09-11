@@ -36,43 +36,8 @@ final class CharacterAbilityCalculator
 
         $baseValue = $abilityScore->getBaseValue();
 
-        $effectiveValue = $baseValue;
+        $effectiveValue = $this->calculatePermanentValue($character, $ability);
         $minimumValue = null;
-
-        $race = $character->getRace();
-
-        if ($race !== null) {
-            foreach ($race->getInheritedAbilityModifiers() as $modifier) {
-                if ($modifier->requiresChoice()) {
-                    continue;
-                }
-
-                if ($modifier->getAbility() === $ability) {
-                    $effectiveValue += $modifier->getValue();
-                }
-            }
-        }
-
-        foreach ($character->getRaceAbilityChoices() as $choice) {
-            if ($choice->getAbility() === $ability) {
-                $effectiveValue += $choice->getValue();
-            }
-        }
-
-        /*
-        * Les dons sont des améliorations permanentes
-        * du personnage. Ils sont appliqués avant les
-        * effets temporaires ou conditionnels des objets.
-        */
-        foreach ($character->getFeats() as $characterFeat) {
-            if ($characterFeat->getChosenAbility() !== $ability) {
-                continue;
-            }
-
-            $effectiveValue += $characterFeat->getAbilityIncrease();
-        }
-
-        $effectiveValue = $this->applyPermanentAdjustments($character, $ability, $effectiveValue);
 
         foreach ($character->getMagicItems() as $ownedItem) {
             if (!$ownedItem->isEffectActive()) {
@@ -127,6 +92,50 @@ final class CharacterAbilityCalculator
                 $abilityScore
                     ->getMaximumValue(),
         );
+    }
+
+    /** Permanent score before conditional equipment effects, used to validate ASIs. */
+    public function calculatePermanentValue(Character $character, Ability $ability): int
+    {
+        $baseValue = $character->getAbilityScore($ability)->getBaseValue();
+        $effectiveValue = $baseValue;
+
+        $race = $character->getRace();
+
+        if ($race !== null) {
+            foreach ($race->getInheritedAbilityModifiers() as $modifier) {
+                if ($modifier->requiresChoice()) {
+                    continue;
+                }
+
+                if ($modifier->getAbility() === $ability) {
+                    $effectiveValue += $modifier->getValue();
+                }
+            }
+        }
+
+        foreach ($character->getRaceAbilityChoices() as $choice) {
+            if ($choice->getAbility() === $ability) {
+                $effectiveValue += $choice->getValue();
+            }
+        }
+
+        /*
+        * Les dons sont des améliorations permanentes
+        * du personnage. Ils sont appliqués avant les
+        * effets temporaires ou conditionnels des objets.
+        */
+        foreach ($character->getFeats() as $characterFeat) {
+            if ($characterFeat->getChosenAbility() !== $ability) {
+                continue;
+            }
+
+            $effectiveValue += $characterFeat->getAbilityIncrease();
+        }
+
+        $effectiveValue = $this->applyPermanentAdjustments($character, $ability, $effectiveValue);
+
+        return $effectiveValue;
     }
 
     private function applyBonus(

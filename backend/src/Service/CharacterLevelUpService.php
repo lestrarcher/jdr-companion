@@ -24,6 +24,7 @@ final readonly class CharacterLevelUpService
         private CharacterClassLevelRuleRepository $levelRuleRepository,
         private CharacterSessionStateSynchronizer $stateSynchronizer,
         private CharacterMulticlassEligibilityService $multiclassEligibility,
+        private CharacterAbilityCalculator $abilityCalculator,
     ) {
     }
 
@@ -44,16 +45,13 @@ final readonly class CharacterLevelUpService
             $hitPointGain,
         ): CharacterClassLevel {
             $this->validateCharacterCanLevelUp($character);
-            $stateBeforeLevelUp = $this->stateSynchronizer->snapshot($character);
-
-            $this->validateCharacterCanLevelUp($character);
             $this->validateMulticlassEligibility(
                 $character,
                 $characterClass,
             );
 
             $stateBeforeLevelUp =
-            $this->stateSynchronizer->snapshot($character);
+                $this->stateSynchronizer->snapshotForLevelUp($character);
 
             $totalLevel = $character->getNextLevelPosition();
             $classLevel = $character->getLevelInClass($characterClass) + 1;
@@ -70,10 +68,6 @@ final readonly class CharacterLevelUpService
                 $advancement,
             );
 
-            if ($advancement !== null) {
-                $this->applyAdvancementChoice($character, $advancement, $totalLevel);
-            }
-
             [$resolvedHitPointGain, $resolvedHitPointGainMethod] =
                 $this->resolveHitPointGain(
                     $characterClass,
@@ -81,6 +75,10 @@ final readonly class CharacterLevelUpService
                     $hitPointGainMethod,
                     $hitPointGain,
                 );
+
+            if ($advancement !== null) {
+                $this->applyAdvancementChoice($character, $advancement, $totalLevel);
+            }
 
             $level = new CharacterClassLevel(
                 character: $character,
@@ -136,7 +134,7 @@ final readonly class CharacterLevelUpService
         throw new \DomainException(sprintf(
             'Le personnage ne remplit pas les prérequis pour se multiclasser en %s : %s.',
             $characterClass->getName(),
-            implode(' ou ', $requirements),
+            implode(' ; ', $requirements),
         ));
     }
 
@@ -248,6 +246,20 @@ final readonly class CharacterLevelUpService
             $this->applyFeat($character, $advancement, $totalLevel);
 
             return;
+        }
+
+        // Validate the entire split before adding or persisting any adjustment.
+        foreach ($advancement->getAbilityIncreases() as $increase) {
+            $ability = $increase['ability'];
+            $maximum = $character->getAbilityScore($ability)->getMaximumValue();
+            $current = $this->abilityCalculator->calculatePermanentValue($character, $ability);
+            if ($current + $increase['value'] > $maximum) {
+                throw new \DomainException(sprintf(
+                    'L’augmentation de %s dépasserait son maximum de %d.',
+                    $ability->value,
+                    $maximum,
+                ));
+            }
         }
 
         foreach ($advancement->getAbilityIncreases() as $index => $increase) {

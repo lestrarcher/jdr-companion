@@ -62,10 +62,6 @@ final readonly class CharacterMulticlassEligibilityService
         Character $character,
         CharacterClass $characterClass,
     ): bool {
-        if ($character->getLevelInClass($characterClass) > 0) {
-            return true;
-        }
-
         return $this->missingRequirements(
             $character,
             $characterClass,
@@ -79,10 +75,32 @@ final readonly class CharacterMulticlassEligibilityService
         Character $character,
         CharacterClass $characterClass,
     ): array {
-        if ($character->getLevelInClass($characterClass) > 0) {
+        // Initial class assignment and advancement in an existing class are
+        // not entry into a new multiclass.
+        if ($character->getTotalLevel() === 0 || $character->getLevelInClass($characterClass) > 0) {
             return [];
         }
 
+        $classes = [$characterClass->getSlug() => $characterClass];
+        foreach ($character->getClassLevels() as $level) {
+            $existingClass = $level->getCharacterClass();
+            $classes[$existingClass->getSlug()] = $existingClass;
+        }
+
+        $missing = [];
+        foreach ($classes as $class) {
+            $alternatives = $this->missingClassRequirements($character, $class);
+            if ($alternatives !== []) {
+                $missing[] = sprintf('%s : %s', $class->getName(), implode(' ou ', $alternatives));
+            }
+        }
+
+        return $missing;
+    }
+
+    /** @return list<string> */
+    private function missingClassRequirements(Character $character, CharacterClass $characterClass): array
+    {
         $alternatives =
             self::REQUIREMENTS[$characterClass->getSlug()]
             ?? [];
