@@ -104,6 +104,7 @@ export class PlayerPortal {
   protected readonly loadError = signal<string | null>(null);
   protected readonly restFeedback = signal<string | null>(null);
   protected readonly saveStatus = signal<SaveStatus>('idle');
+  protected readonly saveError = signal<string | null>(null);
   protected readonly levelUpAllowed = signal(false);
   private readonly latestRestRequest = signal<RestRequestApiResponse | null>(null);
   private readonly restRequestSubmitting = signal(false);
@@ -115,6 +116,7 @@ export class PlayerPortal {
     generation: number;
   }>();
   private lastQueuedRevision = 0;
+  private serverRevision = 0;
   private loadGeneration = 0;
   protected readonly features = signal<CharacterFeatureSummary[]>([]);
   protected readonly visibleFeatures = computed(() =>
@@ -223,6 +225,7 @@ export class PlayerPortal {
       }
 
       this.lastQueuedRevision = revision;
+      this.saveError.set(null);
       this.saveStatus.set('saving');
       this.remoteSynchronization.next({
         state: toCharacterSessionStatePayload(character),
@@ -321,6 +324,7 @@ export class PlayerPortal {
       .subscribe({
         next: (response) => {
           if (generation !== this.loadGeneration) return;
+          this.serverRevision = response.revision;
           if (
             String(response.campaign.id) !==
             this.campaignId
@@ -383,6 +387,7 @@ export class PlayerPortal {
             campaign.id,
             loadedCharacter,
             false,
+            false, // Remote snapshots require their server revision; ignore unversioned broadcasts.
           );
           this.lastQueuedRevision = this.characterStateService.revision();
 
@@ -429,9 +434,13 @@ export class PlayerPortal {
             .updateByAccessToken(
               this.accessToken,
               state,
+              this.serverRevision,
             )
             .pipe(
               tap((response) => {
+                // Even if newer local edits are queued, this successful write
+                // becomes their server baseline. Never adopt another load's revision.
+                if (generation === this.loadGeneration) this.serverRevision = response.revision;
                 if (!isCurrent()) return;
 
                 const character = characterProfileToCharacter(
@@ -447,6 +456,12 @@ export class PlayerPortal {
               }),
               catchError(
                 (error: unknown) => {
+                  if ((error as { status?: number })?.status === 409 && generation === this.loadGeneration) {
+                    this.saveStatus.set('error');
+                    this.saveError.set('Modification concurrente : données rechargées, recommencez votre modification.');
+                    this.loadCharacter(false);
+                    return EMPTY;
+                  }
                   console.error(
                     'Impossible d’enregistrer le personnage.',
                     error,

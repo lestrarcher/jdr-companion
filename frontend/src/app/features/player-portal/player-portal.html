@@ -117,7 +117,7 @@
                   }
 
                   @case ('error') {
-                    Échec de l’enregistrement
+                    {{ saveError() ?? 'Échec de l’enregistrement' }}
                   }
                 }
               </span>

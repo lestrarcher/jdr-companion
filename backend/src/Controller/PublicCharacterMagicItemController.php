@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Service\PlayerCharacterAccess;
+
 use App\Entity\Character;
 use App\Entity\CharacterMagicItem;
 use App\Entity\CharacterSessionState;
 use App\Entity\GameSession;
 use App\Repository\CharacterMagicItemRepository;
-use App\Repository\CharacterSessionStateRepository;
 use App\Service\CharacterAbilityCalculator;
 use Doctrine\ORM\EntityManagerInterface;
 use JsonException;
@@ -33,17 +34,10 @@ final class PublicCharacterMagicItemController extends AbstractController
     )]
     public function list(
         string $accessToken,
-        CharacterSessionStateRepository $stateRepository,
+        PlayerCharacterAccess $playerAccess,
         CharacterAbilityCalculator $abilityCalculator,
     ): JsonResponse {
-        $sessionState = $stateRepository->findOneByAccessToken($accessToken);
-
-        if (!$sessionState instanceof CharacterSessionState) {
-            return $this->json(
-                ['message' => 'Lien joueur invalide.'],
-                Response::HTTP_NOT_FOUND,
-            );
-        }
+        $sessionState = $playerAccess->requireParticipating($accessToken);
 
         return $this->json(
             $this->serializeCharacterInventory(
@@ -66,19 +60,12 @@ final class PublicCharacterMagicItemController extends AbstractController
         string $accessToken,
         int $ownedItemId,
         Request $request,
-        CharacterSessionStateRepository $stateRepository,
+        PlayerCharacterAccess $playerAccess,
         CharacterMagicItemRepository $ownedItemRepository,
         CharacterAbilityCalculator $abilityCalculator,
         EntityManagerInterface $entityManager,
     ): JsonResponse {
-        $sessionState = $stateRepository->findOneByAccessToken($accessToken);
-
-        if (!$sessionState instanceof CharacterSessionState) {
-            return $this->json(
-                ['message' => 'Lien joueur invalide.'],
-                Response::HTTP_NOT_FOUND,
-            );
-        }
+        $sessionState = $playerAccess->requireParticipating($accessToken);
 
         if (
             $sessionState->getGameSession()->getStatus()
@@ -90,50 +77,55 @@ final class PublicCharacterMagicItemController extends AbstractController
             );
         }
 
-        $character = $sessionState->getCharacter();
-        $ownedItem = $ownedItemRepository->find($ownedItemId);
+        return $entityManager->wrapInTransaction(function () use ($accessToken, $ownedItemId, $request, $playerAccess, $ownedItemRepository, $abilityCalculator, $entityManager, $sessionState): JsonResponse {
+            PlayerCharacterAccess::lockForMutation($entityManager, $sessionState);
 
-        if (
-            !$ownedItem instanceof CharacterMagicItem
-            || $ownedItem->getCharacter()->getId() !== $character->getId()
-        ) {
-            return $this->json(
-                ['message' => 'Objet magique introuvable.'],
-                Response::HTTP_NOT_FOUND,
-            );
-        }
+            $character = $sessionState->getCharacter();
+            $ownedItem = $ownedItemRepository->find($ownedItemId);
 
-        try {
-            $payload = $request->toArray();
-        } catch (JsonException) {
-            return $this->json(
-                ['message' => 'Le corps JSON est invalide.'],
-                Response::HTTP_BAD_REQUEST,
-            );
-        }
+            if (
+                !$ownedItem instanceof CharacterMagicItem
+                || $ownedItem->getCharacter()->getId() !== $character->getId()
+            ) {
+                return $this->json(
+                    ['message' => 'Objet magique introuvable.'],
+                    Response::HTTP_NOT_FOUND,
+                );
+            }
 
-        try {
-            $this->applyUpdate(
-                $ownedItem,
-                $character,
-                $payload,
-            );
-        } catch (\InvalidArgumentException $exception) {
-            return $this->json(
-                ['message' => $exception->getMessage()],
-                Response::HTTP_UNPROCESSABLE_ENTITY,
-            );
-        }
+            try {
+                $payload = $request->toArray();
+            } catch (JsonException) {
+                return $this->json(
+                    ['message' => 'Le corps JSON est invalide.'],
+                    Response::HTTP_BAD_REQUEST,
+                );
+            }
 
-        $entityManager->flush();
+            foreach ($character->getMagicItems() as $item) {
+                $entityManager->refresh($item, \Doctrine\DBAL\LockMode::PESSIMISTIC_WRITE);
+            }
 
-        return $this->json([
-            'ownedItem' => $this->serializeOwnedItem($ownedItem),
-            ...$this->serializeCharacterInventory(
-                $character,
-                $abilityCalculator,
-            ),
-        ]);
+            try {
+                $this->applyUpdate(
+                    $ownedItem,
+                    $character,
+                    $payload,
+                );
+            } catch (\InvalidArgumentException $exception) {
+                throw new \Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException($exception->getMessage(), $exception);
+            }
+
+            $entityManager->flush();
+
+            return $this->json([
+                'ownedItem' => $this->serializeOwnedItem($ownedItem),
+                ...$this->serializeCharacterInventory(
+                    $character,
+                    $abilityCalculator,
+                ),
+            ]);
+        });
     }
 
     /**

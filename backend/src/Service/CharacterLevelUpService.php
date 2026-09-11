@@ -11,6 +11,9 @@ use App\Entity\CharacterClass;
 use App\Entity\CharacterClassLevel;
 use App\Entity\CharacterFeat;
 use App\Entity\CharacterSubclass;
+use App\Entity\CharacterSessionState;
+use Doctrine\DBAL\LockMode;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use App\Enum\AbilityAdjustmentOperation;
 use App\Enum\AbilityAdjustmentSource;
 use App\Enum\HitPointGainMethod;
@@ -35,6 +38,7 @@ final readonly class CharacterLevelUpService
         ?LevelAdvancementSelection $advancement = null,
         ?HitPointGainMethod $hitPointGainMethod = null,
         ?int $hitPointGain = null,
+        ?CharacterSessionState $authorization = null,
     ): CharacterClassLevel {
         return $this->entityManager->wrapInTransaction(function () use (
             $character,
@@ -43,7 +47,20 @@ final readonly class CharacterLevelUpService
             $advancement,
             $hitPointGainMethod,
             $hitPointGain,
+            $authorization,
         ): CharacterClassLevel {
+            if ($authorization !== null) {
+                if ($authorization->getCharacter() !== $character) {
+                    throw new AccessDeniedHttpException('Autorisation pour un autre personnage.');
+                }
+                PlayerCharacterAccess::lockForMutation($this->entityManager, $authorization);
+                if (!$authorization->isLevelUpAllowed()) {
+                    throw new AccessDeniedHttpException('La montée de niveau n’a pas été autorisée par le MJ.');
+                }
+            } elseif ($character->getId() !== null) {
+                $this->entityManager->lock($character, LockMode::PESSIMISTIC_WRITE);
+                $this->entityManager->refresh($character);
+            }
             $this->validateCharacterCanLevelUp($character);
             $this->validateMulticlassEligibility(
                 $character,
@@ -96,6 +113,10 @@ final readonly class CharacterLevelUpService
                 $character,
                 $stateBeforeLevelUp,
             );
+
+            if ($authorization !== null) {
+                $authorization->setLevelUpAllowed(false);
+            }
 
             $this->entityManager->flush();
 

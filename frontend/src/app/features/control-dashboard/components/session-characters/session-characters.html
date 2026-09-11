@@ -1,5 +1,5 @@
-<section class="character-management">
-  <header class="management-heading">
+<section class="management">
+  <header class="heading">
     <div>
       <span class="eyebrow">Participants</span>
       <h2>Personnages</h2>
@@ -10,7 +10,7 @@
     </div>
 
     <div class="heading-actions">
-      <span class="character-count">
+      <span class="participant-count">
         {{ activeCharacters().length }} / {{ characters().length }}
         participant{{ activeCharacters().length > 1 ? 's' : '' }}
       </span>
@@ -41,7 +41,7 @@
   }
 
   @if (restRequests().length > 0) {
-    <section class="rest-request-section" aria-live="assertive">
+    <section class="rest-section" aria-live="assertive">
       <header>
         <span class="section-label">Action requise</span>
         <strong>
@@ -50,9 +50,9 @@
         </strong>
       </header>
 
-      <div class="rest-request-list">
+      <div class="rest-list">
         @for (request of restRequests(); track request.id) {
-          <article class="rest-request-card">
+          <article class="rest-card">
             <div>
               <strong>{{ request.character.name }}</strong>
               <small>{{ restTypeLabel(request.type) }}</small>
@@ -100,7 +100,7 @@
       <p>Aucun personnage n’a encore été créé pour cette campagne.</p>
     </div>
   } @else {
-    <section class="participant-section">
+    <section class="participants">
       <header class="section-heading">
         <div>
           <span class="section-label">Session actuelle</span>
@@ -110,18 +110,18 @@
         <span class="section-count">{{ activeCharacters().length }}</span>
       </header>
 
-      <div class="character-grid">
+      <div class="cards">
         @for (
           character of activeCharacters();
           track character.character.id
         ) {
-          <article class="character-card">
-            <header class="character-card__header">
-              <span class="character-portrait" aria-hidden="true">
+          <article class="card">
+            <header class="card-header">
+              <span class="portrait" aria-hidden="true">
                 {{ characterInitial(character.character.name) }}
               </span>
 
-              <div class="character-identity">
+              <div class="identity">
                 <h3>{{ character.character.name }}</h3>
 
                 <small>
@@ -141,14 +141,14 @@
                 && maximumHitPoints(character) !== null
               ) {
                 <span
-                  class="health-status"
-                  [class.health-status--healthy]="
+                  class="health"
+                  [class.health-good]="
                     hitPointTone(character) === 'healthy'
                   "
-                  [class.health-status--wounded]="
+                  [class.health-wounded]="
                     hitPointTone(character) === 'wounded'
                   "
-                  [class.health-status--critical]="
+                  [class.health-critical]="
                     hitPointTone(character) === 'critical'
                   "
                 >
@@ -171,7 +171,7 @@
               currentHitPoints(character) !== null
               && maximumHitPoints(character) !== null
             ) {
-              <section class="hit-points">
+              <section class="hp">
                 <header>
                   <span>Points de vie</span>
                   <strong>
@@ -182,7 +182,7 @@
                 </header>
 
                 <div
-                  class="hit-point-track"
+                  class="hp-track"
                   role="progressbar"
                   [attr.aria-valuenow]="currentHitPoints(character)"
                   [attr.aria-valuemin]="0"
@@ -192,14 +192,14 @@
                   "
                 >
                   <span
-                    class="hit-point-value"
-                    [class.hit-point-value--healthy]="
+                    class="hp-value"
+                    [class.hp-good]="
                       hitPointTone(character) === 'healthy'
                     "
-                    [class.hit-point-value--wounded]="
+                    [class.hp-wounded]="
                       hitPointTone(character) === 'wounded'
                     "
-                    [class.hit-point-value--critical]="
+                    [class.hp-critical]="
                       hitPointTone(character) === 'critical'
                     "
                     [style.width.%]="hitPointPercentage(character)"
@@ -207,19 +207,19 @@
                 </div>
 
                 @if (temporaryHitPoints(character) > 0) {
-                  <span class="temporary-hit-points">
+                  <span class="temp-hp">
                     + {{ temporaryHitPoints(character) }} PV temporaires
                   </span>
                 }
               </section>
             } @else {
-              <p class="missing-hit-points">Maximum de PV incomplet.</p>
+              <p class="missing-hp">Maximum de PV incomplet.</p>
             }
 
-            <footer class="character-actions">
+            <footer class="actions">
               @if (playerPortalUrl(character); as portalUrl) {
                 <a
-                  class="character-action"
+                  class="action"
                   [href]="portalUrl"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -230,21 +230,21 @@
 
               <button
                 type="button"
-                class="character-action"
+                class="action"
                 (click)="openStatistics(character)"
               >
                 Voir les caractéristiques
               </button>
 
               @if ((character.sessionState?.character?.progressions?.length ?? 0) > 0) {
-                <button type="button" class="character-action" (click)="openProgression(character)">
+                <button type="button" class="action" (click)="openProgression(character)">
                   Voir la progression
                 </button>
               }
 
               <button
                 type="button"
-                class="character-action character-action--primary"
+                class="action action-primary"
                 (click)="openItemAssignment(character)"
               >
                 Donner un objet
@@ -252,8 +252,8 @@
 
               <button
                 type="button"
-                class="character-action character-action--level-up"
-                [class.character-action--level-up-active]="
+                class="action level-up"
+                [class.level-up-active]="
                   character.sessionState?.levelUpAllowed
                 "
                 [disabled]="
@@ -278,7 +278,7 @@
 
               <button
                 type="button"
-                class="character-action character-action--danger"
+                class="action action-danger"
                 [disabled]="changingCharacterId() !== null"
                 (click)="removeFromSession(character)"
               >
@@ -299,7 +299,7 @@
       </div>
     </section>
 
-    <section class="available-character-section">
+    <section class="available-section">
       <header class="section-heading">
         <div>
           <span class="section-label">Campagne</span>
@@ -309,17 +309,17 @@
         <span class="section-count">{{ availableCharacters().length }}</span>
       </header>
 
-      <div class="available-character-list">
+      <div class="available-list">
         @for (
           character of availableCharacters();
           track character.character.id
         ) {
-          <article class="available-character">
-            <span class="character-portrait" aria-hidden="true">
+          <article class="available">
+            <span class="portrait" aria-hidden="true">
               {{ characterInitial(character.character.name) }}
             </span>
 
-            <div class="character-identity">
+            <div class="identity">
               <h4>{{ character.character.name }}</h4>
 
               <small>
@@ -336,7 +336,7 @@
 
             <button
               type="button"
-              class="character-action character-action--primary"
+              class="action action-primary"
               [disabled]="changingCharacterId() !== null"
               (click)="addToSession(character)"
             >
@@ -348,7 +348,7 @@
             </button>
           </article>
         } @empty {
-          <p class="available-character-empty">
+          <p class="available-empty">
             Tous les personnages de la campagne participent à cette session.
           </p>
         }
@@ -367,7 +367,7 @@
     (click)="closeItemAssignment()"
   >
     <section
-      class="modal-panel"
+      class="modal"
       role="dialog"
       aria-modal="true"
       aria-labelledby="assignment-title"
@@ -454,7 +454,7 @@
           selectedMagicItem();
           as magicItem
         ) {
-          <article class="selected-item">
+          <article class="item-preview">
             <header>
               <div>
                 <h3>{{ magicItem.name }}</h3>
@@ -549,7 +549,7 @@
 
 @if (progressionCharacter(); as selected) {
   <div class="modal-backdrop" role="presentation" (click)="closeProgression()">
-    <section class="modal-panel gm-progressions" role="dialog" aria-modal="true" aria-labelledby="progression-title" (click)="$event.stopPropagation()">
+    <section class="modal gm-progressions" role="dialog" aria-modal="true" aria-labelledby="progression-title" (click)="$event.stopPropagation()">
       <header class="modal-header">
         <div>
           <span class="eyebrow">Progression · Consultation</span>
@@ -569,28 +569,28 @@
           </select>
         }
         <section [style.--progression-accent]="progression.accentColor || '#80619a'">
-          <header class="progression-summary">
-            <div class="progression-summary__identity">
+          <header class="overview">
+            <div class="gauge-identity">
               <span class="eyebrow">Progression actuelle</span>
               <strong>{{ progression.name }}</strong>
             </div>
 
-            <div class="progression-summary__value">
+            <div class="gauge-value">
               <span>Valeur</span>
               <b>{{ progression.current ?? '—' }}</b>
             </div>
 
-            <div class="progression-summary__icon">
+            <div class="gauge-icon">
               @if (progression.stage?.iconUrl; as icon) {
                 <img [src]="icon" alt="" />
               }
             </div>
           </header>
 
-          <nav class="progression-tabs" aria-label="Informations de progression">
+          <nav class="tabs" aria-label="Informations de progression">
             <button
               type="button"
-              class="progression-tab"
+              class="tab"
               [attr.aria-pressed]="progressionTab() === 'phases'"
               (click)="progressionTab.set('phases')"
             >
@@ -599,7 +599,7 @@
 
             <button
               type="button"
-              class="progression-tab"
+              class="tab"
               [attr.aria-pressed]="progressionTab() === 'actions'"
               (click)="progressionTab.set('actions')"
             >
@@ -610,12 +610,12 @@
             <p class="modal-empty" role="status">Chargement du référentiel…</p>
           } @else if (progressionReferenceError()) {
             <p class="feedback feedback--error" role="alert">{{ progressionReferenceError() }}</p>
-            <button type="button" class="character-action" (click)="loadProgressionReferences()">Réessayer</button>
+            <button type="button" class="action" (click)="loadProgressionReferences()">Réessayer</button>
           } @else if (!progression.referenceAvailable) {
             <p class="modal-empty">Définition de progression indisponible.</p>
           } @else if (progressionTab() === 'actions') {
             @for (direction of adjustmentDirections; track direction) {
-              <section class="progression-rules">
+              <section class="rules">
                 <h3>{{ direction === 'gain' ? (progression.gainLabel || 'Gagner des points') : (progression.spendLabel || 'Perdre des points') }}</h3>
                 <table>
                   <thead><tr><th>Type</th><th>Déclencheur / description</th><th>Variation</th></tr></thead>
@@ -631,7 +631,7 @@
               </section>
             }
           } @else {
-          <ul class="progression-stages">
+          <ul class="stages">
             @for (stage of progression.stages; track stage.id) {
               <li [class.current-stage]="progression.stage?.id === stage.id" [attr.aria-current]="progression.stage?.id === stage.id ? 'step' : null">
                 @if (stage.description) {
@@ -642,7 +642,7 @@
                     [attr.aria-controls]="'stage-description-' + stage.id"
                     (click)="toggleStage(stage.id)"
                   >
-                    <div class="stage-heading__content">
+                    <div class="stage-content">
                       <strong>{{ stage.label }}</strong>
                       <small>
                         Cliquer pour
@@ -654,7 +654,7 @@
                       </small>
                     </div>
 
-                    <div class="stage-heading__meta">
+                    <div class="stage-meta">
                       <span class="stage-range">
                         {{ stage.minimumValue }}
                         {{
@@ -683,11 +683,11 @@
                   </div>
                 } @else {
                   <div class="stage-heading">
-                    <div class="stage-heading__content">
+                    <div class="stage-content">
                       <strong>{{ stage.label }}</strong>
                     </div>
 
-                    <div class="stage-heading__meta">
+                    <div class="stage-meta">
                       <span class="stage-range">
                         {{ stage.minimumValue }}
                         {{
@@ -719,7 +719,7 @@
     (click)="closeStatistics()"
   >
     <section
-      class="modal-panel modal-panel--wide"
+      class="modal modal-wide"
       role="dialog"
       aria-modal="true"
       aria-labelledby="statistics-title"
@@ -763,7 +763,7 @@
         statisticsInventory();
         as inventory
       ) {
-        <div class="attunement-summary">
+        <div class="attunement">
           <span>Harmonisation</span>
 
           <strong>
@@ -817,7 +817,7 @@
           }
         </section>
 
-        <section class="statistics-items">
+        <section class="stats-items">
           <header>
             <h3>Objets possédés</h3>
 
@@ -830,7 +830,7 @@
             ownedItem of inventory.ownedItems;
             track ownedItem.id
           ) {
-            <article class="statistics-item">
+            <article class="stats-item">
               <div>
                 <strong>
                   {{ ownedItem.magicItem.name }}

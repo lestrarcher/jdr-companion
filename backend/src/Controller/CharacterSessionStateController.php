@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Service\PlayerCharacterAccess;
+use App\Service\PlayerCharacterStateUpdater;
+
 use App\Entity\Character;
 use App\Entity\CharacterSessionState;
 use App\Entity\GameSession;
@@ -12,6 +15,8 @@ use App\Repository\CharacterSessionStateRepository;
 use App\Repository\GameSessionRepository;
 use App\Security\Voter\CampaignVoter;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\DBAL\LockMode;
+use Doctrine\ORM\OptimisticLockException;
 use JsonException;
 use App\Service\CharacterSessionStateFactory;
 use App\Service\CharacterSessionStateSynchronizer;
@@ -475,22 +480,12 @@ final class CharacterSessionStateController extends AbstractController
     )]
     public function publicLevelUpOptions(
         string $accessToken,
-        CharacterSessionStateRepository $stateRepository,
+        PlayerCharacterAccess $playerAccess,
         CharacterLevelUpOptionsService $optionsService,
     ): JsonResponse {
-        $state = $stateRepository->findOneByAccessToken(
+        $state = $playerAccess->requireParticipating(
             $accessToken,
         );
-
-        if (
-            !$state instanceof CharacterSessionState
-            || !$state->isParticipating()
-        ) {
-            return $this->json(
-                ['message' => 'Lien joueur invalide.'],
-                Response::HTTP_NOT_FOUND,
-            );
-        }
 
         if (
             $state->getGameSession()->getStatus()
@@ -528,24 +523,14 @@ final class CharacterSessionStateController extends AbstractController
     public function publicLevelUp(
         string $accessToken,
         Request $request,
-        CharacterSessionStateRepository $stateRepository,
+        PlayerCharacterAccess $playerAccess,
         CharacterLevelUpRequestResolver $requestResolver,
         CharacterLevelUpService $levelUpService,
         EntityManagerInterface $entityManager,
     ): JsonResponse {
-        $state = $stateRepository->findOneByAccessToken(
+        $state = $playerAccess->requireParticipating(
             $accessToken,
         );
-
-        if (
-            !$state instanceof CharacterSessionState
-            || !$state->isParticipating()
-        ) {
-            return $this->json(
-                ['message' => 'Lien joueur invalide.'],
-                Response::HTTP_NOT_FOUND,
-            );
-        }
 
         if (
             $state->getGameSession()->getStatus()
@@ -594,6 +579,7 @@ final class CharacterSessionStateController extends AbstractController
                     $selection['hitPointGainMethod'],
                 hitPointGain:
                     $selection['hitPointGain'],
+                authorization: $state,
             );
         } catch (
             \InvalidArgumentException
@@ -605,10 +591,6 @@ final class CharacterSessionStateController extends AbstractController
                 Response::HTTP_UNPROCESSABLE_ENTITY,
             );
         }
-
-        $state->setLevelUpAllowed(false);
-
-        $entityManager->flush();
 
         return $this->json(
             [
@@ -653,6 +635,7 @@ final class CharacterSessionStateController extends AbstractController
                             $this->extractProgressionValues($state->getState()),
                         ),
                 'levelUpAllowed' => false,
+                'revision' => $state->getRevision(),
             ],
             Response::HTTP_CREATED,
         );
@@ -669,13 +652,9 @@ final class CharacterSessionStateController extends AbstractController
     )]
     public function showPublic(
         string $accessToken,
-        CharacterSessionStateRepository $stateRepository,
+        PlayerCharacterAccess $playerAccess,
     ): JsonResponse {
-        $state = $stateRepository->findOneByAccessToken($accessToken);
-
-        if (!$state instanceof CharacterSessionState || !$state->isParticipating()) {
-            return $this->json( ['message' => 'Lien joueur invalide.'], Response::HTTP_NOT_FOUND);
-        }
+        $state = $playerAccess->requireParticipating($accessToken);
 
         return $this->json($this->serializeState($state));
     }
@@ -692,17 +671,11 @@ final class CharacterSessionStateController extends AbstractController
     public function updatePublic(
         string $accessToken,
         Request $request,
-        CharacterSessionStateRepository $stateRepository,
+        PlayerCharacterAccess $playerAccess,
         EntityManagerInterface $entityManager,
+        PlayerCharacterStateUpdater $updater,
     ): JsonResponse {
-        $state = $stateRepository->findOneByAccessToken($accessToken);
-
-        if (!$state instanceof CharacterSessionState) {
-            return $this->json(
-                ['message' => 'Lien joueur invalide.'],
-                Response::HTTP_NOT_FOUND,
-            );
-        }
+        $state = $playerAccess->requireParticipating($accessToken);
 
         if ($state->getGameSession()->getStatus() !== GameSession::STATUS_LIVE) {
             return $this->json(
@@ -729,29 +702,29 @@ final class CharacterSessionStateController extends AbstractController
             );
         }
 
-        $resources = $newState['resources'] ?? [];
-
-        if (!is_array($resources)) {
-            return $this->json(
-                ['message' => 'La propriété "resources" doit être un tableau.'],
-                Response::HTTP_BAD_REQUEST,
-            );
+        $revision = $payload['revision'] ?? null;
+        if (!is_int($revision) || $revision < 1) {
+            return $this->json(['message' => 'Une révision entière positive est requise.'], 422);
         }
-
-        $oldState = $state->getState();
-        $newState['resources'] = $this->preserveHistoricalResources(
-            $oldState['resources'] ?? [],
-            $resources,
-        );
-
-        $state->setState($this->stateSynchronizer->synchronizeResources(
-            $state->getCharacter(),
-            $newState,
-        ));
-
-        $entityManager->flush();
-
-        return $this->json($this->serializeState($state));
+        if ($state->getRevision() !== $revision) {
+            return $this->json(['message' => 'Le personnage a été modifié ailleurs. Rechargez son état.'], 409);
+        }
+        $mergedState = $updater->merge($state, $newState);
+        try {
+            return $entityManager->wrapInTransaction(function () use ($entityManager, $state, $revision, $mergedState): JsonResponse {
+                $entityManager->lock($state->getGameSession(), LockMode::PESSIMISTIC_READ);
+                $entityManager->refresh($state->getGameSession());
+                if ($state->getGameSession()->getStatus() !== GameSession::STATUS_LIVE) {
+                    return $this->json(['message' => 'Cette session n’est pas ouverte.'], 409);
+                }
+                $entityManager->lock($state, LockMode::OPTIMISTIC, $revision);
+                $state->setState($mergedState);
+                $entityManager->flush();
+                return $this->json($this->serializeState($state));
+            });
+        } catch (OptimisticLockException) {
+            return $this->json(['message' => 'Le personnage a été modifié ailleurs. Rechargez son état.'], 409);
+        }
     }
 
     /**
@@ -766,6 +739,7 @@ final class CharacterSessionStateController extends AbstractController
 
         $data = [
             'id' => $state->getId(),
+            'revision' => $state->getRevision(),
             'campaign' => [
                 'id' => $gameSession
                     ->getCampaign()
@@ -827,33 +801,4 @@ final class CharacterSessionStateController extends AbstractController
         return $values;
     }
 
-    /**
-     * @param array<int, array<string, mixed>> $historicalResources
-     * @param array<int, array<string, mixed>> $incomingResources
-     * @return array<int, array<string, mixed>>
-     */
-    private function preserveHistoricalResources(
-        array $historicalResources,
-        array $incomingResources,
-    ): array {
-        $incomingSlugs = [];
-
-        foreach ($incomingResources as $resource) {
-            $slug = $resource['id'] ?? null;
-
-            if (is_string($slug)) {
-                $incomingSlugs[$slug] = true;
-            }
-        }
-
-        foreach ($historicalResources as $resource) {
-            $slug = $resource['id'] ?? null;
-
-            if (!is_string($slug) || !isset($incomingSlugs[$slug])) {
-                $incomingResources[] = $resource;
-            }
-        }
-
-        return $incomingResources;
-    }
 }

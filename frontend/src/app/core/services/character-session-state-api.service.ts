@@ -19,6 +19,7 @@ import {
 
 export interface CharacterSessionStateApiResponse {
   id: number;
+  revision: number;
 
   campaign: {
     id: number;
@@ -106,10 +107,11 @@ export class CharacterSessionStateApiService {
   updateByAccessToken(
     accessToken: string,
     state: CharacterSessionStatePayload,
+    revision: number,
   ): Observable<CharacterSessionStateApiResponse> {
     return this.http.patch<CharacterSessionStateApiResponse>(
       `${this.apiUrl}/public/characters/${accessToken}`,
-      { state },
+      { state, revision },
     );
   }
 

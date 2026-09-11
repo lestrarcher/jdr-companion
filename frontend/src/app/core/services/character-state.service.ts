@@ -28,6 +28,7 @@ export class CharacterStateService {
     campaignId: string,
     character: Character,
     loadLocalState = true,
+    broadcastLocally = true,
   ): void {
     this.channel?.close();
     this.localRevision.update((revision) => revision + 1);
@@ -51,7 +52,7 @@ export class CharacterStateService {
         : initialState,
     );
 
-    if (typeof BroadcastChannel === 'undefined') {
+    if (!broadcastLocally || typeof BroadcastChannel === 'undefined') {
       return;
     }
 

@@ -21,6 +21,15 @@ class CharacterSessionState
     #[ORM\Column]
     private ?int $id = null;
 
+    #[ORM\Version]
+    #[ORM\Column(type: 'integer', options: ['default' => 1])]
+    private int $revision = 1;
+
+    public function getRevision(): int
+    {
+        return $this->revision;
+    }
+
     #[ORM\ManyToOne(targetEntity: GameSession::class)]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private GameSession $gameSession;

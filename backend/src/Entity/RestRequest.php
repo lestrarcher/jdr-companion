@@ -8,6 +8,7 @@ use App\Repository\RestRequestRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: RestRequestRepository::class)]
+#[ORM\UniqueConstraint(name: 'uniq_pending_rest_per_state', columns: ['character_session_state_id'], options: ['where' => "((status)::text = 'pending'::text)"])]
 class RestRequest
 {
     public const TYPE_SHORT_REST = 'short-rest';
