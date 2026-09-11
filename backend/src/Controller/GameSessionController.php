@@ -164,6 +164,16 @@ final class GameSessionController extends AbstractController
 
         $payload = $request->toArray();
 
+        if (array_key_exists('preparationNotes', $payload)) {
+            $notes = $payload['preparationNotes'];
+            if ($notes !== null && (!is_string($notes) || strlen($notes) > GameSession::MAX_PREPARATION_NOTES_BYTES)) {
+                return $this->json(
+                    ['message' => 'Les notes doivent être du texte Markdown (100 000 octets maximum) ou null.'],
+                    JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
+                );
+            }
+        }
+
         if (array_key_exists('status', $payload)) {
             try {
                 $session->setStatus(
@@ -186,6 +196,10 @@ final class GameSessionController extends AbstractController
             $session->setDisplayState(
                 $payload['displayState'],
             );
+        }
+
+        if (array_key_exists('preparationNotes', $payload)) {
+            $session->setPreparationNotes($payload['preparationNotes']);
         }
 
         $entityManager->flush();
@@ -218,19 +232,31 @@ final class GameSessionController extends AbstractController
             );
         }
 
-        return $this->json([
-            'session' => [
-                'id' => $session->getId(),
-                'campaignId' =>
-                    $session->getCampaign()->getId(),
-                'status' => $session->getStatus(),
-                'displayState' =>
-                    $session->getDisplayState(),
-                'updatedAt' =>
-                    $session->getUpdatedAt()
-                        ->format(DATE_ATOM),
-            ],
-        ]);
+        return $this->json(['session' => $this->serializeDisplaySession($session)]);
+    }
+
+    #[Route('/sessions/{sessionId}/display', name: 'api_session_display', requirements: ['sessionId' => '\d+'], methods: ['GET'])]
+    public function display(int $sessionId, GameSessionRepository $sessionRepository): JsonResponse
+    {
+        $session = $sessionRepository->find($sessionId);
+        if ($session === null) {
+            throw $this->createNotFoundException('Session inconnue.');
+        }
+        $this->denyAccessUnlessGranted(CampaignVoter::VIEW, $session->getCampaign());
+
+        return $this->json(['session' => $this->serializeDisplaySession($session)]);
+    }
+
+    /** Explicit allowlist shared by authenticated display and public token APIs. */
+    private function serializeDisplaySession(GameSession $session): array
+    {
+        return [
+            'id' => $session->getId(),
+            'campaignId' => $session->getCampaign()->getId(),
+            'status' => $session->getStatus(),
+            'displayState' => $session->getDisplayState(),
+            'updatedAt' => $session->getUpdatedAt()->format(DATE_ATOM),
+        ];
     }
 
     private function getOwnedCampaign(
@@ -265,6 +291,7 @@ final class GameSessionController extends AbstractController
                 $session->getCampaign()->getId(),
             'slug' => $session->getSlug(),
             'name' => $session->getName(),
+            'preparationNotes' => $session->getPreparationNotes(),
             'status' => $session->getStatus(),
             'displayState' =>
                 $session->getDisplayState(),
@@ -298,7 +325,7 @@ public function show(
     }
 
     $this->denyAccessUnlessGranted(
-        CampaignVoter::VIEW,
+        CampaignVoter::MANAGE,
         $session->getCampaign(),
     );
 

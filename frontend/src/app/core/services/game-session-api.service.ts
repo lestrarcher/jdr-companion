@@ -12,6 +12,7 @@ export interface GameSessionApiResponse {
   campaignId: number;
   slug: string;
   name: string;
+  preparationNotes: string | null;
   status: GameSessionStatus;
   displayState: Record<string, unknown>;
   displayAccessToken: string;
@@ -23,6 +24,9 @@ export interface CreateGameSessionPayload {
   slug: string;
   name: string;
 }
+
+export type GameSessionDisplayResponse = Pick<GameSessionApiResponse,
+  'id' | 'campaignId' | 'status' | 'displayState' | 'updatedAt'>;
 
 interface GameSessionResponse {
   session: GameSessionApiResponse;
@@ -63,6 +67,12 @@ export class GameSessionApiService {
       );
   }
 
+  getDisplay(sessionId: number): Observable<GameSessionDisplayResponse> {
+    return this.http.get<{ session: GameSessionDisplayResponse }>(
+      `${this.apiUrl}/sessions/${sessionId}/display`,
+    ).pipe(map(response => response.session));
+  }
+
   create(
     campaignId: number,
     payload: CreateGameSessionPayload,
@@ -89,5 +99,12 @@ export class GameSessionApiService {
       .pipe(
         map((response) => response.session),
       );
+  }
+
+  updatePreparation(sessionId: number, preparationNotes: string | null): Observable<GameSessionApiResponse> {
+    return this.http.patch<GameSessionResponse>(
+      `${this.apiUrl}/sessions/${sessionId}`,
+      { preparationNotes },
+    ).pipe(map(response => response.session));
   }
 }

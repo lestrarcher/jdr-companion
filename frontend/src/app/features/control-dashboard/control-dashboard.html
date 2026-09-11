@@ -49,6 +49,9 @@
           <button type="button" role="tab" [class.active]="activeTab() === 'staging'" [attr.aria-selected]="activeTab() === 'staging'" (click)="selectTab('staging')">
             Mise en scène
           </button>
+          <button type="button" role="tab" [class.active]="activeTab() === 'preparation'" [attr.aria-selected]="activeTab() === 'preparation'" (click)="selectTab('preparation')">
+            Préparation
+          </button>
           <button type="button" role="tab" [class.active]="activeTab() === 'journal'" [attr.aria-selected]="activeTab() === 'journal'" (click)="selectTab('journal')">
             Journal
           </button>
@@ -67,6 +70,8 @@
         </nav>
 
         <div class="dashboard-tab-content">
+          <!-- Keep the notebook mounted so tab changes preserve its draft. -->
+          <app-session-preparation [sessionId]="backendSessionId" [hidden]="activeTab() !== 'preparation'" />
           @switch (activeTab()) {
             @case ('staging') {
               <app-world-controls

@@ -53,6 +53,11 @@ class GameSession
     #[ORM\Column(type: 'json')]
     private array $displayState = [];
 
+    public const MAX_PREPARATION_NOTES_BYTES = 100_000;
+
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $preparationNotes = null;
+
     #[ORM\Column]
     private DateTimeImmutable $createdAt;
 
@@ -158,6 +163,23 @@ class GameSession
     public function getCreatedAt(): DateTimeImmutable
     {
         return $this->createdAt;
+    }
+
+    public function getPreparationNotes(): ?string
+    {
+        return $this->preparationNotes;
+    }
+
+    public function setPreparationNotes(?string $notes): self
+    {
+        if ($notes !== null && strlen($notes) > self::MAX_PREPARATION_NOTES_BYTES) {
+            throw new \InvalidArgumentException('Les notes de préparation sont limitées à 100 000 octets.');
+        }
+        // Keep Markdown whitespace (indentation, hard line breaks) intact.
+        $this->preparationNotes = $notes === null || trim($notes) === '' ? null : $notes;
+        $this->touch();
+
+        return $this;
     }
 
     public function getUpdatedAt(): DateTimeImmutable

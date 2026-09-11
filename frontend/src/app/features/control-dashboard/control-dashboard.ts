@@ -4,9 +4,10 @@ import {
   computed,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import {
   catchError,
@@ -15,6 +16,8 @@ import {
   of,
   switchMap,
   timer,
+  Subject,
+  takeUntil,
 } from 'rxjs';
 import { CampaignMedia as UploadedCampaignMedia } from '@core/services/media-api.service';
 import { MagicItemManager } from './components/magic-item-manager/magic-item-manager';
@@ -32,8 +35,10 @@ import { WorldControls, WorldUpdate } from './components/world-controls/world-co
 import { QuestManager } from './components/quest-manager/quest-manager';
 import { CampaignFigureManager } from './components/campaign-figure-manager/campaign-figure-manager';
 import { TipManager } from './components/tip-manager/tip-manager';
+import { SessionPreparation } from './components/session-preparation/session-preparation';
 
 type DashboardTab =
+  | 'preparation'
   | 'staging'
   | 'journal'
   | 'figures'
@@ -43,6 +48,7 @@ type DashboardTab =
 @Component({
   selector: 'app-control-dashboard',
   imports: [
+    SessionPreparation,
     SessionCharacters,
     SessionControls,
     WorldControls,
@@ -56,7 +62,14 @@ type DashboardTab =
   styleUrl: './control-dashboard.scss',
 })
 export class ControlDashboard {
+  private readonly preparation = viewChild(SessionPreparation);
+  private readonly contextChanged = new Subject<void>();
+
+  canLeavePreparation(): boolean {
+    return this.preparation()?.canLeave() ?? true;
+  }
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   private readonly destroyRef = inject(DestroyRef);
 
@@ -122,27 +135,27 @@ export class ControlDashboard {
     computed(() => [
       '',
       'campaigns',
-      this.backendCampaignId,
+      this.backendSession()?.campaignId ?? this.backendCampaignId,
       'sessions',
-      this.backendSessionId,
+      this.backendSession()?.id ?? this.backendSessionId,
       'display',
     ].join('/'));
 
-  protected readonly backendCampaignId:
-    number;
+  protected backendCampaignId = 0;
 
-  protected readonly backendSessionId:
-    number;
+  protected backendSessionId = 0;
 
   constructor() {
+    // Angular reuses this route component when only session parameters change.
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
     const campaignId = Number(
-      this.route.snapshot.paramMap.get(
+      params.get(
         'campaignId',
       ),
     );
 
     const sessionId = Number(
-      this.route.snapshot.paramMap.get(
+      params.get(
         'sessionId',
       ),
     );
@@ -158,10 +171,44 @@ export class ControlDashboard {
       );
     }
 
+    const previousCampaignId = this.backendCampaignId;
+    const previousSessionId = this.backendSessionId;
+
+    if (
+      previousSessionId !== 0 &&
+      (
+        previousSessionId !== sessionId ||
+        previousCampaignId !== campaignId
+      ) &&
+      !this.canLeavePreparation()
+    ) {
+      void this.router.navigate(
+        [
+          'campaigns',
+          previousCampaignId,
+          'sessions',
+          previousSessionId,
+          'control',
+        ],
+        {
+          replaceUrl: true,
+        },
+      );
+
+      return;
+    }
+
+    this.contextChanged.next();
+    this.campaign = null;
+    this.backendSession.set(null);
+    this.pendingRestRequests.set([]);
+    this.sessionStatusError.set(null);
+    this.restRequestError.set(null);
     this.backendCampaignId = campaignId;
     this.backendSessionId = sessionId;
 
     this.loadDashboardContext();
+    });
   }
 
   protected updateWorld(
@@ -269,6 +316,8 @@ export class ControlDashboard {
           : 'rejected',
       )
       .pipe(
+        takeUntil(this.contextChanged),
+        takeUntilDestroyed(this.destroyRef),
         finalize(() => {
           this.resolvingRestRequestId.set(
             null,
@@ -315,6 +364,8 @@ export class ControlDashboard {
       ),
     })
       .pipe(
+        takeUntil(this.contextChanged),
+        takeUntilDestroyed(this.destroyRef),
         finalize(() => {
           this.dashboardLoading.set(false);
         }),
@@ -395,6 +446,8 @@ export class ControlDashboard {
         status,
       )
       .pipe(
+        takeUntil(this.contextChanged),
+        takeUntilDestroyed(this.destroyRef),
         finalize(() => {
           this.sessionStatusUpdateRunning.set(
             false,
@@ -458,6 +511,7 @@ export class ControlDashboard {
             );
         }),
 
+        takeUntil(this.contextChanged),
         takeUntilDestroyed(
           this.destroyRef,
         ),

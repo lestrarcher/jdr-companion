@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from '@core/guards/auth-guard';
+import { preparationGuard } from '@core/guards/preparation-guard';
 
 export const routes: Routes = [
   {
@@ -68,6 +69,7 @@ export const routes: Routes = [
       },
       {
         path: 'campaigns/:campaignId/sessions/:sessionId/control',
+        canDeactivate: [preparationGuard],
         loadComponent: () =>
           import('./features/control-dashboard/control-dashboard').then(
             component => component.ControlDashboard,

@@ -111,7 +111,7 @@ export class PlayerDisplay {
           .getCampaign(campaignId),
 
       session:
-        this.gameSessionApi.get(sessionId),
+        this.gameSessionApi.getDisplay(sessionId),
     })
       .pipe(
         finalize(() => {
