@@ -1,29 +1,30 @@
 <section
   class="main-display"
-  [class.main-display-active]="displayedMedia() !== null"
-  [class.main-display-cinematic]="cinematic()"
-  aria-live="polite"
+  [class.main-display--cinematic]="cinematic()"
 >
   @if (displayedMedia(); as media) {
     <figure class="media-figure">
       <div class="image-frame">
         <img
-          class="media-image"
           [src]="media.source"
           [alt]="media.alt"
-          [style.object-fit]="
-            cinematic() ? 'cover' : (media.fit ?? 'contain')
+          [class.image-frame__image--contain]="
+            media.fit === 'contain'
           "
         />
 
         @if (media.title || media.subtitle) {
           <figcaption class="media-caption">
             @if (media.title) {
-              <h1>{{ media.title }}</h1>
+              <strong>
+                {{ media.title }}
+              </strong>
             }
 
             @if (media.subtitle) {
-              <p>{{ media.subtitle }}</p>
+              <span>
+                {{ media.subtitle }}
+              </span>
             }
           </figcaption>
         }

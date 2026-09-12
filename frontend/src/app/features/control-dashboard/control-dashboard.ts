@@ -28,7 +28,7 @@ import { CampaignConfigurationRegistryService } from '@core/services/campaign-co
 import { GameSessionApiResponse, GameSessionApiService, GameSessionStatus } from '@core/services/game-session-api.service';
 import { LiveSessionService } from '@core/services/live-session.service';
 import { RestRequestApiResponse, RestRequestApiService } from '@core/services/rest-request-api.service';
-
+import { InitiativeControl } from './components/initiative-control/initiative-control';
 import { SessionCharacters } from './components/session-characters/session-characters';
 import { SessionControls } from './components/session-controls/session-controls';
 import { WorldControls, WorldUpdate } from './components/world-controls/world-controls';
@@ -57,6 +57,7 @@ type DashboardTab =
     CampaignFigureManager,
     TipManager,
     MagicItemManager,
+    InitiativeControl,
   ],
   templateUrl: './control-dashboard.html',
   styleUrl: './control-dashboard.scss',
@@ -208,6 +209,18 @@ export class ControlDashboard {
     this.backendSessionId = sessionId;
 
     this.loadDashboardContext();
+    });
+  }
+
+  protected requestInitiative(): void {
+    this.liveSessionService.updateState({
+      initiative: {
+        status: 'requested',
+        requestedAt: Date.now(),
+        round: 1,
+        currentIndex: 0,
+        participants: [],
+      },
     });
   }
 

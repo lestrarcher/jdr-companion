@@ -18,7 +18,7 @@ import {
 } from '@core/services/game-session-api.service';
 import { LiveSessionService } from '@core/services/live-session.service';
 import { AmbientFog } from '@shared/components/ambient-fog/ambient-fog';
-
+import { InitiativeCinematic } from './components/initiative-cinematic/initiative-cinematic';
 import { MainDisplay } from './components/main-display/main-display';
 import { MemorialPanel } from './components/memorial-panel/memorial-panel';
 import { QuestsPanel } from './components/quests-panel/quests-panel';
@@ -34,6 +34,7 @@ import { WorldHeader } from './components/world-header/world-header';
     MemorialPanel,
     TipBar,
     AmbientFog,
+    InitiativeCinematic,
   ],
   templateUrl: './player-display.html',
   styleUrl: './player-display.scss',

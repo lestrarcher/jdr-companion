@@ -74,6 +74,10 @@
           <app-session-preparation [sessionId]="backendSessionId" [hidden]="activeTab() !== 'preparation'" />
           @switch (activeTab()) {
             @case ('staging') {
+              <app-initiative-control
+                [initiative]="liveState()?.initiative"
+                (initiativeRequested)="requestInitiative()"
+              />
               <app-world-controls
                 [state]="liveState()"
                 [weatherStates]="activeCampaign.weatherStates"

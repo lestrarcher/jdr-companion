@@ -1,0 +1,94 @@
+:host {
+  display: block;
+}
+
+.initiative-control {
+  padding: 1rem 1.15rem;
+  margin-bottom: 1rem;
+
+  border: 1px solid rgb(180 150 90 / 24%);
+  border-radius: 0.75rem;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgb(255 255 255 / 3%),
+      transparent
+    ),
+    rgb(12 12 14 / 78%);
+}
+
+.initiative-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.initiative-kicker {
+  margin: 0 0 0.15rem;
+
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+
+  opacity: 0.55;
+}
+
+h2 {
+  margin: 0;
+
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.initiative-description {
+  max-width: 42rem;
+  margin: 0.35rem 0 0;
+
+  font-size: 0.9rem;
+  line-height: 1.45;
+
+  opacity: 0.7;
+}
+
+.initiative-launch {
+  flex: 0 0 auto;
+
+  padding: 0.7rem 1rem;
+
+  border: 1px solid rgb(180 150 90 / 45%);
+  border-radius: 0.45rem;
+
+  background: rgb(180 150 90 / 12%);
+  color: inherit;
+
+  font: inherit;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    opacity 150ms ease;
+}
+
+.initiative-launch:hover:not(:disabled) {
+  background: rgb(180 150 90 / 20%);
+  border-color: rgb(180 150 90 / 70%);
+}
+
+.initiative-launch:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.initiative-status {
+  margin: 0.8rem 0 0;
+
+  font-size: 0.85rem;
+
+  opacity: 0.7;
+}

@@ -38,6 +38,28 @@ export type FigurePanelMode =
   | 'memorial'
   | 'hidden';
 
+export type InitiativeStatus =
+| 'requested'
+| 'active';
+
+export interface InitiativeParticipant {
+  id: string;
+  name: string;
+  initiative: number;
+  characterId?: number;
+  mediaId?: number;
+  imageUrl?: string;
+  bloodied: boolean;
+}
+
+export interface InitiativeState {
+  status: InitiativeStatus;
+  requestedAt: number;
+  round: number;
+  currentIndex: number;
+  participants: InitiativeParticipant[];
+}
+
 export interface LiveSessionState {
   sessionId: string;
   campaignId: string;
@@ -59,4 +81,5 @@ export interface LiveSessionState {
   moon?: MoonState;
   location?: LocationState;
   displayedMedia?: DisplayedMediaState;
+  initiative?: InitiativeState;
 }

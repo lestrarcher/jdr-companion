@@ -109,5 +109,8 @@
     @if (liveState()?.fogEnabled) {
       <app-ambient-fog />
     }
+    <app-initiative-cinematic
+      [initiative]="liveState()?.initiative"
+    />
   </div>
 }

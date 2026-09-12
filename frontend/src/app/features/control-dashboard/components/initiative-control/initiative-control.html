@@ -1,0 +1,37 @@
+<section class="initiative-control">
+  <div class="initiative-heading">
+    <div>
+      <p class="initiative-kicker">
+        Combat
+      </p>
+
+      <h2>Initiative</h2>
+
+      <p class="initiative-description">
+        Signalez aux joueurs qu’un combat commence
+        et demandez-leur de lancer l’initiative.
+      </p>
+    </div>
+
+    <button
+      type="button"
+      class="initiative-launch"
+      (click)="requestInitiative()"
+    >
+      @if (initiative()?.status === 'requested') {
+        ↻ Relancer l’appel
+      } @else {
+        ⚔ Lancer l’initiative
+      }
+    </button>
+  </div>
+
+  @if (initiative()?.status === 'requested') {
+    <p
+      class="initiative-status"
+      role="status"
+    >
+      L’initiative a été demandée aux joueurs.
+    </p>
+  }
+</section>
