@@ -7,6 +7,7 @@ import {
   inject,
   input,
   signal,
+  computed,
   output,
 } from '@angular/core';
 import {
@@ -33,6 +34,10 @@ import {
   FigureLifeStatus,
   FigurePublicationStatus,
 } from '@core/services/campaign-figure-api.service';
+import {
+  CharacterApiResponse,
+  CharacterApiService,
+} from '@core/services/character-api.service';
 import {
   FigurePanelMode,
 } from '@core/models/live-session-state.model';
@@ -67,6 +72,9 @@ export class CampaignFigureManager
   private readonly formBuilder =
     inject(FormBuilder);
 
+  private readonly characterApi =
+    inject(CharacterApiService);
+
   private readonly figureApi =
     inject(CampaignFigureApiService);
 
@@ -78,6 +86,9 @@ export class CampaignFigureManager
 
   protected readonly loading =
     signal(true);
+
+  protected readonly characters =
+    signal<CharacterApiResponse[]>([]);
 
   protected readonly saving =
     signal(false);
@@ -94,6 +105,11 @@ export class CampaignFigureManager
   protected readonly portraitPreviewUrl =
     signal<string | null>(null);
 
+  protected readonly playerCharacters = computed(() =>
+    this.characters().filter(
+      character => character.type === 'player',
+    ),
+  );
   protected readonly figureForm =
     this.formBuilder.group({
       name:
@@ -135,6 +151,9 @@ export class CampaignFigureManager
           Validators.maxLength(80),
         ),
 
+      characterId:
+        new FormControl<number | null>(null),
+
       portraitId:
         new FormControl<number | null>(
           null,
@@ -143,6 +162,20 @@ export class CampaignFigureManager
 
   ngOnInit(): void {
     this.loadData();
+
+    this.characterApi
+      .list(this.campaignId())
+      .subscribe({
+        next: characters => {
+          this.characters.set(characters);
+        },
+        error: error => {
+          console.error(
+            'Impossible de charger les personnages.',
+            error,
+          );
+        },
+      });
   }
 
   ngOnDestroy(): void {
@@ -160,6 +193,13 @@ export class CampaignFigureManager
   }
 
   protected submitFigure(): void {
+
+    console.log(
+  'figure form',
+  this.figureForm.valid,
+  this.figureForm.getRawValue(),
+  this.figureForm.controls,
+);
     if (
       this.figureForm.invalid
       || this.saving()
@@ -198,6 +238,10 @@ export class CampaignFigureManager
             portraitId:
               uploadedPortraitId
               ?? values.portraitId,
+            characterId:
+              values.characterType === 'pc'
+                ? values.characterId
+                : null,
           };
 
           const request$ = editingId === null
@@ -304,6 +348,8 @@ export class CampaignFigureManager
         figure.deathLabel ?? '',
       portraitId:
         figure.portrait?.id ?? null,
+      characterId:
+        figure.characterId ?? null,
     });
   }
 
@@ -492,6 +538,7 @@ export class CampaignFigureManager
       description: '',
       deathLabel: '',
       portraitId: null,
+      characterId: null,
     });
   }
 

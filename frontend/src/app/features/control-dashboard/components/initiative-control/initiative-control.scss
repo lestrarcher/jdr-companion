@@ -92,3 +92,295 @@ h2 {
 
   opacity: 0.7;
 }
+
+.initiative-form {
+  display: grid;
+  gap: 1rem;
+
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+
+  border-top:
+    1px solid rgb(211 171 82 / 18%);
+}
+
+.initiative-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.initiative-row {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    6rem
+    2.5rem;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.initiative-row input {
+  min-width: 0;
+
+  padding: 0.7rem 0.8rem;
+
+  border:
+    1px solid rgb(211 171 82 / 22%);
+  border-radius: 0.35rem;
+
+  background:
+    rgb(3 6 14 / 65%);
+
+  color: #eee7d7;
+}
+
+.initiative-row input:focus {
+  border-color:
+    rgb(211 171 82 / 65%);
+
+  outline: none;
+
+  box-shadow:
+    0 0 0 2px
+    rgb(211 171 82 / 8%);
+}
+
+.participant-score {
+  text-align: center;
+}
+
+.participant-remove {
+  width: 2.5rem;
+  height: 2.5rem;
+
+  border: 0;
+  border-radius: 50%;
+
+  background:
+    rgb(128 47 47 / 18%);
+
+  color: #d9a3a3;
+
+  font-size: 1.25rem;
+
+  cursor: pointer;
+}
+
+.initiative-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.initiative-add,
+.initiative-start {
+  padding: 0.7rem 1rem;
+
+  border-radius: 0.35rem;
+
+  cursor: pointer;
+}
+
+.initiative-add {
+  border:
+    1px solid rgb(211 171 82 / 25%);
+
+  background: transparent;
+
+  color: #d9c69a;
+}
+
+.initiative-start {
+  border:
+    1px solid rgb(211 171 82 / 55%);
+
+  background:
+    rgb(211 171 82 / 12%);
+
+  color: #efe3c3;
+}
+
+.initiative-start:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.initiative-import {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.initiative-import-button {
+  justify-self: start;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid rgb(211 171 82 / 25%);
+  border-radius: 0.35rem;
+  background: rgb(211 171 82 / 7%);
+  color: #d9c69a;
+  cursor: pointer;
+}
+
+.initiative-import-button:hover:not(:disabled) {
+  background: rgb(211 171 82 / 12%);
+  border-color: rgb(211 171 82 / 45%);
+}
+
+.initiative-import-button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.initiative-error {
+  margin: 0;
+  color: #d59a9a;
+  font-size: 0.8rem;
+}
+
+.initiative-row {
+  grid-template-columns:
+    minmax(0, 1fr)
+    6rem
+    2.5rem
+    2.5rem;
+}
+
+.participant-info {
+  min-width: 0;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.participant-name:disabled {
+  opacity: 0.9;
+  cursor: default;
+}
+
+.participant-hit-points {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding-left: 0.15rem;
+  color: #9f9a8e;
+  font-size: 0.75rem;
+}
+
+.participant-bloodied {
+  margin-left: 0.25rem;
+  color: #c87878;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.participant-bloodied-toggle {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  opacity: 0.35;
+  cursor: pointer;
+}
+
+.participant-bloodied-toggle:hover {
+  opacity: 0.7;
+}
+
+.participant-bloodied-toggle--active {
+  opacity: 1;
+  border-color: rgb(173 63 63 / 35%);
+  background: rgb(128 47 47 / 18%);
+}
+
+.initiative-active {
+  display: grid;
+  gap: 1rem;
+
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+
+  border-top:
+    1px solid rgb(211 171 82 / 18%);
+}
+
+.initiative-active-round {
+  color: #d9b967;
+
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.initiative-active-current {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.initiative-active-current span,
+.initiative-active-next {
+  color: #989286;
+  font-size: 0.75rem;
+}
+
+.initiative-active-current strong {
+  color: #eee7d7;
+
+  font-family:
+    Georgia,
+    'Times New Roman',
+    serif;
+
+  font-size: 1.7rem;
+  font-weight: 400;
+}
+
+.initiative-active-next strong {
+  color: #d9c69a;
+}
+
+.initiative-navigation {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.initiative-navigation button {
+  padding: 0.65rem 0.9rem;
+
+  border:
+    1px solid rgb(211 171 82 / 30%);
+  border-radius: 0.35rem;
+
+  background:
+    rgb(211 171 82 / 7%);
+
+  color: #ddd2b7;
+
+  cursor: pointer;
+}
+
+.initiative-order {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.initiative-order-row {
+  display: flex;
+  justify-content: space-between;
+
+  padding: 0.5rem 0.65rem;
+
+  border-left:
+    2px solid transparent;
+
+  color: #989286;
+}
+
+.initiative-order-row--active {
+  border-left-color: #d9b967;
+
+  background:
+    rgb(211 171 82 / 7%);
+
+  color: #eee7d7;
+}

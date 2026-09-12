@@ -1,34 +1,46 @@
 <section
   class="main-display"
-  [class.main-display--cinematic]="cinematic()"
+  [class.main-display-cinematic]="cinematic()"
 >
-  @if (displayedMedia(); as media) {
+  @if (
+    initiative()?.status === 'active'
+    && !cinematic()
+  ) {
+    <figure class="initiative-figure">
+      <div class="initiative-frame">
+        <app-initiative-turn-display
+          [initiative]="initiative()"
+        />
+      </div>
+    </figure>
+  } @else if (displayedMedia(); as media) {
     <figure class="media-figure">
       <div class="image-frame">
         <img
+          class="media-image"
           [src]="media.source"
           [alt]="media.alt"
-          [class.image-frame__image--contain]="
+          [class.media-image--contain]="
             media.fit === 'contain'
           "
         />
-
-        @if (media.title || media.subtitle) {
-          <figcaption class="media-caption">
-            @if (media.title) {
-              <strong>
-                {{ media.title }}
-              </strong>
-            }
-
-            @if (media.subtitle) {
-              <span>
-                {{ media.subtitle }}
-              </span>
-            }
-          </figcaption>
-        }
       </div>
+
+      @if (media.title || media.subtitle) {
+        <figcaption class="media-caption">
+          @if (media.title) {
+            <h2 class="media-title">
+              {{ media.title }}
+            </h2>
+          }
+
+          @if (media.subtitle) {
+            <p class="media-subtitle">
+              {{ media.subtitle }}
+            </p>
+          }
+        </figcaption>
+      }
     </figure>
   }
 </section>

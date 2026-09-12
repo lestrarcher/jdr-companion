@@ -10,12 +10,8 @@ import {
 } from 'rxjs';
 
 import { CampaignConfig } from '@core/models/campaign.model';
-import {
-  CampaignConfigurationRegistryService,
-} from '@core/services/campaign-configuration-registry.service';
-import {
-  GameSessionApiService,
-} from '@core/services/game-session-api.service';
+import { CampaignConfigurationRegistryService } from '@core/services/campaign-configuration-registry.service';
+import { GameSessionApiService } from '@core/services/game-session-api.service';
 import { LiveSessionService } from '@core/services/live-session.service';
 import { AmbientFog } from '@shared/components/ambient-fog/ambient-fog';
 import { InitiativeCinematic } from './components/initiative-cinematic/initiative-cinematic';

@@ -213,3 +213,11 @@ figcaption .media-subtitle {
 .main-display-cinematic .media-figure::after {
   display: none;
 }
+.initiative-frame {
+  position: relative;
+
+  width: 100%;
+  aspect-ratio: 16 / 9;
+
+  overflow: hidden;
+}

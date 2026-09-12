@@ -22,7 +22,7 @@ import {
 import { CampaignMedia as UploadedCampaignMedia } from '@core/services/media-api.service';
 import { MagicItemManager } from './components/magic-item-manager/magic-item-manager';
 import { MediaManager } from './components/media-manager/media-manager';
-import { FigurePanelMode } from '@core/models/live-session-state.model';
+import { FigurePanelMode, InitiativeParticipant } from '@core/models/live-session-state.model';
 import { CampaignConfig } from '@core/models/campaign.model';
 import { CampaignConfigurationRegistryService } from '@core/services/campaign-configuration-registry.service';
 import { GameSessionApiResponse, GameSessionApiService, GameSessionStatus } from '@core/services/game-session-api.service';
@@ -211,7 +211,23 @@ export class ControlDashboard {
     this.loadDashboardContext();
     });
   }
-
+  protected startInitiative(
+    participants: InitiativeParticipant[],
+  ): void {
+    this.liveSessionService.updateState({
+      initiative: {
+        status: 'active',
+        requestedAt:
+          this.liveState()
+            ?.initiative
+            ?.requestedAt
+          ?? Date.now(),
+        round: 1,
+        currentIndex: 0,
+        participants,
+      },
+    });
+  }
   protected requestInitiative(): void {
     this.liveSessionService.updateState({
       initiative: {
@@ -282,6 +298,68 @@ export class ControlDashboard {
   ): void {
     this.liveSessionService.updateState({
       figurePanelMode: mode,
+    });
+  }
+
+  protected nextInitiativeTurn(): void {
+  const initiative =
+    this.liveState()?.initiative;
+
+  if (
+    initiative?.status !== 'active'
+    || initiative.participants.length === 0
+  ) {
+    return;
+  }
+
+  const isLast =
+    initiative.currentIndex
+    >= initiative.participants.length - 1;
+
+  this.liveSessionService.updateState({
+    initiative: {
+      ...initiative,
+      currentIndex: isLast
+        ? 0
+        : initiative.currentIndex + 1,
+      round: isLast
+        ? initiative.round + 1
+        : initiative.round,
+    },
+  });
+}
+
+  protected previousInitiativeTurn(): void {
+    const initiative =
+      this.liveState()?.initiative;
+
+    if (
+      initiative?.status !== 'active'
+      || initiative.participants.length === 0
+    ) {
+      return;
+    }
+
+    if (
+      initiative.currentIndex === 0
+      && initiative.round <= 1
+    ) {
+      return;
+    }
+
+    const isFirst =
+      initiative.currentIndex === 0;
+
+    this.liveSessionService.updateState({
+      initiative: {
+        ...initiative,
+        currentIndex: isFirst
+          ? initiative.participants.length - 1
+          : initiative.currentIndex - 1,
+        round: isFirst
+          ? initiative.round - 1
+          : initiative.round,
+      },
     });
   }
 
@@ -539,4 +617,10 @@ export class ControlDashboard {
   protected draftSession(): void {
     this.updateSessionStatus('draft');
   }
+
+  protected endInitiative(): void {
+  this.liveSessionService.updateState({
+    initiative: undefined,
+  });
+}
 }

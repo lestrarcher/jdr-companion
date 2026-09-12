@@ -1,15 +1,10 @@
 <section class="initiative-control">
-  <div class="initiative-heading">
+  <header class="initiative-header">
     <div>
-      <p class="initiative-kicker">
-        Combat
-      </p>
-
+      <span class="initiative-eyebrow">Combat</span>
       <h2>Initiative</h2>
-
-      <p class="initiative-description">
-        Signalez aux joueurs qu’un combat commence
-        et demandez-leur de lancer l’initiative.
+      <p>
+        Lancez l'appel, puis renseignez l'ordre des participants.
       </p>
     </div>
 
@@ -24,14 +19,190 @@
         ⚔ Lancer l’initiative
       }
     </button>
-  </div>
+  </header>
 
-  @if (initiative()?.status === 'requested') {
-    <p
-      class="initiative-status"
-      role="status"
-    >
-      L’initiative a été demandée aux joueurs.
-    </p>
+  @if (initiative()?.status === 'active') {
+    <div class="initiative-active">
+      <div class="initiative-active-round">
+        Round {{ initiative()?.round }}
+      </div>
+
+      @if (currentParticipant(); as current) {
+        <div class="initiative-active-current">
+          <span>Tour actuel</span>
+          <strong>{{ current.name }}</strong>
+        </div>
+      }
+
+      @if (nextParticipant(); as next) {
+        <div class="initiative-active-next">
+          Suivant :
+          <strong>{{ next.name }}</strong>
+        </div>
+      }
+
+      <div class="initiative-navigation">
+        <button
+          type="button"
+          (click)="previousTurn()"
+        >
+          ← Précédent
+        </button>
+
+        <button
+          type="button"
+          (click)="nextTurn()"
+        >
+          Suivant →
+        </button>
+        <button
+  type="button"
+  class="initiative-end-button"
+  (click)="endInitiative()"
+>
+  Terminer l’initiative
+</button>
+      </div>
+
+      <div class="initiative-order">
+        @for (
+          participant of initiative()?.participants ?? [];
+          track participant.id;
+          let index = $index
+        ) {
+          <div
+            class="initiative-order-row"
+            [class.initiative-order-row--active]="
+              index === initiative()?.currentIndex
+            "
+          >
+            <span>{{ participant.name }}</span>
+            <strong>{{ participant.initiative }}</strong>
+          </div>
+        }
+      </div>
+    </div>
+  } @else if (
+    initiative()?.status === 'requested'
+    || participants().length > 0
+  ) {
+    <div class="initiative-form">
+
+      <div class="initiative-import">
+        <button
+          type="button"
+          class="initiative-import-button"
+          [disabled]="importingCharacters()"
+          (click)="importSessionCharacters()"
+        >
+          @if (importingCharacters()) {
+            Chargement…
+          } @else {
+            + Ajouter les personnages de la session
+          }
+        </button>
+
+        @if (importError()) {
+          <p class="initiative-error">
+            {{ importError() }}
+          </p>
+        }
+      </div>
+
+      <div class="initiative-list">
+        @for (
+          participant of participants();
+          track participant.id
+        ) {
+          <div class="initiative-row">
+            <div class="participant-info">
+              <input
+                type="text"
+                class="participant-name"
+                placeholder="Nom du participant"
+                [ngModel]="participant.name"
+                [disabled]="participant.characterId !== undefined"
+                (ngModelChange)="
+                  updateName(participant.id, $event)
+                "
+              />
+
+              @if (
+                participant.currentHitPoints !== undefined
+                && participant.maximumHitPoints !== undefined
+              ) {
+                <div class="participant-hit-points">
+                  ♥
+                  {{ participant.currentHitPoints }}
+                  /
+                  {{ participant.maximumHitPoints }}
+
+                  @if (participant.bloodied) {
+                    <span class="participant-bloodied">
+                      Bloodied
+                    </span>
+                  }
+                </div>
+              }
+            </div>
+
+            <input
+              type="number"
+              class="participant-score"
+              placeholder="Init."
+              [ngModel]="participant.initiative"
+              (ngModelChange)="
+                updateInitiative(
+                  participant.id,
+                  $event
+                )
+              "
+            />
+
+            @if (participant.characterId === undefined) {
+              <button
+                type="button"
+                class="participant-bloodied-toggle"
+                [class.participant-bloodied-toggle--active]="
+                  participant.bloodied
+                "
+                title="Bloodied"
+                (click)="toggleBloodied(participant.id)"
+              >
+                🩸
+              </button>
+            }
+
+            <button
+              type="button"
+              class="participant-remove"
+              aria-label="Retirer le participant"
+              (click)="removeParticipant(participant.id)"
+            >
+              ×
+            </button>
+          </div>
+        }
+      </div>
+
+      <div class="initiative-actions">
+        <button
+          type="button"
+          class="initiative-add"
+          (click)="addParticipant()"
+        >
+          + Ajouter un participant
+        </button>
+
+        <button
+          type="button"
+          class="initiative-start"
+          [disabled]="!canStart()"
+          (click)="startCombat()"
+        >
+          Démarrer le combat
+        </button>
+      </div>
+    </div>
   }
 </section>

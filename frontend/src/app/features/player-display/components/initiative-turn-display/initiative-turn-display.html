@@ -1,0 +1,54 @@
+@if (currentParticipant(); as current) {
+  <section
+    class="initiative-turn"
+    [class.initiative-turn--bloodied]="current.bloodied"
+  >
+    @if (current.imageUrl) {
+      <img
+        class="initiative-portrait"
+        [src]="current.imageUrl"
+        [alt]="current.name"
+      />
+    } @else {
+      <div
+        class="initiative-background"
+        aria-hidden="true"
+      ></div>
+    }
+
+    @if (current.bloodied) {
+      <img
+        class="initiative-blood-overlay"
+        src="/images/blood-splatter.webp"
+        alt=""
+        aria-hidden="true"
+      />
+    }
+
+    <div class="initiative-round">
+      Round {{ initiative()?.round }}
+    </div>
+
+    <div class="initiative-current">
+      <span class="initiative-current-label">
+        Tour de
+      </span>
+
+      <strong class="initiative-current-name">
+        {{ current.name }}
+      </strong>
+    </div>
+
+    @if (nextParticipant(); as next) {
+      <div class="initiative-next">
+        <span class="initiative-next-label">
+          Suivant
+        </span>
+
+        <strong class="initiative-next-name">
+          {{ next.name }}
+        </strong>
+      </div>
+    }
+  </section>
+}

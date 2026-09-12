@@ -131,6 +131,29 @@
         </select>
       </label>
 
+      @if (
+        figureForm.controls.characterType.value === 'pc'
+      ) {
+        <label>
+          <span>Personnage associé</span>
+
+          <select formControlName="characterId">
+            <option [ngValue]="null">
+              Aucun personnage
+            </option>
+
+            @for (
+              character of playerCharacters();
+              track character.id
+            ) {
+              <option [ngValue]="character.id">
+                {{ character.name }}
+              </option>
+            }
+          </select>
+        </label>
+      }
+
       <label>
         <span>Rencontre</span>
 

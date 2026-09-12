@@ -32,6 +32,10 @@ class CampaignFigure
     #[ORM\JoinColumn(nullable: false)]
     private ?Campaign $campaign = null;
 
+    #[ORM\ManyToOne(targetEntity: Character::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?Character $character = null;
+
     #[ORM\Column(length: 120)]
     private ?string $name = null;
 
@@ -373,5 +377,28 @@ class CampaignFigure
     {
         $this->updatedAt =
             new \DateTimeImmutable();
+    }
+
+    public function getCharacter(): ?Character
+    {
+        return $this->character;
+    }
+
+    public function setCharacter(?Character $character): static
+    {
+        if (
+            $character !== null
+            && $character->getCampaign()->getId()
+                !== $this->campaign?->getId()
+        ) {
+            throw new \InvalidArgumentException(
+                'Le personnage doit appartenir à la même campagne.',
+            );
+        }
+
+        $this->character = $character;
+        $this->touch();
+
+        return $this;
     }
 }

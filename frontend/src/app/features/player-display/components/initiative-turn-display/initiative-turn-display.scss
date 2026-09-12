@@ -1,0 +1,288 @@
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.initiative-turn {
+  position: relative;
+
+  width: 100%;
+  height: 100%;
+
+  overflow: hidden;
+
+  background: #05050a;
+}
+
+/*
+ * Image principale
+ */
+
+.initiative-portrait {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+
+  width: 100%;
+  height: 100%;
+
+  object-fit: contain;
+  object-position: center;
+
+  filter:
+    contrast(1.03)
+    saturate(1.02);
+}
+
+/*
+ * Fallback lorsqu'il n'y a pas de portrait
+ */
+
+.initiative-background {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+
+  background:
+    radial-gradient(
+      circle at 50% 45%,
+      rgb(35 34 48 / 45%) 0%,
+      rgb(9 9 16 / 75%) 48%,
+      rgb(2 2 6 / 98%) 100%
+    );
+}
+
+/*
+ * Léger voile central pour aider la lisibilité
+ * sans assombrir toute l'image.
+ */
+
+.initiative-turn::before {
+  content: '';
+
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+
+  pointer-events: none;
+
+  background:
+    radial-gradient(
+      ellipse at center,
+      rgb(0 0 0 / 22%) 0%,
+      rgb(0 0 0 / 8%) 28%,
+      transparent 55%
+    );
+}
+
+/*
+ * Bloodied
+ */
+
+.initiative-blood-overlay {
+  position: absolute;
+  bottom: 0;
+  z-index: 2;
+
+  width: 50%;
+  height: 100%;
+
+  object-fit: cover;
+  object-position: center;
+
+  pointer-events: none;
+
+  // opacity: 0.8;
+}
+
+// .initiative-turn--bloodied .initiative-portrait {
+//   filter:
+//     contrast(1.06)
+//     saturate(0.92);
+// }
+
+/*
+ * Round
+ */
+
+.initiative-round {
+  position: absolute;
+
+  top: 5%;
+  left: 50%;
+
+  z-index: 4;
+
+  transform: translateX(-50%);
+
+  color: #d7ad4e;
+
+  font-family:
+    Georgia,
+    'Times New Roman',
+    serif;
+
+  font-size: 0.78rem;
+  font-weight: 700;
+
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+
+  text-shadow:
+    0 2px 5px #000,
+    0 0 14px rgb(0 0 0 / 90%);
+}
+
+/*
+ * Participant courant
+ */
+
+.initiative-current {
+  position: absolute;
+
+  top: 50%;
+  left: 50%;
+
+  z-index: 4;
+
+  display: grid;
+  justify-items: center;
+
+  gap: 0.35rem;
+
+  transform:
+    translate(
+      -50%,
+      -50%
+    );
+
+  text-align: center;
+}
+
+.initiative-current-label {
+  color: #d0b79b;
+
+  font-family:
+    Georgia,
+    'Times New Roman',
+    serif;
+
+  font-size: 0.72rem;
+
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+
+  text-shadow:
+    0 2px 5px #000,
+    0 0 10px rgb(0 0 0 / 90%);
+}
+
+.initiative-current-name {
+  color: #e2ba4f;
+
+  font-family:
+    Georgia,
+    'Times New Roman',
+    serif;
+
+  font-size: clamp(
+    2rem,
+    4vw,
+    4.5rem
+  );
+
+  font-weight: 400;
+
+  line-height: 1;
+
+  text-shadow:
+    0 3px 4px #000,
+    0 0 10px #000,
+    0 0 24px rgb(0 0 0 / 85%),
+    0 0 42px rgb(0 0 0 / 55%);
+}
+
+/*
+ * Participant suivant
+ */
+
+.initiative-next {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 4;
+
+  display: grid;
+  align-content: end;
+  justify-items: end;
+  gap: 0.1rem;
+
+  width: 14rem;
+  height: 10rem;
+
+  padding:
+    0 1.4rem 1.1rem 0;
+
+  text-align: right;
+
+  isolation: isolate;
+}
+
+.initiative-next::before {
+  content: '';
+
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+
+  clip-path:
+    polygon(
+      18% 100%,
+      100% 10%,
+      100% 100%
+    );
+
+  background:
+    linear-gradient(
+      135deg,
+      rgb(5 5 8 / 10%) 0%,
+      rgb(5 5 8 / 42%) 42%,
+      rgb(5 5 8 / 82%) 72%,
+      rgb(5 5 8 / 96%) 100%
+    );
+}
+
+.initiative-next-label {
+  color: #d0b79b;
+
+  font-family:
+    Georgia,
+    'Times New Roman',
+    serif;
+
+  font-size: 0.58rem;
+
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+
+  text-shadow:
+    0 2px 5px #000,
+    0 0 8px rgb(0 0 0 / 85%);
+}
+
+.initiative-next-name {
+  color: #e2ba4f;
+
+  font-family:
+    Georgia,
+    'Times New Roman',
+    serif;
+
+  font-size: 1.05rem;
+  font-weight: 400;
+
+  text-shadow:
+    0 2px 5px #000,
+    0 0 8px rgb(0 0 0 / 85%);
+}

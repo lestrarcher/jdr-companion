@@ -34,6 +34,7 @@ export interface CampaignFigurePortrait {
 export interface CampaignFigure {
   id: number;
   campaignId: number;
+  characterId: number | null;
   name: string;
   characterType: FigureCharacterType;
   encounterStatus: FigureEncounterStatus;
@@ -54,6 +55,7 @@ export interface CreateCampaignFigurePayload {
   description: string;
   deathLabel?: string | null;
   portraitId?: number | null;
+  characterId?: number | null;
   encounterStatus?: FigureEncounterStatus;
   lifeStatus?: FigureLifeStatus;
 }
@@ -66,8 +68,8 @@ export interface UpdateCampaignFigurePayload {
   description?: string;
   deathLabel?: string | null;
   portraitId?: number | null;
-  publicationStatus?:
-    FigurePublicationStatus;
+  characterId?: number | null;
+  publicationStatus?: FigurePublicationStatus;
   displayOrder?: number;
 }
 

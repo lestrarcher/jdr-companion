@@ -6,6 +6,8 @@ namespace App\Controller;
 
 use App\Entity\Campaign;
 use App\Entity\CampaignFigure;
+use App\Entity\Character;
+use App\Repository\CharacterRepository;
 use App\Entity\Media;
 use App\Repository\CampaignFigureRepository;
 use App\Repository\CampaignRepository;
@@ -65,6 +67,7 @@ final class CampaignFigureController extends AbstractController
         CampaignFigureRepository $figureRepository,
         MediaRepository $mediaRepository,
         EntityManagerInterface $entityManager,
+        CharacterRepository $characterRepository,
     ): JsonResponse {
         $campaign = $this->getOwnedCampaign(
             $campaignId,
@@ -162,6 +165,16 @@ final class CampaignFigureController extends AbstractController
             );
         }
 
+        if (array_key_exists('characterId', $payload)) {
+            $figure->setCharacter(
+                $this->resolveCharacter(
+                    $payload['characterId'],
+                    $campaign,
+                    $characterRepository,
+                ),
+            );
+        }
+
         $entityManager->persist($figure);
         $entityManager->flush();
 
@@ -185,6 +198,7 @@ final class CampaignFigureController extends AbstractController
         Request $request,
         CampaignFigureRepository $figureRepository,
         MediaRepository $mediaRepository,
+        CharacterRepository $characterRepository,
         EntityManagerInterface $entityManager,
     ): JsonResponse {
         $figure = $figureRepository->find($figureId);
@@ -281,6 +295,16 @@ final class CampaignFigureController extends AbstractController
                 );
             }
 
+            if (array_key_exists('characterId', $payload)) {
+                $figure->setCharacter(
+                    $this->resolveCharacter(
+                        $payload['characterId'],
+                        $campaign,
+                        $characterRepository,
+                    ),
+                );
+            }
+
             if (array_key_exists('displayOrder', $payload)) {
                 $displayOrder = filter_var(
                     $payload['displayOrder'],
@@ -337,6 +361,44 @@ final class CampaignFigureController extends AbstractController
         );
 
         return $campaign;
+    }
+
+    private function resolveCharacter(
+        mixed $characterId,
+        Campaign $campaign,
+        CharacterRepository $characterRepository,
+    ): ?Character {
+        if (
+            $characterId === null
+            || $characterId === ''
+        ) {
+            return null;
+        }
+
+        $id = filter_var(
+            $characterId,
+            FILTER_VALIDATE_INT,
+        );
+
+        if ($id === false || $id <= 0) {
+            throw new \InvalidArgumentException(
+                'Le personnage sélectionné est invalide.',
+            );
+        }
+
+        $character = $characterRepository->find($id);
+
+        if (
+            !$character instanceof Character
+            || $character->getCampaign()->getId()
+                !== $campaign->getId()
+        ) {
+            throw new \InvalidArgumentException(
+                'Ce personnage n’appartient pas à la campagne.',
+            );
+        }
+
+        return $character;
     }
 
     private function resolvePortrait(
@@ -399,23 +461,16 @@ final class CampaignFigureController extends AbstractController
 
         return [
             'id' => $figure->getId(),
-            'campaignId' =>
-                $figure->getCampaign()?->getId(),
+            'campaignId' => $figure->getCampaign()?->getId(),
+            'characterId' => $figure->getCharacter()?->getId(),
             'name' => $figure->getName(),
-            'characterType' =>
-                $figure->getCharacterType(),
-            'encounterStatus' =>
-                $figure->getEncounterStatus(),
-            'lifeStatus' =>
-                $figure->getLifeStatus(),
-            'description' =>
-                $figure->getDescription(),
-            'deathLabel' =>
-                $figure->getDeathLabel(),
-            'publicationStatus' =>
-                $figure->getPublicationStatus(),
-            'displayOrder' =>
-                $figure->getDisplayOrder(),
+            'characterType' => $figure->getCharacterType(),
+            'encounterStatus' => $figure->getEncounterStatus(),
+            'lifeStatus' => $figure->getLifeStatus(),
+            'description' => $figure->getDescription(),
+            'deathLabel' => $figure->getDeathLabel(),
+            'publicationStatus' => $figure->getPublicationStatus(),
+            'displayOrder' => $figure->getDisplayOrder(),
 
             'portrait' => $portrait
                 ? [
@@ -430,12 +485,8 @@ final class CampaignFigureController extends AbstractController
                 ]
                 : null,
 
-            'createdAt' =>
-                $figure->getCreatedAt()
-                    ?->format(DATE_ATOM),
-            'updatedAt' =>
-                $figure->getUpdatedAt()
-                    ?->format(DATE_ATOM),
+            'createdAt' => $figure->getCreatedAt()?->format(DATE_ATOM),
+            'updatedAt' => $figure->getUpdatedAt()?->format(DATE_ATOM),
         ];
     }
 }
