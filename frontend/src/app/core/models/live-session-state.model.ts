@@ -57,6 +57,9 @@ export interface InitiativeState {
   requestedAt: number;
   round: number;
   currentIndex: number;
+
+  draftParticipants: InitiativeDraftParticipant[];
+
   participants: InitiativeParticipant[];
 }
 
@@ -82,4 +85,15 @@ export interface LiveSessionState {
   location?: LocationState;
   displayedMedia?: DisplayedMediaState;
   initiative?: InitiativeState;
+}
+
+export interface InitiativeDraftParticipant {
+  id: string;
+  name: string;
+  initiative: number | null;
+  characterId?: number;
+  currentHitPoints?: number;
+  maximumHitPoints?: number | null;
+  imageUrl?: string;
+  bloodied: boolean;
 }

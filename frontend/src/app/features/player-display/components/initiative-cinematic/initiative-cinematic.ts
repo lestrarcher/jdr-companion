@@ -1,11 +1,10 @@
-
 import {
   Component,
-  DestroyRef,
+  ElementRef,
   effect,
-  inject,
   input,
   signal,
+  viewChild,
 } from '@angular/core';
 
 import {
@@ -14,74 +13,60 @@ import {
 
 @Component({
   selector: 'app-initiative-cinematic',
-  imports: [],
   templateUrl: './initiative-cinematic.html',
   styleUrl: './initiative-cinematic.scss',
 })
 export class InitiativeCinematic {
-  private static readonly DURATION = 10_000;
+  readonly initiative = input<InitiativeState | undefined>();
 
-  private readonly destroyRef =
-    inject(DestroyRef);
+  protected readonly visible = signal(false);
 
-  readonly initiative =
-    input<InitiativeState | undefined>();
+  private readonly initiativeVideo = viewChild.required<ElementRef<HTMLVideoElement>>('initiativeVideo');
 
-  protected readonly visible =
-    signal(false);
-
-  private lastRequestedAt?: number;
-
-  private hideTimer?: ReturnType<
-    typeof setTimeout
-  >;
+  private lastRequestedAt: number | null = null;
+  private hideTimeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     effect(() => {
-      const initiative =
-        this.initiative();
+      const initiative = this.initiative();
 
       if (
         initiative?.status !== 'requested'
-        || !initiative.requestedAt
-        || initiative.requestedAt ===
-          this.lastRequestedAt
+        || initiative.requestedAt === this.lastRequestedAt
       ) {
         return;
       }
 
-      this.lastRequestedAt =
-        initiative.requestedAt;
+      this.lastRequestedAt = initiative.requestedAt;
 
-      if (this.hideTimer) {
-        clearTimeout(this.hideTimer);
-      }
+      this.playCinematic();
+    });
+  }
 
-      const elapsed =
-        Date.now() -
-        initiative.requestedAt;
+  private playCinematic(): void {
+    if (this.hideTimeout !== null) {
+      clearTimeout(this.hideTimeout);
+    }
 
-      const remaining =
-        InitiativeCinematic.DURATION -
-        elapsed;
+    const video = this.initiativeVideo().nativeElement;
 
-      if (remaining <= 0) {
-        this.visible.set(false);
-        return;
-      }
+    video.pause();
+    video.currentTime = 0;
 
-      this.visible.set(true);
-
-      this.hideTimer =
-        setTimeout(() => {
-          this.visible.set(false);
-        }, remaining);
+    void video.play().catch(error => {
+      console.warn(
+        'Impossible de lancer la vidéo d’initiative.',
+        error,
+      );
     });
 
-    this.destroyRef.onDestroy(() => {
-      if (this.hideTimer) {
-        clearTimeout(this.hideTimer);
-      }
-    });
+    this.visible.set(true);
+
+    this.hideTimeout = setTimeout(() => {
+      this.visible.set(false);
+      video.pause();
+
+      this.hideTimeout = null;
+    }, 10_000);
   }
 }

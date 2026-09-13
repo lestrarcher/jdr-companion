@@ -78,11 +78,16 @@
                 [campaignId]="backendCampaignId"
                 [sessionId]="backendSessionId"
                 [initiative]="liveState()?.initiative"
+                [draftParticipants]="
+                  liveState()?.initiative?.draftParticipants
+                    ?? []
+                "
                 (initiativeRequested)="requestInitiative()"
                 (initiativeStarted)="startInitiative($event)"
                 (initiativePrevious)="previousInitiativeTurn()"
                 (initiativeNext)="nextInitiativeTurn()"
-  (initiativeEnded)="endInitiative()"
+                (initiativeEnded)="endInitiative()"
+                (draftChanged)="updateInitiativeDraft($event)"
               />
               <app-world-controls
                 [state]="liveState()"

@@ -22,7 +22,7 @@ import {
 import { CampaignMedia as UploadedCampaignMedia } from '@core/services/media-api.service';
 import { MagicItemManager } from './components/magic-item-manager/magic-item-manager';
 import { MediaManager } from './components/media-manager/media-manager';
-import { FigurePanelMode, InitiativeParticipant } from '@core/models/live-session-state.model';
+import { FigurePanelMode, InitiativeDraftParticipant, InitiativeParticipant } from '@core/models/live-session-state.model';
 import { CampaignConfig } from '@core/models/campaign.model';
 import { CampaignConfigurationRegistryService } from '@core/services/campaign-configuration-registry.service';
 import { GameSessionApiResponse, GameSessionApiService, GameSessionStatus } from '@core/services/game-session-api.service';
@@ -214,20 +214,24 @@ export class ControlDashboard {
   protected startInitiative(
     participants: InitiativeParticipant[],
   ): void {
+    const initiative = this.liveState()?.initiative;
+
     this.liveSessionService.updateState({
       initiative: {
         status: 'active',
         requestedAt:
-          this.liveState()
-            ?.initiative
-            ?.requestedAt
+          initiative?.requestedAt
           ?? Date.now(),
         round: 1,
         currentIndex: 0,
+        draftParticipants:
+          initiative?.draftParticipants
+          ?? [],
         participants,
       },
     });
   }
+
   protected requestInitiative(): void {
     this.liveSessionService.updateState({
       initiative: {
@@ -235,7 +239,25 @@ export class ControlDashboard {
         requestedAt: Date.now(),
         round: 1,
         currentIndex: 0,
+        draftParticipants: [],
         participants: [],
+      },
+    });
+  }
+
+  protected updateInitiativeDraft(
+    draftParticipants: InitiativeDraftParticipant[],
+  ): void {
+    const initiative = this.liveState()?.initiative;
+
+    if (!initiative) {
+      return;
+    }
+
+    this.liveSessionService.updateState({
+      initiative: {
+        ...initiative,
+        draftParticipants,
       },
     });
   }

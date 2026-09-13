@@ -1,45 +1,35 @@
+<section
+  class="initiative-cinematic"
+  [class.initiative-cinematic--visible]="visible()"
+  aria-live="assertive"
+>
+  <video
+    #initiativeVideo
+    class="initiative-video"
+    src="/videos/initiative-fog.mp4"
+    muted
+    playsinline
+    preload="auto"
+  ></video>
 
-a@if (visible()) {
-  <section
-    class="initiative-cinematic"
-    aria-live="assertive"
-  >
-    <video
-      class="initiative-video"
-      autoplay
-      muted
-      playsinline
-    >
-      <source
-        src="/videos/initiative-fog.webm"
-        type="video/webm"
-      />
+  <div
+    class="initiative-darkness"
+    aria-hidden="true"
+  ></div>
 
-      <source
-        src="/videos/initiative-fog.mp4"
-        type="video/mp4"
-      />
-    </video>
+  <div class="initiative-title">
+    <span class="initiative-title-small">
+      Lancez
+    </span>
 
-    <div
-      class="initiative-darkness"
-      aria-hidden="true"
-    ></div>
+    <span class="initiative-divider">
+      <span></span>
+      ◆
+      <span></span>
+    </span>
 
-    <div class="initiative-title">
-      <span class="initiative-title-small">
-        Lancez
-      </span>
-
-      <span class="initiative-divider">
-        <span></span>
-        ◆
-        <span></span>
-      </span>
-
-      <strong>
-        L’initiative
-      </strong>
-    </div>
-  </section>
-}
+    <strong>
+      L’initiative
+    </strong>
+  </div>
+</section>
