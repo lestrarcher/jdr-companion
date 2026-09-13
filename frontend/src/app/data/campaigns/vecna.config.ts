@@ -1,16 +1,9 @@
 import { CampaignConfig } from '@core/models/campaign.model';
-import {
-  STRAHD_MOON_PHASES,
-  STRAHD_WEATHER_STATES,
-} from '@data/campaigns/strahd.config';
 
 export const VECNA_CAMPAIGN: CampaignConfig = {
   id: 'campaign-vecna-template',
   name: 'Vecna : au seuil du néant',
   worldName: 'Plan matériel',
-
-  moonPhases: STRAHD_MOON_PHASES,
-  weatherStates: STRAHD_WEATHER_STATES,
 
   theme: {
     backgroundImage:

@@ -7,6 +7,24 @@ export type GameSessionStatus =
   | 'live'
   | 'closed';
 
+  export type MoonPhase =
+  | 'new-moon'
+  | 'waxing-crescent'
+  | 'first-quarter'
+  | 'waxing-gibbous'
+  | 'full-moon'
+  | 'waning-gibbous'
+  | 'last-quarter'
+  | 'waning-crescent';
+
+export interface WeatherApiResponse {
+  id: number;
+  key: string;
+  label: string;
+  imageUrl: string | null;
+  alt: string | null;
+}
+
 export interface GameSessionApiResponse {
   id: number;
   campaignId: number;
@@ -16,6 +34,14 @@ export interface GameSessionApiResponse {
   status: GameSessionStatus;
   displayState: Record<string, unknown>;
   displayAccessToken: string;
+
+  weatherId: number | null;
+  weather: WeatherApiResponse | null;
+  showWeather: boolean;
+
+  moonPhase: MoonPhase | null;
+  showMoonPhase: boolean;
+
   createdAt: string;
   updatedAt: string;
 }
@@ -25,8 +51,25 @@ export interface CreateGameSessionPayload {
   name: string;
 }
 
-export type GameSessionDisplayResponse = Pick<GameSessionApiResponse,
-  'id' | 'campaignId' | 'status' | 'displayState' | 'updatedAt'>;
+export type GameSessionDisplayResponse = Pick<
+  GameSessionApiResponse,
+  | 'id'
+  | 'campaignId'
+  | 'status'
+  | 'displayState'
+  | 'weather'
+  | 'showWeather'
+  | 'moonPhase'
+  | 'showMoonPhase'
+  | 'updatedAt'
+>;
+
+export interface UpdateSessionWorldStatePayload {
+  weatherId?: number | null;
+  showWeather?: boolean;
+  moonPhase?: MoonPhase | null;
+  showMoonPhase?: boolean;
+}
 
 interface GameSessionResponse {
   session: GameSessionApiResponse;
@@ -106,5 +149,19 @@ export class GameSessionApiService {
       `${this.apiUrl}/sessions/${sessionId}`,
       { preparationNotes },
     ).pipe(map(response => response.session));
+  }
+
+  updateWorldState(
+    sessionId: number,
+    payload: UpdateSessionWorldStatePayload,
+  ): Observable<GameSessionApiResponse> {
+    return this.http
+      .patch<GameSessionResponse>(
+        `${this.apiUrl}/sessions/${sessionId}`,
+        payload,
+      )
+      .pipe(
+        map((response) => response.session),
+      );
   }
 }

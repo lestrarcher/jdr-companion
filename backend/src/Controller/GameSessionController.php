@@ -6,6 +6,9 @@ namespace App\Controller;
 
 use App\Entity\Campaign;
 use App\Entity\GameSession;
+use App\Entity\Weather;
+use App\Enum\MoonPhase;
+use App\Repository\WeatherRepository;
 use App\Security\Voter\CampaignVoter;
 use App\Repository\CampaignRepository;
 use App\Repository\GameSessionRepository;
@@ -59,6 +62,7 @@ final class GameSessionController extends AbstractController
         CampaignRepository $campaignRepository,
         GameSessionRepository $sessionRepository,
         EntityManagerInterface $entityManager,
+        WeatherRepository $weatherRepository,
     ): JsonResponse {
         $campaign = $this->getOwnedCampaign(
             $campaignId,
@@ -121,6 +125,54 @@ final class GameSessionController extends AbstractController
 
         $displayState = $payload['displayState'] ?? [];
 
+        if (array_key_exists('weatherId', $payload)) {
+            try {
+                $session->setWeather(
+                    $this->resolveWeather(
+                        $payload['weatherId'],
+                        $campaign,
+                        $weatherRepository,
+                    ),
+                );
+            } catch (\InvalidArgumentException $exception) {
+                return $this->json(
+                    [
+                        'message' => $exception->getMessage(),
+                    ],
+                    JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
+                );
+            }
+        }
+
+        if (array_key_exists('showWeather', $payload)) {
+            $session->setShowWeather(
+                (bool) $payload['showWeather'],
+            );
+        }
+
+        if (array_key_exists('moonPhase', $payload)) {
+            try {
+                $session->setMoonPhase(
+                    $this->resolveMoonPhase(
+                        $payload['moonPhase'],
+                    ),
+                );
+            } catch (\InvalidArgumentException $exception) {
+                return $this->json(
+                    [
+                        'message' => $exception->getMessage(),
+                    ],
+                    JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
+                );
+            }
+        }
+
+        if (array_key_exists('showMoonPhase', $payload)) {
+            $session->setShowMoonPhase(
+                (bool) $payload['showMoonPhase'],
+            );
+        }
+
         if (is_array($displayState)) {
             $session->setDisplayState($displayState);
         }
@@ -148,6 +200,7 @@ final class GameSessionController extends AbstractController
         Request $request,
         GameSessionRepository $sessionRepository,
         EntityManagerInterface $entityManager,
+        WeatherRepository $weatherRepository
     ): JsonResponse {
         $session = $sessionRepository->find($sessionId);
 
@@ -200,6 +253,45 @@ final class GameSessionController extends AbstractController
 
         if (array_key_exists('preparationNotes', $payload)) {
             $session->setPreparationNotes($payload['preparationNotes']);
+        }
+
+        try {
+            if (array_key_exists('weatherId', $payload)) {
+                $session->setWeather(
+                    $this->resolveWeather(
+                        $payload['weatherId'],
+                        $session->getCampaign(),
+                        $weatherRepository,
+                    ),
+                );
+            }
+
+            if (array_key_exists('showWeather', $payload)) {
+                $session->setShowWeather(
+                    (bool) $payload['showWeather'],
+                );
+            }
+
+            if (array_key_exists('moonPhase', $payload)) {
+                $session->setMoonPhase(
+                    $this->resolveMoonPhase(
+                        $payload['moonPhase'],
+                    ),
+                );
+            }
+
+            if (array_key_exists('showMoonPhase', $payload)) {
+                $session->setShowMoonPhase(
+                    (bool) $payload['showMoonPhase'],
+                );
+            }
+        } catch (\InvalidArgumentException $exception) {
+            return $this->json(
+                [
+                    'message' => $exception->getMessage(),
+                ],
+                JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
+            );
         }
 
         $entityManager->flush();
@@ -256,6 +348,18 @@ final class GameSessionController extends AbstractController
             'status' => $session->getStatus(),
             'displayState' => $session->getDisplayState(),
             'updatedAt' => $session->getUpdatedAt()->format(DATE_ATOM),
+            'weather' => $session->getWeather()
+                ? [
+                    'id' => $session->getWeather()?->getId(),
+                    'key' => $session->getWeather()?->getKey(),
+                    'label' => $session->getWeather()?->getLabel(),
+                    'imageUrl' => $session->getWeather()?->getImageUrl(),
+                    'alt' => $session->getWeather()?->getAlt(),
+                ]
+                : null,
+            'showWeather' => $session->isShowWeather(),
+            'moonPhase' => $session->getMoonPhase()?->value,
+            'showMoonPhase' => $session->isShowMoonPhase(),
         ];
     }
 
@@ -287,51 +391,124 @@ final class GameSessionController extends AbstractController
     ): array {
         return [
             'id' => $session->getId(),
-            'campaignId' =>
-                $session->getCampaign()->getId(),
+            'campaignId' => $session->getCampaign()->getId(),
             'slug' => $session->getSlug(),
             'name' => $session->getName(),
             'preparationNotes' => $session->getPreparationNotes(),
             'status' => $session->getStatus(),
-            'displayState' =>
-                $session->getDisplayState(),
-            'displayAccessToken' =>
-                $session->getDisplayAccessToken(),
-            'createdAt' =>
-                $session->getCreatedAt()
-                    ->format(DATE_ATOM),
-            'updatedAt' =>
-                $session->getUpdatedAt()
-                    ->format(DATE_ATOM),
+            'displayState' => $session->getDisplayState(),
+            'displayAccessToken' => $session->getDisplayAccessToken(),
+            'createdAt' => $session->getCreatedAt()->format(DATE_ATOM),
+            'updatedAt' => $session->getUpdatedAt()->format(DATE_ATOM),
+            'weatherId' => $session->getWeather()?->getId(),
+            'weather' => $session->getWeather()
+                ? [
+                    'id' => $session->getWeather()?->getId(),
+                    'key' => $session->getWeather()?->getKey(),
+                    'label' => $session->getWeather()?->getLabel(),
+                    'imageUrl' => $session->getWeather()?->getImageUrl(),
+                    'alt' => $session->getWeather()?->getAlt(),
+                ]
+                : null,
+            'showWeather' => $session->isShowWeather(),
+            'moonPhase' => $session->getMoonPhase()?->value,
+            'showMoonPhase' => $session->isShowMoonPhase(),
         ];
     }
 
     #[Route(
-    '/sessions/{sessionId}',
-    name: 'api_session_show',
-    requirements: ['sessionId' => '\d+'],
-    methods: ['GET'],
-)]
-public function show(
-    int $sessionId,
-    GameSessionRepository $sessionRepository,
-): JsonResponse {
-    $session = $sessionRepository->find($sessionId);
+        '/sessions/{sessionId}',
+        name: 'api_session_show',
+        requirements: ['sessionId' => '\d+'],
+        methods: ['GET'],
+    )]
+    public function show(
+        int $sessionId,
+        GameSessionRepository $sessionRepository,
+    ): JsonResponse {
+        $session = $sessionRepository->find($sessionId);
 
-    if (!$session) {
-        throw $this->createNotFoundException(
-            'Session inconnue.',
+        if (!$session) {
+            throw $this->createNotFoundException(
+                'Session inconnue.',
+            );
+        }
+
+        $this->denyAccessUnlessGranted(
+            CampaignVoter::MANAGE,
+            $session->getCampaign(),
         );
+
+        return $this->json([
+            'session' =>
+                $this->serializeSession($session),
+        ]);
     }
 
-    $this->denyAccessUnlessGranted(
-        CampaignVoter::MANAGE,
-        $session->getCampaign(),
-    );
+    private function resolveWeather(
+        mixed $weatherId,
+        Campaign $campaign,
+        WeatherRepository $weatherRepository,
+    ): ?Weather {
+        if (
+            $weatherId === null
+            || $weatherId === ''
+        ) {
+            return null;
+        }
 
-    return $this->json([
-        'session' =>
-            $this->serializeSession($session),
-    ]);
-}
+        $id = filter_var(
+            $weatherId,
+            FILTER_VALIDATE_INT,
+        );
+
+        if ($id === false || $id <= 0) {
+            throw new \InvalidArgumentException(
+                'La météo sélectionnée est invalide.',
+            );
+        }
+
+        $weather = $weatherRepository->find($id);
+
+        if (!$weather instanceof Weather) {
+            throw new \InvalidArgumentException(
+                'La météo sélectionnée est introuvable.',
+            );
+        }
+
+        if (
+            !$weather->isSystem()
+            && $weather->getCampaign()?->getId()
+                !== $campaign->getId()
+        ) {
+            throw new \InvalidArgumentException(
+                'Cette météo n’est pas disponible pour cette campagne.',
+            );
+        }
+
+        return $weather;
+    }
+
+    private function resolveMoonPhase(
+        mixed $moonPhase,
+    ): ?MoonPhase {
+        if (
+            $moonPhase === null
+            || $moonPhase === ''
+        ) {
+            return null;
+        }
+
+        $phase = MoonPhase::tryFrom(
+            (string) $moonPhase,
+        );
+
+        if (!$phase instanceof MoonPhase) {
+            throw new \InvalidArgumentException(
+                'La phase de lune sélectionnée est invalide.',
+            );
+        }
+
+        return $phase;
+    }
 }

@@ -11,7 +11,13 @@ import {
 
 import { CampaignConfig } from '@core/models/campaign.model';
 import { CampaignConfigurationRegistryService } from '@core/services/campaign-configuration-registry.service';
-import { GameSessionApiService } from '@core/services/game-session-api.service';
+import {
+  GameSessionApiService,
+  GameSessionDisplayResponse,
+} from '@core/services/game-session-api.service';
+import { MoonState } from '@core/models/live-session-state.model';
+
+import { MoonPhaseApiService } from '@core/services/moon-phase-api.service';
 import { LiveSessionService } from '@core/services/live-session.service';
 import { AmbientFog } from '@shared/components/ambient-fog/ambient-fog';
 import { InitiativeCinematic } from './components/initiative-cinematic/initiative-cinematic';
@@ -41,6 +47,7 @@ export class PlayerDisplay {
 
   protected readonly campaignId: number;
 
+  private readonly moonPhaseApi = inject(MoonPhaseApiService);
   private readonly gameSessionApi =
     inject(GameSessionApiService);
 
@@ -107,8 +114,8 @@ export class PlayerDisplay {
         this.campaignConfigurationRegistry
           .getCampaign(campaignId),
 
-      session:
-        this.gameSessionApi.getDisplay(sessionId),
+      session: this.gameSessionApi.getDisplay(sessionId),
+      moonPhases: this.moonPhaseApi.list(),
     })
       .pipe(
         finalize(() => {
@@ -119,6 +126,7 @@ export class PlayerDisplay {
         next: ({
           campaignContext,
           session,
+          moonPhases,
         }) => {
           if (
             session.campaignId !==
@@ -131,8 +139,7 @@ export class PlayerDisplay {
             return;
           }
 
-          this.campaign =
-            campaignContext.configuration;
+          this.campaign = campaignContext.configuration;
 
           /*
            * Le service est initialisé même lorsque
@@ -144,13 +151,36 @@ export class PlayerDisplay {
             String(sessionId),
           );
 
-          /*
-           * Symfony fournit le statut initial.
-           * Les changements suivants transitent
-           * par BroadcastChannel sur le même PC.
-           */
+          const weather = session.weather
+            ? {
+                id: session.weather.key,
+                label: session.weather.label,
+                imageUrl:
+                  session.weather.imageUrl ?? '',
+                alt:
+                  session.weather.alt
+                  ?? session.weather.label,
+              }
+            : undefined;
+
+          const moon =
+            session.moonPhase
+              ? moonPhases.find(
+                  candidate =>
+                    candidate.id ===
+                    session.moonPhase,
+                )
+              : undefined;
+
           this.liveSessionService.updateState({
             status: session.status,
+
+            weather,
+            showWeather: session.showWeather,
+
+            moon,
+            showMoonPhase:
+              session.showMoonPhase,
           });
         },
 

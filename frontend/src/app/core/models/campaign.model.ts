@@ -1,9 +1,4 @@
-import {
-  DisplayedMediaState,
-  LiveSessionState,
-  MoonState,
-  WeatherState,
-} from './live-session-state.model';
+import { LiveSessionState } from './live-session-state.model';
 
 export interface CampaignColors {
   primary: string;
@@ -26,9 +21,6 @@ export interface CampaignConfig {
   name: string;
   worldName: string;
   theme: CampaignTheme;
-
-  moonPhases: MoonState[];
-  weatherStates: WeatherState[];
 
   initialLiveState: LiveSessionState;
 }

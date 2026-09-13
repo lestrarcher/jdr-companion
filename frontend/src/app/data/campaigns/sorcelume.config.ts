@@ -1,16 +1,9 @@
 import { CampaignConfig } from '@core/models/campaign.model';
-import {
-  STRAHD_MOON_PHASES,
-  STRAHD_WEATHER_STATES,
-} from '@data/campaigns/strahd.config';
 
 export const SORCELUME_CAMPAIGN: CampaignConfig = {
   id: 'campaign-sorcelume-template',
   name: 'Les Terres de la Sorcelume',
   worldName: 'Sorcelume',
-
-  moonPhases: STRAHD_MOON_PHASES,
-  weatherStates: STRAHD_WEATHER_STATES,
 
   theme: {
     backgroundImage:

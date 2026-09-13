@@ -14,14 +14,24 @@ import {
 import {
   LiveSessionState,
   MoonState,
-  WeatherState,
 } from '@core/models/live-session-state.model';
+import {
+  GameSessionApiResponse,
+  MoonPhase,
+} from '@core/services/game-session-api.service';
+import {
+  Weather,
+} from '@core/services/weather-api.service';
 
 export interface WorldUpdate {
   day: number;
   dayPeriod: string;
-  weather: WeatherState;
-  moon: MoonState;
+
+  weatherId: number | null;
+  showWeather: boolean;
+
+  moonPhase: MoonPhase | null;
+  showMoonPhase: boolean;
 
   location: {
     name: string;
@@ -42,8 +52,13 @@ export class WorldControls {
   readonly state =
     input<LiveSessionState | null>();
 
+  readonly session =
+    input<GameSessionApiResponse | null>(
+      null,
+    );
+
   readonly weatherStates =
-    input.required<WeatherState[]>();
+    input.required<Weather[]>();
 
   readonly moonPhases =
     input.required<MoonState[]>();
@@ -68,15 +83,13 @@ export class WorldControls {
         Validators.required,
       ],
 
-      weatherId: [
-        '',
-        Validators.required,
-      ],
+      weatherId: [''],
 
-      moonId: [
-        '',
-        Validators.required,
-      ],
+      showWeather: [true],
+
+      moonPhase: [''],
+
+      showMoonPhase: [false],
 
       locationName: [
         '',
@@ -89,6 +102,7 @@ export class WorldControls {
   constructor() {
     effect(() => {
       const state = this.state();
+      const session = this.session();
 
       if (!state) {
         return;
@@ -102,10 +116,19 @@ export class WorldControls {
             state.dayPeriod ?? '',
 
           weatherId:
-            state.weather?.id ?? '',
+            session?.weatherId !== null &&
+            session?.weatherId !== undefined
+              ? String(session.weatherId)
+              : '',
 
-          moonId:
-            state.moon?.id ?? '',
+          showWeather:
+            session?.showWeather ?? true,
+
+          moonPhase:
+            session?.moonPhase ?? '',
+
+          showMoonPhase:
+            session?.showMoonPhase ?? false,
 
           locationName:
             state.location?.name ?? '',
@@ -132,32 +155,38 @@ export class WorldControls {
     const values =
       this.worldForm.getRawValue();
 
-    const weather =
-      this.weatherStates().find(
-        (candidate) =>
-          candidate.id ===
-          values.weatherId,
-      );
-
-    const moon =
-      this.moonPhases().find(
-        (candidate) =>
-          candidate.id ===
-          values.moonId,
-      );
-
-    if (!weather || !moon) {
-      return;
-    }
+    const weatherId =
+      values.weatherId === ''
+        ? null
+        : Number(values.weatherId);
 
     this.worldUpdated.emit({
       day: values.day,
-      dayPeriod: values.dayPeriod,
-      weather,
-      moon,
+
+      dayPeriod:
+        values.dayPeriod,
+
+      weatherId:
+        weatherId !== null &&
+        Number.isInteger(weatherId)
+          ? weatherId
+          : null,
+
+      showWeather:
+        values.showWeather,
+
+      moonPhase:
+        values.moonPhase === ''
+          ? null
+          : values.moonPhase as MoonPhase,
+
+      showMoonPhase:
+        values.showMoonPhase,
 
       location: {
-        name: values.locationName.trim(),
+        name:
+          values.locationName.trim(),
+
         subtitle:
           values.locationSubtitle.trim(),
       },

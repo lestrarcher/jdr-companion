@@ -26,6 +26,9 @@ import { FigurePanelMode, InitiativeDraftParticipant, InitiativeParticipant } fr
 import { CampaignConfig } from '@core/models/campaign.model';
 import { CampaignConfigurationRegistryService } from '@core/services/campaign-configuration-registry.service';
 import { GameSessionApiResponse, GameSessionApiService, GameSessionStatus } from '@core/services/game-session-api.service';
+import { Weather, WeatherApiService } from '@core/services/weather-api.service';
+import { MoonState } from '@core/models/live-session-state.model';
+import { MoonPhaseApiService } from '@core/services/moon-phase-api.service';
 import { LiveSessionService } from '@core/services/live-session.service';
 import { RestRequestApiResponse, RestRequestApiService } from '@core/services/rest-request-api.service';
 import { InitiativeControl } from './components/initiative-control/initiative-control';
@@ -71,6 +74,8 @@ export class ControlDashboard {
   }
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly weatherApi = inject(WeatherApiService);
+  private readonly moonPhaseApi = inject(MoonPhaseApiService);
 
   private readonly destroyRef = inject(DestroyRef);
 
@@ -81,6 +86,9 @@ export class ControlDashboard {
   private readonly liveSessionService = inject(LiveSessionService);
 
   private readonly restRequestApi = inject(RestRequestApiService);
+
+  protected readonly weathers = signal<Weather[]>([]);
+  protected readonly moonPhases = signal<MoonState[]>([]);
 
   protected campaign: CampaignConfig | null =
     null;
@@ -265,9 +273,66 @@ export class ControlDashboard {
   protected updateWorld(
     update: WorldUpdate,
   ): void {
-    this.liveSessionService.updateState(
-      update,
-    );
+    this.gameSessionApi
+      .updateWorldState(
+        this.backendSessionId,
+        {
+          weatherId: update.weatherId,
+          showWeather: update.showWeather,
+          moonPhase: update.moonPhase,
+          showMoonPhase: update.showMoonPhase,
+        },
+      )
+      .pipe(
+        takeUntil(this.contextChanged),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (session) => {
+          this.backendSession.set(session);
+
+          const weather =
+            this.weathers().find(
+              (candidate) =>
+                candidate.id === update.weatherId,
+            );
+
+          const moon =
+            this.moonPhases().find(
+              (candidate) =>
+                candidate.id === update.moonPhase,
+            );
+
+          this.liveSessionService.updateState({
+            day: update.day,
+            dayPeriod: update.dayPeriod,
+
+            weather: weather
+              ? {
+                  id: weather.key,
+                  label: weather.label,
+                  imageUrl: weather.imageUrl ?? '',
+                  alt: weather.alt ?? weather.label,
+                }
+              : undefined,
+
+            showWeather: update.showWeather,
+
+            moon: moon ?? undefined,
+
+            showMoonPhase: update.showMoonPhase,
+
+            location: update.location,
+          });
+        },
+
+        error: (error: any) => {
+          console.error(
+            'Impossible de mettre à jour l’état du monde.',
+            error,
+          );
+        },
+      });
   }
 
   protected clearMedia(): void {
@@ -475,6 +540,12 @@ export class ControlDashboard {
       session: this.gameSessionApi.get(
         this.backendSessionId,
       ),
+
+      weathers:
+        this.weatherApi.list(
+          this.backendCampaignId,
+        ),
+      moonPhases: this.moonPhaseApi.list(),
     })
       .pipe(
         takeUntil(this.contextChanged),
@@ -487,14 +558,12 @@ export class ControlDashboard {
         next: ({
           campaignContext,
           session,
+          weathers,
+          moonPhases,
         }) => {
-          const backendCampaign =
-            campaignContext.campaign;
+          const backendCampaign = campaignContext.campaign;
 
-          if (
-            session.campaignId !==
-            backendCampaign.id
-          ) {
+          if (session.campaignId !== backendCampaign.id) {
             this.dashboardError.set(
               'Cette session n’appartient pas à cette campagne.',
             );
@@ -506,10 +575,11 @@ export class ControlDashboard {
           * La configuration visuelle est désormais
           * choisie avec configurationKey et non le slug.
           */
-          this.campaign =
-            campaignContext.configuration;
+          this.campaign = campaignContext.configuration;
 
           this.backendSession.set(session);
+          this.weathers.set(weathers);
+          this.moonPhases.set(moonPhases);
 
           this.liveSessionService.initialize(
             this.campaign,

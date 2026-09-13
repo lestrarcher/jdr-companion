@@ -63,30 +63,6 @@ export interface InitiativeState {
   participants: InitiativeParticipant[];
 }
 
-export interface LiveSessionState {
-  sessionId: string;
-  campaignId: string;
-  status: GameSessionStatus;
-
-  fogEnabled: boolean;
-  displayMode: DisplayMode;
-
-  /*
-   * Facultatif pour rester compatible avec les
-   * configurations et états enregistrés avant
-   * l’ajout du panneau des figures.
-   */
-  figurePanelMode?: FigurePanelMode;
-
-  day?: number;
-  dayPeriod?: string;
-  weather?: WeatherState;
-  moon?: MoonState;
-  location?: LocationState;
-  displayedMedia?: DisplayedMediaState;
-  initiative?: InitiativeState;
-}
-
 export interface InitiativeDraftParticipant {
   id: string;
   name: string;
@@ -96,4 +72,28 @@ export interface InitiativeDraftParticipant {
   maximumHitPoints?: number | null;
   imageUrl?: string;
   bloodied: boolean;
+}
+
+export interface LiveSessionState {
+  sessionId: string;
+  campaignId: string;
+  status: GameSessionStatus;
+
+  fogEnabled: boolean;
+  displayMode: DisplayMode;
+
+  figurePanelMode?: FigurePanelMode;
+
+  day?: number;
+  dayPeriod?: string;
+
+  weather?: WeatherState;
+  showWeather?: boolean;
+
+  moon?: MoonState;
+  showMoonPhase?: boolean;
+
+  location?: LocationState;
+  displayedMedia?: DisplayedMediaState;
+  initiative?: InitiativeState;
 }

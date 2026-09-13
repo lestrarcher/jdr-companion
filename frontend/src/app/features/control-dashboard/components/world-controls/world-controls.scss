@@ -57,7 +57,7 @@ label {
   }
 }
 
-input,
+input:not([type='checkbox']),
 select {
   width: 100%;
   min-width: 0;
@@ -71,12 +71,101 @@ select {
   background: #11131e;
 }
 
-input:focus,
+input:not([type='checkbox']):focus,
 select:focus {
   border-color: #c7a55b;
   outline: none;
   box-shadow:
     0 0 0 2px rgba(199, 165, 91, 0.12);
+}
+
+.optional-field {
+  display: grid;
+  align-content: start;
+  gap: 0.45rem;
+}
+
+.optional-field-heading {
+  display: flex;
+  min-height: 1.25rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+
+  > span {
+    color: rgba(244, 239, 229, 0.7);
+    font-size: 0.74rem;
+  }
+}
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+
+  input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+.switch-track {
+  position: relative;
+  display: inline-flex;
+  width: 2rem;
+  height: 1rem;
+  flex: 0 0 auto;
+  align-items: center;
+  padding: 0.12rem;
+  border:
+    1px solid rgba(199, 165, 91, 0.32);
+  background: rgba(17, 19, 30, 0.9);
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.switch-thumb {
+  display: block;
+  width: 0.65rem;
+  height: 0.65rem;
+  background: rgba(244, 239, 229, 0.45);
+  transition:
+    transform 160ms ease,
+    background 160ms ease;
+}
+
+.switch input:checked + .switch-track {
+  border-color: #c7a55b;
+  background: rgba(199, 165, 91, 0.15);
+
+  .switch-thumb {
+    background: #c7a55b;
+    transform: translateX(0.95rem);
+  }
+}
+
+.switch input:focus-visible + .switch-track {
+  outline:
+    2px solid rgba(199, 165, 91, 0.4);
+  outline-offset: 2px;
+}
+
+.switch-label {
+  min-width: 3.4rem;
+  color: rgba(244, 239, 229, 0.48);
+  font-size: 0.66rem;
+  text-align: right;
+}
+
+.switch:has(input:checked) {
+  .switch-label {
+    color: #c7a55b;
+  }
 }
 
 .submit-button {

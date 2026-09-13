@@ -1,6 +1,9 @@
 <header class="world-header">
-  <section class="conditions" aria-label="Conditions actuelles">
-    @if (state()?.moon; as moon) {
+  <section
+    class="conditions"
+    aria-label="Conditions actuelles"
+  >
+    @if (moon(); as moon) {
       <div class="moon-visual">
         <img
           class="moon-image"
@@ -10,34 +13,70 @@
       </div>
     }
 
-    <span class="separator" aria-hidden="true"></span>
+    @if (showSeparator()) {
+      <span
+        class="separator"
+        aria-hidden="true"
+      ></span>
+    }
 
-    @if (state()?.weather; as weather) {
+    @if (weather(); as weather) {
       <div class="weather-visual">
-        <img
-          class="weather-image"
-          [src]="weather.imageUrl"
-          [alt]="weather.alt"
-        />
+        @if (weather.imageUrl) {
+          <img
+            class="weather-image"
+            [src]="weather.imageUrl"
+            [alt]="
+              weather.alt
+                ?? weather.label
+            "
+          />
+        }
       </div>
     }
   </section>
 
   <section class="date">
-    <span class="ornament" aria-hidden="true">◆</span>
+    <span
+      class="ornament"
+      aria-hidden="true"
+    >
+      ◆
+    </span>
 
     <div>
-      <span class="label">{{ campaignLabel() }}</span>
-      <strong>Jour {{ state()?.day }}</strong>
-      <small>{{ state()?.dayPeriod }}</small>
+      <span class="label">
+        {{ campaignLabel() }}
+      </span>
+
+      <strong>
+        Jour {{ state()?.day }}
+      </strong>
+
+      <small>
+        {{ state()?.dayPeriod }}
+      </small>
     </div>
 
-    <span class="ornament" aria-hidden="true">◆</span>
+    <span
+      class="ornament"
+      aria-hidden="true"
+    >
+      ◆
+    </span>
   </section>
 
   <section class="location">
-    <span class="label">Lieu actuel</span>
-    <strong>{{ state()?.location?.name }}</strong>
-    <small>{{ state()?.location?.subtitle }}</small>
+    <span class="label">
+      Lieu actuel
+    </span>
+
+    <strong>
+      {{ state()?.location?.name }}
+    </strong>
+
+    <small>
+      {{ state()?.location?.subtitle }}
+    </small>
   </section>
 </header>

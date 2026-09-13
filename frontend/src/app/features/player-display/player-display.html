@@ -87,7 +87,9 @@
             liveState()?.displayedMedia ??
             null
           "
-          [initiative]="liveState()?.initiative"
+          [initiative]="
+            liveState()?.initiative
+          "
         />
       </section>
 
@@ -95,6 +97,7 @@
         <app-quests-panel
           [campaignId]="campaignId"
         />
+
         <app-memorial-panel
           [campaignId]="campaignId"
           [mode]="
@@ -105,13 +108,18 @@
       </aside>
     </div>
 
-    <app-tip-bar [campaignId]="campaignId" />
+    <app-tip-bar
+      [campaignId]="campaignId"
+    />
 
     @if (liveState()?.fogEnabled) {
       <app-ambient-fog />
     }
+
     <app-initiative-cinematic
-      [initiative]="liveState()?.initiative"
+      [initiative]="
+        liveState()?.initiative
+      "
     />
   </div>
 }

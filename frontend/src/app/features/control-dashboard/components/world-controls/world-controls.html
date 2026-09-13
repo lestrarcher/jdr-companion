@@ -27,48 +27,134 @@
           <span>Moment</span>
 
           <select formControlName="dayPeriod">
-            <option value="Aube">Aube</option>
-            <option value="Matin">Matin</option>
-            <option value="Midi">Midi</option>
+            <option value="Aube">
+              Aube
+            </option>
+
+            <option value="Matin">
+              Matin
+            </option>
+
+            <option value="Midi">
+              Midi
+            </option>
+
             <option value="Après-midi">
               Après-midi
             </option>
+
             <option value="Crépuscule">
               Crépuscule
             </option>
-            <option value="Nuit">Nuit</option>
+
+            <option value="Nuit">
+              Nuit
+            </option>
           </select>
         </label>
 
-        <label>
-          <span>Météo</span>
+        <div class="optional-field">
+          <div class="optional-field-heading">
+            <span>Météo</span>
 
-          <select formControlName="weatherId">
-            @for (
-              weather of weatherStates();
-              track weather.id
-            ) {
-              <option [value]="weather.id">
-                {{ weather.label }}
+            <label
+              class="switch"
+              title="Afficher la météo"
+            >
+              <input
+                type="checkbox"
+                formControlName="showWeather"
+              />
+
+              <span
+                class="switch-track"
+                aria-hidden="true"
+              >
+                <span class="switch-thumb"></span>
+              </span>
+
+              <span class="switch-label">
+                {{
+                  worldForm.controls
+                    .showWeather.value
+                    ? 'Affichée'
+                    : 'Masquée'
+                }}
+              </span>
+            </label>
+          </div>
+
+          @if (
+            worldForm.controls.showWeather.value
+          ) {
+            <select formControlName="weatherId">
+              <option value="">
+                Aucune
               </option>
-            }
-          </select>
-        </label>
 
-        <label>
-          <span>Phase lunaire</span>
+              @for (
+                weather of weatherStates();
+                track weather.id
+              ) {
+                <option [value]="weather.id">
+                  {{ weather.label }}
+                </option>
+              }
+            </select>
+          }
+        </div>
 
-          <select formControlName="moonId">
-            @for (
-              moon of moonPhases();
-              track moon.id
-            ) {
-              <option [value]="moon.id">
-                {{ moon.label }}
+        <div class="optional-field">
+          <div class="optional-field-heading">
+            <span>Phase lunaire</span>
+
+            <label
+              class="switch"
+              title="Afficher la lune"
+            >
+              <input
+                type="checkbox"
+                formControlName="showMoonPhase"
+              />
+
+              <span
+                class="switch-track"
+                aria-hidden="true"
+              >
+                <span class="switch-thumb"></span>
+              </span>
+
+              <span class="switch-label">
+                {{
+                  worldForm.controls
+                    .showMoonPhase.value
+                    ? 'Affichée'
+                    : 'Masquée'
+                }}
+              </span>
+            </label>
+          </div>
+
+          @if (
+            worldForm.controls
+              .showMoonPhase.value
+          ) {
+            <select formControlName="moonPhase">
+              <option value="">
+                Aucune
               </option>
-            }
-          </select>
-        </label>
+
+              @for (
+                moon of moonPhases();
+                track moon.id
+              ) {
+                <option [value]="moon.id">
+                  {{ moon.label }}
+                </option>
+              }
+            </select>
+          }
+        </div>
 
         <label>
           <span>Lieu actuel</span>

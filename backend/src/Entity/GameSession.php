@@ -7,6 +7,7 @@ namespace App\Entity;
 use App\Repository\GameSessionRepository;
 use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
+use App\Enum\MoonPhase;
 
 #[ORM\Entity(repositoryClass: GameSessionRepository::class)]
 #[ORM\Table(name: 'game_session')]
@@ -63,6 +64,22 @@ class GameSession
 
     #[ORM\Column]
     private DateTimeImmutable $updatedAt;
+
+    #[ORM\ManyToOne(targetEntity: Weather::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?Weather $weather = null;
+
+    #[ORM\Column(options: ['default' => true])]
+    private bool $showWeather = true;
+
+    #[ORM\Column(
+        enumType: MoonPhase::class,
+        nullable: true,
+    )]
+    private ?MoonPhase $moonPhase = null;
+
+    #[ORM\Column(options: ['default' => false])]
+    private bool $showMoonPhase = false;
 
     public function __construct(
         Campaign $campaign,
@@ -195,5 +212,67 @@ class GameSession
     public function getDisplayAccessToken(): string
     {
         return $this->displayAccessToken;
+    }
+
+    public function getWeather(): ?Weather
+    {
+        return $this->weather;
+    }
+
+    public function setWeather(?Weather $weather): self
+    {
+        if (
+            $weather !== null
+            && $weather->getCampaign() !== null
+            && $weather->getCampaign() !== $this->campaign
+        ) {
+            throw new \InvalidArgumentException(
+                'Cette météo personnalisée appartient à une autre campagne.',
+            );
+        }
+
+        $this->weather = $weather;
+        $this->touch();
+
+        return $this;
+    }
+
+    public function isShowWeather(): bool
+    {
+        return $this->showWeather;
+    }
+
+    public function setShowWeather(bool $showWeather): self
+    {
+        $this->showWeather = $showWeather;
+        $this->touch();
+
+        return $this;
+    }
+
+    public function getMoonPhase(): ?MoonPhase
+    {
+        return $this->moonPhase;
+    }
+
+    public function setMoonPhase(?MoonPhase $moonPhase): self
+    {
+        $this->moonPhase = $moonPhase;
+        $this->touch();
+
+        return $this;
+    }
+
+    public function isShowMoonPhase(): bool
+    {
+        return $this->showMoonPhase;
+    }
+
+    public function setShowMoonPhase(bool $showMoonPhase): self
+    {
+        $this->showMoonPhase = $showMoonPhase;
+        $this->touch();
+
+        return $this;
     }
 }
