@@ -18,6 +18,7 @@ final readonly class CharacterProfileSerializer
         private CharacterResourceResolver $resourceResolver,
         private CharacterHitPointCalculator $hitPointCalculator,
         private CharacterSpellSlotCalculator $spellSlotCalculator,
+        private CharacterActionResolver $actionResolver,
     ) {
     }
 
@@ -96,6 +97,16 @@ final readonly class CharacterProfileSerializer
             'features' => array_values(array_map(
                 $this->serializeFeature(...),
                 $this->featureResolver->resolve($character, $progressionValues),
+            )),
+            'actions' => array_values(array_map(
+                static fn ($action): array => [
+                    'slug' => $action->getSlug(),
+                    'name' => $action->getName(),
+                    'description' => $action->getDescription(),
+                    'handlerType' => $action->getHandlerType()->value,
+                    'requiresPreparation' => $action->requiresPreparation(),
+                ],
+                $this->actionResolver->resolve($character),
             )),
             'resources' => $this->serializeResources($character, $progressionValues),
             'definition' => $character->getDefinition(),

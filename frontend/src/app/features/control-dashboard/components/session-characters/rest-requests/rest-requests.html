@@ -1,0 +1,49 @@
+@if (requests().length > 0) {
+  <section class="rest-section" aria-live="assertive">
+    <header>
+      <span class="section-label">Action requise</span>
+
+      <strong>
+        {{ requests().length }}
+        demande{{ requests().length > 1 ? 's' : '' }}
+      </strong>
+    </header>
+
+    <div class="rest-list">
+      @for (request of requests(); track request.id) {
+        <article class="rest-card">
+          <div>
+            <strong>{{ request.character.name }}</strong>
+            <small>{{ restTypeLabel(request.type) }}</small>
+          </div>
+
+          <div class="request-actions">
+            <button
+              type="button"
+              class="reject-button"
+              [disabled]="resolvingRequestId() !== null"
+              (click)="resolve(request.id, false)"
+            >
+              Refuser
+            </button>
+
+            <button
+              type="button"
+              class="approve-button"
+              [disabled]="resolvingRequestId() !== null"
+              (click)="resolve(request.id, true)"
+            >
+              Accepter
+            </button>
+          </div>
+        </article>
+      }
+    </div>
+  </section>
+}
+
+@if (error()) {
+  <p class="feedback feedback--error" role="alert">
+    {{ error() }}
+  </p>
+}

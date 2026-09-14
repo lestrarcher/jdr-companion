@@ -1,0 +1,148 @@
+<div
+  class="modal-backdrop"
+  role="presentation"
+  (click)="closed.emit()"
+>
+  <section
+    class="modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="statistics-title"
+    (click)="$event.stopPropagation()"
+  >
+    <header class="modal-header">
+      <div>
+        <span class="eyebrow">
+          Caractéristiques
+        </span>
+
+        <h2 id="statistics-title">
+          {{
+            character().sessionState?.character?.name
+              ?? character().character.name
+          }}
+        </h2>
+
+        <p>
+          Caractéristiques après application des objets équipés.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        class="modal-close"
+        aria-label="Fermer"
+        (click)="closed.emit()"
+      >
+        ×
+      </button>
+    </header>
+
+    @if (error()) {
+      <p class="feedback feedback--error" role="alert">
+        {{ error() }}
+      </p>
+    }
+
+    @if (loading()) {
+      <p class="modal-empty">
+        Calcul des caractéristiques…
+      </p>
+    } @else if (inventory(); as characterInventory) {
+      <div class="attunement">
+        <span>Harmonisation</span>
+
+        <strong>
+          {{ characterInventory.attunedCount }}
+          /
+          {{ characterInventory.attunementLimit }}
+        </strong>
+      </div>
+
+      <section class="ability-grid">
+        @for (
+          ability of characterInventory.effectiveAbilities;
+          track ability.ability
+        ) {
+          <article
+            class="ability-card"
+            [class.ability-card--modified]="
+              ability.effectiveValue !== ability.baseValue
+            "
+          >
+            <span>
+              {{ abilityLabel(ability.ability) }}
+            </span>
+
+            <strong>
+              {{ ability.effectiveValue }}
+            </strong>
+
+            <small>
+              {{ formatModifier(ability.modifier) }}
+            </small>
+
+            @if (
+              ability.effectiveValue !== ability.baseValue
+            ) {
+              <em>
+                Base {{ ability.baseValue }}
+              </em>
+            }
+          </article>
+        }
+      </section>
+
+      <section class="stats-items">
+        <header>
+          <h3>Objets possédés</h3>
+
+          <span>
+            {{ characterInventory.ownedItems.length }}
+          </span>
+        </header>
+
+        @for (
+          ownedItem of characterInventory.ownedItems;
+          track ownedItem.id
+        ) {
+          <article class="stats-item">
+            <div>
+              <strong>
+                {{ ownedItem.magicItem.name }}
+              </strong>
+
+              <small>
+                @if (ownedItem.equipped) {
+                  Équipé
+                } @else {
+                  Non équipé
+                }
+
+                @if (ownedItem.attuned) {
+                  · Harmonisé
+                }
+              </small>
+            </div>
+
+            <span
+              [class.effect-active]="
+                ownedItem.effectActive
+              "
+            >
+              {{
+                ownedItem.effectActive
+                  ? 'Effets actifs'
+                  : 'Effets inactifs'
+              }}
+            </span>
+          </article>
+        } @empty {
+          <p class="modal-empty">
+            Aucun objet magique possédé.
+          </p>
+        }
+      </section>
+    }
+  </section>
+</div>

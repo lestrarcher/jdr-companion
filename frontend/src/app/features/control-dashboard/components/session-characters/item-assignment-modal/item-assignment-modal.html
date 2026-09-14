@@ -1,0 +1,158 @@
+<div
+  class="modal-backdrop"
+  role="presentation"
+  (click)="close()"
+>
+  <section
+    class="modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="assignment-title"
+    (click)="$event.stopPropagation()"
+  >
+    <header class="modal-header">
+      <div>
+        <span class="eyebrow">Inventaire</span>
+
+        <h2 id="assignment-title">
+          Donner un objet
+        </h2>
+
+        <p>
+          Attribution à
+          <strong>
+            {{ character().character.name }}
+          </strong>
+        </p>
+      </div>
+
+      <button
+        type="button"
+        class="modal-close"
+        aria-label="Fermer"
+        [disabled]="assigning()"
+        (click)="close()"
+      >
+        ×
+      </button>
+    </header>
+
+    @if (feedback()) {
+      <p class="feedback feedback--success">
+        {{ feedback() }}
+      </p>
+    }
+
+    @if (error()) {
+      <p class="feedback feedback--error">
+        {{ error() }}
+      </p>
+    }
+
+    @if (loading()) {
+      <p class="modal-empty">
+        Chargement du catalogue…
+      </p>
+    } @else if (catalog().length === 0) {
+      <p class="modal-empty">
+        Aucun objet n’existe dans le catalogue de cette campagne.
+      </p>
+    } @else {
+      <label class="modal-field">
+        <span>Objet magique</span>
+
+        <select
+          [value]="selectedMagicItemId() ?? ''"
+          (change)="selectMagicItem($event)"
+        >
+          <option value="">
+            Sélectionner un objet…
+          </option>
+
+          @for (
+            magicItem of catalog();
+            track magicItem.id
+          ) {
+            <option [value]="magicItem.id">
+              {{ magicItem.name }}
+            </option>
+          }
+        </select>
+      </label>
+
+      @if (selectedMagicItem(); as magicItem) {
+        <article class="item-preview">
+          <header>
+            <div>
+              <h3>{{ magicItem.name }}</h3>
+              <small>{{ magicItem.rarity }}</small>
+            </div>
+
+            @if (magicItem.requiresAttunement) {
+              <span>
+                Harmonisation requise
+              </span>
+            }
+          </header>
+
+          @if (magicItem.description) {
+            <p>
+              {{ magicItem.description }}
+            </p>
+          }
+
+          <footer>
+            @if (magicItem.maximumCharges !== null) {
+              <span>
+                {{ magicItem.maximumCharges }}
+                charge{{
+                  magicItem.maximumCharges > 1
+                    ? 's'
+                    : ''
+                }}
+              </span>
+            }
+
+            @if (magicItem.abilityEffects.length > 0) {
+              <span>
+                {{ magicItem.abilityEffects.length }}
+                effet{{
+                  magicItem.abilityEffects.length > 1
+                    ? 's'
+                    : ''
+                }}
+              </span>
+            }
+          </footer>
+        </article>
+      }
+
+      <footer class="modal-actions">
+        <button
+          type="button"
+          class="secondary-button"
+          [disabled]="assigning()"
+          (click)="close()"
+        >
+          Fermer
+        </button>
+
+        <button
+          type="button"
+          class="primary-button"
+          [disabled]="
+            assigning()
+            || selectedMagicItemId() === null
+          "
+          (click)="assignmentRequested.emit()"
+        >
+          {{
+            assigning()
+              ? 'Attribution…'
+              : 'Donner cet objet'
+          }}
+        </button>
+      </footer>
+    }
+  </section>
+</div>

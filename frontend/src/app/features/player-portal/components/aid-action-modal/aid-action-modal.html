@@ -1,0 +1,92 @@
+<div class="action-modal-backdrop">
+  <section class="action-modal">
+    <header class="action-modal__header">
+      <div>
+        <span class="eyebrow">Sort préparé</span>
+        <h2>Aide</h2>
+      </div>
+
+      <button
+        type="button"
+        class="action-modal__close"
+        (click)="closed.emit()"
+      >
+        ×
+      </button>
+    </header>
+
+    <p class="action-modal__intro">
+      Choisis l'emplacement utilisé puis jusqu'à trois créatures.
+      Leur maximum de points de vie augmente du montant indiqué.
+    </p>
+
+    <section class="action-modal__section">
+      <span class="action-modal__label">
+        Emplacement de sort
+      </span>
+
+      <div class="spell-levels">
+        @for (slot of spellSlots(); track slot.level) {
+          <button
+            type="button"
+            class="spell-level"
+            [class.spell-level--selected]="selectedLevel() === slot.level"
+            (click)="selectLevel(slot.level)"
+          >
+            <strong>Niveau {{ slot.level }}</strong>
+            <small>{{ slot.current }} disponible(s)</small>
+          </button>
+        }
+      </div>
+    </section>
+
+    @if (selectedLevel() !== null) {
+      <div class="aid-bonus">
+        <span>Bonus accordé</span>
+        <strong>+{{ bonus() }} PV max</strong>
+      </div>
+    }
+
+    <section class="action-modal__section">
+      <span class="action-modal__label">
+        Cibles — {{ selectedTargets().length }} / 3
+      </span>
+
+      <div class="aid-targets">
+        @for (target of targets(); track target.id) {
+          <button
+            type="button"
+            class="aid-target"
+            [class.aid-target--selected]="isTargetSelected(target.id)"
+            [disabled]="
+              selectedTargets().length >= 3
+              && !isTargetSelected(target.id)
+            "
+            (click)="toggleTarget(target.id)"
+          >
+            {{ target.name }}
+          </button>
+        }
+      </div>
+    </section>
+
+    <footer class="action-modal__footer">
+      <button
+        type="button"
+        class="secondary-button"
+        (click)="closed.emit()"
+      >
+        Annuler
+      </button>
+
+      <button
+        type="button"
+        class="primary-button"
+        [disabled]="!canConfirm()"
+        (click)="confirm()"
+      >
+        Lancer Aide
+      </button>
+    </footer>
+  </section>
+</div>

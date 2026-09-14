@@ -41,10 +41,15 @@ final readonly class CharacterSessionStateFactory
             'hitPoints' => [
                 'current' => $hitPoints->maximumValue,
                 'temporary' => 0,
+                'maximumAdjustment' => 0,
             ],
             'hitDice' => $this->createHitDice($character),
             'progressions' => $progressions,
             'resources' => $this->createResources($character, $progressionValues),
+            'characterActions' => [
+                'prepared' => [],
+                'preparationPending' => true,
+            ],
         ];
     }
 

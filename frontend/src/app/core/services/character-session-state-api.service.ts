@@ -17,6 +17,19 @@ import {
   CampaignConfigurationKey,
 } from '@core/services/campaign-api.service';
 
+export interface CharacterActionSummary {
+  slug: string;
+  name: string;
+  description: string | null;
+  handlerType: string;
+  requiresPreparation: boolean;
+}
+
+export interface CharacterActionsState {
+  prepared: string[];
+  preparationPending: boolean;
+}
+
 export interface CharacterSessionStateApiResponse {
   id: number;
   revision: number;
@@ -123,6 +136,28 @@ export class CharacterSessionStateApiService {
     return this.http.patch<CharacterSessionStateApiResponse>(
       `${this.apiUrl}/sessions/${sessionId}/characters/${characterId}/level-up-permission`,
       { allowed },
+    );
+  }
+
+  adjustMaximumHitPoints(
+    sessionId: number,
+    characterId: number,
+    delta: number,
+  ): Observable<CharacterSessionStateApiResponse> {
+    return this.http.post<CharacterSessionStateApiResponse>(
+      `${this.apiUrl}/sessions/${sessionId}/characters/${characterId}/hit-points/maximum-adjustment`,
+      { delta },
+    );
+  }
+
+  updatePreparedActions(
+    accessToken: string,
+    prepared: string[],
+    revision: number,
+  ): Observable<CharacterSessionStateApiResponse> {
+    return this.http.patch<CharacterSessionStateApiResponse>(
+      `${this.apiUrl}/public/characters/${accessToken}/actions/prepared`,
+      { prepared, revision },
     );
   }
 }

@@ -2,7 +2,9 @@
   <header class="heading">
     <div>
       <span class="eyebrow">Participants</span>
+
       <h2>Personnages</h2>
+
       <p>
         Ajoute les personnages présents, surveille leurs PV et gère les objets
         distribués pendant la session.
@@ -22,92 +24,78 @@
           [disabled]="refreshingCharacters()"
           (click)="refreshCharacters()"
         >
-          {{ refreshingCharacters() ? 'Actualisation…' : 'Actualiser les personnages' }}
+          {{
+            refreshingCharacters()
+              ? 'Actualisation…'
+              : 'Actualiser les personnages'
+          }}
         </button>
       }
     </div>
   </header>
 
   @if (characterActionFeedback()) {
-    <p class="feedback feedback--success" aria-live="polite">
+    <p
+      class="feedback feedback--success"
+      aria-live="polite"
+    >
       {{ characterActionFeedback() }}
     </p>
   }
 
   @if (characterActionError()) {
-    <p class="feedback feedback--error" role="alert">
+    <p
+      class="feedback feedback--error"
+      role="alert"
+    >
       {{ characterActionError() }}
     </p>
   }
 
-  @if (restRequests().length > 0) {
-    <section class="rest-section" aria-live="assertive">
-      <header>
-        <span class="section-label">Action requise</span>
-        <strong>
-          {{ restRequests().length }}
-          demande{{ restRequests().length > 1 ? 's' : '' }}
-        </strong>
-      </header>
-
-      <div class="rest-list">
-        @for (request of restRequests(); track request.id) {
-          <article class="rest-card">
-            <div>
-              <strong>{{ request.character.name }}</strong>
-              <small>{{ restTypeLabel(request.type) }}</small>
-            </div>
-
-            <div class="request-actions">
-              <button
-                type="button"
-                class="reject-button"
-                [disabled]="resolvingRestRequestId() !== null"
-                (click)="resolveRestRequest(request.id, false)"
-              >
-                Refuser
-              </button>
-
-              <button
-                type="button"
-                class="approve-button"
-                [disabled]="resolvingRestRequestId() !== null"
-                (click)="resolveRestRequest(request.id, true)"
-              >
-                Accepter
-              </button>
-            </div>
-          </article>
-        }
-      </div>
-    </section>
-  }
-
-  @if (restRequestError()) {
-    <p class="feedback feedback--error" role="alert">
-      {{ restRequestError() }}
-    </p>
-  }
+  <app-rest-requests
+    [requests]="restRequests()"
+    [resolvingRequestId]="resolvingRestRequestId()"
+    [error]="restRequestError()"
+    (requestResolved)="
+      resolveRestRequest(
+        $event.requestId,
+        $event.approved
+      )
+    "
+  />
 
   @if (loading()) {
     <div class="empty-state">
       <span aria-hidden="true">◇</span>
-      <p>Chargement des personnages…</p>
+
+      <p>
+        Chargement des personnages…
+      </p>
     </div>
   } @else if (!hasCharacters()) {
     <div class="empty-state">
       <span aria-hidden="true">◇</span>
-      <p>Aucun personnage n’a encore été créé pour cette campagne.</p>
+
+      <p>
+        Aucun personnage n’a encore été créé pour cette campagne.
+      </p>
     </div>
   } @else {
     <section class="participants">
       <header class="section-heading">
         <div>
-          <span class="section-label">Session actuelle</span>
-          <h3>Participants actifs</h3>
+          <span class="section-label">
+            Session actuelle
+          </span>
+
+          <h3>
+            Participants actifs
+          </h3>
         </div>
 
-        <span class="section-count">{{ activeCharacters().length }}</span>
+        <span class="section-count">
+          {{ activeCharacters().length }}
+        </span>
       </header>
 
       <div class="cards">
@@ -115,245 +103,55 @@
           character of activeCharacters();
           track character.character.id
         ) {
-          <article class="card">
-            <header class="card-header">
-              <span class="portrait" aria-hidden="true">
-                {{ characterInitial(character.character.name) }}
-              </span>
-
-              <div class="identity">
-                <h3>{{ character.character.name }}</h3>
-
-                <small>
-                  {{
-                    characterSummary(character.character)
-                    || 'Niveau non renseigné'
-                  }}
-                </small>
-
-                @if (character.character.playerName) {
-                  <small>Joué par {{ character.character.playerName }}</small>
-                }
-              </div>
-
-              @if (
-                currentHitPoints(character) !== null
-                && maximumHitPoints(character) !== null
-              ) {
-                <span
-                  class="health"
-                  [class.health-good]="
-                    hitPointTone(character) === 'healthy'
-                  "
-                  [class.health-wounded]="
-                    hitPointTone(character) === 'wounded'
-                  "
-                  [class.health-critical]="
-                    hitPointTone(character) === 'critical'
-                  "
-                >
-                  @switch (hitPointTone(character)) {
-                    @case ('healthy') {
-                      Stable
-                    }
-                    @case ('wounded') {
-                      Blessé
-                    }
-                    @case ('critical') {
-                      Critique
-                    }
-                  }
-                </span>
-              }
-            </header>
-
-            @if (
-              currentHitPoints(character) !== null
-              && maximumHitPoints(character) !== null
-            ) {
-              <section class="hp">
-                <header>
-                  <span>Points de vie</span>
-                  <strong>
-                    {{ currentHitPoints(character) }}
-                    /
-                    {{ maximumHitPoints(character) }}
-                  </strong>
-                </header>
-
-                <div
-                  class="hp-track"
-                  role="progressbar"
-                  [attr.aria-valuenow]="currentHitPoints(character)"
-                  [attr.aria-valuemin]="0"
-                  [attr.aria-valuemax]="maximumHitPoints(character)"
-                  [attr.aria-label]="
-                    'Points de vie de ' + character.character.name
-                  "
-                >
-                  <span
-                    class="hp-value"
-                    [class.hp-good]="
-                      hitPointTone(character) === 'healthy'
-                    "
-                    [class.hp-wounded]="
-                      hitPointTone(character) === 'wounded'
-                    "
-                    [class.hp-critical]="
-                      hitPointTone(character) === 'critical'
-                    "
-                    [style.width.%]="hitPointPercentage(character)"
-                  ></span>
-                </div>
-
-                @if (temporaryHitPoints(character) > 0) {
-                  <span class="temp-hp">
-                    + {{ temporaryHitPoints(character) }} PV temporaires
-                  </span>
-                }
-              </section>
-            } @else {
-              <p class="missing-hp">Maximum de PV incomplet.</p>
-            }
-
-            <footer class="actions">
-              @if (playerPortalUrl(character); as portalUrl) {
-                <a
-                  class="action"
-                  [href]="portalUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Ouvrir le portail
-                </a>
-              }
-
-              <button
-                type="button"
-                class="action"
-                (click)="openStatistics(character)"
-              >
-                Voir les caractéristiques
-              </button>
-
-              @if ((character.sessionState?.character?.progressions?.length ?? 0) > 0) {
-                <button type="button" class="action" (click)="openProgression(character)">
-                  Voir la progression
-                </button>
-              }
-
-              <button
-                type="button"
-                class="action action-primary"
-                (click)="openItemAssignment(character)"
-              >
-                Donner un objet
-              </button>
-
-              <button
-                type="button"
-                class="action level-up"
-                [class.level-up-active]="
-                  character.sessionState?.levelUpAllowed
-                "
-                [disabled]="
-                  changingLevelUpPermissionId() !== null
-                "
-                (click)="toggleLevelUpPermission(character)"
-              >
-                @if (
-                  isChangingLevelUpPermission(
-                    character.character.id
-                  )
-                ) {
-                  Modification…
-                } @else if (
-                  character.sessionState?.levelUpAllowed
-                ) {
-                  Retirer l’autorisation
-                } @else {
-                  Autoriser le niveau
-                }
-              </button>
-
-              <button
-                type="button"
-                class="action action-danger"
-                [disabled]="changingCharacterId() !== null"
-                (click)="removeFromSession(character)"
-              >
-                {{
-                  isChanging(character.character.id)
-                    ? 'Retrait…'
-                    : 'Retirer'
-                }}
-              </button>
-            </footer>
-          </article>
+          <app-active-character-card
+            [character]="character"
+            [campaignId]="campaignId()"
+            [sessionId]="sessionId()"
+            [changingCharacterId]="
+              changingCharacterId()
+            "
+            [changingLevelUpPermissionId]="
+              changingLevelUpPermissionId()
+            "
+            [changingMaximumHitPointsId]="
+              changingMaximumHitPointsId()
+            "
+            (statisticsRequested)="
+              openStatistics($event)
+            "
+            (progressionRequested)="
+              openProgression($event)
+            "
+            (itemAssignmentRequested)="
+              openItemAssignment($event)
+            "
+            (levelUpPermissionRequested)="
+              toggleLevelUpPermission($event)
+            "
+            (removalRequested)="
+              removeFromSession($event)
+            "
+            (maximumHitPointsRequested)="
+              adjustMaximumHitPoints($event)
+            "
+          />
         } @empty {
           <div class="empty-state">
             <span aria-hidden="true">◇</span>
-            <p>Aucun personnage ne participe encore à cette session.</p>
+
+            <p>
+              Aucun personnage ne participe encore à cette session.
+            </p>
           </div>
         }
       </div>
     </section>
 
-    <section class="available-section">
-      <header class="section-heading">
-        <div>
-          <span class="section-label">Campagne</span>
-          <h3>Personnages disponibles</h3>
-        </div>
-
-        <span class="section-count">{{ availableCharacters().length }}</span>
-      </header>
-
-      <div class="available-list">
-        @for (
-          character of availableCharacters();
-          track character.character.id
-        ) {
-          <article class="available">
-            <span class="portrait" aria-hidden="true">
-              {{ characterInitial(character.character.name) }}
-            </span>
-
-            <div class="identity">
-              <h4>{{ character.character.name }}</h4>
-
-              <small>
-                {{
-                  characterSummary(character.character)
-                  || 'Niveau non renseigné'
-                }}
-              </small>
-
-              @if (character.character.playerName) {
-                <small>{{ character.character.playerName }}</small>
-              }
-            </div>
-
-            <button
-              type="button"
-              class="action action-primary"
-              [disabled]="changingCharacterId() !== null"
-              (click)="addToSession(character)"
-            >
-              {{
-                isChanging(character.character.id)
-                  ? 'Ajout…'
-                  : 'Ajouter à la session'
-              }}
-            </button>
-          </article>
-        } @empty {
-          <p class="available-empty">
-            Tous les personnages de la campagne participent à cette session.
-          </p>
-        }
-      </div>
-    </section>
+    <app-available-characters
+      [characters]="availableCharacters()"
+      [changingCharacterId]="changingCharacterId()"
+      (characterAdded)="addToSession($event)"
+    />
   }
 </section>
 
@@ -361,513 +159,63 @@
   selectedCharacter();
   as assignmentCharacter
 ) {
-  <div
-    class="modal-backdrop"
-    role="presentation"
-    (click)="closeItemAssignment()"
-  >
-    <section
-      class="modal"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="assignment-title"
-      (click)="$event.stopPropagation()"
-    >
-      <header class="modal-header">
-        <div>
-          <span class="eyebrow">
-            Inventaire
-          </span>
-
-          <h2 id="assignment-title">
-            Donner un objet
-          </h2>
-
-          <p>
-            Attribution à
-            <strong>
-              {{
-                assignmentCharacter.character.name
-              }}
-            </strong>
-          </p>
-        </div>
-
-        <button
-          type="button"
-          class="modal-close"
-          aria-label="Fermer"
-          [disabled]="assigningItem()"
-          (click)="closeItemAssignment()"
-        >
-          ×
-        </button>
-      </header>
-
-      @if (assignmentFeedback()) {
-        <p class="feedback feedback--success">
-          {{ assignmentFeedback() }}
-        </p>
-      }
-
-      @if (characterActionError()) {
-        <p class="feedback feedback--error">
-          {{ characterActionError() }}
-        </p>
-      }
-
-      @if (catalogLoading()) {
-        <p class="modal-empty">
-          Chargement du catalogue…
-        </p>
-      } @else if (catalog().length === 0) {
-        <p class="modal-empty">
-          Aucun objet n’existe dans le catalogue
-          de cette campagne.
-        </p>
-      } @else {
-        <label class="modal-field">
-          <span>Objet magique</span>
-
-          <select
-            [value]="
-              selectedMagicItemId() ?? ''
-            "
-            (change)="selectMagicItem($event)"
-          >
-            <option value="">
-              Sélectionner un objet…
-            </option>
-
-            @for (
-              magicItem of catalog();
-              track magicItem.id
-            ) {
-              <option [value]="magicItem.id">
-                {{ magicItem.name }}
-              </option>
-            }
-          </select>
-        </label>
-
-        @if (
-          selectedMagicItem();
-          as magicItem
-        ) {
-          <article class="item-preview">
-            <header>
-              <div>
-                <h3>{{ magicItem.name }}</h3>
-
-                <small>
-                  {{ magicItem.rarity }}
-                </small>
-              </div>
-
-              @if (
-                magicItem.requiresAttunement
-              ) {
-                <span>
-                  Harmonisation requise
-                </span>
-              }
-            </header>
-
-            @if (magicItem.description) {
-              <p>
-                {{ magicItem.description }}
-              </p>
-            }
-
-            <footer>
-              @if (
-                magicItem.maximumCharges
-                !== null
-              ) {
-                <span>
-                  {{ magicItem.maximumCharges }}
-                  charge{{
-                    magicItem.maximumCharges > 1
-                      ? 's'
-                      : ''
-                  }}
-                </span>
-              }
-
-              @if (
-                magicItem.abilityEffects.length
-                > 0
-              ) {
-                <span>
-                  {{
-                    magicItem
-                      .abilityEffects.length
-                  }}
-                  effet{{
-                    magicItem
-                      .abilityEffects.length > 1
-                      ? 's'
-                      : ''
-                  }}
-                </span>
-              }
-            </footer>
-          </article>
-        }
-
-        <footer class="modal-actions">
-          <button
-            type="button"
-            class="secondary-button"
-            [disabled]="assigningItem()"
-            (click)="closeItemAssignment()"
-          >
-            Fermer
-          </button>
-
-          <button
-            type="button"
-            class="primary-button"
-            [disabled]="
-              assigningItem()
-              || selectedMagicItemId()
-                === null
-            "
-            (click)="assignSelectedItem()"
-          >
-            {{
-              assigningItem()
-                ? 'Attribution…'
-                : 'Donner cet objet'
-            }}
-          </button>
-        </footer>
-      }
-    </section>
-  </div>
+  <app-item-assignment-modal
+    [character]="assignmentCharacter"
+    [catalog]="catalog()"
+    [loading]="catalogLoading()"
+    [selectedMagicItemId]="selectedMagicItemId()"
+    [assigning]="assigningItem()"
+    [feedback]="assignmentFeedback()"
+    [error]="characterActionError()"
+    (closed)="closeItemAssignment()"
+    (magicItemSelected)="
+      selectedMagicItemId.set($event)
+    "
+    (assignmentRequested)="
+      assignSelectedItem()
+    "
+  />
 }
 
-@if (progressionCharacter(); as selected) {
-  <div class="modal-backdrop" role="presentation" (click)="closeProgression()">
-    <section class="modal gm-progressions" role="dialog" aria-modal="true" aria-labelledby="progression-title" (click)="$event.stopPropagation()">
-      <header class="modal-header">
-        <div>
-          <span class="eyebrow">Progression · Consultation</span>
-          <h2 id="progression-title">{{ selected.sessionState?.character?.name ?? selected.character.name }}</h2>
-        </div>
-        <button type="button" class="modal-close" aria-label="Fermer" (click)="closeProgression()">×</button>
-      </header>
-      @if (characterActionError()) {
-        <p class="feedback feedback--error" role="alert">{{ characterActionError() }}</p>
-      }
-      @if (selectedProgression(); as progression) {
-        @if (progressionDetails().length > 1) {
-          <select aria-label="Progression consultée" [value]="progression.slug" (change)="selectProgression($event)">
-            @for (entry of progressionDetails(); track entry.slug) {
-              <option [value]="entry.slug">{{ entry.name }}</option>
-            }
-          </select>
-        }
-        <section [style.--progression-accent]="progression.accentColor || '#80619a'">
-          <header class="overview">
-            <div class="gauge-identity">
-              <span class="eyebrow">Progression actuelle</span>
-              <strong>{{ progression.name }}</strong>
-            </div>
-
-            <div class="gauge-value">
-              <span>Valeur</span>
-              <b>{{ progression.current ?? '—' }}</b>
-            </div>
-
-            <div class="gauge-icon">
-              @if (progression.stage?.iconUrl; as icon) {
-                <img [src]="icon" alt="" />
-              }
-            </div>
-          </header>
-
-          <nav class="tabs" aria-label="Informations de progression">
-            <button
-              type="button"
-              class="tab"
-              [attr.aria-pressed]="progressionTab() === 'phases'"
-              (click)="progressionTab.set('phases')"
-            >
-              Phases
-            </button>
-
-            <button
-              type="button"
-              class="tab"
-              [attr.aria-pressed]="progressionTab() === 'actions'"
-              (click)="progressionTab.set('actions')"
-            >
-              Actions
-            </button>
-          </nav>
-          @if (progressionReferenceLoading()) {
-            <p class="modal-empty" role="status">Chargement du référentiel…</p>
-          } @else if (progressionReferenceError()) {
-            <p class="feedback feedback--error" role="alert">{{ progressionReferenceError() }}</p>
-            <button type="button" class="action" (click)="loadProgressionReferences()">Réessayer</button>
-          } @else if (!progression.referenceAvailable) {
-            <p class="modal-empty">Définition de progression indisponible.</p>
-          } @else if (progressionTab() === 'actions') {
-            @for (direction of adjustmentDirections; track direction) {
-              <section class="rules">
-                <h3>{{ direction === 'gain' ? (progression.gainLabel || 'Gagner des points') : (progression.spendLabel || 'Perdre des points') }}</h3>
-                <table>
-                  <thead><tr><th>Type</th><th>Déclencheur / description</th><th>Variation</th></tr></thead>
-                  <tbody>
-                    @for (rule of progression.adjustmentRules; track rule.id) {
-                      @if (rule.direction === direction) {
-                        <tr><td>{{ rule.triggerType }}</td><td>{{ rule.description }}</td><td>{{ rule.adjustmentLabel }}</td></tr>
-                      }
-                    }
-                  </tbody>
-                </table>
-                @if (!hasAdjustmentRules(direction)) { <p class="modal-empty">Aucune règle renseignée.</p> }
-              </section>
-            }
-          } @else {
-          <ul class="stages">
-            @for (stage of progression.stages; track stage.id) {
-              <li [class.current-stage]="progression.stage?.id === stage.id" [attr.aria-current]="progression.stage?.id === stage.id ? 'step' : null">
-                @if (stage.description) {
-                  <button
-                    type="button"
-                    class="stage-heading stage-heading--expandable"
-                    [attr.aria-expanded]="expandedStageIds().has(stage.id)"
-                    [attr.aria-controls]="'stage-description-' + stage.id"
-                    (click)="toggleStage(stage.id)"
-                  >
-                    <div class="stage-content">
-                      <strong>{{ stage.label }}</strong>
-                      <small>
-                        Cliquer pour
-                        {{
-                          expandedStageIds().has(stage.id)
-                            ? 'masquer les effets'
-                            : 'voir les effets'
-                        }}
-                      </small>
-                    </div>
-
-                    <div class="stage-meta">
-                      <span class="stage-range">
-                        {{ stage.minimumValue }}
-                        {{
-                          stage.maximumValue === null
-                            ? '+'
-                            : '–' + stage.maximumValue
-                        }}
-                      </span>
-
-                      <span
-                        class="stage-chevron"
-                        [class.stage-chevron--open]="expandedStageIds().has(stage.id)"
-                        aria-hidden="true"
-                      >
-                        ›
-                      </span>
-                    </div>
-                  </button>
-
-                  <div
-                    class="stage-description"
-                    [id]="'stage-description-' + stage.id"
-                    [hidden]="!expandedStageIds().has(stage.id)"
-                  >
-                    {{ stage.description }}
-                  </div>
-                } @else {
-                  <div class="stage-heading">
-                    <div class="stage-content">
-                      <strong>{{ stage.label }}</strong>
-                    </div>
-
-                    <div class="stage-meta">
-                      <span class="stage-range">
-                        {{ stage.minimumValue }}
-                        {{
-                          stage.maximumValue === null
-                            ? '+'
-                            : '–' + stage.maximumValue
-                        }}
-                      </span>
-                    </div>
-                  </div>
-                }
-              </li>
-            } @empty { <li>Aucun palier configuré.</li> }
-          </ul>
-          }
-        </section>
-      } @else { <p class="modal-empty">Aucune progression attribuée.</p> }
-    </section>
-  </div>
+@if (
+  progressionCharacter();
+  as progressionCharacter
+) {
+  <app-character-progression-modal
+    [character]="progressionCharacter"
+    [progressions]="progressionDetails()"
+    [selectedSlug]="
+      selectedProgression()?.slug ?? null
+    "
+    [tab]="progressionTab()"
+    [loading]="progressionReferenceLoading()"
+    [error]="progressionReferenceError()"
+    [expandedStageIds]="expandedStageIds()"
+    (closed)="closeProgression()"
+    (progressionSelected)="
+      selectProgression($event)
+    "
+    (tabChanged)="
+      progressionTab.set($event)
+    "
+    (stageToggled)="
+      toggleStage($event)
+    "
+    (retryRequested)="
+      loadProgressionReferences()
+    "
+  />
 }
 
 @if (
   statisticsCharacter();
   as statisticsCharacter
 ) {
-  <div
-    class="modal-backdrop"
-    role="presentation"
-    (click)="closeStatistics()"
-  >
-    <section
-      class="modal modal-wide"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="statistics-title"
-      (click)="$event.stopPropagation()"
-    >
-      <header class="modal-header">
-        <div>
-          <span class="eyebrow">
-            Caractéristiques
-          </span>
-
-          <h2 id="statistics-title">
-            {{
-              statisticsProfile()?.name ?? statisticsCharacter.character.name
-            }}
-          </h2>
-
-          <p>
-            Caractéristiques après application des objets équipés.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          class="modal-close"
-          aria-label="Fermer"
-          (click)="closeStatistics()"
-        >
-          ×
-        </button>
-      </header>
-
-      @if (statisticsError()) {
-        <p class="feedback feedback--error" role="alert">{{ statisticsError() }}</p>
-      }
-      @if (statisticsLoading()) {
-        <p class="modal-empty">
-          Calcul des caractéristiques…
-        </p>
-      } @else if (
-        statisticsInventory();
-        as inventory
-      ) {
-        <div class="attunement">
-          <span>Harmonisation</span>
-
-          <strong>
-            {{ inventory.attunedCount }}
-            /
-            {{ inventory.attunementLimit }}
-          </strong>
-        </div>
-
-        <section class="ability-grid">
-          @for (
-            ability of inventory.effectiveAbilities;
-            track ability.ability
-          ) {
-            <article
-              class="ability-card"
-              [class.ability-card--modified]="
-                ability.effectiveValue
-                !== ability.baseValue
-              "
-            >
-              <span>
-                {{
-                  abilityLabel(
-                    ability.ability
-                  )
-                }}
-              </span>
-
-              <strong>
-                {{ ability.effectiveValue }}
-              </strong>
-
-              <small>
-                {{
-                  formatModifier(
-                    ability.modifier
-                  )
-                }}
-              </small>
-
-              @if (
-                ability.effectiveValue
-                !== ability.baseValue
-              ) {
-                <em>
-                  Base {{ ability.baseValue }}
-                </em>
-              }
-            </article>
-          }
-        </section>
-
-        <section class="stats-items">
-          <header>
-            <h3>Objets possédés</h3>
-
-            <span>
-              {{ inventory.ownedItems.length }}
-            </span>
-          </header>
-
-          @for (
-            ownedItem of inventory.ownedItems;
-            track ownedItem.id
-          ) {
-            <article class="stats-item">
-              <div>
-                <strong>
-                  {{ ownedItem.magicItem.name }}
-                </strong>
-
-                <small>
-                  @if (ownedItem.equipped) {
-                    Équipé
-                  } @else {
-                    Non équipé
-                  }
-
-                  @if (ownedItem.attuned) {
-                    · Harmonisé
-                  }
-                </small>
-              </div>
-
-              <span
-                [class.effect-active]="
-                  ownedItem.effectActive
-                "
-              >
-                {{
-                  ownedItem.effectActive
-                    ? 'Effets actifs'
-                    : 'Effets inactifs'
-                }}
-              </span>
-            </article>
-          } @empty {
-            <p class="modal-empty">
-              Aucun objet magique possédé.
-            </p>
-          }
-        </section>
-      }
-    </section>
-  </div>
+  <app-character-statistics-modal
+    [character]="statisticsCharacter"
+    [inventory]="statisticsInventory()"
+    [loading]="statisticsLoading()"
+    [error]="statisticsError()"
+    (closed)="closeStatistics()"
+  />
 }

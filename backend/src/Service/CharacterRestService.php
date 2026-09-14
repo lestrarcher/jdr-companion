@@ -104,6 +104,17 @@ final readonly class CharacterRestService
             $state['resources'],
         );
 
+        $characterActions = $state['characterActions'] ?? [];
+
+        if (!is_array($characterActions)) {
+            $characterActions = [];
+        }
+
+        $characterActions['prepared'] = [];
+        $characterActions['preparationPending'] = true;
+
+        $state['characterActions'] = $characterActions;
+
         return $state;
     }
 

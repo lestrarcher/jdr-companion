@@ -1,59 +1,28 @@
-import {
-  Component,
-  DestroyRef,
-  computed,
-  effect,
-  inject,
-  signal,
-  untracked,
-} from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import {
-  CharacterWalletComponent,
-} from './components/character-wallet/character-wallet';
+import { CharacterWalletComponent } from './components/character-wallet/character-wallet';
 import { CharacterMagicItems } from './components/character-magic-items/character-magic-items';
 
-import {
-  EMPTY,
-  Subject,
-  catchError,
-  concatMap,
-  debounceTime,
-  finalize,
-  of,
-  switchMap,
-  tap,
-  timer,
-} from 'rxjs';
+import { EMPTY, Subject, catchError, concatMap, debounceTime, finalize, of, switchMap, tap, timer } from 'rxjs';
 
-import {
-  CharacterSessionStatePayload,
-  characterProfileToCharacter,
-  toCharacterSessionStatePayload,
-} from '@core/mappers/character-api.mapper';
 import { Character } from '@core/models/character.model';
-import { CharacterFeatureSummary } from '@core/services/character-api.service';
-import { RestType } from '@core/models/rest-request.model';
+import { CharacterActionSummary, CharacterFeatureSummary } from '@core/services/character-api.service';
+
+import { CharacterActionsState, CharacterSessionStatePayload, characterProfileToCharacter, toCharacterSessionStatePayload } from '@core/mappers/character-api.mapper';
+import { ActionPreparationModal } from './components/action-preparation-modal/action-preparation-modal';
 import { CharacterSessionStateApiService } from '@core/services/character-session-state-api.service';
+import { RestType } from '@core/models/rest-request.model';
 import { CharacterStateService } from '@core/services/character-state.service';
-import {
-  RestRequestApiResponse,
-  RestRequestApiService,
-} from '@core/services/rest-request-api.service';
+import { RestRequestApiResponse, RestRequestApiService } from '@core/services/rest-request-api.service';
 import { CampaignConfig } from '@core/models/campaign.model';
-import {
-  CampaignConfigurationRegistryService,
-} from '@core/services/campaign-configuration-registry.service';
-import {
-  CharacterProgressions,
-  ProgressionChange,
-  ProgressionResourceChange,
-} from './components/character-progressions/character-progressions';
+import { CampaignConfigurationRegistryService } from '@core/services/campaign-configuration-registry.service';
+import { CharacterProgressions, ProgressionChange, ProgressionResourceChange } from './components/character-progressions/character-progressions';
 import { CharacterResources } from './components/character-resources/character-resources';
 import { CharacterStoredValues } from './components/character-stored-values/character-stored-values';
 import { CharacterVitals } from './components/character-vitals/character-vitals';
 import { RestControls } from './components/rest-controls/rest-controls';
+import { AidActionModal, AidActionPayload, AidSpellSlot, AidTarget } from './components/aid-action-modal/aid-action-modal';
 
 type SessionStatus =
   | 'draft'
@@ -80,7 +49,9 @@ type PlayerPortalTab =
     CharacterWalletComponent,
     CharacterMagicItems,
     RestControls,
+    ActionPreparationModal,
     RouterLink,
+    AidActionModal,
   ],
   templateUrl: './player-portal.html',
   styleUrl: './player-portal.scss',
@@ -109,6 +80,9 @@ export class PlayerPortal {
   private readonly latestRestRequest = signal<RestRequestApiResponse | null>(null);
   private readonly restRequestSubmitting = signal(false);
   private readonly handledRestRequest = signal<string | null>(null);
+  protected readonly preparationSaving = signal(false);
+  protected readonly preparationError = signal<string | null>(null);
+  protected readonly activeAction = signal<CharacterActionSummary | null>(null);
 
   private readonly remoteSynchronization = new Subject<{
     state: CharacterSessionStatePayload;
@@ -121,6 +95,20 @@ export class PlayerPortal {
   protected readonly features = signal<CharacterFeatureSummary[]>([]);
   protected readonly visibleFeatures = computed(() =>
     this.features().filter((feature) => feature.visible),
+  );
+
+  protected readonly actions = signal<CharacterActionSummary[]>([]);
+  protected readonly characterActions = signal<CharacterActionsState | null>(null);
+
+  protected readonly preparationActions = computed(() =>
+    this.actions().filter(
+      (action) => action.requiresPreparation,
+    ),
+  );
+
+  protected readonly preparationPending = computed(() =>
+    this.characterActions()?.preparationPending === true
+    && this.preparationActions().length > 0,
   );
 
   private readonly remoteSynchronizationEnabled = signal(false);
@@ -180,6 +168,15 @@ export class PlayerPortal {
         undefined,
     ),
   );
+
+  protected readonly preparedActions = computed(() => {
+    const prepared = this.characterActions()?.prepared ?? [];
+
+    return this.actions().filter((action) =>
+      prepared.includes(action.slug),
+    );
+  });
+
   protected readonly pendingRestRequest = computed(() => {
     const request =
       this.latestRestRequest();
@@ -380,6 +377,11 @@ export class PlayerPortal {
           this.character.set(loadedCharacter);
           this.features.set(response.character.features);
 
+          this.actions.set(response.character.actions ?? []);
+          this.characterActions.set(
+            response.state.characterActions ?? null,
+          );
+
           this.sessionStatus.set(response.session.status);
           this.levelUpAllowed.set(response.levelUpAllowed);
 
@@ -450,6 +452,10 @@ export class PlayerPortal {
                 this.characterStateService.applyServerState(character);
                 this.character.set(character);
                 this.features.set(response.character.features);
+                this.actions.set(response.character.actions ?? []);
+                this.characterActions.set(
+                  response.state.characterActions ?? null,
+                );
                 this.sessionStatus.set(response.session.status);
                 this.levelUpAllowed.set(response.levelUpAllowed);
                 this.saveStatus.set('saved');
@@ -567,5 +573,99 @@ export class PlayerPortal {
     window.setTimeout(() => {
       this.restFeedback.set(null);
     }, 5000);
+  }
+
+  protected readonly aidSpellSlots = computed<AidSpellSlot[]>(() =>
+  this.characterState()
+    ?.resources
+    .filter(resource =>
+      resource.id.startsWith('spell-slot-')
+      && resource.currentValue > 0
+    )
+    .map(resource => ({
+      level: Number(
+        resource.id.replace('spell-slot-', ''),
+      ),
+      current: resource.currentValue,
+    }))
+    .filter(slot =>
+      Number.isInteger(slot.level)
+      && slot.level >= 2
+    )
+    .sort((a, b) => a.level - b.level)
+  ?? [],
+);
+
+  protected savePreparedActions(
+    prepared: string[],
+  ): void {
+    if (
+      !this.preparationPending()
+      || this.preparationSaving()
+    ) {
+      return;
+    }
+
+    this.preparationSaving.set(true);
+    this.preparationError.set(null);
+
+    this.characterSessionStateApi
+      .updatePreparedActions(
+        this.accessToken,
+        prepared,
+        this.serverRevision,
+      )
+      .pipe(
+        finalize(() => {
+          this.preparationSaving.set(false);
+        }),
+      )
+      .subscribe({
+        next: (response) => {
+          this.serverRevision = response.revision;
+
+          this.actions.set(
+            response.character.actions ?? [],
+          );
+
+          this.characterActions.set(
+            response.state.characterActions ?? null,
+          );
+        },
+
+        error: (error: any) => {
+          if (error?.status === 409) {
+            this.preparationError.set(
+              'Les données du personnage ont changé. Rechargement…',
+            );
+
+            this.loadCharacter(false);
+            return;
+          }
+
+          this.preparationError.set(
+            error?.error?.message
+              ?? 'Impossible d’enregistrer la préparation.',
+          );
+        },
+      });
+  }
+
+  protected openAction(
+    action: CharacterActionSummary,
+  ): void {
+    switch (action.handlerType) {
+      case 'aid':
+        this.activeAction.set(action);
+        break;
+    }
+  }
+
+  protected closeAction(): void {
+    this.activeAction.set(null);
+  }
+
+  protected useAid(payload: AidActionPayload): void {
+    console.log('AIDE', payload);
   }
 }

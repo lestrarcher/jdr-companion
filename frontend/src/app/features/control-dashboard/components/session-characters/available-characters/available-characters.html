@@ -1,0 +1,59 @@
+<section class="available-section">
+  <header class="section-heading">
+    <div>
+      <span class="section-label">Campagne</span>
+      <h3>Personnages disponibles</h3>
+    </div>
+
+    <span class="section-count">
+      {{ characters().length }}
+    </span>
+  </header>
+
+  <div class="available-list">
+    @for (
+      character of characters();
+      track character.character.id
+    ) {
+      <article class="available">
+        <span class="portrait" aria-hidden="true">
+          {{ characterInitial(character.character.name) }}
+        </span>
+
+        <div class="identity">
+          <h4>{{ character.character.name }}</h4>
+
+          <small>
+            {{
+              characterSummary(character.character)
+                || 'Niveau non renseigné'
+            }}
+          </small>
+
+          @if (character.character.playerName) {
+            <small>
+              {{ character.character.playerName }}
+            </small>
+          }
+        </div>
+
+        <button
+          type="button"
+          class="action action-primary"
+          [disabled]="changingCharacterId() !== null"
+          (click)="characterAdded.emit(character)"
+        >
+          {{
+            isChanging(character.character.id)
+              ? 'Ajout…'
+              : 'Ajouter à la session'
+          }}
+        </button>
+      </article>
+    } @empty {
+      <p class="available-empty">
+        Tous les personnages de la campagne participent à cette session.
+      </p>
+    }
+  </div>
+</section>

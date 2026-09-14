@@ -19,7 +19,6 @@ export class CharacterVitals {
     inject(CharacterStateService);
 
   readonly character = input.required<Character>();
-
   protected hitPointAmount = 0;
 
   protected applyDamage(): void {

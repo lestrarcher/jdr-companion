@@ -1,0 +1,217 @@
+<article class="card">
+  <header class="card-header">
+    <span class="portrait" aria-hidden="true">
+      {{ characterInitial(character().character.name) }}
+    </span>
+
+    <div class="identity">
+      <h3>{{ character().character.name }}</h3>
+
+      <small>
+        {{
+          characterSummary(character().character)
+            || 'Niveau non renseigné'
+        }}
+      </small>
+
+      @if (character().character.playerName) {
+        <small>
+          Joué par {{ character().character.playerName }}
+        </small>
+      }
+    </div>
+
+    @if (
+      currentHitPoints() !== null
+      && maximumHitPoints() !== null
+    ) {
+      <span
+        class="health"
+        [class.health-good]="hitPointTone() === 'healthy'"
+        [class.health-wounded]="hitPointTone() === 'wounded'"
+        [class.health-critical]="hitPointTone() === 'critical'"
+      >
+        @switch (hitPointTone()) {
+          @case ('healthy') {
+            Stable
+          }
+
+          @case ('wounded') {
+            Blessé
+          }
+
+          @case ('critical') {
+            Critique
+          }
+        }
+      </span>
+    }
+  </header>
+
+  @if (
+    currentHitPoints() !== null
+    && maximumHitPoints() !== null
+  ) {
+    <section class="hp">
+      <header>
+        <span>Points de vie</span>
+
+        <strong>
+          {{ currentHitPoints() }}
+          /
+          {{ maximumHitPoints() }}
+        </strong>
+      </header>
+
+      <div
+        class="hp-track"
+        role="progressbar"
+        [attr.aria-valuenow]="currentHitPoints()"
+        [attr.aria-valuemin]="0"
+        [attr.aria-valuemax]="maximumHitPoints()"
+        [attr.aria-label]="
+          'Points de vie de ' + character().character.name
+        "
+      >
+        <span
+          class="hp-value"
+          [class.hp-good]="hitPointTone() === 'healthy'"
+          [class.hp-wounded]="hitPointTone() === 'wounded'"
+          [class.hp-critical]="hitPointTone() === 'critical'"
+          [style.width.%]="hitPointPercentage()"
+        ></span>
+      </div>
+
+      @if (temporaryHitPoints() > 0) {
+        <span class="temp-hp">
+          + {{ temporaryHitPoints() }} PV temporaires
+        </span>
+      }
+
+      <div class="maximum-hp-control">
+        <label>
+          <span>Modifier le maximum</span>
+
+          <input
+            type="number"
+            min="1"
+            step="1"
+            inputmode="numeric"
+            [value]="maximumHitPointAmount()"
+            (input)="setMaximumHitPointAmount($event)"
+          />
+        </label>
+
+        <div class="maximum-hp-actions">
+          <button
+            type="button"
+            class="action action-danger"
+            [disabled]="
+              maximumHitPointAmount() <= 0
+              || changingMaximumHitPointsId() !== null
+            "
+            (click)="adjustMaximumHitPoints(-1)"
+          >
+            {{
+              isChangingMaximumHitPoints()
+                ? 'Modification…'
+                : 'Réduire'
+            }}
+          </button>
+
+          <button
+            type="button"
+            class="action"
+            [disabled]="
+              maximumHitPointAmount() <= 0
+              || changingMaximumHitPointsId() !== null
+            "
+            (click)="adjustMaximumHitPoints(1)"
+          >
+            {{
+              isChangingMaximumHitPoints()
+                ? 'Modification…'
+                : 'Augmenter'
+            }}
+          </button>
+        </div>
+      </div>
+    </section>
+  } @else {
+    <p class="missing-hp">
+      Maximum de PV incomplet.
+    </p>
+  }
+
+  <footer class="actions">
+    @if (playerPortalUrl(); as portalUrl) {
+      <a
+        class="action"
+        [href]="portalUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Ouvrir le portail
+      </a>
+    }
+
+    <button
+      type="button"
+      class="action"
+      (click)="statisticsRequested.emit(character())"
+    >
+      Voir les caractéristiques
+    </button>
+
+    @if (
+      (character().sessionState?.character?.progressions?.length ?? 0) > 0
+    ) {
+      <button
+        type="button"
+        class="action"
+        (click)="progressionRequested.emit(character())"
+      >
+        Voir la progression
+      </button>
+    }
+
+    <button
+      type="button"
+      class="action action-primary"
+      (click)="itemAssignmentRequested.emit(character())"
+    >
+      Donner un objet
+    </button>
+
+    <button
+      type="button"
+      class="action level-up"
+      [class.level-up-active]="
+        character().sessionState?.levelUpAllowed
+      "
+      [disabled]="changingLevelUpPermissionId() !== null"
+      (click)="levelUpPermissionRequested.emit(character())"
+    >
+      @if (isChangingLevelUpPermission()) {
+        Modification…
+      } @else if (character().sessionState?.levelUpAllowed) {
+        Retirer l’autorisation
+      } @else {
+        Autoriser le niveau
+      }
+    </button>
+
+    <button
+      type="button"
+      class="action action-danger"
+      [disabled]="changingCharacterId() !== null"
+      (click)="removalRequested.emit(character())"
+    >
+      {{
+        isChangingCharacter()
+          ? 'Retrait…'
+          : 'Retirer'
+      }}
+    </button>
+  </footer>
+</article>

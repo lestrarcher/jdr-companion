@@ -149,6 +149,7 @@ export interface CharacterProfile extends CharacterApiResponse {
   feats: CharacterFeatSummary[];
   features: CharacterFeatureSummary[];
   resources: CharacterResourceSummary[];
+  actions: CharacterActionSummary[];
 }
 
 export interface LevelUpSubclassOption {
@@ -199,6 +200,14 @@ export interface FeatAdvancementPayload {
   type: 'feat';
   featId: number;
   ability: AbilityKey | null;
+}
+
+export interface CharacterActionSummary {
+  slug: string;
+  name: string;
+  description: string | null;
+  handlerType: string;
+  requiresPreparation: boolean;
 }
 
 export type LevelAdvancementPayload =

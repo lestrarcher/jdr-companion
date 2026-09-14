@@ -1,0 +1,246 @@
+:host {
+  --serif: Georgia, 'Times New Roman', serif;
+  --georgia: Georgia, serif;
+
+  display: block;
+  min-width: 0;
+}
+
+.card {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid #{'#c7a55b38'};
+  background: linear-gradient(
+    145deg,
+    #{'#141520f7'},
+    #{'#08090ffa'}
+  );
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.portrait {
+  display: grid;
+  place-items: center;
+  flex: 0 0 2.8rem;
+  width: 2.8rem;
+  height: 2.8rem;
+  border: 1px solid #{'#c7a55b80'};
+  border-radius: 50%;
+  background: #171824;
+  color: #c7a55b;
+  font-family: var(--georgia);
+  font-size: 1.1rem;
+}
+
+.identity {
+  display: grid;
+  min-width: 0;
+  gap: 0.15rem;
+
+  h3 {
+    margin: 0;
+    overflow: hidden;
+    color: #f4efe5;
+    font-family: var(--georgia);
+    font-size: 1.05rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  small {
+    color: #{'#f4efe56b'};
+    font-size: 0.65rem;
+  }
+}
+
+.health {
+  margin-left: auto;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid currentColor;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.health-good {
+  color: #75c892;
+}
+
+.health-wounded {
+  color: #d8b45f;
+}
+
+.health-critical {
+  color: #de7c7c;
+}
+
+.hp {
+  display: grid;
+  gap: 0.45rem;
+
+  > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: #{'#f4efe59e'};
+    font-size: 0.7rem;
+
+    strong {
+      color: #f4efe5;
+      font-family: var(--georgia);
+      font-size: 0.95rem;
+    }
+  }
+}
+
+.hp-track {
+  height: 0.55rem;
+  overflow: hidden;
+  border: 1px solid #{'#ffffff14'};
+  border-radius: 999px;
+  background: #{'#00000080'};
+}
+
+.hp-value {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition:
+    width 250ms ease,
+    background 250ms ease;
+}
+
+.hp-good {
+  background: linear-gradient(90deg, #32704a, #75c892);
+}
+
+.hp-wounded {
+  background: linear-gradient(90deg, #8c6728, #d8b45f);
+}
+
+.hp-critical {
+  background: linear-gradient(90deg, #783333, #de7c7c);
+}
+
+.temp-hp {
+  color: #78b9dc;
+  font-size: 0.68rem;
+}
+
+.maximum-hp-control {
+  display: flex;
+  align-items: end;
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+
+  label {
+    display: grid;
+    gap: 0.35rem;
+
+    span {
+      font-size: 0.75rem;
+      opacity: 0.7;
+    }
+  }
+
+  input {
+    width: 5.5rem;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid currentColor;
+    border-radius: 0.45rem;
+    background: transparent;
+    color: inherit;
+  }
+}
+
+.maximum-hp-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin-top: auto;
+}
+
+.action {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 2.5rem;
+  padding: 0.5rem;
+  border: 1px solid #{'#c7a55b6b'};
+  background: #{'#ffffff06'};
+  color: #{'#f4efe5b3'};
+  font-family: inherit;
+  font-size: 0.64rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+}
+
+.action-primary {
+  background: #{'#c7a55b1f'};
+  color: #dbc47e;
+}
+
+.action-danger {
+  border-color: #{'#b96b726b'};
+  background: #{'#b96b7212'};
+  color: #d9959b;
+}
+
+.level-up {
+  border-color: #{'#78b9dc59'};
+  background: #{'#78b9dc0f'};
+  color: #9ac8e1;
+}
+
+.level-up-active {
+  border-color: #{'#78b9dca6'};
+  background: #{'#78b9dc29'};
+  color: #c5e4f5;
+}
+
+.missing-hp {
+  margin: 0;
+  padding: 0.7rem;
+  border: 1px dashed #{'#c7a55b33'};
+  color: #{'#f4efe56b'};
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 430px) {
+  .health {
+    display: none;
+  }
+
+  .maximum-hp-control {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

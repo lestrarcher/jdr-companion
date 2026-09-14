@@ -1,0 +1,69 @@
+<div class="preparation-backdrop">
+  <section
+    class="preparation-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="preparation-title"
+  >
+    <header>
+      <span class="eyebrow">Repos long</span>
+
+      <h2 id="preparation-title">
+        Préparation
+      </h2>
+
+      <p>
+        Choisis les capacités que ton personnage prépare
+        jusqu’à son prochain repos long.
+      </p>
+    </header>
+
+    <div class="preparation-actions">
+      @for (action of actions(); track action.slug) {
+        <label
+          class="preparation-action"
+          [class.preparation-action--selected]="isSelected(action.slug)"
+        >
+          <input
+            type="checkbox"
+            [checked]="isSelected(action.slug)"
+            [disabled]="saving()"
+            (change)="toggle(action.slug)"
+          />
+
+          <span class="preparation-action-content">
+            <strong>{{ action.name }}</strong>
+
+            @if (action.description) {
+              <small>{{ action.description }}</small>
+            }
+          </span>
+        </label>
+      }
+    </div>
+
+    @if (error()) {
+      <p class="preparation-error">
+        {{ error() }}
+      </p>
+    }
+
+    <footer>
+      <small>
+        Tu peux ne rien préparer.
+      </small>
+
+      <button
+        type="button"
+        [disabled]="saving()"
+        (click)="confirm()"
+      >
+        @if (saving()) {
+          Enregistrement…
+        } @else {
+          Valider la préparation
+        }
+      </button>
+    </footer>
+  </section>
+</div>

@@ -11,8 +11,10 @@ use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 /** Validates the portal snapshot as an authorized partial merge, before any mutation. */
 final readonly class PlayerCharacterStateUpdater
 {
-    public function __construct(private CharacterSessionStateSynchronizer $synchronizer)
-    {
+    public function __construct(
+        private CharacterSessionStateSynchronizer $synchronizer,
+        private CharacterHitPointStateService $hitPointStateService,
+    ) {
     }
 
     public function merge(CharacterSessionState $session, array $patch): array
@@ -40,12 +42,29 @@ final readonly class PlayerCharacterStateUpdater
         $after = $this->synchronizer->snapshot($character, $this->synchronizer->extractProgressionValues($state));
         if (array_key_exists('hitPoints', $patch)) {
             $hp = $patch['hitPoints'];
-            if (!is_array($hp)) $this->invalid('Points de vie invalides.');
+
+            if (!is_array($hp)) {
+                $this->invalid('Points de vie invalides.');
+            }
+
             $this->keys($hp, ['current', 'temporary']);
+
+            $effectiveMaximum = $this->hitPointStateService->effectiveMaximum(
+                $character,
+                $state,
+            );
+
             foreach ($hp as $field => $value) {
-                if ($field === 'current' && $after['hitPoints'] === null) $this->invalid('Maximum de PV incomplet.');
-                // Temporary HP has no game-defined maximum; it is a nonnegative integer.
-                $this->integer($value, 0, $field === 'current' ? $after['hitPoints'] : null);
+                if ($field === 'current' && $effectiveMaximum === null) {
+                    $this->invalid('Maximum de PV incomplet.');
+                }
+
+                $this->integer(
+                    $value,
+                    0,
+                    $field === 'current' ? $effectiveMaximum : null,
+                );
+
                 $state['hitPoints'][$field] = $value;
             }
         }

@@ -17,6 +17,8 @@ use App\Security\Voter\CampaignVoter;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\OptimisticLockException;
+use App\Service\CharacterHitPointStateService;
+use App\Service\CharacterActionResolver;
 use JsonException;
 use App\Service\CharacterSessionStateFactory;
 use App\Service\CharacterSessionStateSynchronizer;
@@ -38,6 +40,7 @@ final class CharacterSessionStateController extends AbstractController
     public function __construct(
         private readonly CharacterProfileSerializer $profileSerializer,
         private readonly CharacterSessionStateSynchronizer $stateSynchronizer,
+        private readonly CharacterHitPointStateService $hitPointStateService,
     ) {
     }
 
@@ -80,6 +83,167 @@ final class CharacterSessionStateController extends AbstractController
         ]);
     }
 
+    #[Route(
+        '/public/characters/{accessToken}/actions/prepared',
+        name: 'api_public_character_actions_prepared_update',
+        requirements: ['accessToken' => '[a-f0-9]{64}'],
+        methods: ['PATCH'],
+    )]
+    public function updatePreparedActions(
+        string $accessToken,
+        Request $request,
+        PlayerCharacterAccess $playerAccess,
+        CharacterActionResolver $actionResolver,
+        EntityManagerInterface $entityManager,
+    ): JsonResponse {
+        $sessionState = $playerAccess->requireParticipating($accessToken);
+
+        if (
+            $sessionState->getGameSession()->getStatus()
+            !== GameSession::STATUS_LIVE
+        ) {
+            return $this->json(
+                ['message' => 'Cette session n’est pas ouverte.'],
+                Response::HTTP_CONFLICT,
+            );
+        }
+
+        try {
+            $payload = $request->toArray();
+        } catch (JsonException) {
+            return $this->json(
+                ['message' => 'Le corps JSON est invalide.'],
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        $prepared = $payload['prepared'] ?? null;
+        $revision = $payload['revision'] ?? null;
+
+        if (!is_array($prepared)) {
+            return $this->json(
+                ['message' => 'La propriété "prepared" doit être un tableau.'],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
+
+        if (!is_int($revision) || $revision < 1) {
+            return $this->json(
+                ['message' => 'Une révision entière positive est requise.'],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
+
+        foreach ($prepared as $slug) {
+            if (!is_string($slug) || $slug === '') {
+                return $this->json(
+                    ['message' => 'Chaque action préparée doit être identifiée par un slug valide.'],
+                    Response::HTTP_UNPROCESSABLE_ENTITY,
+                );
+            }
+        }
+
+        $prepared = array_values(array_unique($prepared));
+
+        $eligibleActions = $actionResolver->resolve(
+            $sessionState->getCharacter(),
+        );
+
+        foreach ($prepared as $slug) {
+            $action = $eligibleActions[$slug] ?? null;
+
+            if (
+                $action === null
+                || !$action->requiresPreparation()
+            ) {
+                return $this->json(
+                    [
+                        'message' => sprintf(
+                            'L’action "%s" ne peut pas être préparée par ce personnage.',
+                            $slug,
+                        ),
+                    ],
+                    Response::HTTP_UNPROCESSABLE_ENTITY,
+                );
+            }
+        }
+
+        if ($sessionState->getRevision() !== $revision) {
+            return $this->json(
+                [
+                    'message' =>
+                        'Le personnage a été modifié ailleurs. Rechargez son état.',
+                ],
+                Response::HTTP_CONFLICT,
+            );
+        }
+
+        try {
+            return $entityManager->wrapInTransaction(
+                function () use (
+                    $entityManager,
+                    $sessionState,
+                    $revision,
+                    $prepared,
+                ): JsonResponse {
+                    $entityManager->lock(
+                        $sessionState->getGameSession(),
+                        \Doctrine\DBAL\LockMode::PESSIMISTIC_READ,
+                    );
+
+                    $entityManager->refresh(
+                        $sessionState->getGameSession(),
+                    );
+
+                    if (
+                        $sessionState->getGameSession()->getStatus()
+                        !== GameSession::STATUS_LIVE
+                    ) {
+                        return $this->json(
+                            ['message' => 'Cette session n’est pas ouverte.'],
+                            Response::HTTP_CONFLICT,
+                        );
+                    }
+
+                    $entityManager->lock(
+                        $sessionState,
+                        \Doctrine\DBAL\LockMode::OPTIMISTIC,
+                        $revision,
+                    );
+
+                    $state = $sessionState->getState();
+
+                    $characterActions =
+                        $state['characterActions'] ?? [];
+
+                    if (!is_array($characterActions)) {
+                        $characterActions = [];
+                    }
+
+                    $characterActions['prepared'] = $prepared;
+                    $characterActions['preparationPending'] = false;
+
+                    $state['characterActions'] = $characterActions;
+
+                    $sessionState->setState($state);
+
+                    $entityManager->flush();
+
+                    return $this->json(
+                        $this->serializeState($sessionState),
+                    );
+                },
+            );
+        } catch (\Doctrine\ORM\OptimisticLockException) {
+            return $this->json(
+                [
+                    'message' =>
+                        'Le personnage a été modifié ailleurs. Rechargez son état.',
+                ],
+                Response::HTTP_CONFLICT,
+            );
+        }
+    }
     /**
      * Crée ou réactive l’état d’un personnage pour une session.
      *
@@ -231,6 +395,111 @@ final class CharacterSessionStateController extends AbstractController
 
         return $this->json(
             $this->serializeState($state, true),
+        );
+    }
+
+    #[Route(
+        '/sessions/{sessionId}/characters/{characterId}/hit-points/maximum-adjustment',
+        name: 'api_character_session_state_maximum_hit_points_adjust',
+        requirements: [
+            'sessionId' => '\d+',
+            'characterId' => '\d+',
+        ],
+        methods: ['POST'],
+    )]
+    public function adjustMaximumHitPoints(
+        int $sessionId,
+        int $characterId,
+        Request $request,
+        GameSessionRepository $gameSessionRepository,
+        CharacterRepository $characterRepository,
+        CharacterSessionStateRepository $stateRepository,
+        CharacterHitPointStateService $hitPointStateService,
+        EntityManagerInterface $entityManager,
+    ): JsonResponse {
+        $gameSession = $gameSessionRepository->find($sessionId);
+        $character = $characterRepository->find($characterId);
+
+        if (!$gameSession instanceof GameSession) {
+            return $this->json(
+                ['message' => 'Session introuvable.'],
+                Response::HTTP_NOT_FOUND,
+            );
+        }
+
+        if (!$character instanceof Character) {
+            return $this->json(
+                ['message' => 'Personnage introuvable.'],
+                Response::HTTP_NOT_FOUND,
+            );
+        }
+
+        $this->denyAccessUnlessGranted(
+            CampaignVoter::MANAGE,
+            $gameSession->getCampaign(),
+        );
+
+        if (
+            $gameSession->getCampaign()->getId()
+            !== $character->getCampaign()->getId()
+        ) {
+            return $this->json(
+                ['message' => 'Le personnage ne fait pas partie de cette campagne.'],
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        $sessionState = $stateRepository->findOneBy([
+            'gameSession' => $gameSession,
+            'character' => $character,
+        ]);
+
+        if (
+            !$sessionState instanceof CharacterSessionState
+            || !$sessionState->isParticipating()
+        ) {
+            return $this->json(
+                ['message' => 'Ce personnage ne participe pas à cette session.'],
+                Response::HTTP_NOT_FOUND,
+            );
+        }
+
+        try {
+            $payload = $request->toArray();
+        } catch (JsonException) {
+            return $this->json(
+                ['message' => 'Le corps JSON est invalide.'],
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        $delta = $payload['delta'] ?? null;
+
+        if (!is_int($delta) || $delta === 0) {
+            return $this->json(
+                ['message' => 'La propriété "delta" doit être un entier non nul.'],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
+
+        try {
+            $newState = $hitPointStateService->adjustMaximum(
+                $character,
+                $sessionState->getState(),
+                $delta,
+            );
+
+            $sessionState->setState($newState);
+            $entityManager->flush();
+        } catch (\DomainException $exception) {
+            return $this->json(
+                ['message' => $exception->getMessage()],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
+
+        return $this->json(
+            $this->serializeState($sessionState, true),
         );
     }
 
@@ -737,6 +1006,14 @@ final class CharacterSessionStateController extends AbstractController
         $character = $state->getCharacter();
         $gameSession = $state->getGameSession();
 
+        $sessionState = $state->getState();
+
+        $sessionState['hitPoints']['effectiveMaximum'] =
+            $this->hitPointStateService->effectiveMaximum(
+                $character,
+                $sessionState,
+            );
+
         $data = [
             'id' => $state->getId(),
             'revision' => $state->getRevision(),
@@ -759,7 +1036,7 @@ final class CharacterSessionStateController extends AbstractController
             ),
             'participating' => $state->isParticipating(),
             'levelUpAllowed' => $state->isLevelUpAllowed(),
-            'state' => $state->getState(),
+            'state' => $sessionState,
             'updatedAt' => $state->getUpdatedAt()->format(DATE_ATOM),
         ];
 

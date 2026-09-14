@@ -13,6 +13,7 @@ final readonly class CharacterSessionStateSynchronizer
 {
     public function __construct(
         private CharacterHitPointCalculator $hitPointCalculator,
+        private CharacterHitPointStateService $hitPointStateService,
         private CharacterResourceResolver $resourceResolver,
         private CharacterSessionStateRepository $sessionStateRepository,
         private CharacterSpellSlotCalculator $spellSlotCalculator,
@@ -263,19 +264,23 @@ final readonly class CharacterSessionStateSynchronizer
      */
     private function applyHitPointDelta(
         array $state,
-        ?int $beforeMaximum,
-        ?int $afterMaximum,
+        int $beforeMaximum,
+        int $afterMaximum,
     ): array {
-        if ($beforeMaximum === null || $afterMaximum === null) {
-            return $state;
-        }
-
         $current = (int) ($state['hitPoints']['current'] ?? 0);
         $delta = $afterMaximum - $beforeMaximum;
 
+        $maximumAdjustment =
+            $this->hitPointStateService->maximumAdjustment($state);
+
+        $effectiveAfterMaximum = max(
+            0,
+            $afterMaximum + $maximumAdjustment,
+        );
+
         $state['hitPoints']['current'] = $delta >= 0
-            ? min($afterMaximum, $current + $delta)
-            : min($current, $afterMaximum);
+            ? min($effectiveAfterMaximum, $current + $delta)
+            : min($current, $effectiveAfterMaximum);
 
         return $state;
     }

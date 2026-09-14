@@ -1,9 +1,16 @@
 import { Character } from '@core/models/character.model';
 
+export interface CharacterActionsState {
+  prepared: string[];
+  preparationPending: boolean;
+}
+
 export interface CharacterSessionStatePayload {
   hitPoints: {
     current: number;
     temporary: number;
+    maximumAdjustment?: number;
+    effectiveMaximum?: number | null;
   };
 
   hitDice: Array<{
@@ -22,6 +29,8 @@ export interface CharacterSessionStatePayload {
     notes?: string;
     storedValues?: number[];
   }>;
+
+  characterActions?: CharacterActionsState;
 }
 
 export interface CharacterProfilePayload {
@@ -266,7 +275,10 @@ export function characterProfileToCharacter(
     portraitUrl: definition.portraitUrl ?? undefined,
 
     hitPoints: {
-      maximum: profile.hitPoints.maximumValue ?? 0,
+      maximum:
+        state.hitPoints.effectiveMaximum ??
+        profile.hitPoints.maximumValue ??
+        0,
       current: state.hitPoints.current,
       temporary: state.hitPoints.temporary,
     },
@@ -286,6 +298,9 @@ export function applyCharacterSessionState(
 
     hitPoints: {
       ...character.hitPoints,
+      maximum:
+        state.hitPoints.effectiveMaximum ??
+        character.hitPoints.maximum,
       current: state.hitPoints.current,
       temporary: state.hitPoints.temporary,
     },

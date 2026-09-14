@@ -1,0 +1,104 @@
+:host {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+
+.preparation-backdrop {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+
+  background:
+    rgb(0 0 0 / 72%);
+  backdrop-filter: blur(4px);
+}
+
+.preparation-modal {
+  width: min(34rem, 100%);
+  max-height: min(80vh, 48rem);
+  overflow-y: auto;
+
+  padding: 2rem;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 1rem;
+
+  background: #161616;
+  box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 50%);
+
+  h2 {
+    margin: 0.25rem 0 0.75rem;
+  }
+
+  header p {
+    margin-bottom: 1.5rem;
+    opacity: 0.75;
+  }
+}
+
+.preparation-actions {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.preparation-action {
+  display: flex;
+  gap: 0.9rem;
+  align-items: flex-start;
+
+  padding: 1rem;
+
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 0.75rem;
+
+  cursor: pointer;
+
+  transition:
+    border-color 150ms ease,
+    background 150ms ease;
+
+  &:hover {
+    background: rgb(255 255 255 / 4%);
+  }
+
+  &--selected {
+    border-color: rgb(255 255 255 / 35%);
+    background: rgb(255 255 255 / 7%);
+  }
+
+  input {
+    margin-top: 0.25rem;
+  }
+}
+
+.preparation-action-content {
+  display: grid;
+  gap: 0.3rem;
+
+  small {
+    opacity: 0.7;
+  }
+}
+
+.preparation-error {
+  margin: 1rem 0 0;
+}
+
+footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+
+  margin-top: 1.5rem;
+
+  small {
+    opacity: 0.6;
+  }
+
+  button {
+    padding: 0.7rem 1rem;
+  }
+}
