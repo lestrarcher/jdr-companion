@@ -2,10 +2,7 @@ import { Component, computed, input, output, signal } from '@angular/core';
 
 import { CharacterApiResponse } from '@core/services/character-api.service';
 
-import {
-  MaximumHitPointAdjustment,
-  SessionCharacterView,
-} from '../session-character.models';
+import { ActiveEffectTermination, MaximumHitPointAdjustment, SessionCharacterView } from '../session-character.models';
 
 @Component({
   selector: 'app-active-character-card',
@@ -28,10 +25,11 @@ export class ActiveCharacterCard {
   readonly itemAssignmentRequested = output<SessionCharacterView>();
   readonly levelUpPermissionRequested = output<SessionCharacterView>();
   readonly removalRequested = output<SessionCharacterView>();
-  readonly maximumHitPointsRequested =
-    output<MaximumHitPointAdjustment>();
+  readonly maximumHitPointsRequested = output<MaximumHitPointAdjustment>();
+  readonly activeEffectTerminationRequested = output<ActiveEffectTermination>();
 
   protected readonly maximumHitPointAmount = signal(0);
+  readonly endingActiveEffectId = input<number | null>(null);
 
   protected readonly currentHitPoints = computed(
     () => this.character().sessionState?.state.hitPoints.current ?? null,
@@ -47,6 +45,10 @@ export class ActiveCharacterCard {
     ?? null,
   );
 
+  protected readonly activeEffects = computed(
+    () => this.character().sessionState?.activeEffects ?? [],
+  );
+
   protected readonly hitPointPercentage = computed(() => {
     const current = this.currentHitPoints();
     const maximum = this.maximumHitPoints();
@@ -60,6 +62,10 @@ export class ActiveCharacterCard {
       Math.max(0, (current / maximum) * 100),
     );
   });
+
+  protected isEndingActiveEffect(effectId: number): boolean {
+    return this.endingActiveEffectId() === effectId;
+  }
 
   protected readonly hitPointTone = computed<
     'healthy' | 'wounded' | 'critical'

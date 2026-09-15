@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\Character;
+use App\Repository\CharacterActiveEffectRepository;
 
 final readonly class CharacterSessionStateFactory
 {
@@ -12,6 +13,7 @@ final readonly class CharacterSessionStateFactory
         private CharacterHitPointCalculator $hitPointCalculator,
         private CharacterResourceResolver $resourceResolver,
         private CharacterSpellSlotCalculator $spellSlotCalculator,
+        private CharacterActiveEffectRepository $activeEffectRepository,
     ) {
     }
 
@@ -30,6 +32,8 @@ final readonly class CharacterSessionStateFactory
             ));
         }
 
+        $maximumAdjustment = $this->activeEffectRepository->findAidFor($character)?->getAmount() ?? 0;
+
         $progressions = $this->createProgressions($character);
         $progressionValues = [];
 
@@ -39,9 +43,9 @@ final readonly class CharacterSessionStateFactory
 
         return [
             'hitPoints' => [
-                'current' => $hitPoints->maximumValue,
+                'current' => $hitPoints->maximumValue + $maximumAdjustment,
                 'temporary' => 0,
-                'maximumAdjustment' => 0,
+                'maximumAdjustment' => $maximumAdjustment,
             ],
             'hitDice' => $this->createHitDice($character),
             'progressions' => $progressions,

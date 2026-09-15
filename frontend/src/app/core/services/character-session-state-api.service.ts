@@ -30,6 +30,25 @@ export interface CharacterActionsState {
   preparationPending: boolean;
 }
 
+export interface CharacterActiveEffectSummary {
+  id: number;
+  type: string;
+  amount: number;
+  sourceCharacter: {
+    id: number;
+    name: string;
+  } | null;
+}
+
+export interface CharacterActionTarget {
+  id: number;
+  name: string;
+}
+
+interface CharacterActionTargetsResponse {
+  targets: CharacterActionTarget[];
+}
+
 export interface CharacterSessionStateApiResponse {
   id: number;
   revision: number;
@@ -44,6 +63,8 @@ export interface CharacterSessionStateApiResponse {
     name: string;
     status: 'draft' | 'live' | 'closed';
   };
+
+  activeEffects: CharacterActiveEffectSummary[];
 
   character: CharacterProfile;
   participating: boolean;
@@ -128,36 +149,34 @@ export class CharacterSessionStateApiService {
     );
   }
 
-  setLevelUpPermission(
-    sessionId: number,
-    characterId: number,
-    allowed: boolean,
-  ): Observable<CharacterSessionStateApiResponse> {
-    return this.http.patch<CharacterSessionStateApiResponse>(
-      `${this.apiUrl}/sessions/${sessionId}/characters/${characterId}/level-up-permission`,
-      { allowed },
-    );
+  setLevelUpPermission(sessionId: number, characterId: number, allowed: boolean): Observable<CharacterSessionStateApiResponse>
+  {
+    return this.http.patch<CharacterSessionStateApiResponse>(`${this.apiUrl}/sessions/${sessionId}/characters/${characterId}/level-up-permission`, { allowed });
   }
 
-  adjustMaximumHitPoints(
-    sessionId: number,
-    characterId: number,
-    delta: number,
-  ): Observable<CharacterSessionStateApiResponse> {
-    return this.http.post<CharacterSessionStateApiResponse>(
-      `${this.apiUrl}/sessions/${sessionId}/characters/${characterId}/hit-points/maximum-adjustment`,
-      { delta },
-    );
+  adjustMaximumHitPoints(sessionId: number, characterId: number, delta: number ): Observable<CharacterSessionStateApiResponse>
+  {
+    return this.http.post<CharacterSessionStateApiResponse>(`${this.apiUrl}/sessions/${sessionId}/characters/${characterId}/hit-points/maximum-adjustment`, { delta });
   }
 
-  updatePreparedActions(
-    accessToken: string,
-    prepared: string[],
-    revision: number,
-  ): Observable<CharacterSessionStateApiResponse> {
-    return this.http.patch<CharacterSessionStateApiResponse>(
-      `${this.apiUrl}/public/characters/${accessToken}/actions/prepared`,
-      { prepared, revision },
-    );
+  updatePreparedActions(accessToken: string, prepared: string[], revision: number): Observable<CharacterSessionStateApiResponse>
+  {
+    return this.http.patch<CharacterSessionStateApiResponse>(`${this.apiUrl}/public/characters/${accessToken}/actions/prepared`, { prepared, revision });
+  }
+
+  getActionTargets(accessToken: string): Observable<CharacterActionTarget[]>
+  {
+    return this.http.get<CharacterActionTargetsResponse>(`${this.apiUrl}/public/characters/${accessToken}/action-targets`)
+      .pipe(map(response => response.targets));
+  }
+
+  useAid( accessToken: string, spellSlotLevel: number, targetIds: number[], revision: number): Observable<CharacterSessionStateApiResponse>
+  {
+    return this.http.post<CharacterSessionStateApiResponse>(`${this.apiUrl}/public/characters/${accessToken}/actions/aid`, { spellSlotLevel, targetIds, revision });
+  }
+
+  endActiveEffect(sessionId: number, characterId: number, effectId: number): Observable<CharacterSessionStateApiResponse>
+  {
+    return this.http.delete<CharacterSessionStateApiResponse>(`${this.apiUrl}/sessions/${sessionId}/characters/${characterId}/active-effects/${effectId}`);
   }
 }

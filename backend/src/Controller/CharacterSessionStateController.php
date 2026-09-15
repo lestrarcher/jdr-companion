@@ -6,7 +6,8 @@ namespace App\Controller;
 
 use App\Service\PlayerCharacterAccess;
 use App\Service\PlayerCharacterStateUpdater;
-
+use App\Entity\CharacterActiveEffect;
+use App\Service\CharacterActiveEffectService;
 use App\Entity\Character;
 use App\Entity\CharacterSessionState;
 use App\Entity\GameSession;
@@ -19,6 +20,7 @@ use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\OptimisticLockException;
 use App\Service\CharacterHitPointStateService;
 use App\Service\CharacterActionResolver;
+use App\Repository\CharacterActiveEffectRepository;
 use JsonException;
 use App\Service\CharacterSessionStateFactory;
 use App\Service\CharacterSessionStateSynchronizer;
@@ -32,6 +34,7 @@ use App\Service\CharacterLevelUpOptionsService;
 use App\Service\CharacterLevelUpRequestResolver;
 use App\Service\CharacterLevelUpService;
 use App\Entity\ProgressionDefinition;
+use App\Service\CharacterAidActionService;
 use App\Repository\ProgressionDefinitionRepository;
 
 final class CharacterSessionStateController extends AbstractController
@@ -41,6 +44,7 @@ final class CharacterSessionStateController extends AbstractController
         private readonly CharacterProfileSerializer $profileSerializer,
         private readonly CharacterSessionStateSynchronizer $stateSynchronizer,
         private readonly CharacterHitPointStateService $hitPointStateService,
+        private readonly CharacterActiveEffectRepository $activeEffectRepository,
     ) {
     }
 
@@ -502,6 +506,131 @@ final class CharacterSessionStateController extends AbstractController
             $this->serializeState($sessionState, true),
         );
     }
+
+    #[Route(
+    '/sessions/{sessionId}/characters/{characterId}/active-effects/{effectId}',
+    name: 'api_character_active_effect_terminate',
+    requirements: [
+        'sessionId' => '\d+',
+        'characterId' => '\d+',
+        'effectId' => '\d+',
+    ],
+    methods: ['DELETE'],
+)]
+public function terminateActiveEffect(
+    int $sessionId,
+    int $characterId,
+    int $effectId,
+    GameSessionRepository $gameSessionRepository,
+    CharacterRepository $characterRepository,
+    CharacterSessionStateRepository $stateRepository,
+    CharacterActiveEffectRepository $effectRepository,
+    CharacterActiveEffectService $activeEffectService,
+    EntityManagerInterface $entityManager,
+): JsonResponse {
+    $gameSession = $gameSessionRepository->find($sessionId);
+    $character = $characterRepository->find($characterId);
+    $effect = $effectRepository->find($effectId);
+
+    if (!$gameSession instanceof GameSession) {
+        return $this->json(
+            ['message' => 'Session introuvable.'],
+            Response::HTTP_NOT_FOUND,
+        );
+    }
+
+    if (!$character instanceof Character) {
+        return $this->json(
+            ['message' => 'Personnage introuvable.'],
+            Response::HTTP_NOT_FOUND,
+        );
+    }
+
+    if (!$effect instanceof CharacterActiveEffect) {
+        return $this->json(
+            ['message' => 'Effet actif introuvable.'],
+            Response::HTTP_NOT_FOUND,
+        );
+    }
+
+    $this->denyAccessUnlessGranted(
+        CampaignVoter::MANAGE,
+        $gameSession->getCampaign(),
+    );
+
+    if (
+        $character->getCampaign()->getId()
+        !== $gameSession->getCampaign()->getId()
+    ) {
+        return $this->json(
+            ['message' => 'Le personnage ne fait pas partie de cette campagne.'],
+            Response::HTTP_BAD_REQUEST,
+        );
+    }
+
+    if (
+        $effect->getTargetCharacter()->getId()
+        !== $character->getId()
+    ) {
+        return $this->json(
+            ['message' => 'Cet effet n’appartient pas à ce personnage.'],
+            Response::HTTP_BAD_REQUEST,
+        );
+    }
+
+    $sessionState = $stateRepository->findOneBy([
+        'gameSession' => $gameSession,
+        'character' => $character,
+    ]);
+
+    if (!$sessionState instanceof CharacterSessionState) {
+        return $this->json(
+            ['message' => 'État de session du personnage introuvable.'],
+            Response::HTTP_NOT_FOUND,
+        );
+    }
+
+    try {
+        return $entityManager->wrapInTransaction(
+            function () use (
+                $entityManager,
+                $sessionState,
+                $effect,
+                $activeEffectService,
+            ): JsonResponse {
+                $entityManager->lock(
+                    $sessionState,
+                    LockMode::PESSIMISTIC_WRITE,
+                );
+
+                $entityManager->lock(
+                    $effect,
+                    LockMode::PESSIMISTIC_WRITE,
+                );
+
+                $activeEffectService->terminate(
+                    $sessionState,
+                    $effect,
+                );
+
+                $entityManager->remove($effect);
+                $entityManager->flush();
+
+                return $this->json(
+                    $this->serializeState(
+                        $sessionState,
+                        true,
+                    ),
+                );
+            },
+        );
+    } catch (\DomainException $exception) {
+        return $this->json(
+            ['message' => $exception->getMessage()],
+            Response::HTTP_UNPROCESSABLE_ENTITY,
+        );
+    }
+}
 
     #[Route(
         '/sessions/{sessionId}/characters/{characterId}/level-up-permission',
@@ -1014,6 +1143,8 @@ final class CharacterSessionStateController extends AbstractController
                 $sessionState,
             );
 
+        $activeEffects = $this->activeEffectRepository->findBy(['targetCharacter' => $character]);
+
         $data = [
             'id' => $state->getId(),
             'revision' => $state->getRevision(),
@@ -1033,6 +1164,20 @@ final class CharacterSessionStateController extends AbstractController
             'character' => $this->profileSerializer->serialize(
                 $character,
                 $this->extractProgressionValues($state->getState()),
+            ),
+            'activeEffects' => array_map(
+                static fn ($effect): array => [
+                    'id' => $effect->getId(),
+                    'type' => $effect->getType(),
+                    'amount' => $effect->getAmount(),
+                    'sourceCharacter' => $effect->getSourceCharacter() !== null
+                        ? [
+                            'id' => $effect->getSourceCharacter()->getId(),
+                            'name' => $effect->getSourceCharacter()->getName(),
+                        ]
+                        : null,
+                ],
+                $activeEffects,
             ),
             'participating' => $state->isParticipating(),
             'levelUpAllowed' => $state->isLevelUpAllowed(),
@@ -1077,5 +1222,294 @@ final class CharacterSessionStateController extends AbstractController
 
         return $values;
     }
+
+    #[Route(
+        '/public/characters/{accessToken}/action-targets',
+        name: 'api_public_character_action_targets',
+        requirements: ['accessToken' => '[a-f0-9]{64}'],
+        methods: ['GET'],
+    )]
+    public function actionTargets(
+        string $accessToken,
+        PlayerCharacterAccess $playerAccess,
+        CharacterSessionStateRepository $stateRepository,
+    ): JsonResponse {
+        $characterState = $playerAccess->requireParticipating(
+            $accessToken,
+        );
+
+        $states = $stateRepository->findBy([
+            'gameSession' => $characterState->getGameSession(),
+            'participating' => true,
+        ]);
+
+        return $this->json([
+            'targets' => array_map(
+                static fn (CharacterSessionState $state): array => [
+                    'id' => $state->getCharacter()->getId(),
+                    'name' => $state->getCharacter()->getName(),
+                ],
+                $states,
+            ),
+        ]);
+    }
+
+    #[Route(
+    '/public/characters/{accessToken}/actions/aid',
+    name: 'api_public_character_action_aid',
+    requirements: [
+        'accessToken' => '[a-f0-9]{64}',
+    ],
+    methods: ['POST'],
+)]
+public function useAid(
+    string $accessToken,
+    Request $request,
+    PlayerCharacterAccess $playerAccess,
+    CharacterSessionStateRepository $stateRepository,
+    CharacterAidActionService $aidActionService,
+    EntityManagerInterface $entityManager,
+): JsonResponse {
+    $casterState =
+        $playerAccess->requireParticipating(
+            $accessToken,
+        );
+
+    if (
+        $casterState
+            ->getGameSession()
+            ->getStatus()
+        !== GameSession::STATUS_LIVE
+    ) {
+        return $this->json(
+            [
+                'message' =>
+                    'Cette session n’est pas ouverte.',
+            ],
+            Response::HTTP_CONFLICT,
+        );
+    }
+
+    try {
+        $payload = $request->toArray();
+    } catch (JsonException) {
+        return $this->json(
+            [
+                'message' =>
+                    'Le corps JSON est invalide.',
+            ],
+            Response::HTTP_BAD_REQUEST,
+        );
+    }
+
+    $spellSlotLevel =
+        $payload['spellSlotLevel']
+        ?? null;
+
+    $targetIds =
+        $payload['targetIds']
+        ?? null;
+
+    $revision =
+        $payload['revision']
+        ?? null;
+
+    if (
+        !is_int($spellSlotLevel)
+        || $spellSlotLevel < 2
+    ) {
+        return $this->json(
+            [
+                'message' =>
+                    'Le niveau d’emplacement est invalide.',
+            ],
+            Response::HTTP_UNPROCESSABLE_ENTITY,
+        );
+    }
+
+    if (
+        !is_array($targetIds)
+        || $targetIds === []
+        || count($targetIds) > 3
+    ) {
+        return $this->json(
+            [
+                'message' =>
+                    'Aide doit cibler entre une et trois créatures.',
+            ],
+            Response::HTTP_UNPROCESSABLE_ENTITY,
+        );
+    }
+
+    foreach ($targetIds as $targetId) {
+        if (!is_int($targetId)) {
+            return $this->json(
+                [
+                    'message' =>
+                        'Les identifiants de cibles sont invalides.',
+                ],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
+    }
+
+    $targetIds = array_values(
+        array_unique($targetIds),
+    );
+
+    if (
+        count($targetIds) === 0
+        || count($targetIds) > 3
+    ) {
+        return $this->json(
+            [
+                'message' =>
+                    'Aide doit cibler entre une et trois créatures différentes.',
+            ],
+            Response::HTTP_UNPROCESSABLE_ENTITY,
+        );
+    }
+
+    if (
+        !is_int($revision)
+        || $revision < 1
+    ) {
+        return $this->json(
+            [
+                'message' =>
+                    'Une révision entière positive est requise.',
+            ],
+            Response::HTTP_UNPROCESSABLE_ENTITY,
+        );
+    }
+
+    if (
+        $casterState->getRevision()
+        !== $revision
+    ) {
+        return $this->json(
+            [
+                'message' =>
+                    'Le personnage a été modifié ailleurs. Rechargez son état.',
+            ],
+            Response::HTTP_CONFLICT,
+        );
+    }
+
+    try {
+        return $entityManager
+            ->wrapInTransaction(
+                function () use (
+                    $entityManager,
+                    $casterState,
+                    $stateRepository,
+                    $aidActionService,
+                    $spellSlotLevel,
+                    $targetIds,
+                    $revision,
+                ): JsonResponse {
+                    $entityManager->lock(
+                        $casterState
+                            ->getGameSession(),
+                        \Doctrine\DBAL\LockMode::PESSIMISTIC_READ,
+                    );
+
+                    $entityManager->refresh(
+                        $casterState
+                            ->getGameSession(),
+                    );
+
+                    if (
+                        $casterState
+                            ->getGameSession()
+                            ->getStatus()
+                        !== GameSession::STATUS_LIVE
+                    ) {
+                        return $this->json(
+                            [
+                                'message' =>
+                                    'Cette session n’est pas ouverte.',
+                            ],
+                            Response::HTTP_CONFLICT,
+                        );
+                    }
+
+                    $entityManager->lock(
+                        $casterState,
+                        \Doctrine\DBAL\LockMode::OPTIMISTIC,
+                        $revision,
+                    );
+
+                    $targetStates = [];
+
+                    foreach ($targetIds as $targetId) {
+                        $targetState =
+                            $stateRepository->findOneBy([
+                                'gameSession' =>
+                                    $casterState
+                                        ->getGameSession(),
+                                'character' =>
+                                    $targetId,
+                                'participating' =>
+                                    true,
+                            ]);
+
+                        if (
+                            !$targetState instanceof
+                            CharacterSessionState
+                        ) {
+                            return $this->json(
+                                [
+                                    'message' =>
+                                        'Une cible ne participe pas à cette session.',
+                                ],
+                                Response::HTTP_UNPROCESSABLE_ENTITY,
+                            );
+                        }
+
+                        $entityManager->lock(
+                            $targetState,
+                            \Doctrine\DBAL\LockMode::PESSIMISTIC_WRITE,
+                        );
+
+                        $targetStates[] =
+                            $targetState;
+                    }
+
+                    $aidActionService->apply(
+                        $casterState,
+                        $spellSlotLevel,
+                        $targetStates,
+                    );
+
+                    $entityManager->flush();
+
+                    return $this->json(
+                        $this->serializeState(
+                            $casterState,
+                        ),
+                    );
+                },
+            );
+    } catch (
+        \Doctrine\ORM\OptimisticLockException
+    ) {
+        return $this->json(
+            [
+                'message' =>
+                    'Le personnage a été modifié ailleurs. Rechargez son état.',
+            ],
+            Response::HTTP_CONFLICT,
+        );
+    } catch (\DomainException $exception) {
+        return $this->json(
+            [
+                'message' =>
+                    $exception->getMessage(),
+            ],
+            Response::HTTP_UNPROCESSABLE_ENTITY,
+        );
+    }
+}
 
 }

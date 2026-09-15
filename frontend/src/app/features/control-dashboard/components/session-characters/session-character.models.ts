@@ -12,3 +12,8 @@ export interface MaximumHitPointAdjustment {
   amount: number;
   direction: -1 | 1;
 }
+
+export interface ActiveEffectTermination {
+  character: SessionCharacterView;
+  effectId: number;
+}

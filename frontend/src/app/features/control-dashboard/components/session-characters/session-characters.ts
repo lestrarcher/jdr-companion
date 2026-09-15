@@ -39,6 +39,7 @@ import {
 } from '@core/services/rest-request-api.service';
 
 import {
+  ActiveEffectTermination,
   MaximumHitPointAdjustment,
   SessionCharacterView,
 } from './session-character.models';
@@ -97,7 +98,7 @@ export class SessionCharacters implements OnInit {
   protected readonly changingCharacterId = signal<number | null>(null);
   protected readonly changingLevelUpPermissionId = signal<number | null>(null);
   protected readonly changingMaximumHitPointsId = signal<number | null>(null);
-
+  protected readonly endingActiveEffectId = signal<number | null>(null);
   protected readonly characterActionError = signal<string | null>(null);
   protected readonly characterActionFeedback = signal<string | null>(null);
 
@@ -795,4 +796,50 @@ export class SessionCharacters implements OnInit {
 
     return fallback;
   }
+
+  protected terminateActiveEffect(
+  termination: ActiveEffectTermination,
+): void {
+  if (this.endingActiveEffectId() !== null) {
+    return;
+  }
+
+  const {
+    character,
+    effectId,
+  } = termination;
+
+  this.endingActiveEffectId.set(effectId);
+  this.clearCharacterFeedback();
+
+  this.characterSessionStateApi
+    .endActiveEffect(
+      this.sessionId(),
+      character.character.id,
+      effectId,
+    )
+    .pipe(
+      finalize(() =>
+        this.endingActiveEffectId.set(null),
+      ),
+    )
+    .subscribe({
+      next: state => {
+        this.upsertState(state);
+
+        this.characterActionFeedback.set(
+          `L’effet actif de ${character.character.name} a pris fin.`,
+        );
+      },
+
+      error: error => {
+        this.characterActionError.set(
+          this.apiError(
+            error,
+            `Impossible de terminer l’effet de ${character.character.name}.`,
+          ),
+        );
+      },
+    });
+}
 }

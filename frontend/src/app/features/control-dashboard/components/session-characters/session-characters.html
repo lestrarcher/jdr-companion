@@ -107,33 +107,17 @@
             [character]="character"
             [campaignId]="campaignId()"
             [sessionId]="sessionId()"
-            [changingCharacterId]="
-              changingCharacterId()
-            "
-            [changingLevelUpPermissionId]="
-              changingLevelUpPermissionId()
-            "
-            [changingMaximumHitPointsId]="
-              changingMaximumHitPointsId()
-            "
-            (statisticsRequested)="
-              openStatistics($event)
-            "
-            (progressionRequested)="
-              openProgression($event)
-            "
-            (itemAssignmentRequested)="
-              openItemAssignment($event)
-            "
-            (levelUpPermissionRequested)="
-              toggleLevelUpPermission($event)
-            "
-            (removalRequested)="
-              removeFromSession($event)
-            "
-            (maximumHitPointsRequested)="
-              adjustMaximumHitPoints($event)
-            "
+            [changingCharacterId]="changingCharacterId()"
+            [changingLevelUpPermissionId]="changingLevelUpPermissionId()"
+            [changingMaximumHitPointsId]="changingMaximumHitPointsId()"
+            (statisticsRequested)="openStatistics($event)"
+            (progressionRequested)="openProgression($event)"
+            (itemAssignmentRequested)="openItemAssignment($event)"
+            (levelUpPermissionRequested)="toggleLevelUpPermission($event)"
+            (removalRequested)="removeFromSession($event)"
+            (maximumHitPointsRequested)="adjustMaximumHitPoints($event)"
+            [endingActiveEffectId]="endingActiveEffectId()"
+            (activeEffectTerminationRequested)="terminateActiveEffect($event)"
           />
         } @empty {
           <div class="empty-state">

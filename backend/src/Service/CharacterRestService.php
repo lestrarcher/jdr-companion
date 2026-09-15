@@ -9,6 +9,9 @@ use App\Entity\CharacterSessionState;
 use App\Entity\RestRequest;
 use App\Entity\TrackableResourceDefinition;
 use App\Enum\ResourceMaximumType;
+use App\Entity\CharacterActiveEffect;
+use App\Repository\CharacterActiveEffectRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use App\Repository\TrackableResourceDefinitionRepository;
 
 final readonly class CharacterRestService
@@ -20,6 +23,9 @@ final readonly class CharacterRestService
         private CharacterSpellSlotCalculator $spellSlotCalculator,
         private TrackableResourceDefinitionRepository $resourceDefinitionRepository,
         private CharacterAbilityCalculator $abilityCalculator,
+        private CharacterActiveEffectRepository $activeEffectRepository,
+        private CharacterActiveEffectService $activeEffectService,
+        private EntityManagerInterface $entityManager,
     ) {
     }
 
@@ -37,12 +43,11 @@ final readonly class CharacterRestService
         if ($restType === RestRequest::TYPE_SHORT_REST) {
             $state = $this->applyShortRest($character, $state);
         } elseif ($restType === RestRequest::TYPE_LONG_REST) {
-            $state = $this->applyLongRest($character, $state);
+            $sessionState->setState($state);
+            $this->endLongRestEffects($sessionState);
+            $state = $this->applyLongRest($character, $sessionState->getState());
         } else {
-            throw new \InvalidArgumentException(sprintf(
-                'Type de repos invalide : "%s".',
-                $restType,
-            ));
+            throw new \InvalidArgumentException(sprintf('Type de repos invalide : "%s".', $restType));
         }
 
         $sessionState->setState($state);
@@ -72,10 +77,8 @@ final readonly class CharacterRestService
      *
      * @return array<string, mixed>
      */
-    private function applyLongRest(
-        Character $character,
-        array $state,
-    ): array {
+    private function applyLongRest(Character $character,  array $state): array
+    {
         $hitPoints = $this->hitPointCalculator->calculate($character);
 
         if ($hitPoints->isComplete() && $hitPoints->maximumValue !== null) {
@@ -291,5 +294,17 @@ final readonly class CharacterRestService
         unset($state);
 
         return $states;
+    }
+
+    private function endLongRestEffects(CharacterSessionState $sessionState): void
+    {
+        $effect = $this->activeEffectRepository->findAidFor($sessionState->getCharacter());
+
+        if (!$effect instanceof CharacterActiveEffect) {
+            return;
+        }
+
+        $this->activeEffectService->terminate($sessionState, $effect);
+        $this->entityManager->remove($effect);
     }
 }

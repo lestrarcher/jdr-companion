@@ -83,6 +83,7 @@ export class PlayerPortal {
   protected readonly preparationSaving = signal(false);
   protected readonly preparationError = signal<string | null>(null);
   protected readonly activeAction = signal<CharacterActionSummary | null>(null);
+  protected readonly aidTargets = signal<AidTarget[]>([]);
 
   private readonly remoteSynchronization = new Subject<{
     state: CharacterSessionStatePayload;
@@ -487,11 +488,35 @@ export class PlayerPortal {
       )
       .subscribe();
   }
+
+  private refreshCharacterIfChanged(): void {
+    if (this.sessionStatus() !== 'live' || this.saveStatus() === 'saving') return;
+
+    this.characterSessionStateApi.getByAccessToken(this.accessToken).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      catchError(() => of(null)),
+    ).subscribe(response => {
+      if (!response || response.revision === this.serverRevision) return;
+
+      this.serverRevision = response.revision;
+
+      const character = characterProfileToCharacter(response.character, response.state);
+
+      this.characterStateService.applyServerState(character);
+      this.character.set(character);
+      this.features.set(response.character.features);
+      this.actions.set(response.character.actions ?? []);
+      this.characterActions.set(response.state.characterActions ?? null);
+      this.levelUpAllowed.set(response.levelUpAllowed);
+    });
+  }
 // TODO: remplacer ce polling temporaire par des événements Mercure.
   private initializeRestRequestPolling(): void {
     timer(0, 5000)
       .pipe(
         switchMap(() => {
+          this.refreshCharacterIfChanged();
+
           if (this.sessionStatus() !== 'live') {
             this.latestRestRequest.set(null);
 
@@ -651,21 +676,100 @@ export class PlayerPortal {
       });
   }
 
-  protected openAction(
-    action: CharacterActionSummary,
-  ): void {
-    switch (action.handlerType) {
-      case 'aid':
-        this.activeAction.set(action);
-        break;
-    }
+protected openAction(
+  action: CharacterActionSummary,
+): void {
+  switch (action.handlerType) {
+    case 'aid':
+      this.characterSessionStateApi
+        .getActionTargets(this.accessToken)
+        .pipe(
+          takeUntilDestroyed(this.destroyRef),
+        )
+        .subscribe({
+          next: targets => {
+            this.aidTargets.set(targets);
+            this.activeAction.set(action);
+          },
+          error: () => {
+            this.saveError.set(
+              'Impossible de charger les cibles disponibles.',
+            );
+          },
+        });
+      break;
   }
+}
 
   protected closeAction(): void {
     this.activeAction.set(null);
   }
 
-  protected useAid(payload: AidActionPayload): void {
-    console.log('AIDE', payload);
+  protected useAid(
+    payload: AidActionPayload,
+  ): void {
+    if (this.sessionStatus() !== 'live') {
+      return;
+    }
+
+    this.saveError.set(null);
+    this.saveStatus.set('saving');
+
+    this.characterSessionStateApi
+      .useAid(
+        this.accessToken,
+        payload.spellSlotLevel,
+        payload.targetIds,
+        this.serverRevision,
+      )
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (response) => {
+          this.serverRevision = response.revision;
+
+          const character =
+            characterProfileToCharacter(
+              response.character,
+              response.state,
+            );
+
+          this.characterStateService.applyServerState(
+            character,
+          );
+
+          this.actions.set(
+            response.character.actions ?? [],
+          );
+
+          this.characterActions.set(
+            response.state.characterActions ?? null,
+          );
+
+          this.activeAction.set(null);
+
+          this.saveStatus.set('saved');
+        },
+
+        error: (error) => {
+          if (error.status === 409) {
+            this.loadCharacter(false);
+
+            this.saveError.set(
+              'Le personnage a été modifié ailleurs. Ses données ont été rechargées.',
+            );
+
+            return;
+          }
+
+          this.saveStatus.set('error');
+
+          this.saveError.set(
+            error.error?.message
+              ?? 'Impossible de lancer Aide.',
+          );
+        },
+      });
   }
 }

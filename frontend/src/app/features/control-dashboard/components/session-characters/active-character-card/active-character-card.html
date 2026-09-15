@@ -87,55 +87,6 @@
           + {{ temporaryHitPoints() }} PV temporaires
         </span>
       }
-
-      <div class="maximum-hp-control">
-        <label>
-          <span>Modifier le maximum</span>
-
-          <input
-            type="number"
-            min="1"
-            step="1"
-            inputmode="numeric"
-            [value]="maximumHitPointAmount()"
-            (input)="setMaximumHitPointAmount($event)"
-          />
-        </label>
-
-        <div class="maximum-hp-actions">
-          <button
-            type="button"
-            class="action action-danger"
-            [disabled]="
-              maximumHitPointAmount() <= 0
-              || changingMaximumHitPointsId() !== null
-            "
-            (click)="adjustMaximumHitPoints(-1)"
-          >
-            {{
-              isChangingMaximumHitPoints()
-                ? 'Modification…'
-                : 'Réduire'
-            }}
-          </button>
-
-          <button
-            type="button"
-            class="action"
-            [disabled]="
-              maximumHitPointAmount() <= 0
-              || changingMaximumHitPointsId() !== null
-            "
-            (click)="adjustMaximumHitPoints(1)"
-          >
-            {{
-              isChangingMaximumHitPoints()
-                ? 'Modification…'
-                : 'Augmenter'
-            }}
-          </button>
-        </div>
-      </div>
     </section>
   } @else {
     <p class="missing-hp">
@@ -214,4 +165,130 @@
       }}
     </button>
   </footer>
+
+  <section class="effects-panel">
+    <header class="effects-panel-header">
+      <div>
+        <span class="effects-panel-eyebrow">
+          Altérations
+        </span>
+
+        <strong>
+          Effets actifs
+        </strong>
+      </div>
+    </header>
+
+    @if (activeEffects().length > 0) {
+      <div class="active-effects-list">
+        @for (
+          effect of activeEffects();
+          track effect.id
+        ) {
+          <div class="active-effect-row">
+            <div class="active-effect-main">
+              <strong class="active-effect-name">
+                @switch (effect.type) {
+                  @case ('aid') {
+                    Aide
+                  }
+
+                  @default {
+                    {{ effect.type }}
+                  }
+                }
+              </strong>
+
+              <div class="active-effect-details">
+                @if (effect.type === 'aid') {
+                  <span>
+                    +{{ effect.amount }} PV maximum
+                  </span>
+                }
+
+                @if (effect.sourceCharacter) {
+                  <span>
+                    Lancé par {{ effect.sourceCharacter.name }}
+                  </span>
+                }
+              </div>
+            </div>
+
+            <button
+              type="button"
+              class="effect-end-button"
+              [disabled]="endingActiveEffectId() !== null"
+              (click)="
+                activeEffectTerminationRequested.emit({
+                  character: character(),
+                  effectId: effect.id
+                })
+              "
+            >
+              {{
+                isEndingActiveEffect(effect.id)
+                  ? 'Fin…'
+                  : 'Terminer'
+              }}
+            </button>
+          </div>
+        }
+      </div>
+    } @else {
+      <span class="effects-empty">
+        Aucun effet actif
+      </span>
+    }
+
+    <div class="maximum-hp-control">
+      <label>
+        <span>
+          Ajustement manuel du maximum
+        </span>
+
+        <input
+          type="number"
+          min="1"
+          step="1"
+          inputmode="numeric"
+          [value]="maximumHitPointAmount()"
+          (input)="setMaximumHitPointAmount($event)"
+        />
+      </label>
+
+      <div class="maximum-hp-actions">
+        <button
+          type="button"
+          class="maximum-hp-button maximum-hp-button--danger"
+          [disabled]="
+            maximumHitPointAmount() <= 0
+            || changingMaximumHitPointsId() !== null
+          "
+          (click)="adjustMaximumHitPoints(-1)"
+        >
+          {{
+            isChangingMaximumHitPoints()
+              ? 'Modification…'
+              : 'Réduire'
+          }}
+        </button>
+
+        <button
+          type="button"
+          class="maximum-hp-button"
+          [disabled]="
+            maximumHitPointAmount() <= 0
+            || changingMaximumHitPointsId() !== null
+          "
+          (click)="adjustMaximumHitPoints(1)"
+        >
+          {{
+            isChangingMaximumHitPoints()
+              ? 'Modification…'
+              : 'Augmenter'
+          }}
+        </button>
+      </div>
+    </div>
+  </section>
 </article>
