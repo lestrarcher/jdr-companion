@@ -290,4 +290,12 @@
       (confirmed)="useAid($event)"
     />
   }
+
+  @if (activeAction()?.handlerType === 'heroes-feast') {
+    <app-heroes-feast-action-modal
+      [targets]="aidTargets()"
+      (closed)="closeAction()"
+      (confirmed)="useHeroesFeast($event)"
+    />
+  }
 </main>

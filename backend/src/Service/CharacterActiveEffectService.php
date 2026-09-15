@@ -31,6 +31,7 @@ final readonly class CharacterActiveEffectService
 
         switch ($effect->getType()) {
             case CharacterActiveEffect::TYPE_AID:
+            case CharacterActiveEffect::TYPE_HEROES_FEAST:
                 $state = $this->hitPointStateService->adjustMaximum(
                     $character,
                     $sessionState->getState(),

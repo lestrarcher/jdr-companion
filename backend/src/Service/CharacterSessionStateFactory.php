@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\Character;
+use App\Entity\CharacterActiveEffect;
 use App\Repository\CharacterActiveEffectRepository;
 
 final readonly class CharacterSessionStateFactory
@@ -32,7 +33,9 @@ final readonly class CharacterSessionStateFactory
             ));
         }
 
-        $maximumAdjustment = $this->activeEffectRepository->findAidFor($character)?->getAmount() ?? 0;
+        $aidAmount = $this->activeEffectRepository->findEffectFor($character, CharacterActiveEffect::TYPE_AID)?->getAmount() ?? 0;
+        $heroesFeastAmount = $this->activeEffectRepository->findEffectFor($character, CharacterActiveEffect::TYPE_HEROES_FEAST)?->getAmount() ?? 0;
+        $maximumAdjustment = $aidAmount + $heroesFeastAmount;
 
         $progressions = $this->createProgressions($character);
         $progressionValues = [];

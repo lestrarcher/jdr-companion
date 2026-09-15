@@ -11,21 +11,15 @@ use Doctrine\Persistence\ManagerRegistry;
 
 final class CharacterActiveEffectRepository extends ServiceEntityRepository
 {
-    public function __construct(
-        ManagerRegistry $registry,
-    ) {
-        parent::__construct(
-            $registry,
-            CharacterActiveEffect::class,
-        );
+    public function __construct(ManagerRegistry $registry) {
+        parent::__construct($registry, CharacterActiveEffect::class);
     }
 
-    public function findAidFor(
-        Character $target,
-    ): ?CharacterActiveEffect {
+    public function findEffectFor(Character $target, string $type): ?CharacterActiveEffect
+    {
         return $this->findOneBy([
             'targetCharacter' => $target,
-            'type' => CharacterActiveEffect::TYPE_AID,
+            'type' => $type,
         ]);
     }
 }

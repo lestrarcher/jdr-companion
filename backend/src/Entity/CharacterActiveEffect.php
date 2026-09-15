@@ -16,6 +16,7 @@ use Doctrine\ORM\Mapping as ORM;
 class CharacterActiveEffect
 {
     public const TYPE_AID = 'aid';
+    public const TYPE_HEROES_FEAST = 'heroes-feast';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]

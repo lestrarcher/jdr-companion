@@ -18,6 +18,7 @@ final readonly class CharacterRestService
 {
     public function __construct(
         private CharacterHitPointCalculator $hitPointCalculator,
+        private CharacterHitPointStateService $hitPointStateService,
         private CharacterResourceResolver $resourceResolver,
         private CharacterSessionStateSynchronizer $stateSynchronizer,
         private CharacterSpellSlotCalculator $spellSlotCalculator,
@@ -79,11 +80,7 @@ final readonly class CharacterRestService
      */
     private function applyLongRest(Character $character,  array $state): array
     {
-        $hitPoints = $this->hitPointCalculator->calculate($character);
-
-        if ($hitPoints->isComplete() && $hitPoints->maximumValue !== null) {
-            $state['hitPoints']['current'] = $hitPoints->maximumValue;
-        }
+        $state['hitPoints']['current'] = $this->hitPointStateService->effectiveMaximum($character, $state);
 
         $state['hitPoints']['temporary'] = 0;
 
@@ -298,7 +295,7 @@ final readonly class CharacterRestService
 
     private function endLongRestEffects(CharacterSessionState $sessionState): void
     {
-        $effect = $this->activeEffectRepository->findAidFor($sessionState->getCharacter());
+        $effect = $this->activeEffectRepository->findEffectFor($sessionState->getCharacter(), CharacterActiveEffect::TYPE_AID);
 
         if (!$effect instanceof CharacterActiveEffect) {
             return;

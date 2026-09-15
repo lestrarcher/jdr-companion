@@ -4,7 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CharacterWalletComponent } from './components/character-wallet/character-wallet';
 import { CharacterMagicItems } from './components/character-magic-items/character-magic-items';
 
-import { EMPTY, Subject, catchError, concatMap, debounceTime, finalize, of, switchMap, tap, timer } from 'rxjs';
+import { EMPTY, Subject, catchError, concatMap, debounceTime, exhaustMap, finalize, of, switchMap, tap, timer } from 'rxjs';
 
 import { Character } from '@core/models/character.model';
 import { CharacterActionSummary, CharacterFeatureSummary } from '@core/services/character-api.service';
@@ -23,6 +23,7 @@ import { CharacterStoredValues } from './components/character-stored-values/char
 import { CharacterVitals } from './components/character-vitals/character-vitals';
 import { RestControls } from './components/rest-controls/rest-controls';
 import { AidActionModal, AidActionPayload, AidSpellSlot, AidTarget } from './components/aid-action-modal/aid-action-modal';
+import { HeroesFeastActionModal, HeroesFeastActionPayload } from './components/heroes-feast-action-modal/heroes-feast-action-modal';
 
 type SessionStatus =
   | 'draft'
@@ -52,6 +53,7 @@ type PlayerPortalTab =
     ActionPreparationModal,
     RouterLink,
     AidActionModal,
+    HeroesFeastActionModal,
   ],
   templateUrl: './player-portal.html',
   styleUrl: './player-portal.scss',
@@ -511,42 +513,31 @@ export class PlayerPortal {
     });
   }
 // TODO: remplacer ce polling temporaire par des événements Mercure.
-  private initializeRestRequestPolling(): void {
-    timer(0, 5000)
-      .pipe(
-        switchMap(() => {
-          this.refreshCharacterIfChanged();
+private initializeRestRequestPolling(): void {
+  timer(0, 5000)
+    .pipe(
+      exhaustMap(() => {
+        this.refreshCharacterIfChanged();
 
-          if (this.sessionStatus() !== 'live') {
-            this.latestRestRequest.set(null);
+        if (this.sessionStatus() !== 'live') {
+          this.latestRestRequest.set(null);
+          return of(null);
+        }
 
-            return of(null);
-          }
-
-          return this.restRequestApi
-            .getLatest(this.accessToken)
-            .pipe(
-              catchError((error: unknown) => {
-                console.error(
-                  'Impossible de vérifier la demande de repos.',
-                  error,
-                );
-
-                return of(null);
-              }),
-            );
-        }),
-
-        takeUntilDestroyed(
-          this.destroyRef,
-        ),
-      )
-      .subscribe((request) => {
-        this.handleRestRequestUpdate(
-          request,
-        );
-      });
-  }
+        return this.restRequestApi.getLatest(this.accessToken)
+          .pipe(
+            catchError((error: unknown) => {
+              console.error('Impossible de vérifier la demande de repos.', error);
+              return of(null);
+            }),
+          );
+      }),
+      takeUntilDestroyed(this.destroyRef),
+    )
+    .subscribe(request => {
+      this.handleRestRequestUpdate(request);
+    });
+}
 
   private handleRestRequestUpdate(
     request: RestRequestApiResponse | null,
@@ -681,6 +672,7 @@ protected openAction(
 ): void {
   switch (action.handlerType) {
     case 'aid':
+    case 'heroes-feast':
       this.characterSessionStateApi
         .getActionTargets(this.accessToken)
         .pipe(
@@ -769,6 +761,42 @@ protected openAction(
             error.error?.message
               ?? 'Impossible de lancer Aide.',
           );
+        },
+      });
+  }
+
+  protected useHeroesFeast(payload: HeroesFeastActionPayload): void {
+    if (this.sessionStatus() !== 'live') {
+      return;
+    }
+
+    this.saveError.set(null);
+    this.saveStatus.set('saving');
+
+    this.characterSessionStateApi.useHeroesFeast(this.accessToken, payload.hitPointBonus, payload.targetIds, this.serverRevision)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          this.serverRevision = response.revision;
+
+          const character = characterProfileToCharacter(response.character, response.state);
+          this.characterStateService.applyServerState(character);
+
+          this.actions.set(response.character.actions ?? []);
+          this.characterActions.set(response.state.characterActions ?? null);
+          this.activeAction.set(null);
+          this.saveStatus.set('saved');
+        },
+
+        error: (error) => {
+          if (error.status === 409) {
+            this.loadCharacter(false);
+            this.saveError.set('Le personnage a été modifié ailleurs. Ses données ont été rechargées.');
+            return;
+          }
+
+          this.saveStatus.set('error');
+          this.saveError.set(error.error?.message ?? 'Impossible d’utiliser Festin des héros.');
         },
       });
   }
