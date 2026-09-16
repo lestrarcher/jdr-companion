@@ -16,7 +16,7 @@ final readonly class CharacterSessionStateSynchronizer
         private CharacterHitPointStateService $hitPointStateService,
         private CharacterResourceResolver $resourceResolver,
         private CharacterSessionStateRepository $sessionStateRepository,
-        private CharacterSpellSlotCalculator $spellSlotCalculator,
+        private CharacterSpellSlotStateService $spellSlotStateService,
     ) {
     }
 
@@ -61,10 +61,7 @@ final readonly class CharacterSessionStateSynchronizer
      */
     public function synchronizeResources(Character $character, array $state): array
     {
-        $maximums = $this->resourceMaximums(
-            $character,
-            $this->extractProgressionValues($state),
-        );
+        $maximums = $this->resourceMaximums($character, $this->extractProgressionValues($state), $state);
         $resources = $state['resources'] ?? [];
 
         foreach ($maximums as $id => $maximum) {
@@ -154,7 +151,7 @@ final readonly class CharacterSessionStateSynchronizer
             // In particular, do not repair unrelated missing or stale resource state.
             $otherValues = $this->extractProgressionValues($state);
             unset($otherValues[$id]);
-            $unrelatedMaximums = $this->resourceMaximums($character, $otherValues);
+            $unrelatedMaximums = $this->resourceMaximums($character, $otherValues, $state);
             $synchronized = $this->synchronizeResources($character, $state);
             foreach ($synchronized['resources'] as $resourceState) {
                 $slug = $resourceState['id'];
@@ -173,6 +170,7 @@ final readonly class CharacterSessionStateSynchronizer
      * Photographie les maximums dérivés du personnage avant une modification.
      *
      * @param array<string, int> $progressionValues Valeurs explicites de la session.
+     * @param array<string, mixed> $state Contexte explicite des bonus temporaires d'emplacements.
      *
      * @return array{
      *     hitPoints: int|null,
@@ -180,7 +178,7 @@ final readonly class CharacterSessionStateSynchronizer
      *     resources: array<string, int>
      * }
      */
-    public function snapshot(Character $character, array $progressionValues = []): array
+    public function snapshot(Character $character, array $progressionValues = [], array $state = []): array
     {
         $hitPoints = $this->hitPointCalculator->calculate($character);
 
@@ -189,7 +187,7 @@ final readonly class CharacterSessionStateSynchronizer
                 ? $hitPoints->maximumValue
                 : null,
             'hitDice' => $this->hitDiceMaximums($character),
-            'resources' => $this->resourceMaximums($character, $progressionValues),
+            'resources' => $this->resourceMaximums($character, $progressionValues, $state),
         ];
     }
 
@@ -204,9 +202,10 @@ final readonly class CharacterSessionStateSynchronizer
     {
         $snapshots = [];
         foreach ($this->sessionStateRepository->findBy(['character' => $character]) as $sessionState) {
+            $state = $sessionState->getState();
             $snapshots[] = [
                 'sessionState' => $sessionState,
-                'before' => $this->snapshot($character, $this->extractProgressionValues($sessionState->getState())),
+                'before' => $this->snapshot($character, $this->extractProgressionValues($state), $state),
             ];
         }
 
@@ -231,7 +230,7 @@ final readonly class CharacterSessionStateSynchronizer
             $sessionState = $snapshot['sessionState'];
             $before = $snapshot['before'];
             $state = $sessionState->getState();
-            $after = $this->snapshot($character, $this->extractProgressionValues($state));
+            $after = $this->snapshot($character, $this->extractProgressionValues($state), $state);
 
             $state = $this->applyHitPointDelta(
                 $state,
@@ -342,19 +341,18 @@ final readonly class CharacterSessionStateSynchronizer
     }
 
     /**
+     * @param array<string, mixed> $state
      * @return array<string, int>
      */
-    private function resourceMaximums(
-        Character $character,
-        array $progressionValues = [],
-    ): array {
+    private function resourceMaximums(Character $character, array $progressionValues = [], array $state = []): array
+    {
         $maximums = [];
 
         foreach ($this->resourceResolver->resolve($character, $progressionValues) as $resource) {
             $maximums[$resource->getSlug()] = $resource->getMaximum();
         }
 
-        foreach ($this->spellSlotCalculator->calculate($character) as $level => $maximum) {
+        foreach ($this->spellSlotStateService->effectiveMaximums($character, $state) as $level => $maximum) {
             $maximums[sprintf('spell-slot-%d', $level)] = $maximum;
         }
 
