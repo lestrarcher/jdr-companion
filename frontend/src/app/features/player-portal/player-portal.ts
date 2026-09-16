@@ -7,7 +7,7 @@ import { CharacterMagicItems } from './components/character-magic-items/characte
 import { EMPTY, Subject, catchError, concatMap, debounceTime, exhaustMap, finalize, of, switchMap, tap, timer } from 'rxjs';
 
 import { Character } from '@core/models/character.model';
-import { CharacterActionSummary, CharacterFeatureSummary } from '@core/services/character-api.service';
+import { CharacterActionSummary, CharacterFeatSummary, CharacterFeatureSummary } from '@core/services/character-api.service';
 
 import { CharacterActionsState, CharacterSessionStatePayload, characterProfileToCharacter, toCharacterSessionStatePayload } from '@core/mappers/character-api.mapper';
 import { ActionPreparationModal } from './components/action-preparation-modal/action-preparation-modal';
@@ -66,147 +66,105 @@ type PlayerPortalTab =
   styleUrl: './player-portal.scss',
 })
 export class PlayerPortal {
+  // Dependencies and route context
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
-  protected readonly accessToken = this.route.snapshot.paramMap.get('accessToken') ?? '';
-
   private readonly characterStateService = inject(CharacterStateService);
   private readonly characterSessionStateApi = inject(CharacterSessionStateApiService);
   private readonly restRequestApi = inject(RestRequestApiService);
   private readonly campaignConfigurationRegistry = inject(CampaignConfigurationRegistryService);
 
-  protected readonly characterState = this.characterStateService.character;
+  protected readonly accessToken = this.route.snapshot.paramMap.get('accessToken') ?? '';
+  private readonly campaignId = this.route.snapshot.paramMap.get('campaignId') ?? '';
+  private readonly sessionId = this.route.snapshot.paramMap.get('sessionId') ?? '';
 
+  // Character and session
+  protected readonly characterState = this.characterStateService.character;
   protected readonly campaign = signal<CampaignConfig | null>(null);
   protected readonly character = signal<Character | null>(null);
   protected readonly sessionStatus = signal<SessionStatus | null>(null);
+  protected readonly levelUpAllowed = signal(false);
   protected readonly loading = signal(true);
   protected readonly loadError = signal<string | null>(null);
-  protected readonly restFeedback = signal<string | null>(null);
   protected readonly saveStatus = signal<SaveStatus>('idle');
   protected readonly saveError = signal<string | null>(null);
-  protected readonly levelUpAllowed = signal(false);
+  protected readonly activeTab = signal<PlayerPortalTab>('status');
+
+  // Features and actions
+  protected readonly features = signal<CharacterFeatureSummary[]>([]);
+  protected readonly feats = signal<CharacterFeatSummary[]>([]);
+  protected readonly visibleFeatures = computed(() => this.features().filter(feature => feature.visible));
+
+  protected readonly actions = signal<CharacterActionSummary[]>([]);
+  protected readonly characterActions = signal<CharacterActionsState | null>(null);
+  protected readonly activeAction = signal<CharacterActionSummary | null>(null);
+  protected readonly flexibleCastingAction = computed(() => this.actions().find(action => action.handlerType === 'flexible-casting'));
+  protected readonly arcaneRecoveryResource = computed(() => this.character()?.resources.find(resource => resource.id === 'arcane-recovery'));
+  protected readonly arcaneRecoveryAction = computed(() => this.actions().find(action => action.handlerType === 'arcane-recovery' && (this.arcaneRecoveryResource()?.currentValue ?? 0) > 0));
+  protected readonly preparationActions = computed(() => this.actions().filter(action => action.requiresPreparation));
+  protected readonly preparationPending = computed(() => this.characterActions()?.preparationPending === true && this.preparationActions().length > 0);
+  protected readonly preparedActions = computed(() => {
+    const prepared = this.characterActions()?.prepared ?? [];
+    return this.actions().filter(action => prepared.includes(action.slug));
+  });
+
+  // Resources and trackers
+  protected readonly sortedResources = computed(() => {
+    const character = this.characterState();
+    if (!character) return [];
+
+    return character.resources
+      .filter(resource => resource.hiddenFromTracker !== true)
+      .filter(resource => {
+        const condition = resource.unlockCondition;
+        if (!condition) return true;
+
+        const progression = character.progressions?.find(candidate => candidate.id === condition.progressionId);
+        return progression ? progression.currentValue >= condition.minimumValue : false;
+      })
+      .sort((first, second) => first.displayOrder - second.displayOrder);
+  });
+  protected readonly storedValueResources = computed(() => this.sortedResources().filter(resource => resource.storedValuesConfig !== undefined));
+  protected readonly aidSpellSlots = computed<AidSpellSlot[]>(() =>
+    this.characterState()
+      ?.resources
+      .filter(resource => resource.id.startsWith('spell-slot-') && resource.currentValue > 0)
+      .map(resource => ({ level: Number(resource.id.replace('spell-slot-', '')), current: resource.currentValue }))
+      .filter(slot => Number.isInteger(slot.level) && slot.level >= 2)
+      .sort((a, b) => a.level - b.level)
+    ?? [],
+  );
+
+  // Rest workflow
+  protected readonly restFeedback = signal<string | null>(null);
   private readonly latestRestRequest = signal<RestRequestApiResponse | null>(null);
   private readonly restRequestSubmitting = signal(false);
   private readonly handledRestRequest = signal<string | null>(null);
+  protected readonly pendingRestRequest = computed(() => {
+    const request = this.latestRestRequest();
+    return request?.status === 'pending' ? request : undefined;
+  });
+  protected readonly closedMessage = computed(() => this.sessionStatus() === 'closed' ? 'Cette session est terminée.' : 'La session n’est pas encore ouverte.');
+
+  // Action workflow
   protected readonly preparationSaving = signal(false);
   protected readonly preparationError = signal<string | null>(null);
-  protected readonly activeAction = signal<CharacterActionSummary | null>(null);
   protected readonly aidTargets = signal<AidTarget[]>([]);
   protected readonly flexibleCastingSaving = signal(false);
   protected readonly flexibleCastingError = signal<string | null>(null);
   protected readonly arcaneRecoverySaving = signal(false);
   protected readonly arcaneRecoveryError = signal<string | null>(null);
 
+  // Remote synchronization
   private readonly remoteSynchronization = new Subject<{
     state: CharacterSessionStatePayload;
     revision: number;
     generation: number;
   }>();
+  private readonly remoteSynchronizationEnabled = signal(false);
   private lastQueuedRevision = 0;
   private serverRevision = 0;
   private loadGeneration = 0;
-  protected readonly features = signal<CharacterFeatureSummary[]>([]);
-  protected readonly visibleFeatures = computed(() =>
-    this.features().filter((feature) => feature.visible),
-  );
-
-  protected readonly actions = signal<CharacterActionSummary[]>([]);
-  protected readonly flexibleCastingAction = computed(() => this.actions().find(action => action.handlerType === 'flexible-casting'));
-  protected readonly arcaneRecoveryResource = computed(() => this.character()?.resources.find(resource => resource.id === 'arcane-recovery'));
-  protected readonly arcaneRecoveryAction = computed(() => this.actions().find(action => action.handlerType === 'arcane-recovery' && (this.arcaneRecoveryResource()?.currentValue ?? 0) > 0));
-  protected readonly characterActions = signal<CharacterActionsState | null>(null);
-
-  protected readonly preparationActions = computed(() =>
-    this.actions().filter(
-      (action) => action.requiresPreparation,
-    ),
-  );
-
-  protected readonly preparationPending = computed(() =>
-    this.characterActions()?.preparationPending === true
-    && this.preparationActions().length > 0,
-  );
-
-  private readonly remoteSynchronizationEnabled = signal(false);
-
-  private readonly campaignId =
-    this.route.snapshot.paramMap.get(
-      'campaignId',
-    ) ?? '';
-
-  private readonly sessionId =
-    this.route.snapshot.paramMap.get(
-      'sessionId',
-    ) ?? '';
-  protected readonly activeTab = signal<PlayerPortalTab>('status');
-  protected readonly sortedResources = computed(() => {
-    const character = this.characterState();
-
-    if (!character) {
-      return [];
-    }
-
-    return character.resources
-      .filter(
-        (resource) =>
-          resource.hiddenFromTracker !== true,
-      )
-      .filter((resource) => {
-        const condition =
-          resource.unlockCondition;
-
-        if (!condition) {
-          return true;
-        }
-
-        const progression =
-          character.progressions?.find(
-            (candidate) =>
-              candidate.id ===
-              condition.progressionId,
-          );
-
-        return progression
-          ? progression.currentValue >=
-              condition.minimumValue
-          : false;
-      })
-      .sort(
-        (first, second) =>
-          first.displayOrder -
-          second.displayOrder,
-      );
-  });
-  protected readonly storedValueResources = computed(() =>
-    this.sortedResources().filter(
-      (resource) =>
-        resource.storedValuesConfig !==
-        undefined,
-    ),
-  );
-
-  protected readonly preparedActions = computed(() => {
-    const prepared = this.characterActions()?.prepared ?? [];
-
-    return this.actions().filter((action) =>
-      prepared.includes(action.slug),
-    );
-  });
-
-  protected readonly pendingRestRequest = computed(() => {
-    const request =
-      this.latestRestRequest();
-
-    return request?.status === 'pending'
-      ? request
-      : undefined;
-  });
-  protected readonly closedMessage = computed(() => {
-    return this.sessionStatus() === 'closed'
-      ? 'Cette session est terminée.'
-      : 'La session n’est pas encore ouverte.';
-  });
 
   constructor() {
     if (
@@ -393,6 +351,8 @@ export class PlayerPortal {
           this.campaign.set(campaign);
           this.character.set(loadedCharacter);
           this.features.set(response.character.features);
+      this.feats.set(response.character.feats);
+          this.feats.set(response.character.feats);
 
           this.actions.set(response.character.actions ?? []);
           this.characterActions.set(
@@ -469,6 +429,7 @@ export class PlayerPortal {
                 this.characterStateService.applyServerState(character);
                 this.character.set(character);
                 this.features.set(response.character.features);
+                this.feats.set(response.character.feats);
                 this.actions.set(response.character.actions ?? []);
                 this.characterActions.set(
                   response.state.characterActions ?? null,
@@ -604,27 +565,6 @@ private initializeRestRequestPolling(): void {
       this.restFeedback.set(null);
     }, 5000);
   }
-
-  protected readonly aidSpellSlots = computed<AidSpellSlot[]>(() =>
-  this.characterState()
-    ?.resources
-    .filter(resource =>
-      resource.id.startsWith('spell-slot-')
-      && resource.currentValue > 0
-    )
-    .map(resource => ({
-      level: Number(
-        resource.id.replace('spell-slot-', ''),
-      ),
-      current: resource.currentValue,
-    }))
-    .filter(slot =>
-      Number.isInteger(slot.level)
-      && slot.level >= 2
-    )
-    .sort((a, b) => a.level - b.level)
-  ?? [],
-);
 
   protected savePreparedActions(
     prepared: string[],

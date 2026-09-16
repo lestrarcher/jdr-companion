@@ -128,3 +128,42 @@
     text-overflow: ellipsis;
   }
 }
+.character-features__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0.35rem 0 0.9rem;
+}
+
+.feature-filter {
+  padding: 0.38rem 0.7rem;
+  border: 1px solid rgba(190, 148, 66, 0.25);
+  border-radius: 999px;
+  background: rgba(6, 8, 14, 0.45);
+  color: rgba(244, 239, 229, 0.72);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+
+  span {
+    margin-left: 0.25rem;
+    color: rgba(209, 174, 99, 0.72);
+  }
+
+  &:hover {
+    border-color: rgba(190, 148, 66, 0.5);
+    color: #f4efe5;
+  }
+}
+
+.feature-filter--active {
+  border-color: rgba(190, 148, 66, 0.65);
+  background: rgba(190, 148, 66, 0.12);
+  color: #f4efe5;
+}
+
+.character-features__list {
+  display: grid;
+  gap: 0.65rem;
+}

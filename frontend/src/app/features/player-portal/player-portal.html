@@ -1,62 +1,33 @@
 <main class="player-portal">
   @if (loading()) {
     <section class="portal-message">
-      <span class="eyebrow"> {{ campaign()?.name ?? 'JDR Companion' }} </span>
-
+      <span class="eyebrow">{{ campaign()?.name ?? 'JDR Companion' }}</span>
       <h1>Chargement du personnage</h1>
-
-      <div class="closed-symbol" aria-hidden="true" >◆</div>
-
+      <div class="closed-symbol" aria-hidden="true">◆</div>
       <p>Récupération des données de la session…</p>
     </section>
-  } @else if (
-    loadError();
-    as errorMessage
-  ) {
+  } @else if (loadError(); as errorMessage) {
     <section class="portal-message portal-message-error">
       <span class="eyebrow">Accès refusé</span>
       <h1>Lien joueur invalide</h1>
       <p>{{ errorMessage }}</p>
     </section>
-  } @else if (
-    character();
-    as portalCharacter
-  ) {
+  } @else if (character(); as portalCharacter) {
     @if (sessionStatus() !== 'live') {
       <section class="portal-message">
-        <span class="eyebrow">
-          {{
-            campaign()?.name
-            ?? 'JDR Companion'
-          }}
-        </span>
-
+        <span class="eyebrow">{{ campaign()?.name ?? 'JDR Companion' }}</span>
         <h1>{{ portalCharacter.name }}</h1>
-
         <div class="closed-symbol" aria-hidden="true">◆</div>
-
         <p>{{ closedMessage() }}</p>
-
         <small>Cette page s’ouvrira lorsque le MJ lancera la session.</small>
       </section>
-    } @else if (
-      characterState();
-      as currentCharacter
-    ) {
+    } @else if (characterState(); as currentCharacter) {
       <section class="character-dashboard">
         <div class="dashboard-content" [attr.inert]="pendingRestRequest() || preparationPending() ? '' : null">
           <header class="character-header">
             <div>
-              <span class="eyebrow">
-                {{
-                  campaign()?.name
-                  ?? 'JDR Companion'
-                }}
-              </span>
-
-              <h1>
-                {{ currentCharacter.name }}
-              </h1>
+              <span class="eyebrow">{{ campaign()?.name ?? 'JDR Companion' }}</span>
+              <h1>{{ currentCharacter.name }}</h1>
             </div>
 
             <div class="session-indicators">
@@ -65,13 +36,7 @@
                 En cours
               </span>
 
-              <span
-                class="save-status"
-                [class.save-status-error]="
-                  saveStatus() === 'error'
-                "
-                aria-live="polite"
-              >
+              <span class="save-status" [class.save-status-error]="saveStatus() === 'error'" aria-live="polite">
                 @switch (saveStatus()) {
                   @case ('saving') {
                     Enregistrement…
@@ -89,93 +54,43 @@
             </div>
           </header>
 
-          <nav
-            class="portal-tabs"
-            aria-label="Sections du personnage"
-          >
-            <button
-              type="button"
-              [class.portal-tab--active]="
-                activeTab() === 'status'
-              "
-              [attr.aria-pressed]="
-                activeTab() === 'status'
-              "
-              (click)="selectTab('status')"
-            >
-              <span
-                class="portal-tab-symbol"
-                aria-hidden="true"
-              >
-                ✦
-              </span>
-
+          <nav class="portal-tabs" aria-label="Sections du personnage">
+            <button type="button" [class.portal-tab--active]="activeTab() === 'status'" [attr.aria-pressed]="activeTab() === 'status'" (click)="selectTab('status')">
+              <span class="portal-tab-symbol" aria-hidden="true">✦</span>
               <span>
                 <strong>État</strong>
-                <small>
-                  Santé et capacités
-                </small>
+                <small>Santé et capacités</small>
               </span>
             </button>
 
             <button type="button" [class.portal-tab--active]="activeTab() === 'features'" [attr.aria-pressed]="activeTab() === 'features'" (click)="selectTab('features')">
               <span class="portal-tab-symbol" aria-hidden="true">✧</span>
-              <span><strong>Capacités</strong><small>Origines et descriptions</small></span>
+              <span>
+                <strong>Capacités</strong>
+                <small>Origines et descriptions</small>
+              </span>
             </button>
 
-            <button
-              type="button"
-              [class.portal-tab--active]="
-                activeTab() === 'possessions'
-              "
-              [attr.aria-pressed]="
-                activeTab() === 'possessions'
-              "
-              (click)="
-                selectTab('possessions')
-              "
-            >
-              <span
-                class="portal-tab-symbol"
-                aria-hidden="true"
-              >
-                ◈
-              </span>
-
+            <button type="button" [class.portal-tab--active]="activeTab() === 'possessions'" [attr.aria-pressed]="activeTab() === 'possessions'" (click)="selectTab('possessions')">
+              <span class="portal-tab-symbol" aria-hidden="true">◈</span>
               <span>
                 <strong>Possessions</strong>
-                <small>
-                  Bourse et objets
-                </small>
+                <small>Bourse et objets</small>
               </span>
             </button>
           </nav>
 
+          @if (activeTab() === 'status' && levelUpAllowed()) {
+            <section class="level-up-callout">
+              <div>
+                <span class="eyebrow">Progression</span>
+                <strong>Une montée de niveau est disponible.</strong>
+                <small>Le MJ t’autorise à faire évoluer ce personnage.</small>
+              </div>
 
-        @if (
-          activeTab() === 'status'
-          && levelUpAllowed()
-        ) {
-          <section class="level-up-callout">
-            <div>
-              <span class="eyebrow">
-                Progression
-              </span>
-
-              <strong>
-                Une montée de niveau est disponible.
-              </strong>
-
-              <small>
-                Le MJ t’autorise à faire évoluer ce personnage.
-              </small>
-            </div>
-
-            <a class="level-up-button" [routerLink]="['level-up']" >
-              Monter de niveau
-            </a>
-          </section>
-        }
+              <a class="level-up-button" [routerLink]="['level-up']">Monter de niveau</a>
+            </section>
+          }
 
           <div class="portal-tab-content">
             @switch (activeTab()) {
@@ -193,115 +108,108 @@
                   <app-character-vitals [character]="currentCharacter" />
                   <app-character-resources [resources]="sortedResources()" />
                 </div>
+
+                @if (flexibleCastingAction(); as action) {
+                  <section class="prepared-actions">
+                    <div class="prepared-actions__heading">
+                      <span class="eyebrow">Capacité</span>
+                      <h2>Conversion flexible</h2>
+                    </div>
+
+                    <button type="button" class="prepared-action-card" [disabled]="sessionStatus() !== 'live' || saveStatus() === 'saving'" (click)="openAction(action)">
+                      <span class="prepared-action-card__icon" aria-hidden="true">✦</span>
+                      <span class="prepared-action-card__content">
+                        <strong class="prepared-action-card__name">Conversion flexible</strong>
+                      </span>
+                      <span class="prepared-action-card__cta">
+                        Utiliser
+                        <span aria-hidden="true">›</span>
+                      </span>
+                    </button>
+                  </section>
+                }
+
+                @if (arcaneRecoveryAction(); as action) {
+                  <section class="prepared-actions">
+                    <div class="prepared-actions__heading">
+                      <span class="eyebrow">Capacité</span>
+                      <h2>Restauration arcanique</h2>
+                    </div>
+
+                    <button type="button" class="prepared-action-card" [disabled]="sessionStatus() !== 'live' || saveStatus() === 'saving'" (click)="openAction(action)">
+                      <span class="prepared-action-card__icon" aria-hidden="true">✦</span>
+                      <span class="prepared-action-card__content">
+                        <strong class="prepared-action-card__name">Restauration arcanique</strong>
+                      </span>
+                      <span class="prepared-action-card__cta">
+                        Utiliser
+                        <span aria-hidden="true">›</span>
+                      </span>
+                    </button>
+                  </section>
+                }
+
+                @if (preparedActions().length > 0) {
+                  <section class="prepared-actions">
+                    <div class="prepared-actions__heading">
+                      <span class="eyebrow">Actions</span>
+                      <h2>Actions préparées</h2>
+                    </div>
+
+                    <div class="prepared-actions__list">
+                      @for (action of preparedActions(); track action.slug) {
+                        <button type="button" class="prepared-action-card" (click)="openAction(action)">
+                          <div class="prepared-action-card__icon" aria-hidden="true">✦</div>
+
+                          <div class="prepared-action-card__content">
+                            <strong class="prepared-action-card__name">{{ action.name }}</strong>
+
+                            @if (action.description) {
+                              <p class="prepared-action-card__description">{{ action.description }}</p>
+                            }
+
+                            <span class="prepared-action-card__tag">Sort</span>
+                          </div>
+
+                          <div class="prepared-action-card__cta">
+                            <span>Utiliser</span>
+                            <span aria-hidden="true">›</span>
+                          </div>
+                        </button>
+                      }
+                    </div>
+                  </section>
+                }
+
+                <app-rest-controls
+                  [request]="pendingRestRequest()"
+                  [feedback]="restFeedback()"
+                  (restRequested)="requestRest($event)"
+                />
               }
+
+              @case ('features') {
+                <app-character-features [features]="visibleFeatures()" [feats]="feats()" />
+              }
+
               @case ('possessions') {
                 <div class="possessions-sections">
                   <app-character-wallet [accessToken]="accessToken" [disabled]="sessionStatus() !== 'live'" />
                   <app-character-magic-items [accessToken]="accessToken" />
                 </div>
               }
-
-
-              @case ('features') {
-                <app-character-features [features]="visibleFeatures()" />
-              }
             }
           </div>
         </div>
-
-        @if (flexibleCastingAction(); as action) {
-          <section class="prepared-actions">
-            <div class="prepared-actions__heading"><span class="eyebrow">Capacité</span><h2>Conversion flexible</h2></div>
-            <button type="button" class="prepared-action-card" [disabled]="sessionStatus() !== 'live' || saveStatus() === 'saving'" (click)="openAction(action)">
-              <span class="prepared-action-card__icon" aria-hidden="true">✦</span>
-              <span class="prepared-action-card__content"><strong class="prepared-action-card__name">Conversion flexible</strong></span>
-              <span class="prepared-action-card__cta">Utiliser <span aria-hidden="true">›</span></span>
-            </button>
-          </section>
-        }
-
-        @if (arcaneRecoveryAction(); as action) {
-          <section class="prepared-actions">
-            <div class="prepared-actions__heading"><span class="eyebrow">Capacité</span><h2>Restauration arcanique</h2></div>
-            <button type="button" class="prepared-action-card" [disabled]="sessionStatus() !== 'live' || saveStatus() === 'saving'" (click)="openAction(action)">
-              <span class="prepared-action-card__icon" aria-hidden="true">✦</span>
-              <span class="prepared-action-card__content"><strong class="prepared-action-card__name">Restauration arcanique</strong></span>
-              <span class="prepared-action-card__cta">Utiliser <span aria-hidden="true">›</span></span>
-            </button>
-          </section>
-        }
-
-        @if (preparedActions().length > 0) {
-          <section class="prepared-actions">
-            <div class="prepared-actions__heading">
-              <span class="eyebrow">Actions</span>
-              <h2>Actions préparées</h2>
-            </div>
-
-            <div class="prepared-actions__list">
-              @for (action of preparedActions(); track action.slug) {
-                <button
-                  type="button"
-                  class="prepared-action-card"
-                  (click)="openAction(action)"
-                >
-                  <div class="prepared-action-card__icon" aria-hidden="true">
-                    ✦
-                  </div>
-
-                  <div class="prepared-action-card__content">
-                    <strong class="prepared-action-card__name">
-                      {{ action.name }}
-                    </strong>
-
-                    @if (action.description) {
-                      <p class="prepared-action-card__description">
-                        {{ action.description }}
-                      </p>
-                    }
-
-                    <span class="prepared-action-card__tag">
-                      Sort
-                    </span>
-                  </div>
-
-                  <div class="prepared-action-card__cta">
-                    <span>Utiliser</span>
-                    <span aria-hidden="true">›</span>
-                  </div>
-                </button>
-              }
-            </div>
-          </section>
-        }
-
-        @if (activeTab() === 'status') {
-          <app-rest-controls
-            [request]="pendingRestRequest()"
-            [feedback]="restFeedback()"
-            (restRequested)="requestRest($event)"
-          />
-        }
       </section>
     }
   } @else {
-    <section
-      class="portal-message portal-message-error"
-    >
-      <span class="eyebrow">
-        Accès refusé
-      </span>
-
+    <section class="portal-message portal-message-error">
+      <span class="eyebrow">Accès refusé</span>
       <h1>Personnage indisponible</h1>
-
-      <p>
-        Les données de ce personnage n’ont
-        pas pu être chargées.
-      </p>
+      <p>Les données de ce personnage n’ont pas pu être chargées.</p>
     </section>
   }
-
-
 
   @if (preparationPending()) {
     <app-action-preparation-modal
@@ -323,7 +231,13 @@
   }
 
   @if (activeAction()?.handlerType === 'flexible-casting') {
-    <app-flexible-casting-action-modal [resources]="characterState()?.resources ?? []" [saving]="flexibleCastingSaving() || saveStatus() === 'saving'" [error]="flexibleCastingError()" (closed)="closeAction()" (confirmed)="useFlexibleCasting($event)" />
+    <app-flexible-casting-action-modal
+      [resources]="characterState()?.resources ?? []"
+      [saving]="flexibleCastingSaving() || saveStatus() === 'saving'"
+      [error]="flexibleCastingError()"
+      (closed)="closeAction()"
+      (confirmed)="useFlexibleCasting($event)"
+    />
   }
 
   @if (activeAction()?.handlerType === 'heroes-feast') {
@@ -335,6 +249,13 @@
   }
 
   @if (activeAction()?.handlerType === 'arcane-recovery') {
-    <app-arcane-recovery-action-modal [resources]="characterState()?.resources ?? []" [budget]="activeAction()?.budget ?? 0" [saving]="arcaneRecoverySaving() || saveStatus() === 'saving'" [error]="arcaneRecoveryError()" (closed)="closeAction()" (confirmed)="useArcaneRecovery($event)" />
+    <app-arcane-recovery-action-modal
+      [resources]="characterState()?.resources ?? []"
+      [budget]="activeAction()?.budget ?? 0"
+      [saving]="arcaneRecoverySaving() || saveStatus() === 'saving'"
+      [error]="arcaneRecoveryError()"
+      (closed)="closeAction()"
+      (confirmed)="useArcaneRecovery($event)"
+    />
   }
 </main>

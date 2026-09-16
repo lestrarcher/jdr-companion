@@ -1,23 +1,49 @@
 <section class="character-features" aria-label="Capacités du personnage">
-  @for (feature of features(); track feature.slug) {
-    <details class="character-feature">
-      <summary class="character-feature__summary">
-        <span class="character-feature__name">{{ feature.name }}</span>
-
-        <span class="character-feature__meta">
-          @if (feature.sourceName) {
-            <span class="feature-tag" [class]="sourceClass(feature.sourceType)">{{ feature.sourceName }}</span>
-          }
-
-          <span class="character-feature__chevron" aria-hidden="true">⌄</span>
-        </span>
-      </summary>
-
-      <div class="character-feature__content">
-        <p>{{ feature.description || 'Aucune description renseignée.' }}</p>
-      </div>
-    </details>
-  } @empty {
-    <p class="character-features__empty">Aucune capacité acquise n’est renseignée pour ce personnage.</p>
+  @if (filters().length > 1) {
+    <nav class="character-features__filters" aria-label="Filtrer les capacités">
+      @for (filter of filters(); track filter.key) {
+        <button type="button" class="feature-filter" [class.feature-filter--active]="activeFilter() === filter.key" (click)="selectFilter(filter.key)">{{ filter.label }} <span>{{ filter.count }}</span></button>
+      }
+    </nav>
   }
+
+  <div class="character-features__list">
+    @for (feature of filteredFeatures(); track feature.slug) {
+      <details class="character-feature">
+        <summary class="character-feature__summary">
+          <span class="character-feature__name">{{ feature.name }}</span>
+          <span class="character-feature__meta">
+            @if (feature.sourceName) {
+              <span class="feature-tag" [class]="sourceClass(feature.sourceType)">{{ feature.sourceName }}</span>
+            }
+            <span class="character-feature__chevron" aria-hidden="true">⌄</span>
+          </span>
+        </summary>
+
+        <div class="character-feature__content">
+          <p>{{ feature.description || 'Aucune description renseignée.' }}</p>
+        </div>
+      </details>
+    }
+
+    @for (feat of filteredFeats(); track feat.id) {
+      <details class="character-feature">
+        <summary class="character-feature__summary">
+          <span class="character-feature__name">{{ feat.name }}</span>
+          <span class="character-feature__meta">
+            <span class="feature-tag" [class]="sourceClass('feat')">Don</span>
+            <span class="character-feature__chevron" aria-hidden="true">⌄</span>
+          </span>
+        </summary>
+
+        <div class="character-feature__content">
+          <p>{{ feat.description || 'Aucune description renseignée.' }}</p>
+        </div>
+      </details>
+    }
+
+    @if (filteredFeatures().length === 0 && filteredFeats().length === 0) {
+      <p class="character-features__empty">Aucune capacité acquise n’est renseignée pour ce personnage.</p>
+    }
+  </div>
 </section>
