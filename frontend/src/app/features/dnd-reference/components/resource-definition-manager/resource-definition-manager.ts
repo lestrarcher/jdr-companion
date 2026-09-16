@@ -1,12 +1,30 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { forkJoin } from 'rxjs';
 import {
   AbilityChoice,
   CharacterFeatureApiService,
+  CreateResourceRulePayload,
   EnumChoice,
+  ResourceRuleSourceType,
   SaveResourcePayload,
   TrackableResourceDefinition,
+  TrackableResourceRule,
 } from '../../../../core/services/character-feature-api.service';
+import { ClassReference, DndReferenceApiService, FeatReference, RaceReference, SubclassReference } from '../../../../core/services/dnd-reference-api.service';
+
+interface SourceOption {
+  id: number;
+  name: string;
+}
+
+interface ResourceRuleForm {
+  sourceType: ResourceRuleSourceType;
+  sourceId: number | null;
+  unlockLevel: number;
+  maximumOverride: number | null;
+  maximumBonus: number;
+}
 
 interface ResourceForm {
   slug: string;
@@ -30,21 +48,46 @@ interface ResourceForm {
 })
 export class ResourceDefinitionManager {
   private readonly api = inject(CharacterFeatureApiService);
+  private readonly referenceApi = inject(DndReferenceApiService);
 
   protected readonly resources = signal<TrackableResourceDefinition[]>([]);
   protected readonly rechargeTypes = signal<EnumChoice[]>([]);
   protected readonly maximumTypes = signal<EnumChoice[]>([]);
   protected readonly abilities = signal<AbilityChoice[]>([]);
+  protected readonly classes = signal<ClassReference[]>([]);
+  protected readonly races = signal<RaceReference[]>([]);
+  protected readonly feats = signal<FeatReference[]>([]);
+  protected readonly subclasses = signal<SubclassReference[]>([]);
+  protected readonly resourceRules = signal<TrackableResourceRule[]>([]);
+
+  protected readonly maximumRuleGroups = computed(() => {
+    const groups = new Map<string, TrackableResourceRule[]>();
+    for (const rule of this.resourceRules()) {
+      if (rule.maximumOverride === null) continue;
+      const key = `${rule.sourceType}:${rule.sourceId}`;
+      const rules = groups.get(key) ?? [];
+      rules.push(rule);
+      groups.set(key, rules);
+    }
+    return Array.from(groups, ([key, rules]) => {
+      rules.sort((first, second) => first.unlockLevel - second.unlockLevel);
+      return { key, sourceName: rules[0].sourceName, rules, minimumLevel: rules[0].unlockLevel, maximumLevel: rules[rules.length - 1].unlockLevel };
+    });
+  });
 
   protected readonly selectedResourceId = signal<number | null>(null);
   protected readonly search = signal('');
   protected readonly rechargeFilter = signal<string>('all');
   protected readonly loading = signal(true);
   protected readonly submitting = signal(false);
+  protected readonly ruleSubmitting = signal(false);
+  protected readonly selectedResourceRuleId = signal<number | null>(null);
+  protected readonly ruleEditorOpen = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly success = signal<string | null>(null);
 
   protected form: ResourceForm = this.emptyForm();
+  protected ruleForm: ResourceRuleForm = this.emptyRuleForm();
 
   protected readonly selectedResource = computed(() => {
     const selectedId = this.selectedResourceId();
@@ -94,12 +137,20 @@ export class ResourceDefinitionManager {
       scalingAbility: resource.scalingAbility,
       custom: resource.custom,
     };
+    this.selectedResourceRuleId.set(null);
+    this.ruleEditorOpen.set(false);
+    this.ruleForm = this.emptyRuleForm();
+    this.loadResourceRules(resource.id);
     this.clearMessages();
   }
 
   protected startCreation(): void {
     this.selectedResourceId.set(null);
     this.form = this.emptyForm();
+    this.resourceRules.set([]);
+    this.selectedResourceRuleId.set(null);
+    this.ruleEditorOpen.set(false);
+    this.ruleForm = this.emptyRuleForm();
     this.clearMessages();
   }
 
@@ -175,6 +226,106 @@ export class ResourceDefinitionManager {
     });
   }
 
+  protected formSourceOptions(): SourceOption[] {
+    return this.sourceOptions(this.ruleForm.sourceType);
+  }
+
+  protected ruleSourceTypeChanged(): void {
+    this.ruleForm.sourceId = null;
+  }
+
+  protected sourceTypeLabel(sourceType: ResourceRuleSourceType): string {
+    return { class: 'Classe', subclass: 'Sous-classe', race: 'Race', feat: 'Don' }[sourceType];
+  }
+
+  protected selectResourceRule(rule: TrackableResourceRule): void {
+    this.selectedResourceRuleId.set(rule.id);
+    this.ruleEditorOpen.set(true);
+    this.ruleForm = { sourceType: rule.sourceType, sourceId: rule.sourceId, unlockLevel: rule.unlockLevel, maximumOverride: rule.maximumOverride, maximumBonus: rule.maximumBonus };
+    this.clearMessages();
+  }
+
+  protected startResourceRuleCreation(): void {
+    this.selectedResourceRuleId.set(null);
+    this.ruleEditorOpen.set(true);
+    this.ruleForm = this.emptyRuleForm();
+
+
+    this.clearMessages();
+  }
+
+  protected closeResourceRuleEditor(): void {
+    this.selectedResourceRuleId.set(null);
+    this.ruleEditorOpen.set(false);
+    this.ruleForm = this.emptyRuleForm();
+  }
+
+  protected saveResourceRule(): void {
+    const resource = this.selectedResource();
+    if (!resource || this.ruleSubmitting()) return;
+
+    if (this.ruleForm.sourceId === null) {
+      this.error.set('La source de la règle est obligatoire.');
+      return;
+    }
+
+    const selectedRuleId = this.selectedResourceRuleId();
+    this.ruleSubmitting.set(true);
+    this.clearMessages();
+
+    if (selectedRuleId !== null) {
+      this.api.updateResourceRule(selectedRuleId, {
+        maximumOverride: this.ruleForm.maximumOverride === null ? null : Number(this.ruleForm.maximumOverride),
+        maximumBonus: Number(this.ruleForm.maximumBonus),
+      }).subscribe({
+        next: response => {
+          this.replaceResourceRule(response.rule);
+          this.selectResourceRule(response.rule);
+          this.success.set('La règle de ressource a bien été mise à jour.');
+          this.ruleSubmitting.set(false);
+        },
+        error: error => this.handleRuleSaveError(error),
+      });
+      return;
+    }
+
+    const payload: CreateResourceRulePayload = {
+      sourceType: this.ruleForm.sourceType,
+      sourceId: Number(this.ruleForm.sourceId),
+      unlockLevel: Number(this.ruleForm.unlockLevel),
+      maximumOverride: this.ruleForm.maximumOverride === null ? null : Number(this.ruleForm.maximumOverride),
+      maximumBonus: Number(this.ruleForm.maximumBonus),
+    };
+
+    this.api.createResourceRule(resource.id, payload).subscribe({
+      next: response => {
+        this.resourceRules.update(rules => [...rules, response.rule]);
+        this.selectResourceRule(response.rule);
+        this.success.set('La règle de ressource a bien été créée.');
+        this.ruleSubmitting.set(false);
+      },
+      error: error => this.handleRuleSaveError(error),
+    });
+  }
+
+  protected deleteResourceRule(rule: TrackableResourceRule): void {
+    const confirmed = window.confirm(`Supprimer la règle « ${rule.sourceName} » ?`);
+    if (!confirmed || this.ruleSubmitting()) return;
+
+    this.ruleSubmitting.set(true);
+    this.clearMessages();
+
+    this.api.deleteResourceRule(rule.id).subscribe({
+      next: () => {
+        this.resourceRules.update(rules => rules.filter(existingRule => existingRule.id !== rule.id));
+        if (this.selectedResourceRuleId() === rule.id) this.startResourceRuleCreation();
+        this.success.set('La règle de ressource a bien été supprimée.');
+        this.ruleSubmitting.set(false);
+      },
+      error: error => this.handleRuleSaveError(error),
+    });
+  }
+
   protected generateSlug(): void {
     this.form.slug = this.slugify(this.form.name);
   }
@@ -224,23 +375,60 @@ export class ResourceDefinitionManager {
     this.loading.set(true);
     this.error.set(null);
 
-    this.api.getResources().subscribe({
+    forkJoin({
+      resources: this.api.getResources(),
+      reference: this.referenceApi.getReference(),
+      subclasses: this.referenceApi.getSubclasses(),
+    }).subscribe({
       next: result => {
-        this.resources.set(this.sortResources(result.resources));
-        this.rechargeTypes.set(result.rechargeTypes);
-        this.maximumTypes.set(result.maximumTypes);
-        this.abilities.set(result.abilities);
+        this.resources.set(this.sortResources(result.resources.resources));
+        this.rechargeTypes.set(result.resources.rechargeTypes);
+        this.maximumTypes.set(result.resources.maximumTypes);
+        this.abilities.set(result.resources.abilities);
+        this.classes.set(this.sortByName(result.reference.classes));
+        this.races.set(this.sortByName(result.reference.races));
+        this.feats.set(this.sortByName(result.reference.feats));
+        this.subclasses.set(this.sortByName(result.subclasses.subclasses));
         this.loading.set(false);
       },
       error: error => {
-        this.error.set(
-          error.error?.error ??
-          error.error?.message ??
-          'Impossible de charger les ressources.',
-        );
+        this.error.set(error.error?.error ?? error.error?.message ?? 'Impossible de charger les ressources.');
         this.loading.set(false);
       },
     });
+  }
+
+  private loadResourceRules(resourceId: number): void {
+    this.api.getResourceRules(resourceId).subscribe({
+      next: result => this.resourceRules.set(result.rules),
+      error: error => this.error.set(error.error?.error ?? error.error?.message ?? 'Impossible de charger les règles de la ressource.'),
+    });
+  }
+
+  private sourceOptions(sourceType: ResourceRuleSourceType): SourceOption[] {
+    switch (sourceType) {
+      case 'class': return this.classes().map(item => ({ id: item.id, name: item.name }));
+      case 'subclass': return this.subclasses().map(item => ({ id: item.id, name: `${this.className(item.classId)} — ${item.name}` }));
+      case 'race': return this.races().map(item => ({ id: item.id, name: item.name }));
+      case 'feat': return this.feats().map(item => ({ id: item.id, name: item.name }));
+    }
+  }
+
+  private className(classId: number): string {
+    return this.classes().find(characterClass => characterClass.id === classId)?.name ?? 'Classe inconnue';
+  }
+
+  private replaceResourceRule(savedRule: TrackableResourceRule): void {
+    this.resourceRules.update(rules => rules.map(rule => rule.id === savedRule.id ? savedRule : rule));
+  }
+
+  private handleRuleSaveError(error: { error?: { error?: string; message?: string } }): void {
+    this.error.set(error.error?.error ?? error.error?.message ?? 'Impossible d’enregistrer cette règle de ressource.');
+    this.ruleSubmitting.set(false);
+  }
+
+  private sortByName<T extends { name: string }>(items: T[]): T[] {
+    return [...items].sort((first, second) => first.name.localeCompare(second.name, 'fr'));
   }
 
   private replaceResource(
@@ -267,6 +455,10 @@ export class ResourceDefinitionManager {
     return [...resources].sort((first, second) =>
       first.name.localeCompare(second.name, 'fr'),
     );
+  }
+
+  private emptyRuleForm(): ResourceRuleForm {
+    return { sourceType: 'class', sourceId: null, unlockLevel: 1, maximumOverride: null, maximumBonus: 0 };
   }
 
   private emptyForm(): ResourceForm {

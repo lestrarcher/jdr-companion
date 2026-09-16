@@ -71,6 +71,9 @@ class TrackableResourceRule
     #[ORM\Column(nullable: true)]
     private ?int $maximumOverride = null;
 
+    #[ORM\Column(options: ['default' => 0])]
+    private int $maximumBonus = 0;
+
     private function __construct(
         TrackableResourceDefinition $resourceDefinition,
         int $unlockLevel,
@@ -190,6 +193,22 @@ class TrackableResourceRule
         }
 
         $this->maximumOverride = $maximumOverride;
+
+        return $this;
+    }
+
+    public function getMaximumBonus(): int
+    {
+        return $this->maximumBonus;
+    }
+
+    public function setMaximumBonus(int $maximumBonus): self
+    {
+        if ($maximumBonus < 0) {
+            throw new \InvalidArgumentException('Le bonus au maximum d’une ressource ne peut pas être négatif.');
+        }
+
+        $this->maximumBonus = $maximumBonus;
 
         return $this;
     }

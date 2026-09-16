@@ -35,6 +35,22 @@ export interface TrackableResourceDefinition {
   custom: boolean;
 }
 
+export type ResourceRuleSourceType = 'class' | 'subclass' | 'race' | 'feat';
+
+export interface TrackableResourceRule {
+  id: number;
+  sourceType: ResourceRuleSourceType;
+  sourceId: number;
+  sourceName: string;
+  unlockLevel: number;
+  maximumOverride: number | null;
+  maximumBonus: number;
+}
+
+export interface ResourceRuleListResponse {
+  rules: TrackableResourceRule[];
+}
+
 export interface CharacterFeatureDefinition {
   id: number;
   slug: string;
@@ -104,6 +120,19 @@ export interface SaveResourcePayload {
   custom?: boolean;
 }
 
+export interface CreateResourceRulePayload {
+  sourceType: ResourceRuleSourceType;
+  sourceId: number;
+  unlockLevel: number;
+  maximumOverride: number | null;
+  maximumBonus: number;
+}
+
+export interface UpdateResourceRulePayload {
+  maximumOverride?: number | null;
+  maximumBonus?: number;
+}
+
 export interface CreateFeatureRulePayload {
   featureDefinitionId: number;
   sourceType: FeatureSourceType;
@@ -123,76 +152,72 @@ export interface UpdateFeatureRulePayload {
 export class CharacterFeatureApiService {
   private readonly http = inject(HttpClient);
 
-  getFeatures(): Observable<FeatureListResponse> {
+  getFeatures(): Observable<FeatureListResponse>
+  {
     return this.http.get<FeatureListResponse>('/api/dnd/features');
   }
 
-  createFeature(
-    payload: SaveFeaturePayload,
-  ): Observable<{ feature: CharacterFeatureDefinition }> {
-    return this.http.post<{ feature: CharacterFeatureDefinition }>(
-      '/api/dnd/features',
-      payload,
-    );
+  createFeature(payload: SaveFeaturePayload): Observable<{ feature: CharacterFeatureDefinition }>
+  {
+    return this.http.post<{ feature: CharacterFeatureDefinition }>('/api/dnd/features', payload);
   }
 
-  updateFeature(
-    featureId: number,
-    payload: Partial<SaveFeaturePayload>,
-  ): Observable<{ feature: CharacterFeatureDefinition }> {
-    return this.http.patch<{ feature: CharacterFeatureDefinition }>(
-      `/api/dnd/features/${featureId}`,
-      payload,
-    );
+  updateFeature(featureId: number, payload: Partial<SaveFeaturePayload>): Observable<{ feature: CharacterFeatureDefinition }>
+  {
+    return this.http.patch<{ feature: CharacterFeatureDefinition }>(`/api/dnd/features/${featureId}`, payload);
   }
 
-  getResources(): Observable<ResourceListResponse> {
+  getResources(): Observable<ResourceListResponse>
+  {
     return this.http.get<ResourceListResponse>('/api/dnd/resources');
   }
 
-  createResource(
-    payload: SaveResourcePayload,
-  ): Observable<{ resource: TrackableResourceDefinition }> {
-    return this.http.post<{ resource: TrackableResourceDefinition }>(
-      '/api/dnd/resources',
-      payload,
-    );
+  createResource(payload: SaveResourcePayload): Observable<{ resource: TrackableResourceDefinition }>
+  {
+    return this.http.post<{ resource: TrackableResourceDefinition }>('/api/dnd/resources', payload);
   }
 
-  updateResource(
-    resourceId: number,
-    payload: Partial<SaveResourcePayload>,
-  ): Observable<{ resource: TrackableResourceDefinition }> {
-    return this.http.patch<{ resource: TrackableResourceDefinition }>(
-      `/api/dnd/resources/${resourceId}`,
-      payload,
-    );
+  updateResource(resourceId: number, payload: Partial<SaveResourcePayload>): Observable<{ resource: TrackableResourceDefinition }>
+  {
+    return this.http.patch<{ resource: TrackableResourceDefinition }>(`/api/dnd/resources/${resourceId}`, payload);
   }
 
-  getRules(): Observable<FeatureRuleListResponse> {
+  getResourceRules(resourceId: number): Observable<ResourceRuleListResponse>
+  {
+    return this.http.get<ResourceRuleListResponse>(`/api/dnd/resources/${resourceId}/rules`);
+  }
+
+  createResourceRule(resourceId: number, payload: CreateResourceRulePayload): Observable<{ rule: TrackableResourceRule }>
+  {
+    return this.http.post<{ rule: TrackableResourceRule }>(`/api/dnd/resources/${resourceId}/rules`, payload);
+  }
+
+  updateResourceRule(ruleId: number, payload: UpdateResourceRulePayload): Observable<{ rule: TrackableResourceRule }>
+  {
+    return this.http.patch<{ rule: TrackableResourceRule }>(`/api/dnd/resource-rules/${ruleId}`, payload);
+  }
+
+  deleteResourceRule(ruleId: number): Observable<void> {
+    return this.http.delete<void>(`/api/dnd/resource-rules/${ruleId}`);
+  }
+
+  getRules(): Observable<FeatureRuleListResponse>
+  {
     return this.http.get<FeatureRuleListResponse>('/api/dnd/feature-rules');
   }
 
-  createRule(
-    payload: CreateFeatureRulePayload,
-  ): Observable<{ rule: CharacterFeatureRule }> {
-    return this.http.post<{ rule: CharacterFeatureRule }>(
-      '/api/dnd/feature-rules',
-      payload,
-    );
+  createRule(payload: CreateFeatureRulePayload): Observable<{ rule: CharacterFeatureRule }>
+  {
+    return this.http.post<{ rule: CharacterFeatureRule }>('/api/dnd/feature-rules', payload);
   }
 
-  updateRule(
-    ruleId: number,
-    payload: UpdateFeatureRulePayload,
-  ): Observable<{ rule: CharacterFeatureRule }> {
-    return this.http.patch<{ rule: CharacterFeatureRule }>(
-      `/api/dnd/feature-rules/${ruleId}`,
-      payload,
-    );
+  updateRule(ruleId: number, payload: UpdateFeatureRulePayload): Observable<{ rule: CharacterFeatureRule }>
+  {
+    return this.http.patch<{ rule: CharacterFeatureRule }>(`/api/dnd/feature-rules/${ruleId}`, payload);
   }
 
-  deleteRule(ruleId: number): Observable<void> {
+  deleteRule(ruleId: number): Observable<void>
+  {
     return this.http.delete<void>(`/api/dnd/feature-rules/${ruleId}`);
   }
 }

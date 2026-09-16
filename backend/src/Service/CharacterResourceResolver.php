@@ -36,6 +36,9 @@ final readonly class CharacterResourceResolver
         /** @var array<string, TrackableResourceRule> $progressionRules */
         $progressionRules = [];
 
+        /** @var array<string, int> $maximumBonuses */
+        $maximumBonuses = [];
+
         /*
          * Une capacité débloquée peut donner accès directement
          * à une ressource, sans règle de progression supplémentaire.
@@ -55,11 +58,6 @@ final readonly class CharacterResourceResolver
             $definitions[$definition->getSlug()] = $definition;
         }
 
-        /*
-         * Les règles de ressource servent :
-         * - aux ressources configurées avant les capacités ;
-         * - aux paliers de maximum, comme Rage ou Présage supérieur.
-         */
         foreach ($this->ruleRepository->findOrderedRules() as $rule) {
             if (!$this->isRuleApplicable($character, $rule)) {
                 continue;
@@ -70,11 +68,9 @@ final readonly class CharacterResourceResolver
             $currentRule = $progressionRules[$slug] ?? null;
 
             $definitions[$slug] = $definition;
+            $maximumBonuses[$slug] = ($maximumBonuses[$slug] ?? 0) + $rule->getMaximumBonus();
 
-            if (
-                !$currentRule instanceof TrackableResourceRule
-                || $rule->getUnlockLevel() > $currentRule->getUnlockLevel()
-            ) {
+            if ($rule->getMaximumOverride() !== null && (!$currentRule instanceof TrackableResourceRule || $rule->getUnlockLevel() > $currentRule->getUnlockLevel())) {
                 $progressionRules[$slug] = $rule;
             }
         }
@@ -84,11 +80,7 @@ final readonly class CharacterResourceResolver
         foreach ($definitions as $slug => $definition) {
             $resources[$slug] = new ResolvedCharacterResource(
                 definition: $definition,
-                maximum: $this->resolveMaximum(
-                    $character,
-                    $definition,
-                    $progressionRules[$slug] ?? null,
-                ),
+                maximum: $this->resolveMaximum($character, $definition, $progressionRules[$slug] ?? null) + ($maximumBonuses[$slug] ?? 0),
             );
         }
 

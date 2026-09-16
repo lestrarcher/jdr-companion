@@ -101,7 +101,7 @@
       }
     </header>
 
-    <form class="resource-form" (ngSubmit)="save()">
+    <div class="resource-form">
       <div class="form-grid">
         <label class="field">
           <span>Nom</span>
@@ -245,6 +245,114 @@
         }
       </section>
 
+
+        @if (selectedResource(); as resource) {
+          <section class="maximum-rules">
+            <header class="maximum-rules__header">
+              <div>
+                <span class="eyebrow">Règles de maximum</span>
+                <p>Paliers et bonus qui déterminent le maximum réel de {{ resource.name }}.</p>
+              </div>
+              <button type="button" class="secondary-button" (click)="startResourceRuleCreation()">Ajouter une règle</button>
+            </header>
+
+            @if (resourceRules().length === 0) {
+              <p class="empty-state">Aucune règle de maximum. Le calcul de base ci-dessus est utilisé seul.</p>
+            } @else {
+              <section class="maximum-rules__group">
+                <h3>Paliers du maximum</h3>
+                <div class="maximum-rules__list">
+                  @for (group of maximumRuleGroups(); track group.key) {
+                    <details class="maximum-rules__source-group">
+                      <summary>
+                        <span class="maximum-rules__source-heading">
+                          <span class="maximum-rule__source">{{ group.sourceName }}</span>
+                          <span class="maximum-rules__range">{{ group.rules.length }} {{ group.rules.length === 1 ? 'palier' : 'paliers' }} · Niv. {{ group.minimumLevel }}@if (group.maximumLevel !== group.minimumLevel) {–{{ group.maximumLevel }}}</span>
+                        </span>
+                      </summary>
+                      <div class="maximum-rules__steps">
+                        @for (rule of group.rules; track rule.id) {
+                          <button type="button" class="maximum-rule maximum-rule--step" [class.maximum-rule--selected]="selectedResourceRuleId() === rule.id" [attr.aria-pressed]="selectedResourceRuleId() === rule.id" (click)="selectResourceRule(rule)">
+                            <span class="maximum-rule__level">Niv. {{ rule.unlockLevel }}</span>
+                            <strong class="maximum-rule__value">Maximum {{ rule.maximumOverride }}</strong>
+                          </button>
+                        }
+                      </div>
+                    </details>
+                  }
+                </div>
+              </section>
+              <section class="maximum-rules__group">
+                <h3>Bonus au maximum</h3>
+                <div class="maximum-rules__list">
+                  @for (rule of resourceRules(); track rule.id) {
+                    @if (rule.maximumBonus > 0) {
+                      <button type="button" class="maximum-rule" [class.maximum-rule--selected]="selectedResourceRuleId() === rule.id" [attr.aria-pressed]="selectedResourceRuleId() === rule.id" (click)="selectResourceRule(rule)">
+                        <span class="maximum-rule__source">{{ rule.sourceName }}</span>
+                        <span class="maximum-rule__level">Niv. {{ rule.unlockLevel }}</span>
+                        <strong class="maximum-rule__value">+{{ rule.maximumBonus }}</strong>
+                      </button>
+                    }
+                  }
+                </div>
+              </section>
+            }
+
+            @if (ruleEditorOpen()) {
+              <form class="maximum-rule-editor" (ngSubmit)="saveResourceRule()">
+                <div class="maximum-rule-editor__source-grid">
+                  <label class="field">
+                    <span>Type de source</span>
+                    <select name="ruleSourceType" [disabled]="selectedResourceRuleId() !== null" [(ngModel)]="ruleForm.sourceType" (ngModelChange)="ruleSourceTypeChanged()">
+                      <option value="class">Classe</option>
+                      <option value="subclass">Sous-classe</option>
+                      <option value="race">Race</option>
+                      <option value="feat">Don</option>
+                    </select>
+                  </label>
+
+                  <label class="field">
+                    <span>Source</span>
+                    <select name="ruleSourceId" [disabled]="selectedResourceRuleId() !== null" [(ngModel)]="ruleForm.sourceId">
+                      <option [ngValue]="null">Sélectionner</option>
+
+                      @for (source of formSourceOptions(); track source.id) {
+                        <option [ngValue]="source.id">{{ source.name }}</option>
+                      }
+                    </select>
+                  </label>
+
+                  <label class="field">
+                    <span>Niveau de déblocage</span>
+                    <input type="number" name="ruleUnlockLevel" min="1" max="20" [(ngModel)]="ruleForm.unlockLevel" [disabled]="selectedResourceRuleId() !== null" />
+                  </label>
+                </div>
+                <div class="maximum-rule-editor__value-grid">
+                  <label class="field">
+                    <span>Maximum imposé</span>
+                    <input type="number" name="ruleMaximumOverride" min="0" placeholder="Aucun" [(ngModel)]="ruleForm.maximumOverride" />
+                  </label>
+
+                  <label class="field">
+                    <span>Bonus au maximum</span>
+                    <input type="number" name="ruleMaximumBonus" min="0" [(ngModel)]="ruleForm.maximumBonus" />
+                  </label>
+                </div>
+
+                <p class="maximum-rule-editor__help"><strong>Maximum imposé</strong> définit un palier. <strong>Bonus au maximum</strong> s’ajoute au maximum calculé, par exemple Adepte de métamagie : +2.</p>
+
+                <div class="form-actions">
+                  <button type="button" class="secondary-button" (click)="closeResourceRuleEditor()">Annuler</button>
+                  @if (selectedResourceRuleId() !== null) {
+                    <button type="button" class="secondary-button" [disabled]="ruleSubmitting()" (click)="deleteResourceRule(resourceRules().find(rule => rule.id === selectedResourceRuleId())!)">Supprimer</button>
+                  }
+                  <button type="submit" class="primary-button" [disabled]="ruleSubmitting()">{{ ruleSubmitting() ? 'Enregistrement…' : selectedResourceRuleId() !== null ? 'Mettre à jour' : 'Créer la règle' }}</button>
+                </div>
+              </form>
+            }
+          </section>
+        }
+
       <label class="checkbox-field">
         <input type="checkbox" name="custom" [(ngModel)]="form.custom" />
 
@@ -297,9 +405,10 @@
         </button>
 
         <button
-          type="submit"
+          type="button"
           class="primary-button"
           [disabled]="submitting()"
+          (click)="save()"
         >
           {{
             submitting()
@@ -310,6 +419,8 @@
           }}
         </button>
       </footer>
-    </form>
+    </div>
+
+
   </div>
 </section>

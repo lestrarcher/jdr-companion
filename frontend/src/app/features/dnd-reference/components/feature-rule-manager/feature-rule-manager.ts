@@ -7,7 +7,7 @@ import {
   CharacterFeatureRule,
   CreateFeatureRulePayload,
   FeatureSourceType,
-} from '../../../../core/services/character-feature-api.service';
+} from '@core/services/character-feature-api.service';
 import {
   ClassReference,
   DndReferenceApiService,
@@ -15,7 +15,7 @@ import {
   ProgressionReference,
   RaceReference,
   SubclassReference,
-} from '../../../../core/services/dnd-reference-api.service';
+} from '@core/services/dnd-reference-api.service';
 
 interface SourceOption {
   id: number;
