@@ -91,6 +91,10 @@ try {
                 'character_subclass_id' => 10, 'unlock_level' => 3, 'display_order' => 3,
             ]);
             $db->insert('character_feature_rule', [
+                'id' => 203, 'feature_definition_id' => $featureId('eldritch-knight-weapon-bond'),
+                'character_subclass_id' => 10, 'unlock_level' => 3, 'display_order' => 40,
+            ]);
+            $db->insert('character_feature_rule', [
                 'id' => 201, 'feature_definition_id' => $featureId('frappe-occulte'),
                 'character_subclass_id' => 10, 'unlock_level' => 10, 'display_order' => 10,
             ]);
@@ -102,7 +106,9 @@ try {
         function () use ($db, $featureId, $check): void {
             $check((int) $db->fetchOne("SELECT count(*) FROM character_feature_definition WHERE slug IN ('lien-avec-une-arme','frappe-occulte','charge-arcanique','magie-de-guerre-amelioree','monster-slayer-hunter-s-sense','storm-sorcery-storm-s-fury','divination-experte','troisieme-oeil')") === 0, 'All eight historical definitions removed');
             $check((int) $db->fetchOne('SELECT count(*) FROM character_feature_definition') === 8, 'All eight canonical definitions preserved');
-            $check((int) $db->fetchOne('SELECT count(*) FROM character_feature_rule WHERE feature_definition_id = ?', [$featureId('eldritch-knight-weapon-bond')]) === 1, 'Historical rule transferred to canonical definition');
+            $check((int) $db->fetchOne('SELECT count(*) FROM character_feature_rule WHERE feature_definition_id = ?', [$featureId('eldritch-knight-weapon-bond')]) === 1, 'Historical rule deduplicated against canonical definition');
+            $check((int) $db->fetchOne('SELECT display_order FROM character_feature_rule WHERE id = 203') === 40, 'Canonical display order preserved when historical display order differs');
+            $check((int) $db->fetchOne('SELECT count(*) FROM character_feature_rule WHERE id = 200') === 0, 'Historical rule removed after source and level comparison');
             $check((int) $db->fetchOne('SELECT count(*) FROM character_feature_rule WHERE feature_definition_id = ?', [$featureId('eldritch-knight-eldritch-strike')]) === 1, 'Equivalent rule collision deduplicated');
             $check((int) $db->fetchOne('SELECT resource_definition_id FROM character_feature_definition WHERE slug = ?', ['divination-the-third-eye']) === 50, 'Third Eye resource transferred');
         },
@@ -112,14 +118,29 @@ try {
         function () use ($db, $featureId): void {
             $db->insert('character_feature_rule', [
                 'id' => 210, 'feature_definition_id' => $featureId('charge-arcanique'),
-                'character_subclass_id' => 10, 'unlock_level' => 15, 'display_order' => 14,
+                'character_subclass_id' => 10, 'unlock_level' => 15, 'display_order' => 15,
             ]);
             $db->insert('character_feature_rule', [
                 'id' => 211, 'feature_definition_id' => $featureId('eldritch-knight-arcane-charge'),
+                'character_subclass_id' => 11, 'unlock_level' => 15, 'display_order' => 15,
+            ]);
+        },
+        fn () => $check((int) $db->fetchOne("SELECT count(*) FROM character_feature_definition WHERE slug = 'charge-arcanique'") === 1, 'Different rule source rejected without deleting its definition'),
+        true,
+    );
+
+    $scenario(
+        function () use ($db, $featureId): void {
+            $db->insert('character_feature_rule', [
+                'id' => 220, 'feature_definition_id' => $featureId('charge-arcanique'),
+                'character_subclass_id' => 10, 'unlock_level' => 14, 'display_order' => 15,
+            ]);
+            $db->insert('character_feature_rule', [
+                'id' => 221, 'feature_definition_id' => $featureId('eldritch-knight-arcane-charge'),
                 'character_subclass_id' => 10, 'unlock_level' => 15, 'display_order' => 15,
             ]);
         },
-        fn () => $check((int) $db->fetchOne("SELECT count(*) FROM character_feature_definition WHERE slug = 'charge-arcanique'") === 1, 'Non-equivalent rule collision rejected without deleting its source'),
+        fn () => $check((int) $db->fetchOne("SELECT count(*) FROM character_feature_definition WHERE slug = 'charge-arcanique'") === 1, 'Different unlock level rejected without deleting its definition'),
         true,
     );
 

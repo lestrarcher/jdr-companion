@@ -31,7 +31,8 @@ DECLARE
   target_custom BOOLEAN;
   source_resource_id INT;
   target_resource_id INT;
-  conflicting_rules INT;
+  unmatched_source_rules INT;
+  unmatched_target_rules INT;
 BEGIN
   FOR pair IN
     SELECT * FROM (VALUES
@@ -72,39 +73,40 @@ BEGIN
       RAISE EXCEPTION 'Conflicting resources while consolidating % into %', pair.source_slug, pair.target_slug;
     END IF;
 
-    SELECT count(*) INTO conflicting_rules
+    SELECT count(*) INTO unmatched_source_rules
     FROM character_feature_rule source_rule
-    JOIN character_feature_rule target_rule
-      ON target_rule.feature_definition_id = target_id
-     AND target_rule.character_class_id IS NOT DISTINCT FROM source_rule.character_class_id
-     AND target_rule.character_subclass_id IS NOT DISTINCT FROM source_rule.character_subclass_id
-     AND target_rule.character_race_id IS NOT DISTINCT FROM source_rule.character_race_id
-     AND target_rule.feat_id IS NOT DISTINCT FROM source_rule.feat_id
-     AND target_rule.progression_definition_id IS NOT DISTINCT FROM source_rule.progression_definition_id
-     AND target_rule.unlock_level = source_rule.unlock_level
-     AND target_rule.progression_threshold IS NOT DISTINCT FROM source_rule.progression_threshold
     WHERE source_rule.feature_definition_id = source_id
-      AND target_rule.display_order IS DISTINCT FROM source_rule.display_order;
-    IF conflicting_rules <> 0 THEN
-      RAISE EXCEPTION 'Non-equivalent CharacterFeatureRule collision while consolidating % into %', pair.source_slug, pair.target_slug;
+      AND NOT EXISTS (
+        SELECT 1 FROM character_feature_rule target_rule
+        WHERE target_rule.feature_definition_id = target_id
+          AND target_rule.character_class_id IS NOT DISTINCT FROM source_rule.character_class_id
+          AND target_rule.character_subclass_id IS NOT DISTINCT FROM source_rule.character_subclass_id
+          AND target_rule.character_race_id IS NOT DISTINCT FROM source_rule.character_race_id
+          AND target_rule.feat_id IS NOT DISTINCT FROM source_rule.feat_id
+          AND target_rule.progression_definition_id IS NOT DISTINCT FROM source_rule.progression_definition_id
+          AND target_rule.unlock_level = source_rule.unlock_level
+          AND target_rule.progression_threshold IS NOT DISTINCT FROM source_rule.progression_threshold
+      );
+    SELECT count(*) INTO unmatched_target_rules
+    FROM character_feature_rule target_rule
+    WHERE target_rule.feature_definition_id = target_id
+      AND NOT EXISTS (
+        SELECT 1 FROM character_feature_rule source_rule
+        WHERE source_rule.feature_definition_id = source_id
+          AND source_rule.character_class_id IS NOT DISTINCT FROM target_rule.character_class_id
+          AND source_rule.character_subclass_id IS NOT DISTINCT FROM target_rule.character_subclass_id
+          AND source_rule.character_race_id IS NOT DISTINCT FROM target_rule.character_race_id
+          AND source_rule.feat_id IS NOT DISTINCT FROM target_rule.feat_id
+          AND source_rule.progression_definition_id IS NOT DISTINCT FROM target_rule.progression_definition_id
+          AND source_rule.unlock_level = target_rule.unlock_level
+          AND source_rule.progression_threshold IS NOT DISTINCT FROM target_rule.progression_threshold
+      );
+    IF unmatched_source_rules <> 0 OR unmatched_target_rules <> 0 THEN
+      RAISE EXCEPTION 'CharacterFeatureRule source or level mismatch while consolidating % into %', pair.source_slug, pair.target_slug;
     END IF;
 
-    DELETE FROM character_feature_rule source_rule
-    USING character_feature_rule target_rule
-    WHERE source_rule.feature_definition_id = source_id
-      AND target_rule.feature_definition_id = target_id
-      AND target_rule.character_class_id IS NOT DISTINCT FROM source_rule.character_class_id
-      AND target_rule.character_subclass_id IS NOT DISTINCT FROM source_rule.character_subclass_id
-      AND target_rule.character_race_id IS NOT DISTINCT FROM source_rule.character_race_id
-      AND target_rule.feat_id IS NOT DISTINCT FROM source_rule.feat_id
-      AND target_rule.progression_definition_id IS NOT DISTINCT FROM source_rule.progression_definition_id
-      AND target_rule.unlock_level = source_rule.unlock_level
-      AND target_rule.progression_threshold IS NOT DISTINCT FROM source_rule.progression_threshold
-      AND target_rule.display_order = source_rule.display_order;
-
-    UPDATE character_feature_rule
-       SET feature_definition_id = target_id
-     WHERE feature_definition_id = source_id;
+    -- display_order is presentation metadata: keep the canonical rule as-is.
+    DELETE FROM character_feature_rule WHERE feature_definition_id = source_id;
 
     IF target_resource_id IS NULL AND source_resource_id IS NOT NULL THEN
       UPDATE character_feature_definition
