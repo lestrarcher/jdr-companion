@@ -22,7 +22,7 @@ final readonly class PlayerCharacterStateUpdater
         $this->keys($patch, ['hitPoints', 'hitDice', 'resources', 'progressions']);
         $character = $session->getCharacter();
         $state = $session->getState();
-        $before = $this->synchronizer->snapshot($character, $this->synchronizer->extractProgressionValues($state));
+        $before = $this->synchronizer->snapshot($character, $this->synchronizer->extractProgressionValues($state), $state);
 
         if (array_key_exists('progressions', $patch)) {
             $assigned = [];
@@ -39,7 +39,7 @@ final readonly class PlayerCharacterStateUpdater
             }
         }
 
-        $after = $this->synchronizer->snapshot($character, $this->synchronizer->extractProgressionValues($state));
+        $after = $this->synchronizer->snapshot($character, $this->synchronizer->extractProgressionValues($state), $state);
         if (array_key_exists('hitPoints', $patch)) {
             $hp = $patch['hitPoints'];
 

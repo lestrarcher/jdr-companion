@@ -9,6 +9,8 @@ use App\Enum\{HitPointGainMethod, ResourceRechargeType, SpellcastingProgressionT
 use App\Repository\{CharacterFeatureRuleRepository, CharacterSessionStateRepository, TrackableResourceRuleRepository};
 use App\Service\{CharacterAbilityCalculator, CharacterFeatureResolver, CharacterHitPointCalculator, CharacterHitPointStateService, CharacterResourceResolver, CharacterSessionStateSynchronizer, CharacterSpellSlotCalculator, CharacterSpellSlotStateService};
 use App\Kernel;
+use App\Service\PlayerCharacterStateUpdater;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Doctrine\ORM\Tools\SchemaTool;
 use Symfony\Component\Dotenv\Dotenv;
 
@@ -113,7 +115,61 @@ try {
         $check($pool($result, 'historical')['currentValue'] === 7, 'Historical resource preserved');
         $check($sync->synchronize($character, $result) === $result, 'Synchronization is idempotent');
     }
-    echo "OK: $checks assertions; five requested scenarios and resource regressions passed.\n";
+    $updater = new PlayerCharacterStateUpdater($sync, new CharacterHitPointStateService($hp));
+    $session = $sessions[0];
+    $server = ['resources' => [
+        ['id' => 'spell-slot-1', 'currentValue' => 2, 'flexibleCastingBonus' => 1],
+        ['id' => 'spell-slot-5', 'currentValue' => 1, 'flexibleCastingBonus' => 1],
+        ['id' => 'sorcery-points', 'currentValue' => 1],
+        ['id' => 'pact-magic', 'currentValue' => 1],
+    ]];
+    $session->setState($server);
+    $reject = static function (array $patch, int $status) use ($updater, $session, $check): void {
+        $before = $session->getState();
+        try {
+            $updater->merge($session, $patch);
+        } catch (HttpExceptionInterface $exception) {
+            $check($exception->getStatusCode() === $status, 'Expected PATCH rejection status');
+            $check($session->getState() === $before, 'Rejected PATCH leaves server state intact');
+            return;
+        }
+        throw new RuntimeException('Expected PATCH rejection');
+    };
+    foreach ([['spell-slot-1', 1], ['spell-slot-1', 2], ['spell-slot-5', 0], ['spell-slot-5', 1]] as [$id, $current]) {
+        $result = $updater->merge($session, ['resources' => [['id' => $id, 'currentValue' => $current]]]);
+        $check($pool($result, $id) === ['id' => $id, 'currentValue' => $current, 'flexibleCastingBonus' => 1], 'PATCH accepts consumption or unchanged value and preserves bonus');
+        $check($session->getState() === $server, 'Merge does not mutate the entity');
+    }
+    foreach ([['spell-slot-1', 3, 403], ['spell-slot-1', 6, 422], ['spell-slot-5', 2, 422], ['spell-slot-1', -1, 422]] as [$id, $current, $status]) {
+        $reject(['resources' => [['id' => $id, 'currentValue' => $current]]], $status);
+    }
+    foreach ([0, 1, 2, null] as $bonus) {
+        $reject(['resources' => [['id' => 'spell-slot-1', 'currentValue' => 2, 'flexibleCastingBonus' => $bonus]]], 422);
+    }
+    $reject(['resources' => [['id' => 'spell-slot-2', 'currentValue' => 1, 'flexibleCastingBonus' => 1]]], 422);
+    foreach ([[], ['resources' => []]] as $patch) {
+        $result = $updater->merge($session, $patch);
+        $check($pool($result, 'spell-slot-1') === $server['resources'][0] && $pool($result, 'spell-slot-5') === $server['resources'][1], 'Omitting pools cannot delete bonuses');
+    }
+    foreach (['sorcery-points' => 4, 'pact-magic' => 3] as $id => $overMaximum) {
+        $result = $updater->merge($session, ['resources' => [['id' => $id, 'currentValue' => 0]]]);
+        $check($pool($result, $id)['currentValue'] === 0, 'Other resource consumption still accepted');
+        $reject(['resources' => [['id' => $id, 'currentValue' => 2]]], 403);
+        $reject(['resources' => [['id' => $id, 'currentValue' => $overMaximum]]], 422);
+    }
+    $server['resources'][0]['currentValue'] = 5;
+    $server['resources'][1]['currentValue'] = 0;
+    $session->setState($server);
+    foreach ([5, 4] as $current) {
+        $result = $updater->merge($session, ['resources' => [
+            ['id' => 'spell-slot-1', 'currentValue' => $current],
+            ['id' => 'spell-slot-5', 'currentValue' => 0],
+        ]]);
+        $check($pool($result, 'spell-slot-1')['currentValue'] === $current, 'Current above natural maximum is preserved');
+        $check($pool($result, 'spell-slot-5') === $server['resources'][1], 'Exhausted temporary pool remains valid');
+    }
+    $reject(['resources' => [['id' => 'spell-slot-5', 'currentValue' => 1]]], 403);
+    echo "OK: $checks assertions; synchronization and player PATCH scenarios passed.\n";
 } finally {
     while ($db->isTransactionActive()) $db->rollBack();
     $kernel->shutdown();
