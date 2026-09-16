@@ -271,26 +271,28 @@ final readonly class CharacterRestService
     ): array {
         $maximums = $this->spellSlotCalculator->calculate($character);
 
-        foreach ($states as &$state) {
+        foreach ($states as $index => $state) {
             $id = (string) ($state['id'] ?? '');
 
-            if (!str_starts_with($id, 'spell-slot-')) {
+            if (preg_match('/\Aspell-slot-([1-9])\z/', $id, $matches) !== 1) {
                 continue;
             }
 
-            $level = (int) str_replace('spell-slot-', '', $id);
-            $maximum = $maximums[$level] ?? null;
+            $maximum = $maximums[(int) $matches[1]] ?? 0;
+            $bonus = $state['flexibleCastingBonus'] ?? 0;
 
-            if ($maximum === null) {
+            if ($maximum === 0 && is_int($bonus) && $bonus > 0) {
+                unset($states[$index]);
                 continue;
             }
 
-            $state['currentValue'] = $maximum;
+            unset($states[$index]['flexibleCastingBonus']);
+            if ($maximum > 0) {
+                $states[$index]['currentValue'] = $maximum;
+            }
         }
 
-        unset($state);
-
-        return $states;
+        return array_values($states);
     }
 
     private function endLongRestEffects(CharacterSessionState $sessionState): void

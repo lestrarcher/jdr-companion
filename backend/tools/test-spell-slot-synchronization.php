@@ -9,6 +9,9 @@ use App\Enum\{HitPointGainMethod, ResourceRechargeType, SpellcastingProgressionT
 use App\Repository\{CharacterFeatureRuleRepository, CharacterSessionStateRepository, TrackableResourceRuleRepository};
 use App\Service\{CharacterAbilityCalculator, CharacterFeatureResolver, CharacterHitPointCalculator, CharacterHitPointStateService, CharacterResourceResolver, CharacterSessionStateSynchronizer, CharacterSpellSlotCalculator, CharacterSpellSlotStateService};
 use App\Kernel;
+use App\Entity\RestRequest;
+use App\Service\{CharacterRestService, CharacterActiveEffectService};
+use App\Repository\TrackableResourceDefinitionRepository;
 use App\Service\PlayerCharacterStateUpdater;
 use App\Service\{CharacterActionResolver, CharacterProfileSerializer, CharacterSessionStateSerializer};
 use App\Repository\{CharacterActionClassRuleRepository, CharacterActiveEffectRepository};
@@ -206,7 +209,51 @@ try {
         $check($serializer->serialize($session)['character'] === $naturalProfile, 'No bonus preserves the natural profile');
     }
     $check($profileSerializer->serialize($character) === $naturalProfile, 'Contextual serialization does not affect standalone profile');
-    echo "OK: $checks assertions; synchronization, player PATCH and serialization scenarios passed.\n";
+    $classResource = new TrackableResourceDefinition('class-resource', 'Class resource', ResourceRechargeType::ShortRest);
+    $unrecharged = new TrackableResourceDefinition('unrecharged', 'Unrecharged', ResourceRechargeType::None);
+    foreach ([$classResource, $unrecharged, TrackableResourceRule::forClass($classResource, $class, 1, 3), TrackableResourceRule::forClass($unrecharged, $class, 1, 4)] as $entity) $em->persist($entity);
+    $em->flush();
+    $hpState = new CharacterHitPointStateService($hp);
+    $rest = new CharacterRestService($hp, $hpState, $resources, $sync, new CharacterSpellSlotCalculator(), new TrackableResourceDefinitionRepository($registry), $ability, new CharacterActiveEffectRepository($registry), new CharacterActiveEffectService($hpState), $em);
+    foreach ([[1, 2], [2, 0], [1, 5]] as [$bonus, $current]) {
+        foreach ([1, 0] as $temporaryCurrent) {
+            $initial = ['hitPoints' => ['current' => 8], 'progressions' => [['id' => 'story', 'currentValue' => 7]], 'resources' => [
+                ['id' => 'spell-slot-1', 'currentValue' => $current, 'flexibleCastingBonus' => $bonus],
+                ['id' => 'spell-slot-5', 'currentValue' => $temporaryCurrent, 'flexibleCastingBonus' => 1],
+                ['id' => 'sorcery-points', 'currentValue' => 1],
+                ['id' => 'class-resource', 'currentValue' => 1],
+                ['id' => 'pact-magic', 'currentValue' => 1],
+                ['id' => 'unrecharged', 'currentValue' => 1],
+                ['id' => 'historical', 'currentValue' => 7],
+                ['id' => 'spell-slot-8', 'currentValue' => 0],
+                ['id' => 'spell-slot-custom', 'currentValue' => 2],
+            ]];
+            foreach ([RestRequest::TYPE_SHORT_REST, RestRequest::TYPE_LONG_REST] as $type) {
+                $session->setState($initial);
+                $rest->apply($session, $type);
+                $result = $session->getState();
+                $long = $type === RestRequest::TYPE_LONG_REST;
+                $check($pool($result, 'spell-slot-1') === ($long ? ['id' => 'spell-slot-1', 'currentValue' => 4] : $initial['resources'][0]), 'Rest preserves effective slots or restores natural maximum');
+                $check($slots->effectiveMaximums($character, $result)[1] === ($long ? 4 : 4 + $bonus), 'Rest maximum matches expected');
+                if ($long) {
+                    $check(!in_array('spell-slot-5', array_column($result['resources'], 'id'), true), 'Long rest deletes temporary pool, including exhausted pool');
+                    foreach ($result['resources'] as $entry) {
+                        if (preg_match('/\Aspell-slot-[1-9]\z/', $entry['id']) === 1) $check(!array_key_exists('flexibleCastingBonus', $entry), 'No slot bonus remains after long rest');
+                    }
+                } else {
+                    $check($pool($result, 'spell-slot-5') === $initial['resources'][1], 'Short rest preserves temporary pool, including exhausted pool');
+                }
+                $check($pool($result, 'sorcery-points')['currentValue'] === ($long ? 3 : 1), 'Sorcery points recharge only on long rest');
+                $check($pool($result, 'class-resource')['currentValue'] === 3, 'Class short-rest resource recharges on both rests');
+                $check($pool($result, 'pact-magic')['currentValue'] === 2, 'Pact Magic recharges independently on both rests');
+                $check($pool($result, 'unrecharged')['currentValue'] === 1, 'No-recharge resource remains consumed');
+                foreach (['historical', 'spell-slot-8', 'spell-slot-custom'] as $id) $check($pool($result, $id) === $pool($initial, $id), 'Unrelated or non-temporary historical pool preserved');
+                $check($result['progressions'] === $initial['progressions'], 'Rests preserve progressions');
+                $check(array_is_list($result['resources']), 'Resource list remains a JSON array');
+            }
+        }
+    }
+    echo "OK: $checks assertions; synchronization, PATCH, serialization and rest scenarios passed.\n";
 } finally {
     while ($db->isTransactionActive()) $db->rollBack();
     $kernel->shutdown();
