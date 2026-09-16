@@ -1,0 +1,37 @@
+<div class="action-modal-backdrop">
+  <section class="action-modal" role="dialog" aria-modal="true" aria-labelledby="flexible-casting-title" [attr.aria-busy]="saving()" (keydown.escape)="!saving() && closed.emit()">
+    <header class="action-modal__header">
+      <h2 id="flexible-casting-title">Conversion flexible</h2>
+      <button type="button" class="action-modal__close" aria-label="Fermer" [disabled]="saving()" (click)="closed.emit()">×</button>
+    </header>
+    <div class="casting-modes" role="group" aria-label="Type de conversion">
+      <button type="button" class="spell-level" [class.spell-level--selected]="mode() === 'create'" [attr.aria-pressed]="mode() === 'create'" [disabled]="saving()" (click)="changeMode('create')">Créer un emplacement</button>
+      <button type="button" class="spell-level" [class.spell-level--selected]="mode() === 'convert'" [attr.aria-pressed]="mode() === 'convert'" [disabled]="saving()" (click)="changeMode('convert')">Convertir un emplacement</button>
+    </div>
+    <p>Points de sorcellerie : {{ points()?.currentValue ?? 0 }} / {{ points()?.maximumValue ?? 0 }}</p>
+    @if (!points()) { <p>Les points de sorcellerie ne sont pas disponibles.</p> }
+    <div class="spell-levels" role="group" aria-label="Niveau d’emplacement">
+      @if (mode() === 'create') {
+        @for (option of costs; track option.level) {
+          <button type="button" class="spell-level" [class.spell-level--selected]="selectedLevel() === option.level" [attr.aria-pressed]="selectedLevel() === option.level" [disabled]="saving() || !canSelect(option.level)" (click)="selectedLevel.set(option.level)">
+            <strong>Niveau {{ option.level }} — {{ option.cost }} PS</strong>
+            @if (!canSelect(option.level)) { <small>Points insuffisants</small> }
+          </button>
+        }
+      } @else {
+        @for (slot of slots(); track slot.level) {
+          <button type="button" class="spell-level" [class.spell-level--selected]="selectedLevel() === slot.level" [attr.aria-pressed]="selectedLevel() === slot.level" [disabled]="saving() || !canSelect(slot.level)" (click)="selectedLevel.set(slot.level)">
+            <strong>Niveau {{ slot.level }} — {{ slot.current }}/{{ slot.maximum }}</strong>
+            <small>+{{ slot.level }} PS</small>
+            @if (!canSelect(slot.level)) { <small>Maximum de points dépassé</small> }
+          </button>
+        } @empty { <p>Aucun emplacement standard disponible.</p> }
+      }
+    </div>
+    @if (error()) { <p class="casting-error" role="alert">{{ error() }}</p> }
+    <footer class="action-modal__footer">
+      <button type="button" class="secondary-button" [disabled]="saving()" (click)="closed.emit()">Annuler</button>
+      <button type="button" class="primary-button" [disabled]="!canConfirm()" (click)="confirm()">{{ saving() ? 'Conversion…' : mode() === 'create' ? 'Créer l’emplacement' : 'Convertir l’emplacement' }}</button>
+    </footer>
+  </section>
+</div>

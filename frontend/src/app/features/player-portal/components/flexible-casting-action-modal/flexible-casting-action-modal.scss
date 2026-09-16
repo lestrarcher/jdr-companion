@@ -1,0 +1,10 @@
+.casting-modes { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+button:focus-visible { outline: 2px solid #f5cf7c; outline-offset: 3px; }
+.casting-error { color: #ffb4ab; }
+@media (max-width: 600px) {
+  .action-modal-backdrop { padding: 0.75rem; }
+  .action-modal { padding: 1rem; max-height: calc(100dvh - 1.5rem); }
+  .casting-modes, .action-modal__footer { flex-wrap: wrap; }
+  .casting-modes > button { flex: 1; }
+}

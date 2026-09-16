@@ -180,6 +180,14 @@ export class CharacterSessionStateApiService {
     return this.http.post<CharacterSessionStateApiResponse>(`${this.apiUrl}/public/characters/${accessToken}/actions/heroes-feast`, { hitPointBonus, targetIds, revision });
   }
 
+  createFlexibleCastingSlot(accessToken: string, level: number, revision: number): Observable<CharacterSessionStateApiResponse> {
+    return this.http.post<CharacterSessionStateApiResponse>(`${this.apiUrl}/public/characters/${accessToken}/actions/flexible-casting/create-spell-slot`, { level, revision });
+  }
+
+  convertFlexibleCastingSlot(accessToken: string, level: number, revision: number): Observable<CharacterSessionStateApiResponse> {
+    return this.http.post<CharacterSessionStateApiResponse>(`${this.apiUrl}/public/characters/${accessToken}/actions/flexible-casting/convert-spell-slot`, { level, revision });
+  }
+
   endActiveEffect(sessionId: number, characterId: number, effectId: number): Observable<CharacterSessionStateApiResponse>
   {
     return this.http.delete<CharacterSessionStateApiResponse>(`${this.apiUrl}/sessions/${sessionId}/characters/${characterId}/active-effects/${effectId}`);

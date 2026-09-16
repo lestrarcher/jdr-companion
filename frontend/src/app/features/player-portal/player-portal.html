@@ -200,6 +200,17 @@
           </div>
         </div>
 
+        @if (flexibleCastingAction(); as action) {
+          <section class="prepared-actions">
+            <div class="prepared-actions__heading"><span class="eyebrow">Capacité</span><h2>Conversion flexible</h2></div>
+            <button type="button" class="prepared-action-card" [disabled]="sessionStatus() !== 'live' || saveStatus() === 'saving'" (click)="openAction(action)">
+              <span class="prepared-action-card__icon" aria-hidden="true">✦</span>
+              <span class="prepared-action-card__content"><strong class="prepared-action-card__name">Conversion flexible</strong></span>
+              <span class="prepared-action-card__cta">Utiliser <span aria-hidden="true">›</span></span>
+            </button>
+          </section>
+        }
+
         @if (preparedActions().length > 0) {
           <section class="prepared-actions">
             <div class="prepared-actions__heading">
@@ -289,6 +300,10 @@
       (closed)="closeAction()"
       (confirmed)="useAid($event)"
     />
+  }
+
+  @if (activeAction()?.handlerType === 'flexible-casting') {
+    <app-flexible-casting-action-modal [resources]="characterState()?.resources ?? []" [saving]="flexibleCastingSaving() || saveStatus() === 'saving'" [error]="flexibleCastingError()" (closed)="closeAction()" (confirmed)="useFlexibleCasting($event)" />
   }
 
   @if (activeAction()?.handlerType === 'heroes-feast') {

@@ -24,6 +24,7 @@ import { CharacterVitals } from './components/character-vitals/character-vitals'
 import { RestControls } from './components/rest-controls/rest-controls';
 import { AidActionModal, AidActionPayload, AidSpellSlot, AidTarget } from './components/aid-action-modal/aid-action-modal';
 import { HeroesFeastActionModal, HeroesFeastActionPayload } from './components/heroes-feast-action-modal/heroes-feast-action-modal';
+import { FlexibleCastingActionModal, FlexibleCastingPayload } from './components/flexible-casting-action-modal/flexible-casting-action-modal';
 
 type SessionStatus =
   | 'draft'
@@ -54,6 +55,7 @@ type PlayerPortalTab =
     RouterLink,
     AidActionModal,
     HeroesFeastActionModal,
+    FlexibleCastingActionModal,
   ],
   templateUrl: './player-portal.html',
   styleUrl: './player-portal.scss',
@@ -86,6 +88,8 @@ export class PlayerPortal {
   protected readonly preparationError = signal<string | null>(null);
   protected readonly activeAction = signal<CharacterActionSummary | null>(null);
   protected readonly aidTargets = signal<AidTarget[]>([]);
+  protected readonly flexibleCastingSaving = signal(false);
+  protected readonly flexibleCastingError = signal<string | null>(null);
 
   private readonly remoteSynchronization = new Subject<{
     state: CharacterSessionStatePayload;
@@ -101,6 +105,7 @@ export class PlayerPortal {
   );
 
   protected readonly actions = signal<CharacterActionSummary[]>([]);
+  protected readonly flexibleCastingAction = computed(() => this.actions().find(action => action.handlerType === 'flexible-casting'));
   protected readonly characterActions = signal<CharacterActionsState | null>(null);
 
   protected readonly preparationActions = computed(() =>
@@ -671,6 +676,11 @@ protected openAction(
   action: CharacterActionSummary,
 ): void {
   switch (action.handlerType) {
+    case 'flexible-casting':
+      if (!this.flexibleCastingAction() || this.sessionStatus() !== 'live' || this.saveStatus() === 'saving') return;
+      this.flexibleCastingError.set(null);
+      this.activeAction.set(action);
+      break;
     case 'aid':
     case 'heroes-feast':
       this.characterSessionStateApi
@@ -694,7 +704,43 @@ protected openAction(
 }
 
   protected closeAction(): void {
+    if (this.flexibleCastingSaving()) return;
     this.activeAction.set(null);
+  }
+
+  protected useFlexibleCasting(payload: FlexibleCastingPayload): void {
+    if (!this.flexibleCastingAction() || this.sessionStatus() !== 'live' || this.saveStatus() === 'saving' || this.flexibleCastingSaving()) return;
+    this.flexibleCastingSaving.set(true);
+    this.flexibleCastingError.set(null);
+    this.saveError.set(null);
+    this.saveStatus.set('saving');
+    const request = payload.mode === 'create'
+      ? this.characterSessionStateApi.createFlexibleCastingSlot(this.accessToken, payload.level, this.serverRevision)
+      : this.characterSessionStateApi.convertFlexibleCastingSlot(this.accessToken, payload.level, this.serverRevision);
+    request.pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.flexibleCastingSaving.set(false))).subscribe({
+      next: response => {
+        this.serverRevision = response.revision;
+        const character = characterProfileToCharacter(response.character, response.state);
+        this.characterStateService.applyServerState(character);
+        this.character.set(character);
+        this.actions.set(response.character.actions ?? []);
+        this.characterActions.set(response.state.characterActions ?? null);
+        this.activeAction.set(null);
+        this.saveStatus.set('saved');
+      },
+      error: error => {
+        this.saveStatus.set('error');
+        if (error.status === 409) {
+          this.activeAction.set(null);
+          this.loadCharacter(false);
+          this.saveError.set('Le personnage a été modifié ailleurs. Ses données ont été rechargées.');
+          return;
+        }
+        const message = error.error?.message ?? 'Impossible d’utiliser Conversion flexible.';
+        this.flexibleCastingError.set(message);
+        this.saveError.set(message);
+      },
+    });
   }
 
   protected useAid(
