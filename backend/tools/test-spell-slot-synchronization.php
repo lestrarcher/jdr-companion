@@ -9,6 +9,7 @@ use App\Enum\{HitPointGainMethod, ResourceRechargeType, SpellcastingProgressionT
 use App\Repository\{CharacterFeatureRuleRepository, CharacterSessionStateRepository, TrackableResourceRuleRepository};
 use App\Service\{CharacterAbilityCalculator, CharacterFeatureResolver, CharacterHitPointCalculator, CharacterHitPointStateService, CharacterResourceResolver, CharacterSessionStateSynchronizer, CharacterSpellSlotCalculator, CharacterSpellSlotStateService};
 use App\Kernel;
+use App\Service\CharacterAction\CharacterFlexibleCastingActionService;
 use App\Entity\RestRequest;
 use App\Service\{CharacterRestService, CharacterActiveEffectService};
 use App\Repository\TrackableResourceDefinitionRepository;
@@ -253,7 +254,84 @@ try {
             }
         }
     }
-    echo "OK: $checks assertions; synchronization, PATCH, serialization and rest scenarios passed.\n";
+    $override = TrackableResourceRule::forClass($points, $class, 3, 11);
+    $extra = TrackableResourceRule::forClass($points, $pactClass, 1);
+    $extra->setMaximumBonus(2);
+    $em->persist($override);
+    $em->persist($extra);
+    $em->flush();
+    $check($resources->resolve($character)['sorcery-points']->getMaximum() === 13, 'Configured 11 plus bonus 2 resolves to 13');
+    $casting = new CharacterFlexibleCastingActionService($resources, $slots, $sync);
+    $base = ['progressions' => [['id' => 'story', 'currentValue' => 7]], 'resources' => [
+        ['id' => 'sorcery-points', 'currentValue' => 10],
+        ['id' => 'spell-slot-1', 'currentValue' => 1],
+        ['id' => 'pact-magic', 'currentValue' => 2],
+    ]];
+    $refuseCasting = static function (callable $operation) use ($session, $check): void {
+        $before = $session->getState();
+        $updatedAt = $session->getUpdatedAt();
+        try {
+            $operation();
+        } catch (\DomainException) {
+            $check($session->getState() === $before && $session->getUpdatedAt() === $updatedAt, 'Rejected conversion leaves entity entirely unchanged');
+            return;
+        }
+        throw new RuntimeException('Expected casting rejection');
+    };
+    foreach ([1 => 2, 2 => 3, 3 => 5, 4 => 6, 5 => 7] as $level => $cost) {
+        $session->setState($base);
+        $casting->createSpellSlot($session, $level);
+        $result = $session->getState();
+        $check($pool($result, 'sorcery-points')['currentValue'] === 10 - $cost, 'Creation cost at level ' . $level);
+        $check($pool($result, 'spell-slot-' . $level) === ['id' => 'spell-slot-' . $level, 'currentValue' => $level === 1 ? 2 : 1, 'flexibleCastingBonus' => 1], 'Creation increments current and bonus');
+        $check($slots->effectiveMaximums($character, $result)[$level] === ([1 => 4, 2 => 2][$level] ?? 0) + 1, 'Created effective maximum');
+        $check($pool($result, 'pact-magic') === $base['resources'][2] && $result['progressions'] === $base['progressions'], 'Creation preserves unrelated state');
+    }
+    $session->setState($base);
+    $casting->createSpellSlot($session, 1);
+    $casting->createSpellSlot($session, 1);
+    $check($pool($session->getState(), 'spell-slot-1') === ['id' => 'spell-slot-1', 'currentValue' => 3, 'flexibleCastingBonus' => 2] && $slots->effectiveMaximums($character, $session->getState())[1] === 6, 'Successive creations accumulate');
+    foreach ([0, 6] as $level) $refuseCasting(fn () => $casting->createSpellSlot($session, $level));
+    $session->setState(['resources' => [['id' => 'sorcery-points', 'currentValue' => 1]]]);
+    $refuseCasting(fn () => $casting->createSpellSlot($session, 1));
+    foreach ([1, 3, 5] as $level) {
+        $session->setState(['resources' => [
+            ['id' => 'sorcery-points', 'currentValue' => 4],
+            ['id' => 'spell-slot-' . $level, 'currentValue' => 1, 'flexibleCastingBonus' => 1],
+            ['id' => 'pact-magic', 'currentValue' => 2],
+        ]]);
+        $casting->convertSpellSlotToSorceryPoints($session, $level);
+        $check($pool($session->getState(), 'sorcery-points')['currentValue'] === 4 + $level, 'Conversion grants slot level in points');
+        $check($pool($session->getState(), 'spell-slot-' . $level) === ['id' => 'spell-slot-' . $level, 'currentValue' => 0, 'flexibleCastingBonus' => 1], 'Conversion preserves bonus at zero current');
+        $check($pool($session->getState(), 'pact-magic')['currentValue'] === 2, 'Conversion never consumes Pact Magic');
+        $refuseCasting(fn () => $casting->convertSpellSlotToSorceryPoints($session, $level));
+    }
+    $session->setState(['resources' => [['id' => 'sorcery-points', 'currentValue' => 12], ['id' => 'spell-slot-2', 'currentValue' => 1]]]);
+    $refuseCasting(fn () => $casting->convertSpellSlotToSorceryPoints($session, 2));
+    $session->setState(['resources' => [['id' => 'sorcery-points', 'currentValue' => 11], ['id' => 'spell-slot-2', 'currentValue' => 1]]]);
+    $casting->convertSpellSlotToSorceryPoints($session, 2);
+    $check($pool($session->getState(), 'sorcery-points')['currentValue'] === 13, 'Conversion can reach bonus-adjusted maximum 13');
+    $session->setState(['resources' => [['id' => 'sorcery-points', 'currentValue' => 0], ['id' => 'pact-magic', 'currentValue' => 2]]]);
+    $refuseCasting(fn () => $casting->convertSpellSlotToSorceryPoints($session, 1));
+    foreach ([0, 10] as $level) $refuseCasting(fn () => $casting->convertSpellSlotToSorceryPoints($session, $level));
+    $session->setState(['resources' => [['id' => 'spell-slot-1', 'currentValue' => 1]]]);
+    $refuseCasting(fn () => $casting->createSpellSlot($session, 1));
+    $refuseCasting(fn () => $casting->convertSpellSlotToSorceryPoints($session, 1));
+    foreach ($em->getRepository(TrackableResourceRule::class)->findBy(['resourceDefinition' => $points]) as $rule) $em->remove($rule);
+    $points->setBaseMaximum(13);
+    $progression = new \App\Entity\ProgressionDefinition('casting-context', 'Casting context');
+    $feature = new \App\Entity\CharacterFeatureDefinition('casting-context', 'Casting context');
+    $feature->setResourceDefinition($points);
+    $assignment = new \App\Entity\CharacterProgression($character, $progression);
+    $character->addProgression($assignment);
+    foreach ([$progression, $feature, $assignment, \App\Entity\CharacterFeatureRule::forProgression($feature, $progression, 0)] as $entity) $em->persist($entity);
+    $em->flush();
+    $session->setState(['progressions' => [['id' => 'casting-context', 'currentValue' => 0]], 'resources' => [['id' => 'sorcery-points', 'currentValue' => 12], ['id' => 'spell-slot-1', 'currentValue' => 1]]]);
+    $casting->convertSpellSlotToSorceryPoints($session, 1);
+    $check($pool($session->getState(), 'sorcery-points')['currentValue'] === 13, 'Explicit progression context including zero reaches resolver');
+    $session->setState(['resources' => [['id' => 'sorcery-points', 'currentValue' => 12], ['id' => 'spell-slot-1', 'currentValue' => 1]]]);
+    $refuseCasting(fn () => $casting->convertSpellSlotToSorceryPoints($session, 1));
+    echo "OK: $checks assertions; slot lifecycle and Flexible Casting scenarios passed.\n";
 } finally {
     while ($db->isTransactionActive()) $db->rollBack();
     $kernel->shutdown();
