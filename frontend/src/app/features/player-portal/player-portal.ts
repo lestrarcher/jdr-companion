@@ -26,6 +26,7 @@ import { AidActionModal, AidActionPayload, AidSpellSlot, AidTarget } from './com
 import { HeroesFeastActionModal, HeroesFeastActionPayload } from './components/heroes-feast-action-modal/heroes-feast-action-modal';
 import { FlexibleCastingActionModal, FlexibleCastingPayload } from './components/flexible-casting-action-modal/flexible-casting-action-modal';
 import { CharacterFeatures } from './components/character-features/character-features';
+import { ArcaneRecoveryActionModal, ArcaneRecoveryPayload } from './components/arcane-recovery-action-modal/arcane-recovery-action-modal';
 
 type SessionStatus =
   | 'draft'
@@ -58,7 +59,8 @@ type PlayerPortalTab =
     AidActionModal,
     HeroesFeastActionModal,
     FlexibleCastingActionModal,
-    CharacterFeatures
+    CharacterFeatures,
+    ArcaneRecoveryActionModal,
   ],
   templateUrl: './player-portal.html',
   styleUrl: './player-portal.scss',
@@ -93,6 +95,8 @@ export class PlayerPortal {
   protected readonly aidTargets = signal<AidTarget[]>([]);
   protected readonly flexibleCastingSaving = signal(false);
   protected readonly flexibleCastingError = signal<string | null>(null);
+  protected readonly arcaneRecoverySaving = signal(false);
+  protected readonly arcaneRecoveryError = signal<string | null>(null);
 
   private readonly remoteSynchronization = new Subject<{
     state: CharacterSessionStatePayload;
@@ -109,6 +113,8 @@ export class PlayerPortal {
 
   protected readonly actions = signal<CharacterActionSummary[]>([]);
   protected readonly flexibleCastingAction = computed(() => this.actions().find(action => action.handlerType === 'flexible-casting'));
+  protected readonly arcaneRecoveryResource = computed(() => this.character()?.resources.find(resource => resource.id === 'arcane-recovery'));
+  protected readonly arcaneRecoveryAction = computed(() => this.actions().find(action => action.handlerType === 'arcane-recovery' && (this.arcaneRecoveryResource()?.currentValue ?? 0) > 0));
   protected readonly characterActions = signal<CharacterActionsState | null>(null);
 
   protected readonly preparationActions = computed(() =>
@@ -684,6 +690,11 @@ protected openAction(
       this.flexibleCastingError.set(null);
       this.activeAction.set(action);
       break;
+    case 'arcane-recovery':
+      if (!this.arcaneRecoveryAction() || this.sessionStatus() !== 'live' || this.saveStatus() === 'saving') return;
+      this.arcaneRecoveryError.set(null);
+      this.activeAction.set(action);
+      break;
     case 'aid':
     case 'heroes-feast':
       this.characterSessionStateApi
@@ -707,7 +718,7 @@ protected openAction(
 }
 
   protected closeAction(): void {
-    if (this.flexibleCastingSaving()) return;
+    if (this.flexibleCastingSaving() || this.arcaneRecoverySaving()) return;
     this.activeAction.set(null);
   }
 
@@ -741,6 +752,39 @@ protected openAction(
         }
         const message = error.error?.message ?? 'Impossible d’utiliser Conversion flexible.';
         this.flexibleCastingError.set(message);
+        this.saveError.set(message);
+      },
+    });
+  }
+
+  protected useArcaneRecovery(payload: ArcaneRecoveryPayload): void {
+    if (!this.arcaneRecoveryAction() || this.sessionStatus() !== 'live' || this.saveStatus() === 'saving' || this.arcaneRecoverySaving()) return;
+    this.arcaneRecoverySaving.set(true);
+    this.arcaneRecoveryError.set(null);
+    this.saveError.set(null);
+    this.saveStatus.set('saving');
+
+    this.characterSessionStateApi.recoverArcaneSlots(this.accessToken, payload.slots, this.serverRevision).pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.arcaneRecoverySaving.set(false))).subscribe({
+      next: response => {
+        this.serverRevision = response.revision;
+        const character = characterProfileToCharacter(response.character, response.state);
+        this.characterStateService.applyServerState(character);
+        this.character.set(character);
+        this.actions.set(response.character.actions ?? []);
+        this.characterActions.set(response.state.characterActions ?? null);
+        this.activeAction.set(null);
+        this.saveStatus.set('saved');
+      },
+      error: error => {
+        this.saveStatus.set('error');
+        if (error.status === 409) {
+          this.activeAction.set(null);
+          this.loadCharacter(false);
+          this.saveError.set('Le personnage a été modifié ailleurs. Ses données ont été rechargées.');
+          return;
+        }
+        const message = error.error?.message ?? 'Impossible d’utiliser Restauration arcanique.';
+        this.arcaneRecoveryError.set(message);
         this.saveError.set(message);
       },
     });

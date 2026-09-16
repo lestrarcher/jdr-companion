@@ -8,6 +8,7 @@ use App\Entity\Character;
 use App\Entity\CharacterClassLevel;
 use App\Entity\CharacterFeatureRule;
 use App\Entity\CharacterFeat;
+use App\Enum\CharacterActionHandlerType;
 use App\Enum\Ability;
 
 final readonly class CharacterProfileSerializer
@@ -99,12 +100,13 @@ final readonly class CharacterProfileSerializer
                 $this->featureResolver->resolve($character, $progressionValues),
             )),
             'actions' => array_values(array_map(
-                static fn ($action): array => [
+                fn ($action): array => [
                     'slug' => $action->getSlug(),
                     'name' => $action->getName(),
                     'description' => $action->getDescription(),
                     'handlerType' => $action->getHandlerType()->value,
                     'requiresPreparation' => $action->requiresPreparation(),
+                    'budget' => $action->getHandlerType() === CharacterActionHandlerType::ArcaneRecovery ? (int) ceil($this->wizardLevel($character) / 2) : null,
                 ],
                 $this->actionResolver->resolve($character),
             )),
@@ -261,5 +263,15 @@ final readonly class CharacterProfileSerializer
         }
 
         return array_values($resources);
+    }
+
+    private function wizardLevel(Character $character): int
+    {
+        foreach ($character->getClassLevels() as $classLevel) {
+            $characterClass = $classLevel->getCharacterClass();
+            if ($characterClass->getSlug() === 'wizard') return $character->getLevelInClass($characterClass);
+        }
+
+        return 0;
     }
 }

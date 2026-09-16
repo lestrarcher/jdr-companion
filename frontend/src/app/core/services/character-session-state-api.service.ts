@@ -23,6 +23,7 @@ export interface CharacterActionSummary {
   description: string | null;
   handlerType: string;
   requiresPreparation: boolean;
+  budget?: number | null;
 }
 
 export interface CharacterActionsState {
@@ -186,6 +187,10 @@ export class CharacterSessionStateApiService {
 
   convertFlexibleCastingSlot(accessToken: string, level: number, revision: number): Observable<CharacterSessionStateApiResponse> {
     return this.http.post<CharacterSessionStateApiResponse>(`${this.apiUrl}/public/characters/${accessToken}/actions/flexible-casting/convert-spell-slot`, { level, revision });
+  }
+
+  recoverArcaneSlots(accessToken: string, slots: Record<number, number>, revision: number): Observable<CharacterSessionStateApiResponse> {
+    return this.http.post<CharacterSessionStateApiResponse>(`${this.apiUrl}/public/characters/${accessToken}/actions/arcane-recovery`, { slots, revision });
   }
 
   endActiveEffect(sessionId: number, characterId: number, effectId: number): Observable<CharacterSessionStateApiResponse>

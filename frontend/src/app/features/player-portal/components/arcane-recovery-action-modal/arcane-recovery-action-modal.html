@@ -1,0 +1,33 @@
+<div class="action-modal-backdrop">
+  <section class="action-modal" role="dialog" aria-modal="true" aria-labelledby="arcane-recovery-title" [attr.aria-busy]="saving()" (keydown.escape)="!saving() && closed.emit()">
+    <header class="action-modal__header">
+      <h2 id="arcane-recovery-title">Restauration arcanique</h2>
+      <button type="button" class="action-modal__close" aria-label="Fermer" [disabled]="saving()" (click)="closed.emit()">×</button>
+    </header>
+
+    <p>Récupérez des emplacements dont la somme des niveaux ne dépasse pas votre capacité.</p>
+    <p><strong>Budget : {{ remainingBudget() }} / {{ budget() }}</strong></p>
+
+    <div class="recovery-slots">
+      @for (slot of slots(); track slot.level) {
+        <div class="recovery-slot">
+          <span class="recovery-slot__info"><strong>Niveau {{ slot.level }}</strong><small>{{ slot.current }}/{{ slot.maximum }} emplacement{{ slot.maximum > 1 ? 's' : '' }}</small></span>
+          <div class="recovery-slot__controls">
+            <button type="button" class="spell-level recovery-slot__button" [disabled]="saving() || selected(slot.level) === 0" (click)="remove(slot.level)">−</button>
+            <strong>{{ selected(slot.level) }}</strong>
+            <button type="button" class="spell-level recovery-slot__button" [disabled]="!canAdd(slot.level, slot.missing)" (click)="add(slot.level, slot.missing)">+</button>
+          </div>
+        </div>
+      } @empty {
+        <p>Aucun emplacement de niveau 1 à 5 ne peut être récupéré.</p>
+      }
+    </div>
+
+    @if (error()) { <p class="casting-error" role="alert">{{ error() }}</p> }
+
+    <footer class="action-modal__footer">
+      <button type="button" class="secondary-button" [disabled]="saving()" (click)="closed.emit()">Annuler</button>
+      <button type="button" class="primary-button" [disabled]="!canConfirm()" (click)="confirm()">{{ saving() ? 'Récupération…' : 'Récupérer les emplacements' }}</button>
+    </footer>
+  </section>
+</div>

@@ -11,6 +11,7 @@ use App\Service\CharacterAction\CharacterFlexibleCastingActionService;
 use App\Repository\CharacterSessionStateRepository;
 use App\Service\CharacterAction\CharacterAidActionService;
 use App\Service\CharacterAction\CharacterHeroesFeastActionService;
+use App\Service\CharacterAction\CharacterArcaneRecoveryActionService;
 use App\Service\CharacterActionResolver;
 use App\Service\CharacterSessionStateSerializer;
 use App\Service\PlayerCharacterAccess;
@@ -255,6 +256,58 @@ final class CharacterActionController extends AbstractController
     public function convertFlexibleCastingSlot(string $accessToken, Request $request, PlayerCharacterAccess $playerAccess, CharacterActionResolver $actionResolver, CharacterFlexibleCastingActionService $castingService, EntityManagerInterface $entityManager): JsonResponse
     {
         return $this->executeFlexibleCasting($accessToken, $request, $playerAccess, $actionResolver, $entityManager, $castingService->convertSpellSlotToSorceryPoints(...));
+    }
+
+    #[Route('/public/characters/{accessToken}/actions/arcane-recovery', name: 'api_public_character_action_arcane_recovery', requirements: ['accessToken' => '[a-f0-9]{64}'], methods: ['POST'])]
+    public function arcaneRecovery(string $accessToken, Request $request, PlayerCharacterAccess $playerAccess, CharacterActionResolver $actionResolver, CharacterArcaneRecoveryActionService $arcaneRecoveryActionService, EntityManagerInterface $entityManager): JsonResponse
+    {
+        $sessionState = $playerAccess->requireParticipating($accessToken);
+        if ($sessionState->getGameSession()->getStatus() !== GameSession::STATUS_LIVE) return $this->json(['message' => 'Cette session n’est pas ouverte.'], Response::HTTP_CONFLICT);
+
+        try {
+            $payload = $request->toArray();
+        } catch (\Symfony\Component\HttpFoundation\Exception\JsonException) {
+            return $this->json(['message' => 'Le corps JSON est invalide.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $slots = $payload['slots'] ?? null;
+        $revision = $payload['revision'] ?? null;
+        if (!is_array($slots) || $slots === []) return $this->json(['message' => 'Au moins un emplacement doit être sélectionné.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        if (!is_int($revision) || $revision < 1) return $this->json(['message' => 'Une révision entière positive est requise.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+
+        $normalizedSlots = [];
+        foreach ($slots as $level => $quantity) {
+            if ((!is_int($level) && !ctype_digit((string) $level)) || !is_int($quantity)) return $this->json(['message' => 'Les emplacements sélectionnés sont invalides.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+            $normalizedSlots[(int) $level] = $quantity;
+        }
+
+        try {
+            return $entityManager->wrapInTransaction(function () use ($entityManager, $sessionState, $revision, $normalizedSlots, $actionResolver, $arcaneRecoveryActionService): JsonResponse {
+                PlayerCharacterAccess::lockForMutation($entityManager, $sessionState);
+                $entityManager->lock($sessionState, LockMode::OPTIMISTIC, $revision);
+
+                $eligible = false;
+                foreach ($actionResolver->resolve($sessionState->getCharacter()) as $definition) {
+                    if ($definition->getHandlerType() === CharacterActionHandlerType::ArcaneRecovery) {
+                        $eligible = true;
+                        break;
+                    }
+                }
+                if (!$eligible) return $this->json(['message' => 'Restauration arcanique n’est pas disponible pour ce personnage.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+
+                try {
+                    $arcaneRecoveryActionService->recoverSpellSlots($sessionState, $normalizedSlots);
+                } catch (\DomainException $exception) {
+                    return $this->json(['message' => $exception->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
+                }
+
+                $entityManager->flush();
+
+                return $this->json($this->sessionStateSerializer->serialize($sessionState));
+            });
+        } catch (OptimisticLockException) {
+            return $this->json(['message' => 'Le personnage a été modifié ailleurs. Rechargez son état.'], Response::HTTP_CONFLICT);
+        }
     }
 
     /** @param callable(CharacterSessionState, int): void $action */

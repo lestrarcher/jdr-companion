@@ -220,6 +220,17 @@
           </section>
         }
 
+        @if (arcaneRecoveryAction(); as action) {
+          <section class="prepared-actions">
+            <div class="prepared-actions__heading"><span class="eyebrow">Capacité</span><h2>Restauration arcanique</h2></div>
+            <button type="button" class="prepared-action-card" [disabled]="sessionStatus() !== 'live' || saveStatus() === 'saving'" (click)="openAction(action)">
+              <span class="prepared-action-card__icon" aria-hidden="true">✦</span>
+              <span class="prepared-action-card__content"><strong class="prepared-action-card__name">Restauration arcanique</strong></span>
+              <span class="prepared-action-card__cta">Utiliser <span aria-hidden="true">›</span></span>
+            </button>
+          </section>
+        }
+
         @if (preparedActions().length > 0) {
           <section class="prepared-actions">
             <div class="prepared-actions__heading">
@@ -321,5 +332,9 @@
       (closed)="closeAction()"
       (confirmed)="useHeroesFeast($event)"
     />
+  }
+
+  @if (activeAction()?.handlerType === 'arcane-recovery') {
+    <app-arcane-recovery-action-modal [resources]="characterState()?.resources ?? []" [budget]="activeAction()?.budget ?? 0" [saving]="arcaneRecoverySaving() || saveStatus() === 'saving'" [error]="arcaneRecoveryError()" (closed)="closeAction()" (confirmed)="useArcaneRecovery($event)" />
   }
 </main>

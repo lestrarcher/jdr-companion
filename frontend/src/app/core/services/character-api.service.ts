@@ -208,6 +208,7 @@ export interface CharacterActionSummary {
   description: string | null;
   handlerType: string;
   requiresPreparation: boolean;
+  budget?: number | null;
 }
 
 export type LevelAdvancementPayload =

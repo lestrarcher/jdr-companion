@@ -9,4 +9,5 @@ enum CharacterActionHandlerType: string
     case Aid = 'aid';
     case HeroesFeast = 'heroes-feast';
     case FlexibleCasting = 'flexible-casting';
+    case ArcaneRecovery = 'arcane-recovery';
 }
