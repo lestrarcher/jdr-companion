@@ -6,6 +6,8 @@ namespace App\Controller;
 
 use App\Entity\CharacterSessionState;
 use App\Entity\GameSession;
+use App\Enum\CharacterActionHandlerType;
+use App\Service\CharacterAction\CharacterFlexibleCastingActionService;
 use App\Repository\CharacterSessionStateRepository;
 use App\Service\CharacterAction\CharacterAidActionService;
 use App\Service\CharacterAction\CharacterHeroesFeastActionService;
@@ -241,6 +243,71 @@ final class CharacterActionController extends AbstractController
             entityManager: $entityManager,
             action: fn (array $targetStates) => $heroesFeastActionService->apply($casterState, $hitPointBonus, $targetStates),
         );
+    }
+
+    #[Route('/public/characters/{accessToken}/actions/flexible-casting/create-spell-slot', name: 'api_public_character_action_flexible_casting_create', requirements: ['accessToken' => '[a-f0-9]{64}'], methods: ['POST'])]
+    public function createFlexibleCastingSlot(string $accessToken, Request $request, PlayerCharacterAccess $playerAccess, CharacterActionResolver $actionResolver, CharacterFlexibleCastingActionService $castingService, EntityManagerInterface $entityManager): JsonResponse
+    {
+        return $this->executeFlexibleCasting($accessToken, $request, $playerAccess, $actionResolver, $entityManager, $castingService->createSpellSlot(...));
+    }
+
+    #[Route('/public/characters/{accessToken}/actions/flexible-casting/convert-spell-slot', name: 'api_public_character_action_flexible_casting_convert', requirements: ['accessToken' => '[a-f0-9]{64}'], methods: ['POST'])]
+    public function convertFlexibleCastingSlot(string $accessToken, Request $request, PlayerCharacterAccess $playerAccess, CharacterActionResolver $actionResolver, CharacterFlexibleCastingActionService $castingService, EntityManagerInterface $entityManager): JsonResponse
+    {
+        return $this->executeFlexibleCasting($accessToken, $request, $playerAccess, $actionResolver, $entityManager, $castingService->convertSpellSlotToSorceryPoints(...));
+    }
+
+    /** @param callable(CharacterSessionState, int): void $action */
+    private function executeFlexibleCasting(string $accessToken, Request $request, PlayerCharacterAccess $playerAccess, CharacterActionResolver $actionResolver, EntityManagerInterface $entityManager, callable $action): JsonResponse
+    {
+        $sessionState = $playerAccess->requireParticipating($accessToken);
+        if ($sessionState->getGameSession()->getStatus() !== GameSession::STATUS_LIVE) {
+            return $this->json(['message' => 'Cette session n’est pas ouverte.'], Response::HTTP_CONFLICT);
+        }
+
+        try {
+            $payload = $request->toArray();
+        } catch (\Symfony\Component\HttpFoundation\Exception\JsonException) {
+            return $this->json(['message' => 'Le corps JSON est invalide.'], Response::HTTP_BAD_REQUEST);
+        }
+        $level = $payload['level'] ?? null;
+        $revision = $payload['revision'] ?? null;
+        if (!is_int($level)) {
+            return $this->json(['message' => 'Le niveau d’emplacement doit être un entier.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+        if (!is_int($revision) || $revision < 1) {
+            return $this->json(['message' => 'Une révision entière positive est requise.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        try {
+            return $entityManager->wrapInTransaction(function () use ($entityManager, $sessionState, $revision, $level, $actionResolver, $action): JsonResponse {
+                PlayerCharacterAccess::lockForMutation($entityManager, $sessionState);
+                $entityManager->lock($sessionState, LockMode::OPTIMISTIC, $revision);
+
+                $eligible = false;
+                foreach ($actionResolver->resolve($sessionState->getCharacter()) as $definition) {
+                    if ($definition->getHandlerType() === CharacterActionHandlerType::FlexibleCasting) {
+                        $eligible = true;
+                        break;
+                    }
+                }
+                if (!$eligible) {
+                    return $this->json(['message' => 'Conversion flexible n’est pas disponible pour ce personnage.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+                }
+
+                // The service validates before its single mutation; domain refusals have no writes.
+                try {
+                    $action($sessionState, $level);
+                } catch (\DomainException $exception) {
+                    return $this->json(['message' => $exception->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
+                }
+                $entityManager->flush();
+
+                return $this->json($this->sessionStateSerializer->serialize($sessionState));
+            });
+        } catch (OptimisticLockException) {
+            return $this->json(['message' => 'Le personnage a été modifié ailleurs. Rechargez son état.'], Response::HTTP_CONFLICT);
+        }
     }
 
     private function validateTargets(mixed $targetIds, int $maximumTargets, string $actionName): ?JsonResponse

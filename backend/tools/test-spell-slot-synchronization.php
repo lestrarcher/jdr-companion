@@ -331,7 +331,110 @@ try {
     $check($pool($session->getState(), 'sorcery-points')['currentValue'] === 13, 'Explicit progression context including zero reaches resolver');
     $session->setState(['resources' => [['id' => 'sorcery-points', 'currentValue' => 12], ['id' => 'spell-slot-1', 'currentValue' => 1]]]);
     $refuseCasting(fn () => $casting->convertSpellSlotToSorceryPoints($session, 1));
-    echo "OK: $checks assertions; slot lifecycle and Flexible Casting scenarios passed.\n";
+    $controller = new \App\Controller\CharacterActionController($serializer);
+    $controller->setContainer(new \Symfony\Component\DependencyInjection\Container());
+    $access = new \App\Service\PlayerCharacterAccess(new CharacterSessionStateRepository($registry));
+    $resolver = new CharacterActionResolver(new CharacterActionClassRuleRepository($registry));
+    $class->setSlug('sorcerer');
+    $class->setName('Ensorceleur');
+    $action = new \App\Entity\CharacterActionDefinition('flexible-casting', 'Conversion flexible', \App\Enum\CharacterActionHandlerType::FlexibleCasting);
+    $action->setRequiresPreparation(false);
+    $em->persist($action);
+    $em->persist(new \App\Entity\CharacterActionClassRule($action, $class, 2));
+    $session->getGameSession()->setStatus(GameSession::STATUS_LIVE);
+    $em->flush();
+    $httpState = ['progressions' => [['id' => 'casting-context', 'currentValue' => 0]], 'characterActions' => ['prepared' => []], 'resources' => [
+        ['id' => 'sorcery-points', 'currentValue' => 10], ['id' => 'spell-slot-1', 'currentValue' => 1],
+    ]];
+    $call = static function (string $method, CharacterSessionState $target, array|string $payload) use ($controller, $access, $resolver, $casting, $em): \Symfony\Component\HttpFoundation\JsonResponse {
+        $request = \Symfony\Component\HttpFoundation\Request::create('/', 'POST', [], [], [], ['CONTENT_TYPE' => 'application/json'], is_string($payload) ? $payload : json_encode($payload, JSON_THROW_ON_ERROR));
+        return $controller->$method($target->getAccessToken(), $request, $access, $resolver, $casting, $em);
+    };
+    $session->setState($httpState);
+    $em->flush();
+    $response = $call('createFlexibleCastingSlot', $session, ['level' => 1, 'revision' => $session->getRevision()]);
+    $check($response->getStatusCode() === 200, 'Eligible unprepared action succeeds');
+    $body = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+    $check($pool($body['state'], 'sorcery-points')['currentValue'] === 8 && $pool($body['state'], 'spell-slot-1')['currentValue'] === 2, 'HTTP creation returns updated currents');
+    $check(array_column($body['character']['resources'], 'maximum', 'slug')['spell-slot-1'] === 5, 'HTTP creation exposes effective maximum');
+    $check(!str_contains($response->getContent(), 'flexibleCastingBonus'), 'HTTP hides internal bonus');
+    $em->refresh($session);
+    $check($pool($session->getState(), 'spell-slot-1')['flexibleCastingBonus'] === 1, 'HTTP persists internal bonus');
+    $session->setState($httpState);
+    $em->flush();
+    $response = $call('createFlexibleCastingSlot', $session, ['level' => 5, 'revision' => $session->getRevision()]);
+    $body = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+    $check($response->getStatusCode() === 200 && $pool($body['state'], 'spell-slot-5')['currentValue'] === 1 && array_column($body['character']['resources'], 'maximum', 'slug')['spell-slot-5'] === 1, 'HTTP creates temporary pool 1/1');
+    $response = $call('convertFlexibleCastingSlot', $session, ['level' => 5, 'revision' => $session->getRevision()]);
+    $check($response->getStatusCode() === 200 && $pool($session->getState(), 'sorcery-points')['currentValue'] === 8, 'HTTP conversion succeeds');
+    foreach ([['createFlexibleCastingSlot', 6, 10], ['createFlexibleCastingSlot', 1, 1], ['convertFlexibleCastingSlot', 3, 4], ['convertFlexibleCastingSlot', 1, 13]] as [$method, $level, $ps]) {
+        $state = $httpState;
+        $state['resources'][0]['currentValue'] = $ps;
+        $session->setState($state);
+        $em->flush();
+        $revision = $session->getRevision();
+        $response = $call($method, $session, ['level' => $level, 'revision' => $revision]);
+        $check($response->getStatusCode() === 422, 'Domain error translated to HTTP 422');
+        $em->refresh($session);
+        $check($session->getState() === $state && $session->getRevision() === $revision, 'Failed HTTP conversion has no persisted mutation');
+    }
+    foreach ([['level' => '1', 'revision' => 1], ['level' => 1], '{invalid'] as $payload) {
+        $check($call('createFlexibleCastingSlot', $session, $payload)->getStatusCode() === (is_string($payload) ? 400 : 422), 'Malformed payload rejected');
+    }
+    $action->setActive(false);
+    $em->flush();
+    $check($call('createFlexibleCastingSlot', $session, ['level' => 1, 'revision' => $session->getRevision()])->getStatusCode() === 422, 'Inactive action denied');
+    $action->setActive(true);
+    $em->flush();
+    foreach ([0, 1, 8] as $otherLevels) {
+        $low = new Character($campaign, 'low-' . $otherLevels, 'Low', Character::TYPE_PLAYER);
+        $em->persist($low);
+        $level = new CharacterClassLevel($low, $class, 1, null, 4, HitPointGainMethod::Average);
+        $low->addClassLevel($level);
+        $em->persist($level);
+        for ($i = 0; $i < $otherLevels; ++$i) {
+            $level = new CharacterClassLevel($low, $pactClass, $i + 2, null, 5, HitPointGainMethod::Average);
+            $low->addClassLevel($level);
+            $em->persist($level);
+        }
+        $lowSession = new CharacterSessionState($session->getGameSession(), $low, $httpState);
+        $em->persist($lowSession);
+        $em->flush();
+        $check($call('createFlexibleCastingSlot', $lowSession, ['level' => 1, 'revision' => $lowSession->getRevision()])->getStatusCode() === 422, 'Sorcerer 1 denied regardless of total level');
+        if ($otherLevels === 0) {
+            $level = new CharacterClassLevel($low, $class, 2, null, 4, HitPointGainMethod::Average);
+            $low->addClassLevel($level);
+            $assignment = new \App\Entity\CharacterProgression($low, $progression);
+            $low->addProgression($assignment);
+            $em->persist($level);
+            $em->persist($assignment);
+            $em->flush();
+            $check($call('createFlexibleCastingSlot', $lowSession, ['level' => 1, 'revision' => $lowSession->getRevision()])->getStatusCode() === 200, 'Sorcerer exactly 2 accepted without preparation');
+        }
+    }
+    $session->setParticipating(false);
+    $em->flush();
+    try {
+        $call('createFlexibleCastingSlot', $session, ['level' => 1, 'revision' => $session->getRevision()]);
+        throw new RuntimeException('Nonparticipant must be refused');
+    } catch (\Symfony\Component\HttpKernel\Exception\NotFoundHttpException) {
+        $check(true, 'Nonparticipant refused with 404');
+    }
+    $session->setParticipating(true);
+    $session->getGameSession()->setStatus(GameSession::STATUS_CLOSED);
+    $em->flush();
+    $check($call('createFlexibleCastingSlot', $session, ['level' => 1, 'revision' => $session->getRevision()])->getStatusCode() === 409, 'Closed session denied');
+    $session->getGameSession()->setStatus(GameSession::STATUS_LIVE);
+    $session->setState($httpState);
+    $em->flush();
+    $revision = $session->getRevision();
+    // Simulate a write committed after the entity was loaded: the locked refresh must see it.
+    $db->executeStatement('UPDATE character_session_state SET revision = revision + 1 WHERE id = ?', [$session->getId()]);
+    $response = $call('createFlexibleCastingSlot', $session, ['level' => 1, 'revision' => $revision]);
+    $check($response->getStatusCode() === 409, 'Stale revision after locked refresh rejected');
+    $stored = json_decode($db->fetchOne('SELECT state FROM character_session_state WHERE id = ?', [$session->getId()]), true, 512, JSON_THROW_ON_ERROR);
+    $check($stored === $httpState, 'Revision conflict does not spend points or create slots');
+    echo "OK: $checks assertions; slot lifecycle, Flexible Casting and controller scenarios passed.\n";
 } finally {
     while ($db->isTransactionActive()) $db->rollBack();
     $kernel->shutdown();
