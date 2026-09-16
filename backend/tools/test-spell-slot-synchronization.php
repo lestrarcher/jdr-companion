@@ -10,6 +10,8 @@ use App\Repository\{CharacterFeatureRuleRepository, CharacterSessionStateReposit
 use App\Service\{CharacterAbilityCalculator, CharacterFeatureResolver, CharacterHitPointCalculator, CharacterHitPointStateService, CharacterResourceResolver, CharacterSessionStateSynchronizer, CharacterSpellSlotCalculator, CharacterSpellSlotStateService};
 use App\Kernel;
 use App\Service\PlayerCharacterStateUpdater;
+use App\Service\{CharacterActionResolver, CharacterProfileSerializer, CharacterSessionStateSerializer};
+use App\Repository\{CharacterActionClassRuleRepository, CharacterActiveEffectRepository};
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Doctrine\ORM\Tools\SchemaTool;
 use Symfony\Component\Dotenv\Dotenv;
@@ -169,7 +171,42 @@ try {
         $check($pool($result, 'spell-slot-5') === $server['resources'][1], 'Exhausted temporary pool remains valid');
     }
     $reject(['resources' => [['id' => 'spell-slot-5', 'currentValue' => 1]]], 403);
-    echo "OK: $checks assertions; synchronization and player PATCH scenarios passed.\n";
+    $profileSerializer = new CharacterProfileSerializer($ability, $features, $resources, $hp, new CharacterSpellSlotCalculator(), new CharacterActionResolver(new CharacterActionClassRuleRepository($registry)));
+    $serializer = new CharacterSessionStateSerializer($profileSerializer, new CharacterHitPointStateService($hp), new CharacterActiveEffectRepository($registry), $slots);
+    $naturalProfile = $profileSerializer->serialize($character);
+    $naturalResources = array_column($naturalProfile['resources'], null, 'slug');
+    $check($naturalResources['spell-slot-1']['maximum'] === 4 && !isset($naturalResources['spell-slot-5']), 'Standalone profile exposes natural slots only');
+    foreach ([1, 0] as $temporaryCurrent) {
+        $server['resources'] = [
+            ['id' => 'spell-slot-5', 'currentValue' => $temporaryCurrent, 'flexibleCastingBonus' => 1],
+            ['id' => 'spell-slot-1', 'currentValue' => 2, 'flexibleCastingBonus' => 1],
+            ['id' => 'spell-slot-3', 'currentValue' => 0, 'flexibleCastingBonus' => 2],
+            ['id' => 'sorcery-points', 'currentValue' => 1],
+            ['id' => 'pact-magic', 'currentValue' => 1],
+        ];
+        $session->setState($server);
+        foreach ([false, true] as $includeToken) {
+            $response = $serializer->serialize($session, $includeToken);
+            $exposed = array_column($response['character']['resources'], null, 'slug');
+            $check($exposed['spell-slot-1']['maximum'] === 5, 'Session maximum is effective');
+            $check($pool($response['state'], 'spell-slot-1')['currentValue'] === 2, 'Current comes from state');
+            $check($exposed['spell-slot-5']['maximum'] === 1 && $pool($response['state'], 'spell-slot-5')['currentValue'] === $temporaryCurrent, 'Temporary pool remains exposed even at zero');
+            $ids = array_column($response['character']['resources'], 'slug');
+            $check(count($ids) === count(array_unique($ids)), 'No duplicate resources');
+            $check(array_values(array_filter($ids, static fn (string $id): bool => str_starts_with($id, 'spell-slot-'))) === ['spell-slot-1', 'spell-slot-2', 'spell-slot-3', 'spell-slot-5'], 'Slots sorted numerically');
+            $check($exposed['pact-magic'] === $naturalResources['pact-magic'] && $exposed['sorcery-points'] === $naturalResources['sorcery-points'], 'Trackable and Pact profiles unchanged');
+            $check($exposed['spell-slot-5']['rechargeType'] === 'long-rest' && isset($exposed['spell-slot-5']['name']), 'Temporary pool supplies mapper metadata');
+            foreach ($response['state']['resources'] as $entry) $check(!array_key_exists('flexibleCastingBonus', $entry), 'Internal bonus not exposed');
+            $check($session->getState() === $server, 'Serialization never mutates stored bonuses');
+            $check(isset($response['accessToken']) === $includeToken, 'Token exposure unchanged');
+        }
+    }
+    foreach ([[], ['resources' => [['id' => 'spell-slot-1', 'currentValue' => 2, 'flexibleCastingBonus' => 0]]]] as $stateWithoutBonus) {
+        $session->setState($stateWithoutBonus);
+        $check($serializer->serialize($session)['character'] === $naturalProfile, 'No bonus preserves the natural profile');
+    }
+    $check($profileSerializer->serialize($character) === $naturalProfile, 'Contextual serialization does not affect standalone profile');
+    echo "OK: $checks assertions; synchronization, player PATCH and serialization scenarios passed.\n";
 } finally {
     while ($db->isTransactionActive()) $db->rollBack();
     $kernel->shutdown();

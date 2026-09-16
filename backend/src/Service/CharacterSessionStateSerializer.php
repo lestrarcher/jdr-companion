@@ -13,6 +13,7 @@ final readonly class CharacterSessionStateSerializer
         private CharacterProfileSerializer $profileSerializer,
         private CharacterHitPointStateService $hitPointStateService,
         private CharacterActiveEffectRepository $activeEffectRepository,
+        private CharacterSpellSlotStateService $spellSlotStateService,
     ) {
     }
 
@@ -24,6 +25,34 @@ final readonly class CharacterSessionStateSerializer
         $character = $state->getCharacter();
         $gameSession = $state->getGameSession();
         $sessionState = $state->getState();
+        $profile = $this->profileSerializer->serialize($character, $this->extractProgressionValues($sessionState));
+        $maximums = $this->spellSlotStateService->effectiveMaximums($character, $sessionState);
+        $resources = [];
+        $spellSlots = [];
+
+        foreach ($profile['resources'] as $resource) {
+            if (preg_match('/\Aspell-slot-([1-9])\z/', $resource['slug'], $matches) === 1) {
+                $spellSlots[(int) $matches[1]] = $resource;
+            } else {
+                $resources[] = $resource;
+            }
+        }
+
+        foreach ($maximums as $level => $maximum) {
+            $resource = $spellSlots[$level] ?? [
+                'slug' => sprintf('spell-slot-%d', $level),
+                'name' => sprintf('Emplacements de sorts de niveau %d', $level),
+                'rechargeType' => 'long-rest',
+            ];
+            $resource['maximum'] = $maximum;
+            $resources[] = $resource;
+        }
+        $profile['resources'] = $resources;
+
+        // The bonus is server-owned; only the response copy is filtered.
+        foreach ($sessionState['resources'] ?? [] as $index => $resource) {
+            unset($sessionState['resources'][$index]['flexibleCastingBonus']);
+        }
 
         $sessionState['hitPoints']['effectiveMaximum'] = $this->hitPointStateService->effectiveMaximum($character, $sessionState);
 
@@ -41,7 +70,7 @@ final readonly class CharacterSessionStateSerializer
                 'name' => $gameSession->getName(),
                 'status' => $gameSession->getStatus(),
             ],
-            'character' => $this->profileSerializer->serialize($character, $this->extractProgressionValues($state->getState())),
+            'character' => $profile,
             'activeEffects' => array_map(
                 static fn ($effect): array => [
                     'id' => $effect->getId(),
