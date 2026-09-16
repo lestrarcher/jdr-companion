@@ -1,0 +1,130 @@
+.character-features {
+  display: grid;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.character-feature {
+  min-width: 0;
+  border: 1px solid rgba(190, 148, 66, 0.28);
+  background: rgba(6, 8, 14, 0.5);
+  transition: border-color 0.2s ease, background 0.2s ease;
+
+  &[open] {
+    border-color: rgba(190, 148, 66, 0.5);
+    background: rgba(190, 148, 66, 0.04);
+  }
+}
+
+.character-feature__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  list-style: none;
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+
+  &:hover {
+    background: rgba(190, 148, 66, 0.04);
+  }
+}
+
+.character-feature__name {
+  min-width: 0;
+  color: #f4efe5;
+  font: 500 1rem Georgia, serif;
+}
+
+.character-feature__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.feature-tag {
+  padding: 0.22rem 0.55rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.feature-tag--class {
+  color: #d1ae63;
+  background: rgba(209, 174, 99, 0.08);
+}
+
+.feature-tag--subclass {
+  color: #b79ad9;
+  background: rgba(183, 154, 217, 0.08);
+}
+
+.feature-tag--race,
+.feature-tag--ancestry {
+  color: #82acd6;
+  background: rgba(130, 172, 214, 0.08);
+}
+
+.feature-tag--feat {
+  color: #9ac99a;
+  background: rgba(154, 201, 154, 0.08);
+}
+
+.feature-tag--progression {
+  color: #cf9a9a;
+  background: rgba(207, 154, 154, 0.08);
+}
+
+.character-feature__chevron {
+  color: #c99a42;
+  font-size: 1rem;
+  transition: transform 0.2s ease;
+}
+
+.character-feature[open] .character-feature__chevron {
+  transform: rotate(180deg);
+}
+
+.character-feature__content {
+  padding: 0 1rem 1rem;
+  border-top: 1px solid rgba(190, 148, 66, 0.12);
+
+  p {
+    margin: 0;
+    padding-top: 0.85rem;
+    max-width: 80ch;
+    color: rgba(244, 239, 229, 0.82);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+}
+
+.character-features__empty {
+  margin: 0;
+  color: rgba(244, 239, 229, 0.6);
+}
+
+@media (max-width: 600px) {
+  .character-feature__summary {
+    align-items: flex-start;
+  }
+
+  .character-feature__meta {
+    gap: 0.4rem;
+  }
+
+  .feature-tag {
+    max-width: 9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}

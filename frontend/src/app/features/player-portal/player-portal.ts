@@ -25,6 +25,7 @@ import { RestControls } from './components/rest-controls/rest-controls';
 import { AidActionModal, AidActionPayload, AidSpellSlot, AidTarget } from './components/aid-action-modal/aid-action-modal';
 import { HeroesFeastActionModal, HeroesFeastActionPayload } from './components/heroes-feast-action-modal/heroes-feast-action-modal';
 import { FlexibleCastingActionModal, FlexibleCastingPayload } from './components/flexible-casting-action-modal/flexible-casting-action-modal';
+import { CharacterFeatures } from './components/character-features/character-features';
 
 type SessionStatus =
   | 'draft'
@@ -39,6 +40,7 @@ type SaveStatus =
 
 type PlayerPortalTab =
   | 'status'
+  | 'features'
   | 'possessions';
 
 @Component({
@@ -56,6 +58,7 @@ type PlayerPortalTab =
     AidActionModal,
     HeroesFeastActionModal,
     FlexibleCastingActionModal,
+    CharacterFeatures
   ],
   templateUrl: './player-portal.html',
   styleUrl: './player-portal.scss',

@@ -118,6 +118,11 @@
               </span>
             </button>
 
+            <button type="button" [class.portal-tab--active]="activeTab() === 'features'" [attr.aria-pressed]="activeTab() === 'features'" (click)="selectTab('features')">
+              <span class="portal-tab-symbol" aria-hidden="true">✧</span>
+              <span><strong>Capacités</strong><small>Origines et descriptions</small></span>
+            </button>
+
             <button
               type="button"
               [class.portal-tab--active]="
@@ -189,12 +194,16 @@
                   <app-character-resources [resources]="sortedResources()" />
                 </div>
               }
-
               @case ('possessions') {
                 <div class="possessions-sections">
                   <app-character-wallet [accessToken]="accessToken" [disabled]="sessionStatus() !== 'live'" />
                   <app-character-magic-items [accessToken]="accessToken" />
                 </div>
+              }
+
+
+              @case ('features') {
+                <app-character-features [features]="visibleFeatures()" />
               }
             }
           </div>
