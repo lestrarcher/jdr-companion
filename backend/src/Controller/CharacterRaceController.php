@@ -343,6 +343,7 @@ final class CharacterRaceController extends AbstractController
             'name' => $race->getName(),
             'description' => $race->getDescription(),
             'custom' => $race->isCustom(),
+            'selectable' => $race->isSelectable(),
             'featChoiceCount' => $race->getFeatChoiceCount(),
             'inheritedFeatChoiceCount' =>
                 $race->getInheritedFeatChoiceCount(),

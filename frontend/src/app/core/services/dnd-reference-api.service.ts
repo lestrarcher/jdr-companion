@@ -46,10 +46,37 @@ export interface RaceParentReference {
   name: string;
 }
 
+export interface RaceMetadataReference {
+  sizeOptions: string[] | null;
+  walkingSpeed: number | null;
+  movementSpeeds: Partial<Record<'swim' | 'fly' | 'climb', number | null>> | null;
+  languages: string[] | null;
+  languageChoiceCount: number | null;
+  senses: Partial<Record<'darkvision' | 'blindsight' | 'tremorsense' | 'truesight', number | null>> | null;
+  damageResistances: string[] | null;
+  damageImmunities: string[] | null;
+  conditionImmunities: string[] | null;
+}
+
+export interface EffectiveRaceMetadataReference {
+  sizeOptions: string[];
+  walkingSpeed: number | null;
+  movementSpeeds: Partial<Record<'swim' | 'fly' | 'climb', number>>;
+  languages: string[];
+  languageChoiceCount: number;
+  senses: Partial<Record<'darkvision' | 'blindsight' | 'tremorsense' | 'truesight', number>>;
+  damageResistances: string[];
+  damageImmunities: string[];
+  conditionImmunities: string[];
+}
+
 export interface RaceReference {
   id: number;
   slug: string;
   name: string;
+  selectable: boolean;
+  metadata?: RaceMetadataReference;
+  effectiveMetadata?: EffectiveRaceMetadataReference;
   description?: string | null;
   custom?: boolean;
   parentRaceId?: number | null;

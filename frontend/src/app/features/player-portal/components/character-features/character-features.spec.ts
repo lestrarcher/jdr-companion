@@ -1,45 +1,41 @@
 import { TestBed } from '@angular/core/testing';
-import { signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
-import { describe, it, expect } from 'vitest';
-import { PlayerPortal } from '../../player-portal';
-import { CharacterStateService } from '@core/services/character-state.service';
-import { CharacterSessionStateApiService } from '@core/services/character-session-state-api.service';
-import { RestRequestApiService } from '@core/services/rest-request-api.service';
-import { CampaignConfigurationRegistryService } from '@core/services/campaign-configuration-registry.service';
+import { describe, expect, it } from 'vitest';
+import { CharacterFeatSummary, CharacterFeatureSummary } from '@core/services/character-api.service';
+import { CharacterFeatures } from './character-features';
 
-describe('Player feature consultation', () => {
-  it('renders resolved features and origins safely in the middle tab, without actions', async () => {
-    TestBed.configureTestingModule({ providers: [
-      { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => null } } } },
-      { provide: CharacterStateService, useValue: { character: signal({ name: 'Test', resources: [] }) } },
-      { provide: CharacterSessionStateApiService, useValue: {} },
-      { provide: RestRequestApiService, useValue: {} },
-      { provide: CampaignConfigurationRegistryService, useValue: {} },
-    ] });
-    const fixture = TestBed.createComponent(PlayerPortal);
-    const portal = fixture.componentInstance as any;
-    portal.loadError.set(null);
-    portal.character.set({ name: 'Test' });
-    portal.sessionStatus.set('live');
-    portal.selectTab('features');
-    portal.features.set([
-      { slug: 'class-feature', name: 'Capacité en BDD', sourceName: 'Ensorceleur', sourceType: 'class', unlockLevel: 2, description: 'Première ligne\n<script>texte</script>' },
-      { slug: 'progression-feature', name: 'Progression acquise', sourceName: 'Corruption', sourceType: 'progression', unlockLevel: 1, description: null },
+describe('Character feature unlock levels', () => {
+  it('shows the resolved rule level for class, subclass and race features, without displaying the progression placeholder', () => {
+    const fixture = TestBed.createComponent(CharacterFeatures);
+    const feature = (slug: string, sourceType: CharacterFeatureSummary['sourceType'], unlockLevel: number): CharacterFeatureSummary => ({
+      id: 1, slug, name: slug, description: 'Description', activationType: 'passive', visible: true, custom: false,
+      sourceType, sourceId: 1, sourceName: sourceType, unlockLevel, displayOrder: 0, resource: null,
+    });
+    fixture.componentRef.setInput('features', [
+      feature('class-one', 'class', 1),
+      feature('class-five', 'class', 5),
+      feature('subclass-three', 'subclass', 3),
+      feature('race-five', 'race', 5),
+      feature('progression', 'progression', 1),
     ]);
-    await fixture.whenStable();
-    const element: HTMLElement = fixture.nativeElement;
-    expect(Array.from(element.querySelectorAll('.portal-tabs strong')).map(node => node.textContent?.trim())).toEqual(['État', 'Capacités', 'Possessions']);
-    expect(element.querySelectorAll('.character-feature')).toHaveLength(2);
-    expect(element.querySelector('.character-feature__origin')!.textContent).toContain('Ensorceleur — niveau 2');
-    expect(element.querySelectorAll('.character-feature__origin')[1].textContent?.trim()).toBe('Corruption');
-    expect(element.querySelector('.character-feature__description')!.textContent).toBe('Première ligne\n<script>texte</script>');
-    expect(element.querySelector('.character-features script')).toBeNull();
-    expect(element.querySelector('.character-features button')).toBeNull();
-    expect(element.textContent).toContain('Aucune description renseignée.');
-    portal.features.set([]);
-    await fixture.whenStable();
-    expect(element.textContent).toContain('Aucune capacité acquise');
-    expect(element.querySelectorAll('.character-feature')).toHaveLength(0);
+    fixture.detectChanges();
+
+    const cards = Array.from(fixture.nativeElement.querySelectorAll('.character-feature')) as HTMLElement[];
+    expect(cards.map(card => card.querySelector('.character-feature__level')?.textContent?.trim() ?? null))
+      .toEqual(['Niveau 1', 'Niveau 5', 'Niveau 3', 'Niveau 5', null]);
+  });
+
+  it('shows a feat acquisition level only when it is recorded', () => {
+    const fixture = TestBed.createComponent(CharacterFeatures);
+    const feat = (id: number, acquiredAtLevel: number | null): CharacterFeatSummary => ({
+      id, featId: id, slug: `feat-${id}`, name: `Don ${id}`, description: null,
+      chosenAbility: null, abilityIncrease: 0, acquiredAtLevel,
+    });
+    fixture.componentRef.setInput('features', []);
+    fixture.componentRef.setInput('feats', [feat(1, 4), feat(2, null)]);
+    fixture.detectChanges();
+
+    const cards = Array.from(fixture.nativeElement.querySelectorAll('.character-feature')) as HTMLElement[];
+    expect(cards.map(card => card.querySelector('.character-feature__level')?.textContent?.trim() ?? null))
+      .toEqual(['Niveau 4', null]);
   });
 });

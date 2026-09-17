@@ -110,6 +110,10 @@ export class CharacterBuilder {
     return this.reference()?.races ?? [];
   }
 
+  protected selectableRaces(): RaceReference[] {
+    return this.races().filter((race) => race.selectable);
+  }
+
   protected classes(): ClassReference[] {
     return this.reference()?.classes ?? [];
   }

@@ -40,6 +40,17 @@
   font: 500 1rem Georgia, serif;
 }
 
+.character-feature__heading {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.character-feature__level {
+  color: rgba(244, 239, 229, 0.62);
+  font-size: 0.75rem;
+}
+
 .character-feature__meta {
   display: flex;
   align-items: center;

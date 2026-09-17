@@ -11,7 +11,12 @@
     @for (feature of filteredFeatures(); track feature.slug) {
       <details class="character-feature">
         <summary class="character-feature__summary">
-          <span class="character-feature__name">{{ feature.name }}</span>
+          <span class="character-feature__heading">
+            <span class="character-feature__name">{{ feature.name }}</span>
+            @if (feature.sourceType !== 'progression' && feature.unlockLevel > 0) {
+              <span class="character-feature__level">Niveau {{ feature.unlockLevel }}</span>
+            }
+          </span>
           <span class="character-feature__meta">
             @if (feature.sourceName) {
               <span class="feature-tag" [class]="sourceClass(feature.sourceType)">{{ feature.sourceName }}</span>
@@ -29,7 +34,12 @@
     @for (feat of filteredFeats(); track feat.id) {
       <details class="character-feature">
         <summary class="character-feature__summary">
-          <span class="character-feature__name">{{ feat.name }}</span>
+          <span class="character-feature__heading">
+            <span class="character-feature__name">{{ feat.name }}</span>
+            @if (feat.acquiredAtLevel != null) {
+              <span class="character-feature__level">Niveau {{ feat.acquiredAtLevel }}</span>
+            }
+          </span>
           <span class="character-feature__meta">
             <span class="feature-tag" [class]="sourceClass('feat')">Don</span>
             <span class="character-feature__chevron" aria-hidden="true">⌄</span>

@@ -125,7 +125,7 @@
             <select formControlName="raceId">
               <option [ngValue]="0">Choisir une race</option>
 
-              @for (race of races(); track race.id) {
+              @for (race of selectableRaces(); track race.id) {
                 <option [ngValue]="race.id">{{ race.name }}</option>
               }
             </select>
