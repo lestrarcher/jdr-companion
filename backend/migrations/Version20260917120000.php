@@ -49,24 +49,35 @@ BEGIN
     SELECT count(*) INTO source_count FROM character_feature_definition WHERE slug = pair.source_slug;
     SELECT count(*) INTO target_count FROM character_feature_definition WHERE slug = pair.target_slug;
 
-    IF target_count <> 1 THEN
-      RAISE EXCEPTION 'Expected exactly one canonical feature %, found %', pair.target_slug, target_count;
+    IF source_count > 1 OR target_count > 1 THEN
+      RAISE EXCEPTION 'Ambiguous feature identities for % and %', pair.source_slug, pair.target_slug;
     END IF;
+    -- Already normalized, or neither side exists before the first catalogue import.
     IF source_count = 0 THEN
       CONTINUE;
-    END IF;
-    IF source_count <> 1 THEN
-      RAISE EXCEPTION 'Expected at most one historical feature %, found %', pair.source_slug, source_count;
     END IF;
 
     SELECT id, custom, resource_definition_id
       INTO STRICT source_id, source_custom, source_resource_id
       FROM character_feature_definition WHERE slug = pair.source_slug;
+    IF source_custom THEN
+      RAISE EXCEPTION 'Refusing to normalize custom feature %', pair.source_slug;
+    END IF;
+
+    -- Production before its first catalogue import: preserve the historical ID,
+    -- rules and resource by renaming the definition in place.
+    IF target_count = 0 THEN
+      UPDATE character_feature_definition
+         SET slug = pair.target_slug, updated_at = CURRENT_TIMESTAMP
+       WHERE id = source_id;
+      CONTINUE;
+    END IF;
+
     SELECT id, custom, resource_definition_id
       INTO STRICT target_id, target_custom, target_resource_id
       FROM character_feature_definition WHERE slug = pair.target_slug;
 
-    IF source_custom OR target_custom THEN
+    IF target_custom THEN
       RAISE EXCEPTION 'Refusing to consolidate custom feature % into %', pair.source_slug, pair.target_slug;
     END IF;
     IF source_resource_id IS NOT NULL AND target_resource_id IS NOT NULL AND source_resource_id <> target_resource_id THEN

@@ -114,6 +114,46 @@ try {
         },
     );
 
+    // Production before its first catalogue import: historical definitions only.
+    $scenario(
+        function () use ($db, $pairs, $featureId): void {
+            foreach ($pairs as [, $targetSlug]) {
+                $db->delete('character_feature_definition', ['slug' => $targetSlug]);
+            }
+            $db->insert('character_feature_rule', [
+                'id' => 205, 'feature_definition_id' => $featureId('lien-avec-une-arme'),
+                'character_subclass_id' => 10, 'unlock_level' => 3, 'display_order' => 3,
+            ]);
+        },
+        function () use ($db, $check): void {
+            $check((int) $db->fetchOne("SELECT id FROM character_feature_definition WHERE slug = 'eldritch-knight-weapon-bond'") === 100, 'Historical feature ID preserved when canonical definition is absent');
+            $check((int) $db->fetchOne('SELECT feature_definition_id FROM character_feature_rule WHERE id = 205') === 100, 'Historical rule remains attached to renamed feature ID');
+            $check((int) $db->fetchOne("SELECT resource_definition_id FROM character_feature_definition WHERE slug = 'divination-the-third-eye'") === 50, 'Third Eye resource remains attached during in-place rename');
+            $check((int) $db->fetchOne('SELECT count(*) FROM character_feature_definition') === 8, 'Eight historical-only definitions renamed in place');
+        },
+    );
+
+    // Catalogue already imported or migration already applied: canonical definitions only.
+    $scenario(
+        function () use ($db, $pairs): void {
+            foreach ($pairs as [$sourceSlug]) {
+                $db->delete('character_feature_definition', ['slug' => $sourceSlug]);
+            }
+        },
+        function () use ($db, $check): void {
+            $check((int) $db->fetchOne("SELECT id FROM character_feature_definition WHERE slug = 'eldritch-knight-weapon-bond'") === 101, 'Canonical-only feature left unchanged');
+            $check((int) $db->fetchOne('SELECT count(*) FROM character_feature_definition') === 8, 'Canonical-only state left unchanged');
+        },
+    );
+
+    // Empty production reference data: later catalogue import will create canonical definitions.
+    $scenario(
+        function () use ($db): void {
+            $db->executeStatement('DELETE FROM character_feature_definition');
+        },
+        fn () => $check((int) $db->fetchOne('SELECT count(*) FROM character_feature_definition') === 0, 'Missing historical and canonical definitions accepted'),
+    );
+
     $scenario(
         function () use ($db, $featureId): void {
             $db->insert('character_feature_rule', [
