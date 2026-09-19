@@ -83,6 +83,8 @@ final class RaceImportPlanner
         return 'racial-'.$raceSlug.'-'.$traitSlug;
     }
 
+    public function staleTraitRuleAction(bool $managedCanonical, bool $custom, bool $update): string { if (!$managedCanonical || $custom) return 'preserve'; return $update ? 'remove' : 'kept'; }
+
     public function modifierAction(int $existingValue, int $catalogueValue, bool $referenced, bool $update): string
     {
         if ($existingValue === $catalogueValue) return 'unchanged';

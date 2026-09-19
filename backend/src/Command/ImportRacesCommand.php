@@ -20,8 +20,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 final class ImportRacesCommand extends Command
 {
     private const CATEGORIES = ['races', 'modifiers', 'traitDefinitions', 'traitRules'];
-    private const METRICS = ['create', 'unchanged', 'kept', 'update', 'outOfScopeDisable', 'outOfScopeAlreadyDisabled', 'protectedHistorical', 'reuseCanonical', 'preserveReferenced', 'preserveLocal', 'structural', 'compatibility', 'unresolved', 'unsupported', 'conflict'];
-    private array $report = [];
+    private const METRICS = ['create', 'unchanged', 'kept', 'update', 'remove', 'preserve', 'outOfScopeDisable', 'outOfScopeAlreadyDisabled', 'protectedHistorical', 'reuseCanonical', 'preserveReferenced', 'preserveLocal', 'structural', 'compatibility', 'unresolved', 'unsupported', 'conflict'];    private array $report = [];
     private array $details = [];
     private int $virtualId = -1;
 
@@ -180,7 +179,7 @@ final class ImportRacesCommand extends Command
 
     private function traits(array $entries, array $raceIds, bool $write, bool $update): void
     {
-        $plannedFeatures = [];
+        $plannedFeatures = []; $plannedRules = [];
         foreach ($entries as $entry) foreach ($entry->traits as $trait) {
             $raceId = $raceIds[$entry->slug] ?? null; if ($raceId === null) continue;
             $featureSlug = $this->planner->featureSlug($entry->slug, $trait->slug);
@@ -199,6 +198,22 @@ final class ImportRacesCommand extends Command
             $rule = $this->connection->fetchAssociative('SELECT * FROM character_feature_rule WHERE character_race_id = ? AND feature_definition_id = ? AND unlock_level = ?', [$raceId, $featureId, $trait->unlockLevel]) ?: null;
             if ($rule === null) { ++$this->report['traitRules']['create']; if ($write) $this->connection->insert('character_feature_rule', ['character_race_id' => $raceId, 'feature_definition_id' => $featureId, 'unlock_level' => $trait->unlockLevel, 'display_order' => 0]); }
             else ++$this->report['traitRules']['reuseCanonical'];
+            $plannedRules[$raceId][$featureSlug][$trait->unlockLevel] = true;
+        }
+
+        foreach ($raceIds as $raceSlug => $raceId) {
+            $existingRules = $this->connection->fetchAllAssociative('SELECT r.id, r.unlock_level, f.slug AS feature_slug, f.custom FROM character_feature_rule r JOIN character_feature_definition f ON f.id = r.feature_definition_id WHERE r.character_race_id = ?', [$raceId]);
+            foreach ($existingRules as $rule) {
+                $managedCanonical = str_starts_with($rule['feature_slug'], 'racial-'.$raceSlug.'-');
+                $planned = isset($plannedRules[$raceId][$rule['feature_slug']][(int) $rule['unlock_level']]);
+                if ($planned) continue;
+                $action = $this->planner->staleTraitRuleAction($managedCanonical, filter_var($rule['custom'], FILTER_VALIDATE_BOOL), $update);
+                ++$this->report['traitRules'][$action];
+                if ($action === 'remove') {
+                    $this->details[] = "[traitRules] STALE REMOVE $raceSlug/{$rule['feature_slug']} niveau {$rule['unlock_level']} (rule ID {$rule['id']})";
+                    if ($write) $this->connection->delete('character_feature_rule', ['id' => $rule['id']]);
+                }
+            }
         }
     }
 

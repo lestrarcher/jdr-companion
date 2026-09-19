@@ -58,6 +58,10 @@ $multipleLegacy = (object) ['slug' => 'canonical', 'legacySlugs' => ['old-a', 'o
 $check($planner->match($multipleLegacy, ['old-a' => ['id' => 1, 'slug' => 'old-a'], 'old-b' => ['id' => 2, 'slug' => 'old-b']])['status'] === 'conflict', 'Multiple legacy matches must conflict.');
 $check($match['legacySlug'] === 'legacy', 'The matched legacy slug must be reported.');
 $check($planner->featureSlug('elf-high-phb', 'darkvision-3') !== $planner->featureSlug('elf-drow-phb', 'darkvision-3'), 'Racial trait definitions must have global slugs.');
+$check($planner->staleTraitRuleAction(true, false, true) === 'remove', 'A stale managed canonical racial trait rule may be removed with --update-existing.');
+$check($planner->staleTraitRuleAction(true, false, false) === 'kept', 'A stale managed canonical racial trait rule must be kept without --update-existing.');
+$check($planner->staleTraitRuleAction(false, false, true) === 'preserve', 'A racial rule not managed by the catalogue must be preserved.');
+$check($planner->staleTraitRuleAction(true, true, true) === 'preserve', 'A custom racial trait must always be preserved.');
 $check($planner->modifierAction(2, 2, true, true) === 'unchanged', 'An identical referenced modifier must be reused.');
 $check($planner->modifierAction(1, 2, true, true) === 'conflict', 'An incompatible referenced modifier must conflict.');
 $check($planner->modifierAction(1, 2, false, false) === 'kept', 'A differing modifier must be kept by default.');

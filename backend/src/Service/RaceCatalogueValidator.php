@@ -182,7 +182,7 @@ final class RaceCatalogueValidator
 
     private function validateTraits(mixed $traits, string $label, array &$errors): void
     {
-        if (!is_array($traits) || $traits === []) { $errors[] = "$label must be a non-empty array."; return; }
+        if (!is_array($traits)) { $errors[] = "$label must be an array."; return; }
         $seen = [];
         foreach ($traits as $index => $trait) {
             $item = "{$label}[$index]";
