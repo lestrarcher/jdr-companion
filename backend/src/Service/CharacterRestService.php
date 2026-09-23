@@ -184,6 +184,12 @@ final readonly class CharacterRestService
                 $resourceState['currentValue'] = $resource?->getMaximum()
                     ?? $this->historicalResourceMaximum($character, $definition);
 
+                if ($id === PortentResourceConfiguration::RESOURCE_SLUG
+                    && in_array(RestRequest::TYPE_LONG_REST, $resetPeriods, true)) {
+                    // Absent means a new series is pending; [] means exhausted.
+                    unset($resourceState['storedValues']);
+                }
+
                 return $resourceState;
             },
             $states,

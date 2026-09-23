@@ -82,7 +82,8 @@ final readonly class PlayerCharacterStateUpdater
         }
 
         $configuration = [];
-        foreach ($character->getDefinition()['resources'] ?? [] as $resource) {
+        $definition = PortentResourceConfiguration::apply($character->getDefinition(), $after['resources']);
+        foreach ($definition['resources'] ?? [] as $resource) {
             $configuration[$resource['id']] = $resource;
         }
         if (array_key_exists('resources', $patch)) {

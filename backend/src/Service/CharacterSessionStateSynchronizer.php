@@ -311,6 +311,15 @@ final readonly class CharacterSessionStateSynchronizer
             }
 
             $current = (int) ($states[$index][$currentField] ?? 0);
+
+            if ($id === PortentResourceConfiguration::RESOURCE_SLUG
+                && $currentField === 'currentValue'
+                && isset($states[$index]['storedValues'])) {
+                // Greater Portent changes the next series, never existing rolls.
+                $states[$index][$currentField] = count($states[$index]['storedValues']);
+                continue;
+            }
+
             $delta = $afterMaximum - $beforeMaximum;
 
             $states[$index][$currentField] = $delta >= 0

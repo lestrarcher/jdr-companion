@@ -35,10 +35,12 @@ $services = static function () use ($registry): array {
     $slots = new CharacterSpellSlotCalculator();
     $features = new CharacterFeatureResolver(new CharacterFeatureRuleRepository($registry));
     $resources = new CharacterResourceResolver(new TrackableResourceRuleRepository($registry), $ability, $features);
-    $sync = new CharacterSessionStateSynchronizer($hp, $resources, new CharacterSessionStateRepository($registry), $slots);
+    $hpState = new App\Service\CharacterHitPointStateService($hp);
+    $slotState = new App\Service\CharacterSpellSlotStateService($slots);
+    $sync = new CharacterSessionStateSynchronizer($hp, $hpState, $resources, new CharacterSessionStateRepository($registry), $slotState);
     $eligibility = new CharacterMulticlassEligibilityService($ability);
     $levelUp = new CharacterLevelUpService($em, new CharacterClassLevelRuleRepository($registry), $sync, $eligibility, $ability);
-    return compact('em', 'ability', 'hp', 'slots', 'features', 'resources', 'sync', 'eligibility', 'levelUp');
+    return compact('em', 'ability', 'hp', 'hpState', 'slots', 'slotState', 'features', 'resources', 'sync', 'eligibility', 'levelUp');
 };
 $fixture = static function (array $s, int $levels = 0): array {
     static $number = 0;
@@ -124,9 +126,10 @@ try {
     $character->addMagicItem($owned);
     $em->persist($item); $em->persist($owned); $em->flush();
     $access = new App\Service\PlayerCharacterAccess(new CharacterSessionStateRepository($registry));
-    $updater = new App\Service\PlayerCharacterStateUpdater($s['sync']);
-    $profile = new App\Service\CharacterProfileSerializer($s['ability'], $s['features'], $s['resources'], $s['hp'], $s['slots']);
-    $controller = new App\Controller\CharacterSessionStateController($profile, $s['sync']);
+    $updater = new App\Service\PlayerCharacterStateUpdater($s['sync'], $s['hpState']);
+    $profile = new App\Service\CharacterProfileSerializer($s['ability'], $s['features'], $s['resources'], $s['hp'], $s['slots'], new App\Service\CharacterActionResolver(new App\Repository\CharacterActionClassRuleRepository($registry)));
+    $serializer = new App\Service\CharacterSessionStateSerializer($profile, $s['hpState'], new App\Repository\CharacterActiveEffectRepository($registry), $s['slotState']);
+    $controller = new App\Controller\CharacterSessionStateController($profile, $s['sync'], $serializer);
     $wallet = new App\Controller\CharacterWalletController();
     $inventory = new App\Controller\PublicCharacterMagicItemController();
     $rests = new App\Controller\RestRequestController();
@@ -241,7 +244,9 @@ try {
     $check($status(fn () => $routes['level-up POST']($token)) === 201 && $character->getTotalLevel() === 2, 'Authorized level-up succeeds');
     $em->refresh($session);
     $check(!array_key_exists('levelUpAllowed', $session->getState()), 'Unknown state keys never persisted');
-    echo "OK: $checks player security assertions; temporary tables rolled back.\n";
+    // Portent uses the same isolated database, API controller and security validator.
+    require __DIR__ . '/test-portent-scenarios.php';
+    echo "OK: $checks player security and Portent assertions; temporary tables rolled back.\n";
 } finally {
     while ($db->isTransactionActive()) $db->rollBack();
     $kernel->shutdown();

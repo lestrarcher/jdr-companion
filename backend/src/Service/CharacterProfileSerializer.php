@@ -32,6 +32,8 @@ final readonly class CharacterProfileSerializer
         Character $character,
         array $progressionValues = [],
     ): array {
+        $resources = $this->serializeResources($character, $progressionValues);
+
         return [
             'id' => $character->getId(),
             'campaignId' => $character->getCampaign()->getId(),
@@ -110,8 +112,11 @@ final readonly class CharacterProfileSerializer
                 ],
                 $this->actionResolver->resolve($character),
             )),
-            'resources' => $this->serializeResources($character, $progressionValues),
-            'definition' => $character->getDefinition(),
+            'resources' => $resources,
+            'definition' => PortentResourceConfiguration::apply(
+                $character->getDefinition(),
+                array_column($resources, 'maximum', 'slug'),
+            ),
         ];
     }
 
