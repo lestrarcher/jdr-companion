@@ -75,12 +75,28 @@ final class MediaStorageService
         string $filename,
         int $campaignId,
     ): void {
+        if ($campaignId <= 0 || !preg_match('/^[a-f0-9]{32}\.(?:jpe?g|png|webp|gif|bin)$/D', $filename)) {
+            throw new \RuntimeException('Le fichier ne fait pas partie du stockage des médias.');
+        }
+
         $path = sprintf(
             '%s/public/uploads/campaigns/%d/%s',
             $this->projectDir,
             $campaignId,
             $filename,
         );
+
+        $root = realpath($this->projectDir . '/public/uploads/campaigns');
+        $directory = realpath(dirname($path));
+        $expectedRoot = realpath($this->projectDir)
+            . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'campaigns';
+        if (
+            is_link($path)
+            || ($root !== false && $root !== $expectedRoot)
+            || ($directory !== false && ($root === false || $directory !== $root . DIRECTORY_SEPARATOR . $campaignId))
+        ) {
+            throw new \RuntimeException('Le fichier ne fait pas partie du stockage des médias.');
+        }
 
         if (
             is_file($path) &&

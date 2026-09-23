@@ -171,6 +171,39 @@
   .effect-active {
     color: #75c892;
   }
+
+  > button {
+    padding: 0.4rem 0.65rem;
+    border: 1px solid #{'#c7a55b59'};
+    border-radius: 0;
+    background: #090a10;
+    color: #d9c078;
+    font-family: inherit;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+
+    &:enabled:hover,
+    &:focus-visible {
+      border-color: #c7a55b;
+      background: #181925;
+      color: #f4efe5;
+    }
+
+    &:focus-visible {
+      outline: 2px solid #c7a55b;
+      outline-offset: 2px;
+    }
+
+    &:enabled:active {
+      background: #{'#c7a55b14'};
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.4;
+    }
+  }
 }
 
 .modal-empty {

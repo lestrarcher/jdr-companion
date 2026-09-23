@@ -31,6 +31,7 @@ import {
 
 import {
   CharacterMagicItemInventoryResponse,
+  CharacterMagicItemResponse,
   MagicItemResponse,
 } from '@core/services/public-character-magic-item-api.service';
 
@@ -115,6 +116,7 @@ export class SessionCharacters implements OnInit {
   protected readonly statisticsInventory =
     signal<CharacterMagicItemInventoryResponse | null>(null);
   protected readonly statisticsLoading = signal(false);
+  protected readonly removingItem = signal(false);
 
   private readonly progressionCharacterId = signal<number | null>(null);
   private readonly selectedProgressionSlug = signal<string | null>(null);
@@ -580,6 +582,29 @@ export class SessionCharacters implements OnInit {
               'Impossible de charger les caractéristiques.',
             ),
           );
+        },
+      });
+  }
+
+  protected removeOwnedItem(item: CharacterMagicItemResponse): void {
+    const character = this.statisticsCharacter();
+    if (!character || this.removingItem() || !window.confirm(`Retirer un exemplaire de « ${item.magicItem.name} » à ${character.character.name} ?`)) {
+      return;
+    }
+    const revision = this.inventoryRequestRevision;
+    this.removingItem.set(true);
+    this.statisticsError.set(null);
+    this.magicItemApi.removeFromCharacter(character.character.id, item.id)
+      .pipe(finalize(() => this.removingItem.set(false)))
+      .subscribe({
+        next: () => {
+          if (revision === this.inventoryRequestRevision) this.openStatistics(character);
+          else this.refreshCharacters();
+        },
+        error: error => {
+          if (revision === this.inventoryRequestRevision) {
+            this.statisticsError.set(this.apiError(error, 'Impossible de retirer cet objet.'));
+          }
         },
       });
   }

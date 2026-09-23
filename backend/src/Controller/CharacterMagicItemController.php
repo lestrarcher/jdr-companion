@@ -239,13 +239,12 @@ final class CharacterMagicItemController
             );
         }
 
-        $character->removeMagicItem(
-            $ownedItem,
-        );
-
-        $entityManager->remove(
-            $ownedItem,
-        );
+        if ($ownedItem->getQuantity() > 1) {
+            $ownedItem->setQuantity($ownedItem->getQuantity() - 1);
+        } else {
+            $character->removeMagicItem($ownedItem);
+            $entityManager->remove($ownedItem);
+        }
 
         $entityManager->flush();
 

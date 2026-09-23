@@ -200,6 +200,8 @@
     [inventory]="statisticsInventory()"
     [loading]="statisticsLoading()"
     [error]="statisticsError()"
+    [removing]="removingItem()"
+    (itemRemoved)="removeOwnedItem($event)"
     (closed)="closeStatistics()"
   />
 }

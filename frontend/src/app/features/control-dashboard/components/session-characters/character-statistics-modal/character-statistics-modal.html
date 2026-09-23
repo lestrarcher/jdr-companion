@@ -110,6 +110,7 @@
             <div>
               <strong>
                 {{ ownedItem.magicItem.name }}
+                × {{ ownedItem.quantity }}
               </strong>
 
               <small>
@@ -136,6 +137,9 @@
                   : 'Effets inactifs'
               }}
             </span>
+            <button type="button" [disabled]="removing()" (click)="itemRemoved.emit(ownedItem)">
+              Retirer un exemplaire
+            </button>
           </article>
         } @empty {
           <p class="modal-empty">

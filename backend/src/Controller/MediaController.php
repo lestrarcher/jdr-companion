@@ -249,9 +249,33 @@ final class MediaController extends AbstractController
             );
         }
 
-        $this->mediaStorage->remove($filename, $campaignId);
-        $this->entityManager->remove($media);
-        $this->entityManager->flush();
+        // Display state also contains copied URLs (scene and initiative portraits).
+        // Closed sessions retain these references too.
+        $connection = $this->entityManager->getConnection();
+        $used = $connection->fetchOne(
+            'SELECT 1 FROM game_session WHERE strpos(display_state::text, :filename) > 0
+                OR strpos(preparation_notes, :filename) > 0
+             UNION ALL SELECT 1 FROM weather WHERE strpos(image_url, :filename) > 0
+             UNION ALL SELECT 1 FROM progression_stage WHERE strpos(icon_url, :filename) > 0
+             LIMIT 1',
+            ['filename' => $filename],
+        );
+        if ($used !== false) {
+            return $this->json(
+                ['message' => 'Ce média est encore utilisé dans une session, une météo ou une progression. Retirez cette référence avant de le supprimer.'],
+                JsonResponse::HTTP_CONFLICT,
+            );
+        }
+
+        try {
+            $this->entityManager->wrapInTransaction(function () use ($media, $filename, $campaignId): void {
+                $this->entityManager->remove($media);
+                $this->entityManager->flush();
+                $this->mediaStorage->remove($filename, $campaignId);
+            });
+        } catch (\RuntimeException $exception) {
+            return $this->json(['message' => $exception->getMessage()], JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
+        }
 
         return new JsonResponse(null, JsonResponse::HTTP_NO_CONTENT);
     }

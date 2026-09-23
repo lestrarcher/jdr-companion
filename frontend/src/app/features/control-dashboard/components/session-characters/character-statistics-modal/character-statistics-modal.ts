@@ -2,6 +2,7 @@ import { Component, input, output } from '@angular/core';
 
 import {
   CharacterMagicItemInventoryResponse,
+  CharacterMagicItemResponse,
   EffectiveAbilityResponse,
 } from '@core/services/public-character-magic-item-api.service';
 
@@ -23,6 +24,8 @@ export class CharacterStatisticsModal {
   readonly error = input<string | null>(null);
 
   readonly closed = output<void>();
+  readonly removing = input(false);
+  readonly itemRemoved = output<CharacterMagicItemResponse>();
 
   protected abilityLabel(
     ability: EffectiveAbilityResponse['ability'],
