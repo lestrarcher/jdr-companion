@@ -1,5 +1,5 @@
 import { Component, computed, input, signal } from '@angular/core';
-import { CharacterFeatSummary, CharacterFeatureSummary } from '@core/services/character-api.service';
+import { CharacterAbilityScore, CharacterFeatSummary, CharacterFeatureSummary } from '@core/services/character-api.service';
 
 interface FeatureFilter {
   key: string;
@@ -13,6 +13,7 @@ interface FeatureFilter {
   styleUrl: './character-features.scss',
 })
 export class CharacterFeatures {
+  readonly abilities = input<CharacterAbilityScore[]>([]);
   readonly features = input.required<CharacterFeatureSummary[]>();
   readonly feats = input<CharacterFeatSummary[]>([]);
   protected readonly activeFilter = signal('all');

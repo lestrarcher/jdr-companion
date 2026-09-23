@@ -1,4 +1,22 @@
 <section class="character-features" aria-label="Capacités du personnage">
+  @if (abilities().length > 0) {
+    <section class="character-abilities" aria-labelledby="character-abilities-title">
+      <h2 id="character-abilities-title">Caractéristiques</h2>
+      <dl class="character-abilities__grid">
+        @for (ability of abilities(); track ability.ability) {
+          <div class="character-ability">
+            <dt>{{ ability.label }}</dt>
+            <dd class="character-ability__value">{{ ability.effectiveValue }}</dd>
+            <dd class="character-ability__modifier" aria-label="Modificateur">{{ ability.modifier >= 0 ? '+' : '' }}{{ ability.modifier }}</dd>
+            @if (ability.effectiveValue !== ability.baseValue) {
+              <dd class="character-ability__base">Base {{ ability.baseValue }}</dd>
+            }
+          </div>
+        }
+      </dl>
+    </section>
+  }
+
   @if (filters().length > 1) {
     <nav class="character-features__filters" aria-label="Filtrer les capacités">
       @for (filter of filters(); track filter.key) {

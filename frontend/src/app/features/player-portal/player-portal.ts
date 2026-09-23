@@ -7,7 +7,7 @@ import { CharacterMagicItems } from './components/character-magic-items/characte
 import { EMPTY, Subject, catchError, concatMap, debounceTime, exhaustMap, finalize, of, switchMap, tap, timer } from 'rxjs';
 
 import { Character } from '@core/models/character.model';
-import { CharacterActionSummary, CharacterFeatSummary, CharacterFeatureSummary } from '@core/services/character-api.service';
+import { CharacterAbilityScore, CharacterActionSummary, CharacterFeatSummary, CharacterFeatureSummary } from '@core/services/character-api.service';
 
 import { CharacterActionsState, CharacterSessionStatePayload, characterProfileToCharacter, toCharacterSessionStatePayload } from '@core/mappers/character-api.mapper';
 import { ActionPreparationModal } from './components/action-preparation-modal/action-preparation-modal';
@@ -91,6 +91,7 @@ export class PlayerPortal {
   protected readonly activeTab = signal<PlayerPortalTab>('status');
 
   // Features and actions
+  protected readonly abilities = signal<CharacterAbilityScore[]>([]);
   protected readonly features = signal<CharacterFeatureSummary[]>([]);
   protected readonly feats = signal<CharacterFeatSummary[]>([]);
   protected readonly visibleFeatures = computed(() => this.features().filter(feature => feature.visible));
@@ -350,6 +351,7 @@ export class PlayerPortal {
 
           this.campaign.set(campaign);
           this.character.set(loadedCharacter);
+          this.abilities.set(response.character.abilities);
           this.features.set(response.character.features);
       this.feats.set(response.character.feats);
           this.feats.set(response.character.feats);
@@ -428,6 +430,7 @@ export class PlayerPortal {
                 );
                 this.characterStateService.applyServerState(character);
                 this.character.set(character);
+                this.abilities.set(response.character.abilities);
                 this.features.set(response.character.features);
                 this.feats.set(response.character.feats);
                 this.actions.set(response.character.actions ?? []);
@@ -481,6 +484,7 @@ export class PlayerPortal {
 
       this.characterStateService.applyServerState(character);
       this.character.set(character);
+      this.abilities.set(response.character.abilities);
       this.features.set(response.character.features);
       this.actions.set(response.character.actions ?? []);
       this.characterActions.set(response.state.characterActions ?? null);
