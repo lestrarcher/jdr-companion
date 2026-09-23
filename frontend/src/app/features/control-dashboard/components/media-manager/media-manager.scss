@@ -172,6 +172,7 @@
 }
 
 .media-card {
+  width: 100%;
   display: grid;
   gap: 0.45rem;
   min-width: 0;
@@ -192,6 +193,12 @@
   &:active {
     transform: scale(0.98);
   }
+}
+
+.media-entry {
+  min-width: 0;
+  display: grid;
+  gap: 0.35rem;
 }
 
 .media-card--selected {

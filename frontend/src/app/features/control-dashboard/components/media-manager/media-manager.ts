@@ -36,6 +36,7 @@ export class MediaManager implements OnInit {
   protected readonly title = signal('');
   protected readonly loading = signal(true);
   protected readonly uploading = signal(false);
+  protected readonly deletingId = signal<number | null>(null);
   protected readonly error = signal<string | null>(null);
 
   ngOnInit(): void {
@@ -93,6 +94,23 @@ export class MediaManager implements OnInit {
 
   protected selectMedia(media: CampaignMedia): void {
     this.mediaSelected.emit(media);
+  }
+
+  protected deleteMedia(media: CampaignMedia): void {
+    if (this.deletingId() !== null || !window.confirm(`Supprimer définitivement « ${this.displayTitle(media)} » et son fichier ?`)) {
+      return;
+    }
+    this.deletingId.set(media.id);
+    this.error.set(null);
+    this.mediaApi.remove(this.campaignId(), media.id)
+      .pipe(finalize(() => this.deletingId.set(null)), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.media.update(items => items.filter(item => item.id !== media.id));
+          if (this.selectedUrl() === media.url) this.mediaCleared.emit();
+        },
+        error: error => this.error.set(error.error?.message ?? 'Impossible de supprimer ce média.'),
+      });
   }
 
   protected clearMedia(): void {

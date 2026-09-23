@@ -77,26 +77,36 @@
   } @else {
     <div class="media-grid">
       @for (item of media(); track item.id) {
-        <button
-          type="button"
-          class="media-card"
-          [class.media-card--selected]="
-            selectedUrl() === item.url
-          "
-          [attr.aria-pressed]="selectedUrl() === item.url"
-          (click)="selectMedia(item)"
-        >
-          <span class="media-preview">
-            <img
-              [src]="item.url"
-              [alt]="displayTitle(item)"
-              loading="lazy"
-            />
-          </span>
-          <span class="media-title">
-            {{ displayTitle(item) }}
-          </span>
-        </button>
+        <div class="media-entry">
+          <button
+            type="button"
+            class="media-card"
+            [disabled]="deletingId() !== null"
+            [class.media-card--selected]="selectedUrl() === item.url"
+            [attr.aria-pressed]="selectedUrl() === item.url"
+            (click)="selectMedia(item)"
+          >
+            <span class="media-preview">
+              <img
+                [src]="item.url"
+                [alt]="displayTitle(item)"
+                loading="lazy"
+              />
+            </span>
+            <span class="media-title">
+              {{ displayTitle(item) }}
+            </span>
+          </button>
+          <button
+            type="button"
+            class="clear-button"
+            [disabled]="deletingId() !== null"
+            [attr.aria-label]="'Supprimer ' + displayTitle(item)"
+            (click)="deleteMedia(item)"
+          >
+            {{ deletingId() === item.id ? 'Suppression…' : 'Supprimer' }}
+          </button>
+        </div>
       }
     </div>
   }
