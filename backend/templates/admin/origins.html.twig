@@ -1,0 +1,13 @@
+{% for origin in origins %}
+    <div class="origin">
+        <span class="badge">{{ {'class': 'Classe', 'subclass': 'Sous-classe', 'race': 'Race', 'feat': 'Don', 'progression': 'Progression'}[origin.sourceType] }}</span>
+        {% for key, label in {'class': 'Classe', 'subclass': 'Sous-classe', 'race': 'Race', 'feat': 'Don', 'progression': 'Progression'} %}
+            {% if origin[key] %}<span>{{ label }} : <a href="{{ path('admin_catalogue_edit', {category: {'class': 'classes', 'subclass': 'subclasses', 'race': 'races', 'feat': 'feats', 'progression': 'progressions'}[key], id: origin[key].id}) }}">{{ origin[key].name }}</a></span>{% endif %}
+        {% endfor %}
+        {% if origin.progressionThreshold is not null %}<strong>Seuil : {{ origin.progressionThreshold }}</strong>
+        {% elseif origin.unlockLevel is not null %}<strong>Niveau : {{ origin.unlockLevel }}</strong>{% endif %}
+        {% if origin.maximumOverride is defined %}
+            <span>Maximum imposé : {{ origin.maximumOverride ?? 'Aucun' }} · Bonus : {{ origin.maximumBonus }}</span>
+        {% endif %}
+    </div>
+{% else %}<span class="muted">Aucune attribution</span>{% endfor %}

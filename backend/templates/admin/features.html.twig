@@ -1,0 +1,37 @@
+{% extends 'admin/base.html.twig' %}
+{% block title %}Capacités{% endblock %}
+{% block body %}
+    <header><p class="eyebrow">Référentiel</p><h1>Capacités</h1></header>
+    <section class="panel">
+        <form method="get" action="{{ path('admin_features') }}" class="filters">
+            <label class="search">Nom ou slug<input type="search" name="q" value="{{ context.q ?? '' }}" maxlength="200" placeholder="Rechercher une capacité…"></label>
+            <label>Origine<select name="sourceType"><option value="">Toutes</option>
+                {% for key, label in {'class': 'Classe', 'subclass': 'Sous-classe', 'race': 'Race', 'feat': 'Don', 'progression': 'Progression'} %}
+                    <option value="{{ key }}" {{ (context.sourceType ?? '') == key ? 'selected' : '' }}>{{ label }}</option>
+                {% endfor %}
+            </select></label>
+            {% for key, label in {'class': 'Classe', 'subclass': 'Sous-classe', 'race': 'Race', 'feat': 'Don', 'progression': 'Progression'} %}
+                <label>{{ label }}<select name="{{ key }}"><option value="">Toutes / tous</option>
+                    {% for option in options[key] %}
+                        <option value="{{ option.id }}" {{ (context[key] ?? '') == option.id ? 'selected' : '' }}>{{ option.name }}{{ option.className is defined ? ' — ' ~ option.className : '' }}</option>
+                    {% endfor %}
+                </select></label>
+            {% endfor %}
+            <div class="actions"><button type="submit">Rechercher</button><a href="{{ path('admin_features') }}">Réinitialiser</a></div>
+        </form>
+        <p class="muted" data-total="{{ result.total }}">{{ result.total }} capacités · 25 par page</p>
+        <div class="table-scroll"><table>
+            <thead><tr><th>Capacité / slug</th><th>Origines et déblocages</th></tr></thead>
+            <tbody>
+            {% for feature in result.features %}
+                <tr data-feature-id="{{ feature.id }}"><td><a href="{{ path('admin_feature_edit', context|merge({id: feature.id})) }}">{{ feature.name }}</a><code>{{ feature.slug }}</code></td><td>{% include 'admin/origins.html.twig' with {origins: feature.origins} only %}</td></tr>
+            {% else %}<tr><td colspan="2">Aucune capacité ne correspond aux critères.</td></tr>{% endfor %}
+            </tbody>
+        </table></div>
+        <nav class="pagination" aria-label="Pagination">
+            {% if result.page > 1 %}<a rel="prev" href="{{ path('admin_features', context|merge({page: result.page - 1})) }}">Précédent</a>{% endif %}
+            <span>Page {{ result.page }}</span>
+            {% if result.page * 25 < result.total %}<a rel="next" href="{{ path('admin_features', context|merge({page: result.page + 1})) }}">Suivant</a>{% endif %}
+        </nav>
+    </section>
+{% endblock %}

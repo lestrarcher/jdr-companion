@@ -1,0 +1,13 @@
+{% extends 'admin/base.html.twig' %}
+{% block title %}{{ app.request.attributes.get('_route') == 'admin_reference' ? 'Référentiel' : 'Tableau de bord' }}{% endblock %}
+{% block body %}
+    <header><p class="eyebrow">JdR Companion · Administration</p><h1>{{ app.request.attributes.get('_route') == 'admin_reference' ? 'Référentiel' : 'Tableau de bord' }}</h1></header>
+    <section class="panel">
+        <h2>Référentiel</h2>
+        <p>Consultez le référentiel et corrigez ses textes.</p>
+        <p><a href="{{ path('admin_features') }}">Capacités</a> · {{ counts.features }}</p>
+        {% for category, label in {'classes': 'Classes', 'subclasses': 'Sous-classes', 'races': 'Races', 'feats': 'Dons', 'resources': 'Ressources', 'progressions': 'Progressions'} %}
+            <p><a href="{{ path('admin_catalogue_list', {category: category}) }}">{{ label }}</a> · {{ counts[category] }}</p>
+        {% endfor %}
+    </section>
+{% endblock %}

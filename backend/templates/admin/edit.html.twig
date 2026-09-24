@@ -1,0 +1,29 @@
+{% extends 'admin/base.html.twig' %}
+{% block title %}{{ feature.name }}{% endblock %}
+{% block body %}
+    <header><a class="back-link" href="{{ path('admin_features', context) }}">← Retour à la liste filtrée</a><p class="eyebrow">Référentiel · Capacités</p><h1>{{ feature.name }}</h1></header>
+    {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+    <section class="panel editor">
+        <h2>Édition éditoriale</h2>
+        <p class="muted">Ce texte est commun à toutes les attributions de cette capacité.</p>
+        <form method="post" action="{{ path('admin_feature_edit', context|merge({id: feature.id})) }}" data-editor data-unsaved="{{ error ? 'true' : 'false' }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('admin_feature_' ~ feature.id) }}">
+            <label>Nom<input name="name" value="{{ values.name }}" required maxlength="150"></label>
+            <label>Description<textarea name="description" rows="20">{{ values.description }}</textarea></label>
+            <div class="actions"><button type="submit">Enregistrer</button><span class="muted" data-draft-status role="status"></span></div>
+        </form>
+    </section>
+    <details class="panel mechanics">
+        <summary>Informations techniques et mécaniques · lecture seule</summary>
+        <dl><dt>ID</dt><dd>{{ feature.id }}</dd><dt>Slug</dt><dd><code>{{ feature.slug }}</code></dd><dt>Activation</dt><dd>{{ feature.activationLabel }}</dd><dt>Visibilité</dt><dd>{{ feature.visible ? 'Visible' : 'Masquée' }}</dd><dt>Personnalisée (custom)</dt><dd>{{ feature.custom ? 'Oui' : 'Non' }}</dd></dl>
+        <h2>Attributions</h2>
+        {% include 'admin/origins.html.twig' with {origins: feature.origins} only %}
+        {% if feature.resource %}
+            {% set resource = feature.resource %}
+            <h2>Ressource : <a href="{{ path('admin_catalogue_edit', {category: 'resources', id: resource.id}) }}">{{ resource.name }}</a></h2>
+            <dl><dt>ID / slug</dt><dd>{{ resource.id }} / {{ resource.slug }}</dd><dt>Recharge</dt><dd>{{ resource.rechargeType }}</dd><dt>Type de maximum</dt><dd>{{ resource.maximumType }}</dd><dt>Maximum de base</dt><dd>{{ resource.baseMaximum }}</dd><dt>Multiplicateur</dt><dd>{{ resource.multiplier }}</dd><dt>Minimum</dt><dd>{{ resource.minimumMaximum }}</dd><dt>Caractéristique</dt><dd>{{ resource.scalingAbility ?? 'Aucune' }}</dd></dl>
+            <h3>Règles de ressource</h3>
+            {% include 'admin/origins.html.twig' with {origins: resource.rules} only %}
+        {% else %}<p>Aucune ressource associée.</p>{% endif %}
+    </details>
+{% endblock %}

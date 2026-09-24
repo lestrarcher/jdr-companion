@@ -1,0 +1,35 @@
+{% extends 'admin/base.html.twig' %}
+{% block title %}{{ definition.label }}{% endblock %}
+{% block body %}
+<header><p class="eyebrow">Référentiel</p><h1>{{ definition.label }}</h1></header>
+<section class="panel">
+    <form method="get" action="{{ path('admin_catalogue_list', {category: category}) }}" class="filters">
+        <label class="search">Nom ou slug<input type="search" name="q" value="{{ context.q ?? '' }}" maxlength="200"></label>
+        {% for key, filter in filters %}
+            <label>{{ filter.label }}<select name="{{ key }}"><option value="">Tous</option>
+                {% for value, label in filter.choices %}<option value="{{ value }}" {{ (context[key] ?? '') is same as (value ~ '') ? 'selected' : '' }}>{{ label }}</option>{% endfor %}
+            </select></label>
+        {% endfor %}
+        <div class="actions"><button type="submit">Rechercher</button><a href="{{ path('admin_catalogue_list', {category: category}) }}">Réinitialiser</a></div>
+    </form>
+    <p class="muted" data-total="{{ result.total }}">{{ result.total }} entrées · 25 par page</p>
+    <div class="table-scroll"><table><thead><tr><th>Nom / slug</th><th>Informations</th></tr></thead><tbody>
+    {% for item in result.rows %}
+        <tr data-reference-id="{{ item.id }}"><td><a href="{{ path('admin_catalogue_edit', context|merge({category: category, id: item.id})) }}">{{ item.name }}</a><code>{{ item.slug }}</code></td><td>
+            {% if category == 'classes' %}d{{ item.hitDie }} · {{ item.spellcastingProgression.value }}
+            {% elseif category == 'subclasses' %}<a href="{{ path('admin_catalogue_edit', {category: 'classes', id: item.characterClass.id}) }}">{{ item.characterClass.name }}</a>
+            {% elseif category == 'races' %}{{ item.selectable ? 'Sélectionnable' : 'Non sélectionnable' }}{% if item.parentRace %} · <a href="{{ path('admin_catalogue_edit', {category: 'races', id: item.parentRace.id}) }}">{{ item.parentRace.name }}</a>{% endif %}
+            {% elseif category == 'resources' %}{{ item.rechargeType.value }} · {{ item.maximumType.value }} · Base : {{ item.baseMaximum }}
+            {% elseif category == 'progressions' %}Minimum : {{ item.minimumValue }} · Maximum : {{ item.maximumValue ?? 'Non renseigné' }}
+            {% elseif category == 'feats' %}{{ item.repeatable ? 'Répétable' : 'Non répétable' }}{% endif %}
+            <div class="muted">{{ item.custom ? 'Personnalisé' : 'Référentiel' }}</div>
+        </td></tr>
+    {% else %}<tr><td colspan="2">Aucune entrée ne correspond aux critères.</td></tr>{% endfor %}
+    </tbody></table></div>
+    <nav class="pagination" aria-label="Pagination">
+        {% if result.page > 1 %}<a rel="prev" href="{{ path('admin_catalogue_list', context|merge({category: category, page: result.page - 1})) }}">Précédent</a>{% endif %}
+        <span>Page {{ result.page }}</span>
+        {% if result.page * 25 < result.total %}<a rel="next" href="{{ path('admin_catalogue_list', context|merge({category: category, page: result.page + 1})) }}">Suivant</a>{% endif %}
+    </nav>
+</section>
+{% endblock %}

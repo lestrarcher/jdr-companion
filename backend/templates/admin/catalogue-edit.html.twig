@@ -1,0 +1,39 @@
+{% extends 'admin/base.html.twig' %}
+{% block title %}{{ entity.name }}{% endblock %}
+{% block body %}
+<header><a class="back-link" href="{{ path('admin_catalogue_list', context|merge({category: category})) }}">← Retour à la liste filtrée</a><p class="eyebrow">Référentiel · {{ definition.label }}</p><h1>{{ entity.name }}</h1></header>
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+<section class="panel editor">
+    <h2>Édition éditoriale</h2>
+    <form method="post" action="{{ path('admin_catalogue_edit', context|merge({category: category, id: entity.id})) }}" data-editor data-unsaved="{{ error ? 'true' : 'false' }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('admin_' ~ category ~ '_' ~ entity.id) }}">
+        <label>Nom<input name="name" value="{{ values.name }}" required maxlength="{{ definition.length }}"></label>
+        <label>Description<textarea name="description" rows="20">{{ values.description }}</textarea></label>
+        {% if category == 'progressions' %}
+            <label>Libellé de gain<input name="gainLabel" value="{{ values.gainLabel }}" maxlength="80"></label>
+            <label>Libellé de dépense<input name="spendLabel" value="{{ values.spendLabel }}" maxlength="80"></label>
+        {% endif %}
+        <div class="actions"><button type="submit">Enregistrer</button><span class="muted" data-draft-status role="status"></span></div>
+    </form>
+</section>
+<section class="panel mechanics">
+    <h2>Informations techniques · lecture seule</h2>
+    {% if category == 'races' %}<p class="muted">Métadonnées propres à cette race. Consultez la race parente pour les données héritées.</p>{% endif %}
+    {% if category == 'resources' %}<p class="muted">Configuration de la ressource. Les valeurs consommées ou stockées en session appartiennent aux personnages.</p>{% endif %}
+    <dl>{% for label, value in detail.fields %}<dt>{{ label }}</dt><dd>{{ value }}</dd>{% endfor %}</dl>
+</section>
+{% for title, links in detail.groups %}
+    <section class="panel mechanics"><h2>{{ title }}</h2>
+        {% for link in links %}<p>
+            <a href="{{ link.category == 'features' ? path('admin_feature_edit', {id: link.id}) : path('admin_catalogue_edit', {category: link.category, id: link.id}) }}">{{ link.name }}</a>
+            {% if link.note %}<span class="muted"> · {{ link.note }}</span>{% endif %}
+        </p>{% else %}<p class="muted">Aucune attribution.</p>{% endfor %}
+    </section>
+{% endfor %}
+{% for title, rows in detail.tables %}
+    <section class="panel"><h2>{{ title }} · lecture seule</h2><div class="table-scroll"><table>
+        <thead><tr>{% for label in rows|first|keys %}<th>{{ label }}</th>{% endfor %}</tr></thead>
+        <tbody>{% for row in rows %}<tr>{% for value in row %}<td>{{ value|nl2br }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+    </table></div></section>
+{% endfor %}
+{% endblock %}
