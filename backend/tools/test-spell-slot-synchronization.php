@@ -216,6 +216,10 @@ try {
     $em->flush();
     $hpState = new CharacterHitPointStateService($hp);
     $rest = new CharacterRestService($hp, $hpState, $resources, $sync, new CharacterSpellSlotCalculator(), new TrackableResourceDefinitionRepository($registry), $ability, new CharacterActiveEffectRepository($registry), new CharacterActiveEffectService($hpState), $em);
+    require __DIR__ . '/test-fougue-scenarios.php';
+    require __DIR__ . '/test-lay-on-hands-scenarios.php';
+    require __DIR__ . '/test-cleric-domain-resource-scenarios.php';
+    require __DIR__ . '/test-gem-flight-scenarios.php';
     foreach ([[1, 2], [2, 0], [1, 5]] as [$bonus, $current]) {
         foreach ([1, 0] as $temporaryCurrent) {
             $initial = ['hitPoints' => ['current' => 8], 'progressions' => [['id' => 'story', 'currentValue' => 7]], 'resources' => [
@@ -434,7 +438,7 @@ try {
     $check($response->getStatusCode() === 409, 'Stale revision after locked refresh rejected');
     $stored = json_decode($db->fetchOne('SELECT state FROM character_session_state WHERE id = ?', [$session->getId()]), true, 512, JSON_THROW_ON_ERROR);
     $check($stored === $httpState, 'Revision conflict does not spend points or create slots');
-    echo "OK: $checks assertions; slot lifecycle, Flexible Casting and controller scenarios passed.\n";
+    echo "OK: $checks assertions; slot lifecycle, Flexible Casting, Fougue and controller scenarios passed.\n";
 } finally {
     while ($db->isTransactionActive()) $db->rollBack();
     $kernel->shutdown();
