@@ -70,3 +70,19 @@ Les empreintes des 38 tables publiques sont relevées avant/après, sans snapsho
 - `backend/docs/gem-flight-resource-audit.md` : présent rapport.
 
 Les migrations et scénarios précédents ne sont pas modifiés. Aucun changement de JSON/importer, import, nettoyage historique, correction d'Escroc arcanique ou de descriptions/placeholders. Aucun commit, push ou déploiement.
+
+## Vérifications après migration — reprise après interruption 401
+
+La reprise constate un dépôt propre sur le commit préexistant `0f9ba6c` et la migration déjà appliquée. Elle ne recrée, ne modifie ni ne réapplique la migration à la base persistante. Seul ce rapport est complété pendant la reprise.
+
+- `doctrine:migrations:status` : version courante et dernière `Version20260926110000`, 47 exécutées, aucune nouvelle ni indisponible.
+- Harnais ressources/synchronisation exécuté **après migration** : **919 assertions réussies**, dont **140 Vol diamantin**, **53 Fougue**, **78 Imposition des mains** et **237 domaines de clerc**. Les scénarios de migration du harnais restent confinés aux tables temporaires.
+- Sécurité/Présage : **256 assertions réussies** après migration.
+- `lint:container`, `doctrine:schema:validate` et `git diff --check` : réussis.
+- Lecture de la base persistante : fournisseur unique `racial-dragonborn-gem-ftd-gem-flight-5`, ancien `gem-flight` sans lien, maximum fixe 1, recharge longue, attribution à `dragonborn-gem-ftd` au niveau 5.
+- Les tests confirment niveau total 4 absent / 5 présent, multiclassage et héritage synthétique, consommation préservée par synchronisation et repos court, recharge au repos long.
+- Les empreintes originales ont été récupérées depuis la sortie d'outil conservée dans l'historique de cette conversation, puis comparées aux nouvelles lectures. Aucun état antérieur n'a été reconstruit et aucun snapshot SQL n'a été créé.
+- Sur **38 tables**, **36 empreintes sont identiques** à celles relevées avant migration. Seules `character_feature_definition` et `doctrine_migration_versions` diffèrent. L'empreinte de toutes les capacités hors des deux slugs et celle de tous les champs hors `resource_definition_id` sont identiques : seuls les deux liens métier attendus ont changé ; Doctrine comporte une ligne supplémentaire.
+- Les personnages, états de session, races, attributions et définitions/règles de ressources sont inchangés. Aucune autre ressource raciale modifiée. Les empreintes avant/après les harnais de reprise sont également identiques.
+
+Les validations auparavant bloquées sont terminées. Aucun nouveau commit, push, déploiement ou ré-audit global effectué lors de cette reprise.
