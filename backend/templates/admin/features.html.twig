@@ -10,6 +10,9 @@
                     <option value="{{ key }}" {{ (context.sourceType ?? '') == key ? 'selected' : '' }}>{{ label }}</option>
                 {% endfor %}
             </select></label>
+            <label>État éditorial<select name="editorial"><option value="">Tous</option>
+                {% for value, label in editorialFilters %}<option value="{{ value }}" {{ (context.editorial ?? '') == value ? 'selected' : '' }}>{{ label }}</option>{% endfor %}
+            </select></label>
             {% for key, label in {'class': 'Classe', 'subclass': 'Sous-classe', 'race': 'Race', 'feat': 'Don', 'progression': 'Progression'} %}
                 <label>{{ label }}<select name="{{ key }}"><option value="">Toutes / tous</option>
                     {% for option in options[key] %}
@@ -24,7 +27,10 @@
             <thead><tr><th>Capacité / slug</th><th>Origines et déblocages</th></tr></thead>
             <tbody>
             {% for feature in result.features %}
-                <tr data-feature-id="{{ feature.id }}"><td><a href="{{ path('admin_feature_edit', context|merge({id: feature.id})) }}">{{ feature.name }}</a><code>{{ feature.slug }}</code></td><td>{% include 'admin/origins.html.twig' with {origins: feature.origins} only %}</td></tr>
+                <tr data-feature-id="{{ feature.id }}"><td><a href="{{ path('admin_feature_edit', context|merge({id: feature.id})) }}">{{ feature.name|trim(' ') == '' ? feature.slug : feature.name }}</a><code>{{ feature.slug }}</code>
+                    {% if feature.name|trim(' ') == '' %}<div class="badge">Nom manquant</div>{% endif %}
+                    {% if (feature.description ?? '')|trim(' ') == '' %}<div class="badge">Description manquante</div>{% endif %}
+                </td><td>{% include 'admin/origins.html.twig' with {origins: feature.origins} only %}</td></tr>
             {% else %}<tr><td colspan="2">Aucune capacité ne correspond aux critères.</td></tr>{% endfor %}
             </tbody>
         </table></div>

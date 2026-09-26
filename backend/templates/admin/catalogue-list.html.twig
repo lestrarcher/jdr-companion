@@ -15,7 +15,10 @@
     <p class="muted" data-total="{{ result.total }}">{{ result.total }} entrées · 25 par page</p>
     <div class="table-scroll"><table><thead><tr><th>Nom / slug</th><th>Informations</th></tr></thead><tbody>
     {% for item in result.rows %}
-        <tr data-reference-id="{{ item.id }}"><td><a href="{{ path('admin_catalogue_edit', context|merge({category: category, id: item.id})) }}">{{ item.name }}</a><code>{{ item.slug }}</code></td><td>
+        <tr data-reference-id="{{ item.id }}"><td><a href="{{ path('admin_catalogue_edit', context|merge({category: category, id: item.id})) }}">{{ item.name|trim(' ') == '' ? item.slug : item.name }}</a><code>{{ item.slug }}</code>
+            {% if item.name|trim(' ') == '' %}<div class="badge">Nom manquant</div>{% endif %}
+            {% if (item.description ?? '')|trim(' ') == '' %}<div class="badge">Description manquante</div>{% endif %}
+        </td><td>
             {% if category == 'classes' %}d{{ item.hitDie }} · {{ item.spellcastingProgression.value }}
             {% elseif category == 'subclasses' %}<a href="{{ path('admin_catalogue_edit', {category: 'classes', id: item.characterClass.id}) }}">{{ item.characterClass.name }}</a>
             {% elseif category == 'races' %}{{ item.selectable ? 'Sélectionnable' : 'Non sélectionnable' }}{% if item.parentRace %} · <a href="{{ path('admin_catalogue_edit', {category: 'races', id: item.parentRace.id}) }}">{{ item.parentRace.name }}</a>{% endif %}

@@ -37,9 +37,10 @@ final class AdminFeatureReferenceController extends AbstractController
             return $this->render('admin/error.html.twig', ['message' => $error->getMessage()], new Response(status: 422));
         }
         return $this->render('admin/features.html.twig', [
-            'result' => $reference->search($context['q'] ?? '', array_intersect_key($context, AdminFeatureReference::SOURCES + ['sourceType' => '']), $context['page'], 25),
+            'result' => $reference->search($context['q'] ?? '', array_intersect_key($context, AdminFeatureReference::SOURCES + ['sourceType' => '', 'editorial' => '']), $context['page'], 25),
             'context' => $context,
             'options' => $reference->filterOptions(),
+            'editorialFilters' => \App\Service\AdminReferenceCatalogue::EDITORIAL_FILTERS,
         ]);
     }
 
@@ -94,6 +95,9 @@ final class AdminFeatureReferenceController extends AbstractController
             throw new \InvalidArgumentException('Recherche invalide (200 caractères maximum).');
         }
         $context = trim($search) === '' ? [] : ['q' => trim($search)];
+        if (is_string($params['editorial'] ?? null) && isset(\App\Service\AdminReferenceCatalogue::EDITORIAL_FILTERS[$params['editorial']])) {
+            $context['editorial'] = $params['editorial'];
+        }
         foreach (array_keys(AdminFeatureReference::SOURCES) as $key) {
             if (!isset($params[$key]) || $params[$key] === '') continue;
             $id = filter_var($params[$key], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);

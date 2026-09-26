@@ -10,6 +10,11 @@ use Doctrine\ORM\EntityManagerInterface;
 /** Explicit catalogue of the six editorial screens; no arbitrary entity hydration. */
 final readonly class AdminReferenceCatalogue
 {
+    public const EDITORIAL_FILTERS = [
+        'missing-description' => 'Description manquante',
+        'missing-name' => 'Nom manquant',
+    ];
+
     public const CATEGORIES = [
         'classes' => ['entity' => CharacterClass::class, 'label' => 'Classes', 'length' => 120],
         'subclasses' => ['entity' => CharacterSubclass::class, 'label' => 'Sous-classes', 'length' => 120],
@@ -61,7 +66,7 @@ final readonly class AdminReferenceCatalogue
     public function filters(string $category): array
     {
         $custom = ['label' => 'Origine du contenu', 'choices' => ['0' => 'Référentiel', '1' => 'Personnalisé']];
-        $filters = ['custom' => $custom];
+        $filters = ['custom' => $custom, 'editorial' => ['label' => 'État éditorial', 'choices' => self::EDITORIAL_FILTERS]];
         if ($category === 'subclasses') $filters['class'] = ['label' => 'Classe', 'choices' => $this->choices(CharacterClass::class)];
         if ($category === 'races') {
             $filters['parent'] = ['label' => 'Race parente', 'choices' => $this->choices(CharacterRace::class)];
@@ -81,6 +86,7 @@ final readonly class AdminReferenceCatalogue
 
     public function context(array $params, array $filters): array
     {
+        if (!is_string($params['editorial'] ?? null) || !isset(self::EDITORIAL_FILTERS[$params['editorial']])) unset($params['editorial']);
         $q = $params['q'] ?? '';
         if (!is_string($q) || mb_strlen($q) > 200 || str_contains($q, "\0")) throw new \InvalidArgumentException('Recherche invalide (200 caractères maximum).');
         $page = filter_var($params['page'] ?? 1, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 1000000]]);
@@ -98,6 +104,10 @@ final readonly class AdminReferenceCatalogue
     public function search(string $category, array $context): array
     {
         $query = $this->em->createQueryBuilder()->from(self::CATEGORIES[$category]['entity'], 'e');
+        $editorialField = match ($context['editorial'] ?? '') {
+            'missing-description' => 'description', 'missing-name' => 'name', default => null,
+        };
+        if ($editorialField !== null) $query->andWhere("(e.$editorialField IS NULL OR TRIM(e.$editorialField) = '')");
         if (isset($context['q'])) {
             $query->andWhere("(LOWER(e.name) LIKE :q ESCAPE '!' OR LOWER(e.slug) LIKE :q ESCAPE '!')")
                 ->setParameter('q', '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], mb_strtolower($context['q'])).'%');

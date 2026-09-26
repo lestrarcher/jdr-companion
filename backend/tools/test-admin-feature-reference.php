@@ -323,9 +323,78 @@ try {
         ['/admin/reference/progressions/'.$progression->getId(), '/admin/reference/features/'.$progressionFeature->getId()],
     ];
     foreach ($linkedPages as [$from, $to]) $check($dom($request($from))->query('//main//a[@href="'.$to.'"]')->length > 0, 'Related link '.$from.' -> '.$to);
+    // Editorial list filters: raw legacy values in isolated temporary tables only.
+    foreach (['features' => CharacterFeatureDefinition::class] + array_map(static fn ($definition) => $definition['entity'], AdminReferenceCatalogue::CATEGORIES) as $category => $entityClass) {
+        $meta = $em->getClassMetadata($entityClass);
+        $check($meta->hasField('description'), 'All current catalogue categories support descriptions '.$category);
+        $check(!$meta->isNullable('name'), 'NULL names forbidden by actual schema '.$category);
+        $table = $db->quoteIdentifier($meta->getTableName());
+        $fixtures = $db->fetchAllAssociative('SELECT id, slug FROM '.$table.' ORDER BY id');
+        $path = '/admin/reference/'.$category;
+        $db->createSavepoint('editorial_lists');
+        $db->executeStatement("UPDATE $table SET description = 'Texte renseigné'");
+        foreach ([null, '', '   '] as $index => $descriptionValue) {
+            $db->update($meta->getTableName(), ['description' => $descriptionValue], ['id' => $fixtures[$index]['id']]);
+        }
+        foreach (['', '   '] as $index => $nameValue) {
+            $db->update($meta->getTableName(), ['name' => $nameValue], ['id' => $fixtures[$index]['id']]);
+        }
+        $em->clear();
+        $all = $request($path.'?editorial=');
+        $check($all->getStatusCode() === 200 && $total($all) === count($fixtures), 'Editorial all '.$category);
+        $filtered = $request($path.'?editorial=missing-description');
+        $check($filtered->getStatusCode() === 200 && $total($filtered) === 3, 'NULL empty and spaces descriptions '.$category);
+        $check($dom($filtered)->query('//tbody//div[@class="badge" and text()="Description manquante"]')->length === 3, 'Description badges '.$category);
+        $names = $request($path.'?editorial=missing-name');
+        $check($total($names) === 2, 'Empty and spaces names '.$category);
+        $check($dom($names)->query('//tbody//div[@class="badge" and text()="Nom manquant"]')->length === 2, 'Name badges '.$category);
+        $check($dom($names)->evaluate('string(//tbody/tr[1]/td/a)') !== '', 'Unnamed item keeps accessible link '.$category);
+        $search = $request($path.'?'.http_build_query(['q' => $fixtures[0]['slug'], 'editorial' => 'missing-description']));
+        $check($total($search) === 1, 'Search plus editorial filter '.$category);
+        $check($total($request($path.'?q=no-such-entry&editorial=missing-description')) === 0, 'Empty intersection '.$category);
+        foreach (['editorial=unknown', 'editorial[]=missing-name', 'editorial=description%20OR%201%3D1'] as $invalid) {
+            $response = $request($path.'?'.$invalid);
+            $check($response->getStatusCode() === 200 && $total($response) === count($fixtures), 'Invalid editorial value falls back to all '.$category);
+            $check($dom($response)->query('//select[@name="editorial"]/option[@selected and @value!=""]')->length === 0, 'Invalid editorial value not retained '.$category);
+        }
+        $dashboardPage = $dom($request('/admin'));
+        $dashboardLink = $dashboardPage->evaluate('string(//article[@data-category="'.$category.'"]//*[@data-count="missing-descriptions"]/a/@href)');
+        $check($dashboardLink === $path.'?editorial=missing-description', 'Dashboard filtered link '.$category);
+        $check($total($request($dashboardLink)) === 3, 'Dashboard counter and filtered list agree '.$category);
+        // Enough matching rows to prove filtering precedes pagination.
+        $db->executeStatement("UPDATE $table SET name = 'Éditorial test', description = NULL");
+        $em->clear();
+        $params = ['q' => 'Éditorial', 'editorial' => 'missing-description'];
+        if ($category !== 'features') $params['custom'] = '0';
+        $first = $request($path.'?'.http_build_query($params));
+        $check($total($first) === count($fixtures), 'Combined filters count '.$category);
+        $next = $dom($first)->evaluate('string(//a[@rel="next"]/@href)');
+        parse_str(parse_url($next, PHP_URL_QUERY), $nextParams);
+        $check($nextParams == $params + ['page' => 2], 'Next page retains all filters '.$category);
+        $second = $request($next);
+        $check($dom($second)->query('//tr[@data-reference-id or @data-feature-id]')->length === count($fixtures) - 25, 'Filtered second page '.$category);
+        $previous = $dom($second)->evaluate('string(//a[@rel="prev"]/@href)');
+        parse_str(parse_url($previous, PHP_URL_QUERY), $previousParams);
+        $check($previousParams == $params + ['page' => 1], 'Previous page retains all filters '.$category);
+        $check($dom($second)->query('//form//input[@name="page"]')->length === 0, 'New search resets page '.$category);
+        $check($dom($second)->evaluate('string(//select[@name="editorial"]/option[@selected]/@value)') === 'missing-description', 'Selected editorial filter retained '.$category);
+        $editLink = $dom($second)->evaluate('string(//tbody/tr[1]/td/a/@href)');
+        $editResponse = $request($editLink);
+        $check($editResponse->getStatusCode() === 200, 'Filtered edit page '.$category);
+        $back = $dom($editResponse)->evaluate('string(//a[@class="back-link"]/@href)');
+        parse_str(parse_url($back, PHP_URL_QUERY), $backParams);
+        $check($backParams == $nextParams, 'Edit back link retains filters and page '.$category);
+        if ($category === 'features') {
+            $check($total($request($path.'?q=Éditorial&editorial=missing-description&sourceType=class')) === 1, 'Editorial filter with feature origin, no join duplicates');
+        }
+        $db->rollbackSavepoint('editorial_lists');
+        $db->releaseSavepoint('editorial_lists');
+        $em->clear();
+    }
     foreach ($before as $table => $data) $check($data === $db->fetchAllAssociative('SELECT * FROM public.'.$table.' ORDER BY id'), 'Real data unchanged '.$table);
     $session->remove('_security_main');
     $check($request('/admin')->getStatusCode() === 401, 'Anonymous dashboard requires existing login');
+    foreach (['features', ...array_keys($targets)] as $category) $check($request('/admin/reference/'.$category.'?editorial=missing-description')->getStatusCode() === 401, 'Anonymous filtered list '.$category);
     foreach ($targets as $category => $target) $check($request('/admin/reference/'.$category)->getStatusCode() === 401, 'Anonymous category '.$category);
     echo "OK: $checks Symfony/Twig dashboard assertions; PostgreSQL temporary tables rolled back.\n";
 } finally {

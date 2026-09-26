@@ -61,6 +61,10 @@ final readonly class AdminFeatureReference
         if (isset($filters['sourceType'])) {
             $query->andWhere('r.'.self::SOURCES[$filters['sourceType']].' IS NOT NULL');
         }
+        $editorialField = match ($filters['editorial'] ?? '') {
+            'missing-description' => 'description', 'missing-name' => 'name', default => null,
+        };
+        if ($editorialField !== null) $query->andWhere("(f.$editorialField IS NULL OR TRIM(f.$editorialField) = '')");
         $total = (int) (clone $query)->select('COUNT(DISTINCT f.id)')->getQuery()->getSingleScalarResult();
         // Paginate definitions, never joined attribution rows.
         $rows = $query->select('DISTINCT f.id, f.name')->orderBy('f.name', 'ASC')->addOrderBy('f.id', 'ASC')
@@ -71,6 +75,7 @@ final readonly class AdminFeatureReference
         return [
             'features' => array_map(fn ($f) => [
                 'id' => $f->getId(), 'name' => $f->getName(), 'slug' => $f->getSlug(),
+                'description' => $f->getDescription(),
                 'origins' => $rules[$f->getId()] ?? [],
             ], $features),
             'total' => $total, 'page' => $page, 'pageSize' => $pageSize,

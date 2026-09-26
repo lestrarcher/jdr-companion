@@ -21,7 +21,7 @@
                     <p><strong class="dashboard-count" data-count="total">{{ stats.total }}</strong> éléments</p>
                     <dl>
                         <dt>Sans nom</dt><dd data-count="missing-names" class="{{ stats.missingNames > 0 ? 'badge' : 'muted' }}">{{ stats.missingNames }}</dd>
-                        <dt>Sans description</dt><dd data-count="missing-descriptions" class="{{ stats.missingDescriptions > 0 ? 'badge' : 'muted' }}">{{ stats.missingDescriptions }}</dd>
+                        <dt>Sans description</dt><dd data-count="missing-descriptions" class="{{ stats.missingDescriptions > 0 ? 'badge' : 'muted' }}"><a aria-label="{{ stats.label }} : descriptions manquantes" href="{{ category == 'features' ? path('admin_features', {editorial: 'missing-description'}) : path('admin_catalogue_list', {category: category, editorial: 'missing-description'}) }}">{{ stats.missingDescriptions }}</a></dd>
                     </dl>
                 </article>
             {% endfor %}
