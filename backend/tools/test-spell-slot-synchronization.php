@@ -220,6 +220,7 @@ try {
     require __DIR__ . '/test-lay-on-hands-scenarios.php';
     require __DIR__ . '/test-cleric-domain-resource-scenarios.php';
     require __DIR__ . '/test-gem-flight-scenarios.php';
+    require __DIR__ . '/test-ftd-resource-scenarios.php';
     foreach ([[1, 2], [2, 0], [1, 5]] as [$bonus, $current]) {
         foreach ([1, 0] as $temporaryCurrent) {
             $initial = ['hitPoints' => ['current' => 8], 'progressions' => [['id' => 'story', 'currentValue' => 7]], 'resources' => [
