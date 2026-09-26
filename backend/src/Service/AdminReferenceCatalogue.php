@@ -101,7 +101,7 @@ final readonly class AdminReferenceCatalogue
         return $context;
     }
 
-    public function search(string $category, array $context): array
+    private function filteredQuery(string $category, array $context): \Doctrine\ORM\QueryBuilder
     {
         $query = $this->em->createQueryBuilder()->from(self::CATEGORIES[$category]['entity'], 'e');
         $editorialField = match ($context['editorial'] ?? '') {
@@ -117,6 +117,17 @@ final readonly class AdminReferenceCatalogue
         if ($category === 'races' && isset($context['parent'])) $query->andWhere('e.parentRace = :parent')->setParameter('parent', (int) $context['parent']);
         if ($category === 'races' && isset($context['selectable'])) $query->andWhere('e.selectable = :selectable')->setParameter('selectable', $context['selectable'] === '1');
         if ($category === 'resources' && isset($context['recharge'])) $query->andWhere('e.rechargeType = :recharge')->setParameter('recharge', $context['recharge']);
+        return $query;
+    }
+
+    public function neighbours(string $category, object $entity, array $context): array
+    {
+        return AdminReferenceNavigation::resolve($this->filteredQuery($category, $context), 'e', $entity->getId(), $entity->getName());
+    }
+
+    public function search(string $category, array $context): array
+    {
+        $query = $this->filteredQuery($category, $context);
         $total = (int) (clone $query)->select('COUNT(e.id)')->getQuery()->getSingleScalarResult();
         $rows = $query->select('e')->orderBy('e.name')->addOrderBy('e.id')->setMaxResults(25)->setFirstResult(($context['page'] - 1) * 25)->getQuery()->getResult();
         return ['rows' => $rows, 'total' => $total, 'page' => $context['page']];

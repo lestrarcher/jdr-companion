@@ -1,27 +1,29 @@
 {% extends 'admin/base.html.twig' %}
 {% block title %}{{ entity.name }}{% endblock %}
 {% block body %}
-<header><a class="back-link" href="{{ path('admin_catalogue_list', context|merge({category: category})) }}">← Retour à la liste filtrée</a><p class="eyebrow">Référentiel · {{ definition.label }}</p><h1>{{ entity.name }}</h1></header>
+<header><a class="back-link" href="{{ path('admin_catalogue_list', context|merge({category: category})) }}">← Retour à la liste filtrée</a><p class="eyebrow">Référentiel · {{ definition.label }}</p><h1>{{ entity.name|trim(' ') == '' ? entity.slug : entity.name }}</h1>
+    {% include 'admin/editor-navigation.html.twig' with {editRoute: 'admin_catalogue_edit', routeContext: context|merge({category: category}), neighbours: neighbours} only %}
+</header>
 {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
 <section class="panel editor">
     <h2>Édition éditoriale</h2>
     <form method="post" action="{{ path('admin_catalogue_edit', context|merge({category: category, id: entity.id})) }}" data-editor data-unsaved="{{ error ? 'true' : 'false' }}">
         <input type="hidden" name="_token" value="{{ csrf_token('admin_' ~ category ~ '_' ~ entity.id) }}">
-        <label>Nom<input name="name" value="{{ values.name }}" required maxlength="{{ definition.length }}"></label>
-        <label>Description<textarea name="description" rows="20">{{ values.description }}</textarea></label>
+        <label>Nom{% if values.name|trim(' ') == '' %} <span class="badge">Nom manquant</span>{% endif %}<input name="name" value="{{ values.name }}" required maxlength="{{ definition.length }}"></label>
+        <label>Description{% if values.description|trim(' ') == '' %} <span class="badge">Description manquante</span>{% endif %}<textarea name="description" rows="20">{{ values.description }}</textarea></label>
         {% if category == 'progressions' %}
             <label>Libellé de gain<input name="gainLabel" value="{{ values.gainLabel }}" maxlength="80"></label>
             <label>Libellé de dépense<input name="spendLabel" value="{{ values.spendLabel }}" maxlength="80"></label>
         {% endif %}
-        <div class="actions"><button type="submit">Enregistrer</button><span class="muted" data-draft-status role="status"></span></div>
+        <div class="actions"><button type="submit" name="_action" value="save">Enregistrer</button><button type="submit" name="_action" value="save-next">Enregistrer et suivant</button><a href="{{ path('admin_catalogue_list', context|merge({category: category})) }}">Retour à la liste</a><span class="muted" data-draft-status role="status"></span></div>
     </form>
 </section>
-<section class="panel mechanics">
-    <h2>Informations techniques · lecture seule</h2>
+<details class="panel mechanics">
+    <summary>Informations techniques et mécaniques · lecture seule</summary>
+    <p class="muted">Catégorie : {{ definition.label }}</p>
     {% if category == 'races' %}<p class="muted">Métadonnées propres à cette race. Consultez la race parente pour les données héritées.</p>{% endif %}
     {% if category == 'resources' %}<p class="muted">Configuration de la ressource. Les valeurs consommées ou stockées en session appartiennent aux personnages.</p>{% endif %}
     <dl>{% for label, value in detail.fields %}<dt>{{ label }}</dt><dd>{{ value }}</dd>{% endfor %}</dl>
-</section>
 {% for title, links in detail.groups %}
     <section class="panel mechanics"><h2>{{ title }}</h2>
         {% for link in links %}<p>
@@ -36,4 +38,5 @@
         <tbody>{% for row in rows %}<tr>{% for value in row %}<td>{{ value|nl2br }}</td>{% endfor %}</tr>{% endfor %}</tbody>
     </table></div></section>
 {% endfor %}
+</details>
 {% endblock %}

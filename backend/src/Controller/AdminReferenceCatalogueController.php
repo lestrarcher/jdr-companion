@@ -53,8 +53,17 @@ final class AdminReferenceCatalogueController extends AbstractController
             } else {
                 unset($payload['_token']);
                 try {
+                    $action = $payload['_action'] ?? 'save';
+                    if (!in_array($action, ['save', 'save-next'], true)) throw new \InvalidArgumentException('Action invalide.');
+                    unset($payload['_action']);
                     $catalogue->updateEditorial($category, $entity, $payload);
                     $this->addFlash('success', 'Modifications enregistrées.');
+                    if ($action === 'save-next') {
+                        $next = $catalogue->neighbours($category, $entity, $context)['next'];
+                        return $next === null
+                            ? $this->redirectToRoute('admin_catalogue_list', ['category' => $category] + $context, 303)
+                            : $this->redirectToRoute('admin_catalogue_edit', ['category' => $category, 'id' => $next] + $context, 303);
+                    }
                     return $this->redirectToRoute('admin_catalogue_edit', ['category' => $category, 'id' => $id] + $context, 303);
                 } catch (\InvalidArgumentException $exception) {
                     $error = $exception->getMessage();
@@ -66,6 +75,7 @@ final class AdminReferenceCatalogueController extends AbstractController
             'category' => $category, 'definition' => AdminReferenceCatalogue::CATEGORIES[$category],
             'entity' => $entity, 'detail' => $catalogue->detail($category, $entity),
             'values' => $values, 'context' => $context, 'error' => $error,
+            'neighbours' => $catalogue->neighbours($category, $entity, $context),
         ], new Response(status: $status));
     }
 }

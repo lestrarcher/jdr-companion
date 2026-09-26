@@ -39,7 +39,7 @@ final readonly class AdminFeatureReference
         $this->em->flush();
     }
 
-    public function search(string $search, array $filters, int $page, int $pageSize): array
+    private function filteredQuery(string $search, array $filters): \Doctrine\ORM\QueryBuilder
     {
         $query = $this->em->createQueryBuilder()
             ->from(CharacterFeatureDefinition::class, 'f')
@@ -65,6 +65,17 @@ final readonly class AdminFeatureReference
             'missing-description' => 'description', 'missing-name' => 'name', default => null,
         };
         if ($editorialField !== null) $query->andWhere("(f.$editorialField IS NULL OR TRIM(f.$editorialField) = '')");
+        return $query;
+    }
+
+    public function neighbours(CharacterFeatureDefinition $feature, array $context): array
+    {
+        return AdminReferenceNavigation::resolve($this->filteredQuery($context['q'] ?? '', $context), 'f', $feature->getId(), $feature->getName());
+    }
+
+    public function search(string $search, array $filters, int $page, int $pageSize): array
+    {
+        $query = $this->filteredQuery($search, $filters);
         $total = (int) (clone $query)->select('COUNT(DISTINCT f.id)')->getQuery()->getSingleScalarResult();
         // Paginate definitions, never joined attribution rows.
         $rows = $query->select('DISTINCT f.id, f.name')->orderBy('f.name', 'ASC')->addOrderBy('f.id', 'ASC')

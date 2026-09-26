@@ -391,10 +391,16 @@ try {
         $db->releaseSavepoint('editorial_lists');
         $em->clear();
     }
+    require __DIR__.'/test-admin-reference-editor-cases.php';
     foreach ($before as $table => $data) $check($data === $db->fetchAllAssociative('SELECT * FROM public.'.$table.' ORDER BY id'), 'Real data unchanged '.$table);
     $session->remove('_security_main');
     $check($request('/admin')->getStatusCode() === 401, 'Anonymous dashboard requires existing login');
     foreach (['features', ...array_keys($targets)] as $category) $check($request('/admin/reference/'.$category.'?editorial=missing-description')->getStatusCode() === 401, 'Anonymous filtered list '.$category);
+    foreach (['features' => $shared, ...$targets] as $category => $target) {
+        $path = '/admin/reference/'.$category.'/'.$target->getId();
+        $check($request($path)->getStatusCode() === 401, 'Anonymous editor '.$category);
+        $check($request($path, 'POST', ['_action' => 'save-next'])->getStatusCode() === 401, 'Anonymous save-next '.$category);
+    }
     foreach ($targets as $category => $target) $check($request('/admin/reference/'.$category)->getStatusCode() === 401, 'Anonymous category '.$category);
     echo "OK: $checks Symfony/Twig dashboard assertions; PostgreSQL temporary tables rolled back.\n";
 } finally {

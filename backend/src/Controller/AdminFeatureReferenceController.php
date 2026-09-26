@@ -72,8 +72,17 @@ final class AdminFeatureReferenceController extends AbstractController
             } else {
                 unset($payload['_token']);
                 try {
+                    $action = $payload['_action'] ?? 'save';
+                    if (!in_array($action, ['save', 'save-next'], true)) throw new \InvalidArgumentException('Action invalide.');
+                    unset($payload['_action']);
                     $reference->updateEditorial($feature, $payload);
                     $this->addFlash('success', 'Modifications enregistrées.');
+                    if ($action === 'save-next') {
+                        $next = $reference->neighbours($feature, $context)['next'];
+                        return $next === null
+                            ? $this->redirectToRoute('admin_features', $context, 303)
+                            : $this->redirectToRoute('admin_feature_edit', ['id' => $next] + $context, 303);
+                    }
                     return $this->redirectToRoute('admin_feature_edit', ['id' => $id] + $context, 303);
                 } catch (\InvalidArgumentException $exception) {
                     $error = $exception->getMessage();
@@ -84,6 +93,7 @@ final class AdminFeatureReferenceController extends AbstractController
         return $this->render('admin/edit.html.twig', [
             'feature' => $reference->detail($feature), 'values' => $values,
             'context' => $context, 'error' => $error,
+            'neighbours' => $reference->neighbours($feature, $context),
         ], new Response(status: $status));
     }
 
