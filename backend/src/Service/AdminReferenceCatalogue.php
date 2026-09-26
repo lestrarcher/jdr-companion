@@ -28,6 +28,31 @@ final readonly class AdminReferenceCatalogue
         return $counts;
     }
 
+    /** Read-only aggregates; the seven current catalogue models all have name/description. */
+    public function dashboard(): array
+    {
+        $categories = [];
+        foreach (['features' => ['entity' => CharacterFeatureDefinition::class, 'label' => 'Capacités']] + self::CATEGORIES as $key => $definition) {
+            $row = $this->em->createQueryBuilder()
+                ->select('COUNT(e.id) AS total')
+                ->addSelect("SUM(CASE WHEN e.name IS NULL OR TRIM(e.name) = '' THEN 1 ELSE 0 END) AS missingNames")
+                ->addSelect("SUM(CASE WHEN e.description IS NULL OR TRIM(e.description) = '' THEN 1 ELSE 0 END) AS missingDescriptions")
+                ->from($definition['entity'], 'e')->getQuery()->getSingleResult();
+            $categories[$key] = [
+                'label' => $definition['label'],
+                'total' => (int) $row['total'],
+                'missingNames' => (int) $row['missingNames'],
+                'missingDescriptions' => (int) $row['missingDescriptions'],
+            ];
+        }
+
+        return [
+            'categories' => $categories,
+            'total' => array_sum(array_column($categories, 'total')),
+            'missingDescriptions' => array_sum(array_column($categories, 'missingDescriptions')),
+        ];
+    }
+
     public function find(string $category, int $id): ?object
     {
         return $this->em->find(self::CATEGORIES[$category]['entity'], $id);

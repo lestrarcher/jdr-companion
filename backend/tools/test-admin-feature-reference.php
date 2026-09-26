@@ -104,6 +104,59 @@ try {
     $em->flush();
     $session->set('_security_main', serialize(new UsernamePasswordToken($user, 'main', ['ROLE_USER'])));
     $id = $shared->getId();
+    $assertDashboard = static function (array $expected) use ($request, $dom, $check): void {
+        $response = $request('/admin');
+        $check($response->getStatusCode() === 200, 'Authorized dashboard');
+        $html = $dom($response);
+        $check($html->query('//main//article[@data-category]')->length === 7, 'Seven dashboard cards');
+        $check($html->query('//main//a[@href="/admin/reference"]')->length === 1, 'General catalogue link');
+        $totals = $missingDescriptions = 0;
+        foreach ($expected as $category => [$label, $count, $names, $descriptions]) {
+            $card = '//main//article[@data-category="'.$category.'"]';
+            $check($html->evaluate('string('.$card.'//h3/a)') === $label, 'Category label '.$category);
+            $check($html->evaluate('string('.$card.'//h3/a/@href)') === '/admin/reference/'.$category, 'Category link '.$category);
+            foreach (['total' => $count, 'missing-names' => $names, 'missing-descriptions' => $descriptions] as $key => $value) {
+                $check($html->evaluate('string('.$card.'//*[@data-count="'.$key.'"])') === (string) $value, 'Database count '.$category.' '.$key);
+            }
+            $totals += $count;
+            $missingDescriptions += $descriptions;
+        }
+        foreach (['total' => $totals, 'missing-descriptions' => $missingDescriptions, 'categories' => 7] as $key => $value) {
+            $check($html->evaluate('string(//*[@data-summary="'.$key.'"])') === (string) $value, 'Dashboard summary '.$key);
+        }
+    };
+    $expectedDashboard = [
+        'features' => ['Capacités', 30, 0, 29],
+        'classes' => ['Classes', 1, 0, 1],
+        'subclasses' => ['Sous-classes', 1, 0, 1],
+        'races' => ['Races', 1, 0, 1],
+        'feats' => ['Dons', 1, 0, 1],
+        'resources' => ['Ressources', 1, 0, 1],
+        'progressions' => ['Progressions', 1, 0, 1],
+    ];
+    $assertDashboard($expectedDashboard);
+    // Direct SQL exercises legacy empty/space-only text without setter normalization.
+    // These writes target temporary tables only and are reverted before other tests.
+    $db->createSavepoint('dashboard_editorial');
+    foreach (['features' => CharacterFeatureDefinition::class] + array_column(AdminReferenceCatalogue::CATEGORIES, 'entity') as $entityClass) {
+        $table = $db->quoteIdentifier($em->getClassMetadata($entityClass)->getTableName());
+        $db->executeStatement("UPDATE $table SET name = '   ', description = ''");
+    }
+    foreach ($expectedDashboard as &$expected) { $expected[2] = $expected[3] = $expected[1]; }
+    unset($expected);
+    $assertDashboard($expectedDashboard);
+    foreach (['features' => CharacterFeatureDefinition::class] + array_column(AdminReferenceCatalogue::CATEGORIES, 'entity') as $entityClass) {
+        $table = $db->quoteIdentifier($em->getClassMetadata($entityClass)->getTableName());
+        $db->executeStatement("UPDATE $table SET name = '', description = '   '");
+    }
+    $assertDashboard($expectedDashboard);
+    // Empty categories must render zero rather than NULL from SUM().
+    $db->executeStatement('DELETE FROM character_feature_rule');
+    $db->executeStatement('DELETE FROM character_feature_definition');
+    $expectedDashboard['features'] = ['Capacités', 0, 0, 0];
+    $assertDashboard($expectedDashboard);
+    $db->rollbackSavepoint('dashboard_editorial');
+    $db->releaseSavepoint('dashboard_editorial');
     foreach (['/admin', '/admin/reference'] as $path) {
         $response = $request($path);
         $check($response->getStatusCode() === 200, 'Dashboard GET '.$path.' status '.$response->getStatusCode());

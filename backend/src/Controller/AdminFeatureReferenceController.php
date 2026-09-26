@@ -14,11 +14,17 @@ use Symfony\Component\Security\Csrf\{CsrfToken, CsrfTokenManagerInterface};
 final class AdminFeatureReferenceController extends AbstractController
 {
     #[Route('', name: 'admin_dashboard', methods: ['GET'])]
-    #[Route('/reference', name: 'admin_reference', methods: ['GET'])]
     public function dashboard(\App\Service\AdminReferenceCatalogue $catalogue): Response
     {
         $this->denyAccessUnlessGranted('ROLE_USER');
-        return $this->render('admin/dashboard.html.twig', ['counts' => $catalogue->counts()]);
+        return $this->render('admin/dashboard.html.twig', ['dashboard' => $catalogue->dashboard()]);
+    }
+
+    #[Route('/reference', name: 'admin_reference', methods: ['GET'])]
+    public function reference(\App\Service\AdminReferenceCatalogue $catalogue): Response
+    {
+        $this->denyAccessUnlessGranted('ROLE_USER');
+        return $this->render('admin/reference.html.twig', ['counts' => $catalogue->counts()]);
     }
 
     #[Route('/reference/features', name: 'admin_features', methods: ['GET'])]
