@@ -76,13 +76,6 @@ export const routes: Routes = [
           ),
       },
       {
-        path: 'dnd/reference',
-        loadComponent: () =>
-          import('./features/dnd-reference/feature-manager/feature-manager').then(
-            component => component.FeatureManager,
-          ),
-      },
-      {
         path: '',
         pathMatch: 'full',
         redirectTo: 'campaigns',

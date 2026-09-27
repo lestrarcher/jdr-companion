@@ -2,144 +2,98 @@
 
 declare(strict_types=1);
 
-use App\Controller\CharacterSessionStateController;
-use App\Controller\ProgressionController;
+// Catalogue mutations are closed. Preserve model/persistence and GM/player disclosure coverage.
 use App\Entity\{Campaign, Character, CharacterProgression, CharacterSessionState, GameSession, ProgressionAdjustmentRule, ProgressionDefinition, ProgressionStage, User};
-use App\Kernel;
-use Doctrine\ORM\Tools\SchemaTool;
-use Symfony\Component\Dotenv\Dotenv;
-use Symfony\Component\HttpFoundation\Request;
+use App\Enum\ProgressionAdjustmentDirection;
+use Symfony\Component\HttpFoundation\{Request, Session\Session, Session\Storage\MockArraySessionStorage};
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 
-require __DIR__ . '/../vendor/autoload.php';
-(new Dotenv())->bootEnv(__DIR__ . '/../.env');
-$kernel = new Kernel('dev', true);
-$kernel->boot();
-$container = $kernel->getContainer();
-$em = $container->get('doctrine')->getManager();
-$db = $em->getConnection();
-$controller = $container->get(ProgressionController::class);
-$user = (new User())->setEmail('progression-test@example.invalid');
-$tokens = new Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorage();
-$controllerContainer = new Symfony\Component\DependencyInjection\Container();
-$controllerContainer->set('security.authorization_checker', new Symfony\Component\Security\Core\Authorization\AuthorizationChecker(
-    $tokens,
-    new Symfony\Component\Security\Core\Authorization\AccessDecisionManager([new Symfony\Component\Security\Core\Authorization\Voter\RoleVoter()]),
-));
-$controller->setContainer($controllerContainer);
-$tokens->setToken(new UsernamePasswordToken($user, 'main', ['ROLE_USER']));
+require __DIR__.'/../vendor/autoload.php';
+(new Symfony\Component\Dotenv\Dotenv())->bootEnv(__DIR__.'/../.env');
+putenv('SHELL_VERBOSITY=-1'); $_SERVER['SHELL_VERBOSITY'] = $_ENV['SHELL_VERBOSITY'] = -1;
+$kernel = new App\Kernel('dev', true); $kernel->boot();
+$container = $kernel->getContainer(); $em = $container->get('doctrine')->getManager(); $db = $em->getConnection();
 $checks = 0;
-$check = static function (bool $condition, string $message) use (&$checks): void {
-    if (!$condition) throw new RuntimeException($message);
-    ++$checks;
+$check = static function (bool $ok, string $label) use (&$checks): void { if (!$ok) throw new RuntimeException($label); ++$checks; };
+$session = new Session(new MockArraySessionStorage()); $session->start();
+$request = static function (string $path) use ($kernel, $session): array {
+    $r = Request::create($path, 'GET', [], [$session->getName() => $session->getId()]); $r->setSession($session);
+    $response = $kernel->handle($r);
+    return [$response->getStatusCode(), json_decode($response->getContent(), true)];
 };
-$request = static fn (string $method, array $payload = []) => Request::create('/', $method, [], [], [], ['CONTENT_TYPE' => 'application/json'], json_encode($payload, JSON_THROW_ON_ERROR));
-$body = static fn ($response) => json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
-$ruleRequest = static function (int $parent, string $method, array $payload = [], ?int $id = null) use ($controller, $em, $request) {
-    return $controller->mutateAdjustmentRule($parent, $request($method, $payload), $em, $id);
-};
-
 try {
     $db->beginTransaction();
-    $metadata = array_map($em->getClassMetadata(...), [User::class, ProgressionDefinition::class, ProgressionStage::class, ProgressionAdjustmentRule::class]);
-    foreach ((new SchemaTool($em))->getCreateSchemaSql($metadata) as $sql) {
-        $db->executeStatement(preg_replace('/^CREATE TABLE /', 'CREATE TEMP TABLE ', $sql));
+    $metadata = $em->getMetadataFactory()->getAllMetadata();
+    foreach ((new Doctrine\ORM\Tools\SchemaTool($em))->getCreateSchemaSql($metadata) as $sql) {
+        $db->executeStatement(preg_replace(['/^CREATE TABLE /', '/^CREATE SEQUENCE /'], ['CREATE TEMP TABLE ', 'CREATE TEMP SEQUENCE '], $sql));
     }
-    // Isolate the global feature resolver from rules pointing at real progression definitions.
-    $db->executeStatement('CREATE TEMP TABLE character_feature_rule (LIKE public.character_feature_rule INCLUDING ALL)');
-    $before = [];
-    foreach (['progression_definition', 'progression_stage', 'progression_adjustment_rule', 'character_session_state'] as $table) {
-        $before[$table] = $db->fetchAllAssociative('SELECT * FROM public.' . $table . ' ORDER BY id');
-    }
-    $definition = new ProgressionDefinition('test-reference', 'Test reference');
-    $other = new ProgressionDefinition('test-other', 'Other');
-    $em->persist($definition); $em->persist($other); $em->flush();
-    $parent = $definition->getId(); $otherId = $other->getId();
-    $stage = new ProgressionStage($definition, 'Phase', 0);
-    $check($stage->getDescription() === null, 'Stage description defaults to null');
-    $stage->setDescription(" \n ");
-    $check($stage->getDescription() === null, 'Whitespace becomes null');
-    $secret = "(RP) SECRET stage\n(M) SECRET effect";
-    $response = $controller->createStage($parent, $request('POST', ['label' => 'Phase', 'minimumValue' => 0, 'maximumValue' => 9, 'description' => $secret]), $em);
-    $check($response->getStatusCode() === 201, 'Stage POST');
-    $stageId = $body($response)['stage']['id'];
-    $em->clear();
-    $check($em->find(ProgressionStage::class, $stageId)->getDescription() === $secret, 'Multiline persistence');
-    $response = $controller->updateStage($parent, $stageId, $request('PATCH', ['description' => 'Changed']), $em);
-    $check($body($response)['stage']['description'] === 'Changed', 'Stage update');
-    $response = $controller->updateStage($parent, $stageId, $request('PATCH', ['description' => '  ']), $em);
-    $check($body($response)['stage']['description'] === null, 'Stage clear');
-    $controller->updateStage($parent, $stageId, $request('PATCH', ['description' => $secret]), $em);
-    $response = $controller->createStage($parent, $request('POST', ['label' => 'Overlap', 'minimumValue' => 9, 'maximumValue' => 12]), $em);
-    $check($response->getStatusCode() === 422, 'Inclusive overlap remains invalid');
-    $response = $controller->createStage($parent, $request('POST', ['label' => 'Open', 'minimumValue' => 12]), $em);
-    $check($response->getStatusCode() === 201, 'Gaps and open-ended stages remain valid');
-    $stage = $em->find(ProgressionStage::class, $stageId);
-    $check($stage->containsValue(0) && $stage->containsValue(9) && !$stage->containsValue(10), 'Inclusive boundaries preserved');
-
-    $gain = ['direction' => 'gain', 'triggerType' => '  ', 'description' => 'SECRET gain', 'adjustmentLabel' => '+1 si DD 10 + (phase * 2)', 'displayOrder' => 2];
-    $response = $ruleRequest($parent, 'POST', $gain);
-    $check($response->getStatusCode() === 201, 'Create gain');
-    $rule = $body($response)['progression']['adjustmentRules'][0]; $gainId = $rule['id'];
-    $check($rule['triggerType'] === null && $rule['adjustmentLabel'] === $gain['adjustmentLabel'], 'Nullable trigger and literal formula');
-    $response = $ruleRequest($parent, 'POST', ['direction' => 'loss', 'description' => 'SECRET loss', 'adjustmentLabel' => '-1 à -2 selon action', 'displayOrder' => 0]);
-    $rules = $body($response)['progression']['adjustmentRules']; $lossId = $rules[0]['id'];
-    $check($response->getStatusCode() === 201 && $rules[0]['direction'] === 'loss', 'Create loss and display ordering');
-    $response = $ruleRequest($parent, 'PATCH', ['triggerType' => 'Automatique', 'displayOrder' => 0, 'adjustmentLabel' => '+1 à +3'], $gainId);
-    $rules = $body($response)['progression']['adjustmentRules'];
-    $check($rules[0]['id'] === $gainId && $rules[0]['triggerType'] === 'Automatique' && $rules[0]['adjustmentLabel'] === '+1 à +3', 'Update, textual range and ID tie-break');
-    foreach ([['direction' => 'invalid'], ['description' => ' '], ['adjustmentLabel' => ''], ['displayOrder' => -1], ['displayOrder' => 1.5], ['triggerType' => str_repeat('x', 121)], ['adjustmentLabel' => str_repeat('x', 256)], ['description' => null]] as $invalid) {
-        $check($ruleRequest($parent, 'PATCH', $invalid, $gainId)->getStatusCode() === 422, 'Reject invalid rule ' . json_encode(array_keys($invalid)));
-    }
-    $check($ruleRequest($otherId, 'PATCH', ['description' => 'wrong'], $gainId)->getStatusCode() === 404, 'Wrong parent PATCH');
-    $check($ruleRequest($otherId, 'DELETE', [], $gainId)->getStatusCode() === 404, 'Wrong parent DELETE');
-    $check($ruleRequest($parent, 'POST', ['direction' => 'gain'])->getStatusCode() === 422, 'Missing required fields');
-    $em->clear();
-    $reference = $body($controller->list($em))['progressions'];
-    $reference = array_values(array_filter($reference, fn ($p) => $p['id'] === $parent))[0];
-    $check($reference['stages'][0]['description'] === $secret && count($reference['adjustmentRules']) === 2, 'Reference response contains GM fields');
-
-    // Exercise the exact serializer used by both public GET and PATCH responses.
-    $definition = $em->find(ProgressionDefinition::class, $parent);
+    foreach ($metadata as $meta) $check($db->fetchOne('SELECT relpersistence FROM pg_class WHERE oid=to_regclass(?)', [$meta->getTableName()]) === 't', 'Isolated '.$meta->getTableName());
+    $user = (new User())->setEmail('progression@example.invalid')->setPassword('unused');
+    $otherUser = (new User())->setEmail('other@example.invalid')->setPassword('unused');
     $campaign = new Campaign($user, 'test', 'Test');
-    $character = new Character($campaign, 'test', 'Test', 'player');
-    $character->addProgression(new CharacterProgression($character, $definition));
-    $session = new CharacterSessionState(new GameSession($campaign, 'test', 'Test'), $character, ['progressions' => [['id' => 'test-reference', 'currentValue' => 4]]]);
-    $stateController = $container->get(CharacterSessionStateController::class);
-    $serializer = (new ReflectionProperty($stateController, 'sessionStateSerializer'))->getValue($stateController);
-    $public = $serializer->serialize($session);
-    $progression = $public['character']['progressions'][0];
-    $check(!array_key_exists('adjustmentRules', $progression), 'Public response has no adjustmentRules');
-    foreach ($progression['stages'] as $publicStage) {
-        $check(!array_key_exists('description', $publicStage), 'Public stages have no description');
+    $definition = new ProgressionDefinition('test-reference', 'Test reference');
+    $stage = (new ProgressionStage($definition, 'Phase', 0))->setMaximumValue(9);
+    $check($stage->getDescription() === null, 'Description defaults to null');
+    $stage->setDescription(" \n "); $check($stage->getDescription() === null, 'Blank description normalized');
+    $secret = "(RP) SECRET stage\n(M) SECRET effect"; $stage->setDescription($secret);
+    $open = new ProgressionStage($definition, 'Open', 12);
+    $definition->addStage($stage); $definition->addStage($open);
+    $check($stage->containsValue(0) && $stage->containsValue(9) && !$stage->containsValue(10), 'Inclusive stage boundaries');
+    $check(!$open->containsValue(11) && $open->containsValue(150), 'Gaps and open ended stages');
+    $gain = (new ProgressionAdjustmentRule($definition, ProgressionAdjustmentDirection::GAIN, 'SECRET gain', '+1 si DD 10 + (phase * 2)'))->setTriggerType('  ')->setDisplayOrder(2);
+    $loss = new ProgressionAdjustmentRule($definition, ProgressionAdjustmentDirection::LOSS, 'SECRET loss', '-1 à -2 selon action');
+    $definition->addAdjustmentRule($gain); $definition->addAdjustmentRule($loss);
+    $check($gain->getTriggerType() === null && $gain->getAdjustmentLabel() === '+1 si DD 10 + (phase * 2)', 'Nullable trigger and literal formula');
+    foreach ([fn () => $gain->setDescription(' '), fn () => $gain->setAdjustmentLabel(''), fn () => $gain->setDisplayOrder(-1), fn () => $gain->setTriggerType(str_repeat('x', 121)), fn () => $gain->setAdjustmentLabel(str_repeat('x', 256))] as $invalid) {
+        try { $invalid(); throw new RuntimeException('Invalid rule accepted'); } catch (DomainException) { ++$checks; }
     }
-    $check(!str_contains(json_encode($public), 'SECRET'), 'No secret content anywhere in public session response');
-    $tokens->setToken(null);
-    try {
-        $controller->list($em);
-        throw new RuntimeException('Anonymous reference access accepted');
-    } catch (Symfony\Component\Security\Core\Exception\AccessDeniedException) {
-        ++$checks;
-    }
-    $tokens->setToken(new UsernamePasswordToken($user, 'main', ['ROLE_USER']));
-    $routes = $container->get('router')->getRouteCollection();
-    foreach (['api_dnd_progression_rules_update', 'api_dnd_progression_rules_delete'] as $routeName) {
-        $check(preg_match($routes->get($routeName)->compile()->getRegex(), '/dnd/progressions/1/adjustment-rules') === 0, 'Rule ID required for ' . $routeName);
-    }
-    $response = $ruleRequest($parent, 'DELETE', [], $lossId);
-    $check(count($body($response)['progression']['adjustmentRules']) === 1, 'Delete rule');
-    $definition->removeAdjustmentRule($em->find(ProgressionAdjustmentRule::class, $gainId));
+    $character = new Character($campaign, 'test', 'Test', Character::TYPE_PLAYER);
+    $assignment = new CharacterProgression($character, $definition); $character->addProgression($assignment);
+    $game = (new GameSession($campaign, 'test', 'Test'))->setStatus(GameSession::STATUS_LIVE);
+    $state = new CharacterSessionState($game, $character, ['progressions' => [['id' => 'test-reference', 'currentValue' => 4]], 'resources' => []]);
+    foreach ([$user,$otherUser,$campaign,$definition,$stage,$open,$gain,$loss,$character,$assignment,$game,$state] as $entity) $em->persist($entity);
     $em->flush();
-    $check($db->fetchOne('SELECT COUNT(*) FROM progression_adjustment_rule') === 0, 'Orphan removal');
-    $ruleRequest($parent, 'POST', $gain);
-    $db->executeStatement('DELETE FROM progression_definition WHERE id = ?', [$parent]);
-    $check($db->fetchOne('SELECT COUNT(*) FROM progression_adjustment_rule') === 0 && $db->fetchOne('SELECT COUNT(*) FROM progression_stage') === 0, 'Database cascade');
-    foreach ($before as $table => $rows) {
-        $check($rows === $db->fetchAllAssociative('SELECT * FROM public.' . $table . ' ORDER BY id'), 'Real data unchanged: ' . $table);
-    }
-    echo "OK: $checks progression reference assertions; temporary tables rolled back.\n";
+    $ids = [$definition->getId(), $gain->getId(), $loss->getId(), $stage->getId()];
+    $check($db->fetchOne('SELECT description FROM progression_stage WHERE id=?', [$stage->getId()]) === $secret, 'Multiline persistence');
+    $stage->setDescription('Changed'); $em->flush();
+    $check($db->fetchOne('SELECT description FROM progression_stage WHERE id=?', [$stage->getId()]) === 'Changed', 'Stage edit persists');
+    $stage->setDescription(' '); $em->flush();
+    $check($db->fetchOne('SELECT description FROM progression_stage WHERE id=?', [$stage->getId()]) === null, 'Stage clear persists');
+    $stage->setDescription($secret); $em->flush();
+    $url = '/campaigns/'.$campaign->getId().'/dnd/progressions'; $token = $state->getAccessToken();
+    $session->set('_security_main', serialize(new UsernamePasswordToken($user, 'main', ['ROLE_USER'])));
+    [$status, $body] = $request($url);
+    $check($status === 200, 'Owner campaign reference');
+    $reference = $body['progressions'][0];
+    $check($reference['stages'][0]['description'] === $secret && count($reference['adjustmentRules']) === 2, 'Campaign response retains GM fields');
+    $check($reference['adjustmentRules'][0]['direction'] === 'loss', 'Rules display ordering');
+    $gain = $em->find(ProgressionAdjustmentRule::class, $ids[1]);
+    $gain->setDisplayOrder(0)->setTriggerType('Automatique')->setAdjustmentLabel('+1 à +3'); $em->flush();
+    [$status, $body] = $request($url);
+    $check($body['progressions'][0]['adjustmentRules'][0]['id'] === $ids[1], 'Rule ID tie-break preserved');
+    $check($body['progressions'][0]['adjustmentRules'][0]['adjustmentLabel'] === '+1 à +3', 'Textual rule range preserved');
+    $session->set('_security_main', serialize(new UsernamePasswordToken($otherUser, 'main', ['ROLE_USER'])));
+    $check($request($url)[0] === 403, 'Other user cannot read campaign GM fields');
+    $session->remove('_security_main');
+    $check($request($url)[0] === 401, 'Anonymous campaign reference denied');
+    [$status, $public] = $request('/public/characters/'.$token);
+    $check($status === 200, 'Token profile');
+    $progression = $public['character']['progressions'][0];
+    $check(!array_key_exists('adjustmentRules', $progression), 'No adjustment rules in player profile');
+    foreach ($progression['stages'] as $publicStage) $check(!array_key_exists('description', $publicStage), 'No secret stage description');
+    $check(!str_contains(json_encode($public), 'SECRET'), 'No secret content anywhere in token response');
+    $check($public['state']['progressions'][0]['currentValue'] === 4, 'Current value preserved');
+    $definition = $em->find(ProgressionDefinition::class, $ids[0]);
+    foreach ($definition->getAdjustmentRules()->toArray() as $rule) $definition->removeAdjustmentRule($rule);
+    $em->flush();
+    $check((int) $db->fetchOne('SELECT count(*) FROM progression_adjustment_rule') === 0, 'Orphan removal');
+    $rule = new ProgressionAdjustmentRule($definition, ProgressionAdjustmentDirection::GAIN, 'Cascade', '+1');
+    $definition->addAdjustmentRule($rule); $em->persist($rule); $em->flush();
+    $db->executeStatement('DELETE FROM character_progression');
+    $db->executeStatement('DELETE FROM progression_definition WHERE id=?', [$ids[0]]);
+    $check((int) $db->fetchOne('SELECT count(*) FROM progression_stage') === 0 && (int) $db->fetchOne('SELECT count(*) FROM progression_adjustment_rule') === 0, 'Child database cascades');
+    echo "OK: $checks progression model/catalogue/disclosure assertions; temporary tables rolled back.\n";
 } finally {
     while ($db->isTransactionActive()) $db->rollBack();
-    $tokens->setToken(null);
-    $kernel->shutdown();
+    $em->clear(); $kernel->shutdown();
 }

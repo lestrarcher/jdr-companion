@@ -48,17 +48,6 @@ export class MjLayout {
   }
 
   private updateNavigationContext(): void {
-    if (this.router.url.startsWith('/dnd/reference')) {
-      this.campaignId.set(null);
-      this.sessionId.set(null);
-      this.navigationLoading.set(false);
-      this.breadcrumbs.set([
-        { label: 'Campagnes', url: '/campaigns' },
-        { label: 'Référentiel D&D' },
-      ]);
-      return;
-    }
-
     const childRoute = this.getDeepestChildRoute();
     const rawCampaignId = Number(childRoute.snapshot.paramMap.get('campaignId'));
     const rawSessionId = Number(childRoute.snapshot.paramMap.get('sessionId'));

@@ -35,8 +35,8 @@ security:
         # Futurs liens publics du display et des joueurs
         - { path: ^/public/, roles: PUBLIC_ACCESS }
 
-        # Référentiel D&D public, nécessaire au portail joueur
-        - { path: ^/dnd/reference, roles: PUBLIC_ACCESS }
+        # Seule la lecture du catalogue officiel est publique.
+        - { path: ^/dnd/reference$, roles: PUBLIC_ACCESS, methods: [GET] }
 
         # Toutes les autres routes Symfony sont privées
         - { path: ^/, roles: ROLE_USER }

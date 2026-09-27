@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const ts = require('typescript');
-const { of, Subject } = require('rxjs');
+const { Subject } = require('rxjs');
 const path = require('node:path');
 const root = path.join(__dirname, '..');
 const signal = value => Object.assign(() => value, { set: next => value = next, update: fn => value = fn(value) });
@@ -29,7 +29,7 @@ const definition = {
 const other = { ...definition, id: 5, slug: 'other', name: 'Other', stages: [], adjustmentRules: [] };
 const requests = [];
 const gm = component('src/app/features/control-dashboard/components/session-characters/session-characters.ts', 'SessionCharacters', {
-  getProgressions() { const result = new Subject(); requests.push(result); return result; },
+  getCampaignProgressions(campaignId) { assert.equal(campaignId, 1); const result = new Subject(); requests.push(result); return result; },
 });
 gm.refreshCharacters = () => {};
 gm.campaignCharacters.set([{ id: 1 }]);
@@ -47,7 +47,7 @@ assert.equal(gm.selectedProgression().stages[0].id, 1);
 assert.equal(gm.selectedProgression().stage.id, 1);
 assert.equal(gm.selectedProgression().accentColor, '#123456');
 assert.equal(gm.selectedProgression().adjustmentRules[0].direction, 'gain');
-assert.equal(gm.hasAdjustmentRules('loss'), true);
+assert.equal(gm.selectedProgression().adjustmentRules.some(rule => rule.direction === 'loss'), true);
 for (const [value, expected] of [[9, 1], [10, undefined], [11, undefined], [12, 2], [150, 2]]) {
   session.state.progressions[0].currentValue = value;
   assert.equal(gm.selectedProgression().stage?.id, expected);
@@ -55,9 +55,9 @@ for (const [value, expected] of [[9, 1], [10, undefined], [11, undefined], [12, 
 gm.toggleStage(2); assert.equal(gm.expandedStageIds().has(2), true);
 gm.toggleStage(2); assert.equal(gm.expandedStageIds().size, 0);
 gm.toggleStage(2); gm.progressionTab.set('actions');
-gm.selectProgression({ target: { value: 'other' } });
+gm.selectProgression('other');
 assert.equal(gm.progressionTab(), 'phases'); assert.equal(gm.expandedStageIds().size, 0);
-assert.equal(gm.selectedProgression().current, 6); assert.equal(gm.hasAdjustmentRules('gain'), false);
+assert.equal(gm.selectedProgression().current, 6); assert.equal(gm.selectedProgression().adjustmentRules.some(rule => rule.direction === 'gain'), false);
 gm.closeProgression(); gm.openProgression({ character: { id: 1 } });
 requests[1].error(new Error('offline'));
 assert.equal(gm.progressionReferenceLoading(), false); assert.ok(gm.progressionReferenceError());
@@ -65,27 +65,4 @@ gm.loadProgressionReferences(); gm.closeProgression();
 requests[2].next({ progressions: [definition] }); requests[2].complete();
 assert.equal(gm.progressionReferences().length, 0);
 
-let current = structuredClone(definition);
-let lastPayload;
-const api = {
-  getProgressions: () => of({ progressions: [current] }),
-  createProgressionStage(id, payload) { lastPayload = payload; current.stages.push({ id: 3, ...payload }); return of(current); },
-  updateProgressionStage(id, stageId, payload) { lastPayload = payload; Object.assign(current.stages.find(s => s.id === stageId), payload); return of(current); },
-  createProgressionAdjustmentRule(id, payload) { lastPayload = payload; current.adjustmentRules.push({ id: 3, ...payload }); return of(current); },
-  updateProgressionAdjustmentRule(id, ruleId, payload) { lastPayload = payload; Object.assign(current.adjustmentRules.find(r => r.id === ruleId), payload); return of(current); },
-  deleteProgressionAdjustmentRule(id, ruleId) { current.adjustmentRules = current.adjustmentRules.filter(r => r.id !== ruleId); return of(current); },
-};
-const manager = component('src/app/features/dnd-reference/components/progression-manager/progression-manager.ts', 'ProgressionManager', api);
-manager.selectProgression(current); manager.startNewStage();
-assert.equal(manager.stageForm.description, '');
-Object.assign(manager.stageForm, { label: 'New', description: '(RP) first\n(M) second' }); manager.saveStage();
-assert.equal(lastPayload.description, '(RP) first\n(M) second');
-manager.editStage(current.stages.find(s => s.id === 3)); assert.equal(manager.stageForm.description, lastPayload.description);
-manager.stageForm.description = ' '; manager.saveStage(); assert.equal(lastPayload.description, null);
-manager.newRule(); Object.assign(manager.ruleForm, { description: 'Test', adjustmentLabel: '+1 to +3', triggerType: ' ', displayOrder: 1 }); manager.saveRule();
-assert.equal(lastPayload.triggerType, null); assert.equal(lastPayload.adjustmentLabel, '+1 to +3');
-manager.editRule(current.adjustmentRules.find(r => r.id === 3)); manager.ruleForm.direction = 'loss'; manager.ruleForm.adjustmentLabel = '-1 if passed'; manager.saveRule();
-assert.equal(manager.rulesFor('loss')[0].adjustmentLabel, '-1 if passed');
-manager.deleteRule(current.adjustmentRules.find(r => r.id === 3)); assert.equal(current.adjustmentRules.length, 2);
-manager.loadData(); manager.selectProgression(current); manager.editStage(current.stages.find(s => s.id === 3)); assert.equal(manager.stageForm.description, '');
-console.log('PASS: reference joins/loading/errors, stale responses, values/boundaries/gaps, iconless sorting, rule grouping/order, disclosure/reset, stage create/edit/clear/reload, rule CRUD.');
+console.log('PASS: contextual reference loading/errors, stale responses, values/boundaries/gaps, stage sorting, rule grouping, disclosure/reset.');
