@@ -25,11 +25,23 @@ final readonly class CharacterLevelUpOptionsService
      */
     public function getOptions(Character $character): array
     {
-        $classes = $this->entityManager
-            ->getRepository(CharacterClass::class)
-            ->findBy([], ['name' => 'ASC']);
+        $classes = ReferenceVisibility::choices($this->entityManager, CharacterClass::class, $character->getCampaign()->getOwner());
+        // Keep official prerequisite explanations, but do not disclose unusable personal choices.
+        $classes = array_values(array_filter($classes, fn ($class) => $class->getOrigin() === \App\Enum\ReferenceOrigin::Official
+            || $this->multiclassEligibility->canTakeLevel($character, $class)));
+        $options = $character->getTotalLevel() >= 20 ? [] : array_map(fn ($class) => $this->serializeClassOption($character, $class), $classes);
+        $needsAdvancement = count(array_filter($options, static fn ($option) => $option['eligible'] && $option['advancementRequired'])) > 0;
+        $feats = $needsAdvancement ? ReferenceVisibility::choices($this->entityManager, \App\Entity\Feat::class, $character->getCampaign()->getOwner()) : [];
+        $feats = array_values(array_filter($feats, static fn ($feat) => $feat->isRepeatable() || !$character->hasFeat($feat)));
 
         return [
+            'abilities' => $needsAdvancement ? array_map(static fn (\App\Enum\Ability $ability) => ['value' => $ability->value, 'label' => $ability->label(), 'abbreviation' => $ability->abbreviation()], \App\Enum\Ability::cases()) : [],
+            'feats' => array_map(static fn (\App\Entity\Feat $feat) => [
+                'id' => $feat->getId(), 'slug' => $feat->getSlug(), 'name' => $feat->getName(), 'description' => $feat->getDescription(),
+                'repeatable' => $feat->isRepeatable(), 'requiresAbilityChoice' => $feat->requiresAbilityChoice(),
+                'chosenAbilityIncrease' => $feat->getChosenAbilityIncrease(),
+                'allowedAbilities' => array_map(static fn ($ability) => $ability->value, $feat->getAllowedAbilities()),
+            ], $feats),
             'canLevelUp' => $character->getTotalLevel() < 20,
             'currentTotalLevel' => $character->getTotalLevel(),
             'nextTotalLevel' => min(20, $character->getTotalLevel() + 1),
@@ -47,14 +59,7 @@ final readonly class CharacterLevelUpOptionsService
                     'label' => HitPointGainMethod::Manual->label(),
                 ],
             ],
-            'classes' => array_map(
-                fn (CharacterClass $characterClass): array =>
-                    $this->serializeClassOption(
-                        $character,
-                        $characterClass,
-                    ),
-                $classes,
-            ),
+            'classes' => $options,
         ];
     }
 
@@ -80,12 +85,12 @@ final readonly class CharacterLevelUpOptionsService
             $currentSubclass === null
             && $nextClassLevel >= $selectionLevel;
 
-        $subclasses = $this->entityManager
-            ->getRepository(CharacterSubclass::class)
-            ->findBy(
-                ['characterClass' => $characterClass],
-                ['name' => 'ASC'],
-            );
+        $eligible = $this->multiclassEligibility->canTakeLevel($character, $characterClass);
+        $subclasses = $subclassRequired && $eligible
+            ? ReferenceVisibility::choices($this->entityManager, CharacterSubclass::class, $character->getCampaign()->getOwner(), ['characterClass' => $characterClass]) : [];
+        if ($currentSubclass !== null && !ReferenceVisibility::allows($currentSubclass, $character->getCampaign()->getOwner())) {
+            throw new \DomainException('Une acquisition existante est hors du catalogue du personnage.');
+        }
 
         $levelRule =
             $this->levelRuleRepository->findForClassLevel(

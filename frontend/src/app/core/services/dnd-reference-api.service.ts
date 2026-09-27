@@ -291,6 +291,14 @@ export class DndReferenceApiService {
     return this.http.get<DndReferenceResponse>(`${this.apiUrl}/reference`);
   }
 
+  getCampaignReference(campaignId: number): Observable<DndReferenceResponse> {
+    return this.http.get<DndReferenceResponse>(`/api/campaigns/${campaignId}/dnd/reference`);
+  }
+
+  getCampaignProgressions(campaignId: number): Observable<ProgressionListResponse> {
+    return this.http.get<ProgressionListResponse>(`/api/campaigns/${campaignId}/dnd/progressions`);
+  }
+
   getClasses(): Observable<ClassListResponse> {
     return this.http.get<ClassListResponse>(`${this.apiUrl}/classes`);
   }

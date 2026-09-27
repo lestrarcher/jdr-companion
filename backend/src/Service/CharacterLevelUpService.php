@@ -40,6 +40,9 @@ final readonly class CharacterLevelUpService
         ?int $hitPointGain = null,
         ?CharacterSessionState $authorization = null,
     ): CharacterClassLevel {
+        foreach ([$characterClass, $subclass, $advancement?->getFeat(), $character->getSubclassFor($characterClass)] as $reference) {
+            if ($reference !== null) ReferenceVisibility::requireVisible($reference, $character->getCampaign()->getOwner());
+        }
         return $this->entityManager->wrapInTransaction(function () use (
             $character,
             $characterClass,

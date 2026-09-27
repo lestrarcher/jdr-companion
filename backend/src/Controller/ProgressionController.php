@@ -16,12 +16,19 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-#[Route('/dnd/progressions')]
 final class ProgressionController extends AbstractController
 {
-    #[Route('/{progressionId}/adjustment-rules', name: 'api_dnd_progression_rules_create', requirements: ['progressionId' => '\d+'], defaults: ['ruleId' => null], methods: ['POST'])]
-    #[Route('/{progressionId}/adjustment-rules/{ruleId}', name: 'api_dnd_progression_rules_update', requirements: ['progressionId' => '\d+', 'ruleId' => '\d+'], methods: ['PATCH'])]
-    #[Route('/{progressionId}/adjustment-rules/{ruleId}', name: 'api_dnd_progression_rules_delete', requirements: ['progressionId' => '\d+', 'ruleId' => '\d+'], methods: ['DELETE'])]
+    #[Route('/campaigns/{campaignId}/dnd/progressions', name: 'api_campaign_dnd_progressions', requirements: ['campaignId' => '\d+'], methods: ['GET'])]
+    public function campaignCatalogue(#[\Symfony\Bridge\Doctrine\Attribute\MapEntity(id: 'campaignId')] \App\Entity\Campaign $campaign, EntityManagerInterface $entityManager): JsonResponse
+    {
+        $this->denyAccessUnlessGranted(\App\Security\Voter\CampaignVoter::VIEW, $campaign);
+        return $this->json(['progressions' => array_map($this->serializeProgression(...),
+            \App\Service\ReferenceVisibility::choices($entityManager, ProgressionDefinition::class, $campaign->getOwner()))]);
+    }
+
+    #[Route('/dnd/progressions/{progressionId}/adjustment-rules', name: 'api_dnd_progression_rules_create', requirements: ['progressionId' => '\d+'], defaults: ['ruleId' => null], methods: ['POST'])]
+    #[Route('/dnd/progressions/{progressionId}/adjustment-rules/{ruleId}', name: 'api_dnd_progression_rules_update', requirements: ['progressionId' => '\d+', 'ruleId' => '\d+'], methods: ['PATCH'])]
+    #[Route('/dnd/progressions/{progressionId}/adjustment-rules/{ruleId}', name: 'api_dnd_progression_rules_delete', requirements: ['progressionId' => '\d+', 'ruleId' => '\d+'], methods: ['DELETE'])]
     public function mutateAdjustmentRule(int $progressionId, Request $request, EntityManagerInterface $entityManager, ?int $ruleId): JsonResponse
     {
         $this->denyAccessUnlessGranted('ROLE_USER');
@@ -84,7 +91,7 @@ final class ProgressionController extends AbstractController
             $request->isMethod('POST') ? Response::HTTP_CREATED : Response::HTTP_OK);
     }
 
-    #[Route('', name: 'api_dnd_progressions_list', methods: ['GET'])]
+    #[Route('/dnd/progressions', name: 'api_dnd_progressions_list', methods: ['GET'])]
     public function list(
         EntityManagerInterface $entityManager,
     ): JsonResponse {
@@ -102,7 +109,7 @@ final class ProgressionController extends AbstractController
         ]);
     }
 
-    #[Route('', name: 'api_dnd_progressions_create', methods: ['POST'])]
+    #[Route('/dnd/progressions', name: 'api_dnd_progressions_create', methods: ['POST'])]
     public function create(
         Request $request,
         EntityManagerInterface $entityManager,
@@ -173,7 +180,7 @@ final class ProgressionController extends AbstractController
     }
 
     #[Route(
-        '/{progressionId}',
+        '/dnd/progressions/{progressionId}',
         name: 'api_dnd_progressions_update',
         requirements: ['progressionId' => '\d+'],
         methods: ['PATCH'],
@@ -251,7 +258,7 @@ final class ProgressionController extends AbstractController
     }
 
     #[Route(
-        '/{progressionId}',
+        '/dnd/progressions/{progressionId}',
         name: 'api_dnd_progressions_delete',
         requirements: ['progressionId' => '\d+'],
         methods: ['DELETE'],
@@ -287,7 +294,7 @@ final class ProgressionController extends AbstractController
     }
 
     #[Route(
-        '/{progressionId}/stages',
+        '/dnd/progressions/{progressionId}/stages',
         name: 'api_dnd_progression_stages_create',
         requirements: ['progressionId' => '\d+'],
         methods: ['POST'],
@@ -375,7 +382,7 @@ final class ProgressionController extends AbstractController
     }
 
     #[Route(
-        '/{progressionId}/stages/{stageId}',
+        '/dnd/progressions/{progressionId}/stages/{stageId}',
         name: 'api_dnd_progression_stages_update',
         requirements: [
             'progressionId' => '\d+',
@@ -451,7 +458,7 @@ final class ProgressionController extends AbstractController
     }
 
     #[Route(
-        '/{progressionId}/stages/{stageId}',
+        '/dnd/progressions/{progressionId}/stages/{stageId}',
         name: 'api_dnd_progression_stages_delete',
         requirements: [
             'progressionId' => '\d+',

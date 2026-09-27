@@ -169,8 +169,8 @@ export class CampaignCharacters {
 
     forkJoin({
       characters: this.characterApi.list(this.campaignId),
-      reference: this.referenceApi.getReference(),
-      progressions: this.referenceApi.getProgressions(),
+      reference: this.referenceApi.getCampaignReference(this.campaignId),
+      progressions: this.referenceApi.getCampaignProgressions(this.campaignId),
     })
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({

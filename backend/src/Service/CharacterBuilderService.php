@@ -44,6 +44,9 @@ final readonly class CharacterBuilderService
         CharacterClass $startingClass,
         ?CharacterSubclass $startingSubclass = null,
     ): Character {
+        foreach ([$race, $startingClass, ...($startingSubclass ? [$startingSubclass] : []), ...array_column($racialAbilityChoices, 'modifier'), ...array_column($racialFeatChoices, 'feat')] as $reference) {
+            ReferenceVisibility::requireVisible($reference, $campaign->getOwner());
+        }
         return $this->entityManager->wrapInTransaction(function () use (
             $campaign,
             $slug,

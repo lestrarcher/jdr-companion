@@ -511,7 +511,11 @@ public function terminateActiveEffect(
             return $this->json( [ 'message' => 'La montée de niveau n’a pas été autorisée par le MJ.', ], Response::HTTP_FORBIDDEN, );
         }
 
-        return $this->json( $optionsService->getOptions( $state->getCharacter(), ), );
+        try {
+            return $this->json($optionsService->getOptions($state->getCharacter()));
+        } catch (\DomainException $exception) {
+            return $this->json(['message' => $exception->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
     }
 
     #[Route(
@@ -545,7 +549,7 @@ public function terminateActiveEffect(
         }
 
         try {
-            $selection = $requestResolver->resolve( $payload, );
+            $selection = $requestResolver->resolve( $payload, $state->getCharacter(), );
 
             $character = $state->getCharacter();
             $characterClass = $selection['characterClass'];

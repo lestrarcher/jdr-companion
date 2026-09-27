@@ -643,7 +643,7 @@ export class SessionCharacters implements OnInit {
     this.progressionReferenceLoading.set(true);
 
     this.progressionReferenceApi
-      .getProgressions()
+      .getCampaignProgressions(this.campaignId())
       .pipe(
         finalize(() => {
           if (
