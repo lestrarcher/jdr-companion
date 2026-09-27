@@ -58,7 +58,11 @@ final readonly class CharacterResourceResolver
             $definitions[$definition->getSlug()] = $definition;
         }
 
-        foreach ($this->ruleRepository->findOrderedRules() as $rule) {
+        $owner = $character->getCampaign()->getOwner();
+        foreach ($this->ruleRepository->findVisibleForOwner($owner) as $rule) {
+            if (!ReferenceVisibility::allows($rule, $owner)) {
+                continue;
+            }
             if (!$this->isRuleApplicable($character, $rule)) {
                 continue;
             }
