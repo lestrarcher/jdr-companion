@@ -18,7 +18,7 @@
     <details class="panel mechanics">
         <summary>Informations techniques et mécaniques · lecture seule</summary>
         <p class="muted">Catégorie : Capacités</p>
-        <dl><dt>ID</dt><dd>{{ feature.id }}</dd><dt>Slug</dt><dd><code>{{ feature.slug }}</code></dd><dt>Activation</dt><dd>{{ feature.activationLabel }}</dd><dt>Visibilité</dt><dd>{{ feature.visible ? 'Visible' : 'Masquée' }}</dd><dt>Personnalisée (custom)</dt><dd>{{ feature.custom ? 'Oui' : 'Non' }}</dd></dl>
+        <dl><dt>ID</dt><dd>{{ feature.id }}</dd><dt>Slug</dt><dd><code>{{ feature.slug }}</code></dd><dt>Activation</dt><dd>{{ feature.activationLabel }}</dd><dt>Visibilité</dt><dd>{{ feature.visible ? 'Visible' : 'Masquée' }}</dd></dl>
         <h2>Attributions</h2>
         {% include 'admin/origins.html.twig' with {origins: feature.origins} only %}
         {% if feature.resource %}

@@ -17,6 +17,11 @@ $em = $kernel->getContainer()->get('doctrine')->getManager();
 $db = $em->getConnection();
 $path = tempnam(sys_get_temp_dir(), 'feat-import-');
 $catalogue = json_decode(file_get_contents(__DIR__ . '/../data/reference/dnd-2014-feats.json'), false, 512, JSON_THROW_ON_ERROR);
+// Keep this fixture's approval-transition scenarios independent of catalogue expansion.
+foreach ($catalogue->feats as $entry) {
+    $entry->reviewStatus = in_array($entry->slug, ['resilient', 'war-caster', 'observant', 'fey-touched',
+        'slasher', 'great-weapon-master', 'dragon-hide', 'dragon-fear', 'gift-of-the-metallic-dragon'], true) ? 'approved' : 'pending';
+}
 $checks = 0;
 $check = static function (bool $condition, string $message) use (&$checks): void {
     if (!$condition) {
@@ -52,6 +57,11 @@ try {
     $pending = array_values(array_filter($catalogue->feats, static fn ($f) => $f->reviewStatus === 'pending'))[0];
     $check($db->fetchOne('SELECT id FROM feat WHERE slug = ?', [$pending->slug]) === false, 'Pending feat ignored');
     $before = $snapshot();
+    $db->executeStatement("UPDATE feat SET origin='CUSTOM',owner_id=1 WHERE slug='resilient'");
+    $privateBefore = $snapshot();
+    [$code] = $run(['--update-existing' => true]);
+    $check($code !== 0 && $snapshot() === $privateBefore, 'CUSTOM origin protects a legacy false feat');
+    $db->executeStatement("UPDATE feat SET origin='OFFICIAL',owner_id=NULL WHERE slug='resilient'");
     [$code, $output] = $run();
     $check($code === 0 && $snapshot() === $before && str_contains($output, 'Existants identiques'), 'Replay must be identical, including timestamps and IDs');
 

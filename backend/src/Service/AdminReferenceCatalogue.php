@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Entity\{CharacterClass, CharacterSubclass, CharacterRace, Feat, TrackableResourceDefinition, ProgressionDefinition, CharacterFeatureDefinition, CharacterFeatureRule, TrackableResourceRule, CharacterClassLevelRule, CharacterActionClassRule};
 use Doctrine\ORM\EntityManagerInterface;
+use App\Enum\ReferenceOrigin;
 
 /** Explicit catalogue of the six editorial screens; no arbitrary entity hydration. */
 final readonly class AdminReferenceCatalogue
@@ -28,8 +29,8 @@ final readonly class AdminReferenceCatalogue
 
     public function counts(): array
     {
-        $counts = ['features' => $this->em->getRepository(CharacterFeatureDefinition::class)->count([])];
-        foreach (self::CATEGORIES as $key => $definition) $counts[$key] = $this->em->getRepository($definition['entity'])->count([]);
+        $counts = ['features' => $this->em->getRepository(CharacterFeatureDefinition::class)->count(['origin' => ReferenceOrigin::Official])];
+        foreach (self::CATEGORIES as $key => $definition) $counts[$key] = $this->em->getRepository($definition['entity'])->count(['origin' => ReferenceOrigin::Official]);
         return $counts;
     }
 
@@ -42,7 +43,7 @@ final readonly class AdminReferenceCatalogue
                 ->select('COUNT(e.id) AS total')
                 ->addSelect("SUM(CASE WHEN e.name IS NULL OR TRIM(e.name) = '' THEN 1 ELSE 0 END) AS missingNames")
                 ->addSelect("SUM(CASE WHEN e.description IS NULL OR TRIM(e.description) = '' THEN 1 ELSE 0 END) AS missingDescriptions")
-                ->from($definition['entity'], 'e')->getQuery()->getSingleResult();
+                ->from($definition['entity'], 'e')->where('e.origin = :official')->setParameter('official', ReferenceOrigin::Official->value)->getQuery()->getSingleResult();
             $categories[$key] = [
                 'label' => $definition['label'],
                 'total' => (int) $row['total'],
@@ -60,13 +61,12 @@ final readonly class AdminReferenceCatalogue
 
     public function find(string $category, int $id): ?object
     {
-        return $this->em->find(self::CATEGORIES[$category]['entity'], $id);
+        return $this->em->getRepository(self::CATEGORIES[$category]['entity'])->findOneBy(['id' => $id, 'origin' => ReferenceOrigin::Official]);
     }
 
     public function filters(string $category): array
     {
-        $custom = ['label' => 'Origine du contenu', 'choices' => ['0' => 'Référentiel', '1' => 'Personnalisé']];
-        $filters = ['custom' => $custom, 'editorial' => ['label' => 'État éditorial', 'choices' => self::EDITORIAL_FILTERS]];
+        $filters = ['editorial' => ['label' => 'État éditorial', 'choices' => self::EDITORIAL_FILTERS]];
         if ($category === 'subclasses') $filters['class'] = ['label' => 'Classe', 'choices' => $this->choices(CharacterClass::class)];
         if ($category === 'races') {
             $filters['parent'] = ['label' => 'Race parente', 'choices' => $this->choices(CharacterRace::class)];
@@ -80,7 +80,7 @@ final readonly class AdminReferenceCatalogue
 
     private function choices(string $entity): array
     {
-        $rows = $this->em->createQueryBuilder()->select('e.id, e.name')->from($entity, 'e')->orderBy('e.name')->getQuery()->getArrayResult();
+        $rows = $this->em->createQueryBuilder()->select('e.id, e.name')->from($entity, 'e')->where('e.origin = :official')->setParameter('official', ReferenceOrigin::Official->value)->orderBy('e.name')->getQuery()->getArrayResult();
         return array_column($rows, 'name', 'id');
     }
 
@@ -103,7 +103,7 @@ final readonly class AdminReferenceCatalogue
 
     private function filteredQuery(string $category, array $context): \Doctrine\ORM\QueryBuilder
     {
-        $query = $this->em->createQueryBuilder()->from(self::CATEGORIES[$category]['entity'], 'e');
+        $query = $this->em->createQueryBuilder()->from(self::CATEGORIES[$category]['entity'], 'e')->where('e.origin = :official')->setParameter('official', ReferenceOrigin::Official->value);
         $editorialField = match ($context['editorial'] ?? '') {
             'missing-description' => 'description', 'missing-name' => 'name', default => null,
         };
@@ -112,7 +112,6 @@ final readonly class AdminReferenceCatalogue
             $query->andWhere("(LOWER(e.name) LIKE :q ESCAPE '!' OR LOWER(e.slug) LIKE :q ESCAPE '!')")
                 ->setParameter('q', '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], mb_strtolower($context['q'])).'%');
         }
-        if (isset($context['custom'])) $query->andWhere('e.custom = :custom')->setParameter('custom', $context['custom'] === '1');
         if ($category === 'subclasses' && isset($context['class'])) $query->andWhere('e.characterClass = :class')->setParameter('class', (int) $context['class']);
         if ($category === 'races' && isset($context['parent'])) $query->andWhere('e.parentRace = :parent')->setParameter('parent', (int) $context['parent']);
         if ($category === 'races' && isset($context['selectable'])) $query->andWhere('e.selectable = :selectable')->setParameter('selectable', $context['selectable'] === '1');
@@ -144,6 +143,7 @@ final readonly class AdminReferenceCatalogue
     {
         $expected = self::CATEGORIES[$category]['entity'];
         if (!$entity instanceof $expected) throw new \LogicException('Catégorie incompatible.');
+        if ($entity->getOrigin() !== ReferenceOrigin::Official) throw new \InvalidArgumentException('Référence hors du catalogue officiel.');
         $allowed = $category === 'progressions' ? ['name', 'description', 'gainLabel', 'spendLabel'] : ['name', 'description'];
         $unknown = array_diff(array_keys($payload), $allowed);
         if ($unknown) throw new \InvalidArgumentException('Champs non modifiables : '.implode(', ', $unknown).'.');
@@ -164,28 +164,30 @@ final readonly class AdminReferenceCatalogue
 
     public function detail(string $category, object $entity): array
     {
-        $fields = ['ID' => $entity->getId(), 'Slug' => $entity->getSlug(), 'Personnalisé (custom)' => $entity->isCustom(), 'Création' => $entity->getCreatedAt()->format('Y-m-d H:i:s'), 'Modification' => $entity->getUpdatedAt()->format('Y-m-d H:i:s')];
+        $fields = ['ID' => $entity->getId(), 'Slug' => $entity->getSlug(), 'Création' => $entity->getCreatedAt()->format('Y-m-d H:i:s'), 'Modification' => $entity->getUpdatedAt()->format('Y-m-d H:i:s')];
         $groups = [];
         $tables = [];
         switch ($category) {
             case 'classes':
                 $fields += ['Dé de vie' => 'd'.$entity->getHitDie(), 'Sélection de sous-classe au niveau' => $entity->getSubclassSelectionLevel(), 'Progression magique' => $entity->getSpellcastingProgression()];
-                $groups['Sous-classes'] = $this->links($this->em->getRepository(CharacterSubclass::class)->findBy(['characterClass' => $entity], ['name' => 'ASC']), 'subclasses');
+                $groups['Sous-classes'] = $this->links($this->em->getRepository(CharacterSubclass::class)->findBy(['characterClass' => $entity, 'origin' => ReferenceOrigin::Official], ['name' => 'ASC']), 'subclasses');
                 foreach ($this->em->getRepository(CharacterClassLevelRule::class)->findBy(['characterClass' => $entity], ['level' => 'ASC']) as $rule) {
                     $tables['Règles de niveau'][] = ['ID' => $rule->getId(), 'Niveau' => $rule->getLevel(), 'Choix' => $rule->getAdvancementChoice(), 'Notes' => $rule->getNotes()];
                 }
-                foreach ($this->em->getRepository(CharacterActionClassRule::class)->findBy(['characterClass' => $entity], ['unlockLevel' => 'ASC']) as $rule) {
+                foreach ($this->em->getRepository(CharacterActionClassRule::class)->findBy(['characterClass' => $entity, 'origin' => ReferenceOrigin::Official], ['unlockLevel' => 'ASC']) as $rule) {
                     $action = $rule->getActionDefinition();
-                    $tables['Actions métier'][] = ['Règle / action ID' => $rule->getId().' / '.$action->getId(), 'Nom' => $action->getName(), 'Slug' => $action->getSlug(), 'Description' => $action->getDescription(), 'Niveau' => $rule->getUnlockLevel(), 'Traitement' => $action->getHandlerType(), 'Préparation requise' => $action->requiresPreparation(), 'Active' => $action->isActive(), 'Personnalisée' => $action->isCustom()];
+                    if ($action->getOrigin() !== ReferenceOrigin::Official) continue;
+                    $tables['Actions métier'][] = ['Règle / action ID' => $rule->getId().' / '.$action->getId(), 'Nom' => $action->getName(), 'Slug' => $action->getSlug(), 'Description' => $action->getDescription(), 'Niveau' => $rule->getUnlockLevel(), 'Traitement' => $action->getHandlerType(), 'Préparation requise' => $action->requiresPreparation(), 'Active' => $action->isActive()];
                 }
                 break;
             case 'subclasses':
+                if ($entity->getCharacterClass()->getOrigin() !== ReferenceOrigin::Official) break;
                 $groups['Classe parente'] = [$this->link($entity->getCharacterClass(), 'classes')];
                 $fields += ['Progression magique spécifique' => $entity->getSpellcastingProgression() ?? 'Héritée de la classe', 'Niveau de sélection (classe)' => $entity->getCharacterClass()->getSubclassSelectionLevel()];
                 break;
             case 'races':
-                if ($entity->getParentRace()) $groups['Race parente'] = [$this->link($entity->getParentRace(), 'races')];
-                $groups['Variantes'] = $this->links($this->em->getRepository(CharacterRace::class)->findBy(['parentRace' => $entity], ['name' => 'ASC']), 'races');
+                if ($entity->getParentRace()?->getOrigin() === ReferenceOrigin::Official) $groups['Race parente'] = [$this->link($entity->getParentRace(), 'races')];
+                $groups['Variantes'] = $this->links($this->em->getRepository(CharacterRace::class)->findBy(['parentRace' => $entity, 'origin' => ReferenceOrigin::Official], ['name' => 'ASC']), 'races');
                 $fields += ['Sélectionnable' => $entity->isSelectable(), 'Tailles' => $entity->getSizeOptions(), 'Vitesse de marche' => $entity->getWalkingSpeed(), 'Autres déplacements' => $entity->getMovementSpeeds(), 'Langues' => $entity->getLanguages(), 'Choix de langues' => $entity->getLanguageChoiceCount(), 'Sens' => $entity->getSenses(), 'Résistances' => $entity->getDamageResistances(), 'Immunités aux dégâts' => $entity->getDamageImmunities(), 'Immunités aux états' => $entity->getConditionImmunities(), 'Choix de dons' => $entity->getFeatChoiceCount()];
                 foreach ($entity->getAbilityModifiers() as $modifier) $tables['Modificateurs raciaux propres'][] = ['ID' => $modifier->getId(), 'Caractéristique' => $modifier->getAbility(), 'Valeur' => $modifier->getValue(), 'Clé de choix' => $modifier->getChoiceKey()];
                 break;
@@ -194,18 +196,20 @@ final readonly class AdminReferenceCatalogue
                 break;
             case 'resources':
                 $fields += ['Restauration' => $entity->getRechargeType(), 'Type de maximum' => $entity->getMaximumType(), 'Maximum de base' => $entity->getBaseMaximum(), 'Multiplicateur' => $entity->getMultiplier(), 'Minimum du maximum' => $entity->getMinimumMaximum(), 'Caractéristique de calcul' => $entity->getScalingAbility()];
-                $groups['Capacités utilisant la ressource'] = $this->links($this->em->getRepository(CharacterFeatureDefinition::class)->findBy(['resourceDefinition' => $entity], ['name' => 'ASC']), 'features');
+                $groups['Capacités utilisant la ressource'] = $this->links($this->em->getRepository(CharacterFeatureDefinition::class)->findBy(['resourceDefinition' => $entity, 'origin' => ReferenceOrigin::Official], ['name' => 'ASC']), 'features');
                 $providers = $this->em->createQueryBuilder()->select('r, f')->from(CharacterFeatureRule::class, 'r')->join('r.featureDefinition', 'f')
-                    ->where('f.resourceDefinition = :resource')->setParameter('resource', $entity)->orderBy('r.id')->getQuery()->getResult();
+                    ->where('f.resourceDefinition = :resource')->andWhere('r.origin = :official AND f.origin = :official')
+                    ->setParameter('official', ReferenceOrigin::Official->value)->setParameter('resource', $entity)->orderBy('r.id')->getQuery()->getResult();
                 foreach ($providers as $rule) {
                     $sourceEntity = match ($rule->sourceType()) {
                         'class' => $rule->getCharacterClass(), 'subclass' => $rule->getCharacterSubclass(),
                         'race' => $rule->getCharacterRace(), 'feat' => $rule->getFeat(), 'progression' => $rule->getProgressionDefinition(),
                     };
                     $sourceCategory = ['class' => 'classes', 'subclass' => 'subclasses', 'race' => 'races', 'feat' => 'feats', 'progression' => 'progressions'][$rule->sourceType()];
+                    if ($sourceEntity->getOrigin() !== ReferenceOrigin::Official) continue;
                     $groups['Fournie par les attributions de capacités'][] = $this->link($sourceEntity, $sourceCategory, $rule->getFeatureDefinition()->getName().' · '.($rule->sourceType() === 'progression' ? 'Seuil : '.$rule->getProgressionThreshold() : 'Niveau : '.$rule->getUnlockLevel()));
                 }
-                foreach ($this->em->getRepository(TrackableResourceRule::class)->findBy(['resourceDefinition' => $entity], ['unlockLevel' => 'ASC', 'id' => 'ASC']) as $rule) $groups['Règles de maximum'][] = $this->resourceSource($rule);
+                foreach ($this->em->getRepository(TrackableResourceRule::class)->findBy(['resourceDefinition' => $entity, 'origin' => ReferenceOrigin::Official], ['unlockLevel' => 'ASC', 'id' => 'ASC']) as $rule) $groups['Règles de maximum'][] = $this->resourceSource($rule);
                 break;
             case 'progressions':
                 $fields += ['Minimum' => $entity->getMinimumValue(), 'Maximum' => $entity->getMaximumValue(), 'Couleur' => $entity->getAccentColor(), 'Ajustement important activé' => $entity->isBulkAdjustmentEnabled()];
@@ -215,16 +219,21 @@ final readonly class AdminReferenceCatalogue
         }
         $source = ['classes' => 'characterClass', 'subclasses' => 'characterSubclass', 'races' => 'characterRace', 'feats' => 'feat', 'progressions' => 'progressionDefinition'][$category] ?? null;
         if ($source) {
-            foreach ($this->em->getRepository(CharacterFeatureRule::class)->findBy([$source => $entity], ['displayOrder' => 'ASC', 'id' => 'ASC']) as $rule) {
+            foreach ($this->em->getRepository(CharacterFeatureRule::class)->findBy([$source => $entity, 'origin' => ReferenceOrigin::Official], ['displayOrder' => 'ASC', 'id' => 'ASC']) as $rule) {
                 $note = 'Règle #'.$rule->getId().' · '.($category === 'progressions' ? 'Seuil : '.$rule->getProgressionThreshold() : 'Niveau : '.$rule->getUnlockLevel());
                 $feature = $rule->getFeatureDefinition();
+                if ($feature->getOrigin() !== ReferenceOrigin::Official) continue;
                 $groups['Capacités attribuées'][] = $this->link($feature, 'features', $note);
-                if ($feature->getResourceDefinition()) $groups['Ressources via capacités'][] = $this->link($feature->getResourceDefinition(), 'resources', $feature->getName().' · '.$note);
+                if ($feature->getResourceDefinition()?->getOrigin() === ReferenceOrigin::Official) $groups['Ressources via capacités'][] = $this->link($feature->getResourceDefinition(), 'resources', $feature->getName().' · '.$note);
             }
             if ($category !== 'progressions') {
-                foreach ($this->em->getRepository(TrackableResourceRule::class)->findBy([$source => $entity], ['unlockLevel' => 'ASC', 'id' => 'ASC']) as $rule) $groups['Règles de ressource'][] = $this->link($rule->getResourceDefinition(), 'resources', $this->resourceNote($rule));
+                foreach ($this->em->getRepository(TrackableResourceRule::class)->findBy([$source => $entity, 'origin' => ReferenceOrigin::Official], ['unlockLevel' => 'ASC', 'id' => 'ASC']) as $rule) {
+                    if ($rule->getResourceDefinition()->getOrigin() === ReferenceOrigin::Official) $groups['Règles de ressource'][] = $this->link($rule->getResourceDefinition(), 'resources', $this->resourceNote($rule));
+                }
             }
         }
+        foreach ($groups as &$items) $items = array_values(array_filter($items));
+        unset($items);
         $fields = array_map($this->text(...), $fields);
         foreach ($tables as &$rows) foreach ($rows as &$row) $row = array_map($this->text(...), $row);
         return ['fields' => $fields, 'groups' => $groups, 'tables' => $tables];
@@ -235,10 +244,10 @@ final readonly class AdminReferenceCatalogue
         return 'Règle #'.$rule->getId().' · Niveau : '.$rule->getUnlockLevel().' · Maximum imposé : '.($rule->getMaximumOverride() ?? 'Aucun').' · Bonus : '.$rule->getMaximumBonus();
     }
 
-    private function resourceSource(TrackableResourceRule $rule): array
+    private function resourceSource(TrackableResourceRule $rule): ?array
     {
         foreach (['classes' => $rule->getCharacterClass(), 'subclasses' => $rule->getCharacterSubclass(), 'races' => $rule->getCharacterRace(), 'feats' => $rule->getFeat()] as $category => $entity) {
-            if ($entity) return $this->link($entity, $category, $this->resourceNote($rule));
+            if ($entity) return $entity->getOrigin() === ReferenceOrigin::Official ? $this->link($entity, $category, $this->resourceNote($rule)) : null;
         }
         throw new \LogicException('Règle sans origine.');
     }

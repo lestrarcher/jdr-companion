@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Entity\{CharacterClass, CharacterSubclass, CharacterRace, Feat, ProgressionDefinition, CharacterFeatureDefinition, CharacterFeatureRule, TrackableResourceRule};
 use Doctrine\ORM\EntityManagerInterface;
+use App\Enum\ReferenceOrigin;
 
 final readonly class AdminFeatureReference
 {
@@ -18,11 +19,12 @@ final readonly class AdminFeatureReference
 
     public function find(int $id): ?CharacterFeatureDefinition
     {
-        return $this->em->find(CharacterFeatureDefinition::class, $id);
+        return $this->em->getRepository(CharacterFeatureDefinition::class)->findOneBy(['id' => $id, 'origin' => ReferenceOrigin::Official]);
     }
 
     public function updateEditorial(CharacterFeatureDefinition $feature, array $payload): void
     {
+        if ($feature->getOrigin() !== ReferenceOrigin::Official) throw new \InvalidArgumentException('Référence hors du catalogue officiel.');
         $unknown = array_diff(array_keys($payload), ['name', 'description']);
         if ($unknown !== []) throw new \InvalidArgumentException('Champs non modifiables : '.implode(', ', $unknown).'.');
         $name = $payload['name'] ?? null;
@@ -43,8 +45,9 @@ final readonly class AdminFeatureReference
     {
         $query = $this->em->createQueryBuilder()
             ->from(CharacterFeatureDefinition::class, 'f')
-            ->leftJoin(CharacterFeatureRule::class, 'r', 'WITH', 'r.featureDefinition = f')
-            ->leftJoin('r.characterSubclass', 'sub');
+            ->leftJoin(CharacterFeatureRule::class, 'r', 'WITH', 'r.featureDefinition = f AND '.$this->officialRuleCondition())
+            ->leftJoin('r.characterSubclass', 'sub')
+            ->where('f.origin = :official')->setParameter('official', ReferenceOrigin::Official->value);
         if ($search !== '') {
             // Treat LIKE metacharacters as literal search text.
             $query->andWhere("(LOWER(f.name) LIKE :search ESCAPE '!' OR LOWER(f.slug) LIKE :search ESCAPE '!')")
@@ -81,7 +84,7 @@ final readonly class AdminFeatureReference
         $rows = $query->select('DISTINCT f.id, f.name')->orderBy('f.name', 'ASC')->addOrderBy('f.id', 'ASC')
             ->setFirstResult(($page - 1) * $pageSize)->setMaxResults($pageSize)->getQuery()->getArrayResult();
         $ids = array_column($rows, 'id');
-        $features = $ids === [] ? [] : $this->em->getRepository(CharacterFeatureDefinition::class)->findBy(['id' => $ids], ['name' => 'ASC', 'id' => 'ASC']);
+        $features = $ids === [] ? [] : $this->em->getRepository(CharacterFeatureDefinition::class)->findBy(['id' => $ids, 'origin' => ReferenceOrigin::Official], ['name' => 'ASC', 'id' => 'ASC']);
         $rules = $this->rules($ids);
         return [
             'features' => array_map(fn ($f) => [
@@ -97,9 +100,9 @@ final readonly class AdminFeatureReference
     {
         $options = [];
         foreach (['class' => CharacterClass::class, 'subclass' => CharacterSubclass::class, 'race' => CharacterRace::class, 'feat' => Feat::class, 'progression' => ProgressionDefinition::class] as $type => $entity) {
-            $query = $this->em->createQueryBuilder()->select('s.id, s.name')->from($entity, 's')->orderBy('s.name', 'ASC')->addOrderBy('s.id', 'ASC');
+            $query = $this->em->createQueryBuilder()->select('s.id, s.name')->from($entity, 's')->where('s.origin = :official')->setParameter('official', ReferenceOrigin::Official->value)->orderBy('s.name', 'ASC')->addOrderBy('s.id', 'ASC');
             if ($type === 'subclass') {
-                $query->addSelect('IDENTITY(s.characterClass) AS classId, c.name AS className')->join('s.characterClass', 'c');
+                $query->addSelect('IDENTITY(s.characterClass) AS classId, c.name AS className')->join('s.characterClass', 'c')->andWhere('c.origin = :official');
             }
             $options[$type] = $query->getQuery()->getArrayResult();
         }
@@ -110,8 +113,9 @@ final readonly class AdminFeatureReference
     {
         $resource = $feature->getResourceDefinition();
         $resourceData = null;
-        if ($resource !== null) {
-            $rules = $this->em->getRepository(TrackableResourceRule::class)->findBy(['resourceDefinition' => $resource], ['unlockLevel' => 'ASC', 'id' => 'ASC']);
+        if ($resource?->getOrigin() === ReferenceOrigin::Official) {
+            $rules = $this->em->getRepository(TrackableResourceRule::class)->findBy(['resourceDefinition' => $resource, 'origin' => ReferenceOrigin::Official], ['unlockLevel' => 'ASC', 'id' => 'ASC']);
+            $rules = array_values(array_filter($rules, $this->hasOfficialSource(...)));
             $resourceData = [
                 'id' => $resource->getId(), 'slug' => $resource->getSlug(), 'name' => $resource->getName(),
                 'rechargeType' => $resource->getRechargeType()->value,
@@ -126,7 +130,7 @@ final readonly class AdminFeatureReference
         return [
             'id' => $feature->getId(), 'slug' => $feature->getSlug(), 'name' => $feature->getName(),
             'description' => $feature->getDescription(), 'activationLabel' => $feature->getActivationType()->label(),
-            'visible' => $feature->isVisible(), 'custom' => $feature->isCustom(),
+            'visible' => $feature->isVisible(),
             'origins' => $this->rules([$feature->getId()])[$feature->getId()] ?? [],
             'resource' => $resourceData,
         ];
@@ -140,12 +144,34 @@ final readonly class AdminFeatureReference
             ->leftJoin('r.characterClass', 'c')->leftJoin('r.characterSubclass', 's')->leftJoin('s.characterClass', 'sc')
             ->leftJoin('r.characterRace', 'race')->leftJoin('r.feat', 'feat')->leftJoin('r.progressionDefinition', 'p')
             ->where('r.featureDefinition IN (:ids)')->setParameter('ids', $ids)
+            ->andWhere($this->officialRuleCondition())->setParameter('official', ReferenceOrigin::Official->value)
             ->orderBy('r.displayOrder', 'ASC')->addOrderBy('r.unlockLevel', 'ASC')->addOrderBy('r.id', 'ASC');
         $result = [];
         foreach ($query->getQuery()->getResult() as $rule) {
             $result[$rule->getFeatureDefinition()->getId()][] = $this->origin($rule);
         }
         return $result;
+    }
+
+    /** Restrictions belong in the LEFT JOIN: official features without official rules stay visible. */
+    private function officialRuleCondition(): string
+    {
+        $conditions = ['r.origin = :official'];
+        foreach (['characterClass' => CharacterClass::class, 'characterSubclass' => CharacterSubclass::class, 'characterRace' => CharacterRace::class, 'feat' => Feat::class, 'progressionDefinition' => ProgressionDefinition::class] as $field => $entity) {
+            $alias = 'official_'.$field;
+            $parent = $field === 'characterSubclass' ? " JOIN $alias.characterClass official_parent" : '';
+            $extra = $field === 'characterSubclass' ? ' AND official_parent.origin = :official' : '';
+            $conditions[] = "(r.$field IS NULL OR r.$field IN (SELECT $alias.id FROM $entity $alias$parent WHERE $alias.origin = :official$extra))";
+        }
+        return implode(' AND ', $conditions);
+    }
+
+    private function hasOfficialSource(TrackableResourceRule $rule): bool
+    {
+        foreach ([$rule->getCharacterClass(), $rule->getCharacterSubclass(), $rule->getCharacterSubclass()?->getCharacterClass(), $rule->getCharacterRace(), $rule->getFeat()] as $source) {
+            if ($source !== null && $source->getOrigin() !== ReferenceOrigin::Official) return false;
+        }
+        return true;
     }
 
     private function origin(CharacterFeatureRule|TrackableResourceRule $rule): array

@@ -91,6 +91,9 @@ final class ImportRacesCommand extends Command
             if (isset($entry->parentSlug) && $parentId === null) { $this->conflict('races', "$entry->slug : parent $entry->parentSlug indisponible"); continue; }
             $values = $this->raceValues($entry, $parentId);
             $existing = $match['row'];
+            if (($existing['origin'] ?? null) === 'CUSTOM') {
+                throw new \RuntimeException('Official import cannot use or overwrite CUSTOM race: '.$entry->slug);
+            }
             if ($existing === null) {
                 ++$this->report['races']['create'];
                 $id = $write ? $this->insertRace($values) : $this->virtualId--;
@@ -109,6 +112,10 @@ final class ImportRacesCommand extends Command
         }
         foreach ($manifest->outOfScopeSlugs as $slug) {
             $row = $bySlug[$slug] ?? null;
+            if (($row['origin'] ?? null) === 'CUSTOM') {
+                ++$this->report['races']['protectedHistorical'];
+                continue;
+            }
             $action = $this->planner->outOfScopeAction($row, isset($strategies[$slug]) && $strategies[$slug] !== 'KEEP_UPDATE', $update);
             if ($action === 'absent') continue;
             if ($action === 'protected') { ++$this->report['races']['protectedHistorical']; $this->details[] = "[races] PROTECTED HISTORICAL $slug"; continue; }
@@ -190,20 +197,30 @@ final class ImportRacesCommand extends Command
                 else $this->conflict('traitDefinitions', "$featureSlug : définitions catalogue incompatibles");
             } else {
                 $existing = $this->connection->fetchAssociative('SELECT * FROM character_feature_definition WHERE slug = ?', [$featureSlug]) ?: null;
+                if (($existing['origin'] ?? null) === 'CUSTOM') {
+                    throw new \RuntimeException('Official import cannot use or overwrite CUSTOM feature: '.$featureSlug);
+                }
                 if ($existing === null) { ++$this->report['traitDefinitions']['create']; $featureId = $write ? $this->insertFeature($values) : $this->virtualId--; }
                 else { $featureId = (int) $existing['id']; $diff = $this->diff($existing, $values); if ($diff === []) ++$this->report['traitDefinitions']['reuseCanonical']; else { ++$this->report['traitDefinitions'][$update ? 'update' : 'kept']; if ($write && $update && !(bool) $existing['custom']) $this->connection->update('character_feature_definition', $values, ['id' => $featureId], $this->dbTypes($values)); } }
                 $plannedFeatures[$featureSlug] = ['id' => $featureId, 'values' => $values];
             }
             if ($this->planner->traitIsDescriptiveOnly($trait)) ++$this->report['traitDefinitions']['unsupported'];
             $rule = $this->connection->fetchAssociative('SELECT * FROM character_feature_rule WHERE character_race_id = ? AND feature_definition_id = ? AND unlock_level = ?', [$raceId, $featureId, $trait->unlockLevel]) ?: null;
+            if (($rule['origin'] ?? null) === 'CUSTOM') {
+                throw new \RuntimeException('Official import cannot overwrite CUSTOM assignment #'.$rule['id']);
+            }
             if ($rule === null) { ++$this->report['traitRules']['create']; if ($write) $this->connection->insert('character_feature_rule', ['character_race_id' => $raceId, 'feature_definition_id' => $featureId, 'unlock_level' => $trait->unlockLevel, 'display_order' => 0]); }
             else ++$this->report['traitRules']['reuseCanonical'];
             $plannedRules[$raceId][$featureSlug][$trait->unlockLevel] = true;
         }
 
         foreach ($raceIds as $raceSlug => $raceId) {
-            $existingRules = $this->connection->fetchAllAssociative('SELECT r.id, r.unlock_level, f.slug AS feature_slug, f.custom FROM character_feature_rule r JOIN character_feature_definition f ON f.id = r.feature_definition_id WHERE r.character_race_id = ?', [$raceId]);
+            $existingRules = $this->connection->fetchAllAssociative('SELECT r.id, r.unlock_level, r.origin, f.origin AS feature_origin, f.slug AS feature_slug, f.custom FROM character_feature_rule r JOIN character_feature_definition f ON f.id = r.feature_definition_id WHERE r.character_race_id = ?', [$raceId]);
             foreach ($existingRules as $rule) {
+                if ($rule['origin'] === 'CUSTOM' || $rule['feature_origin'] === 'CUSTOM') {
+                    ++$this->report['traitRules']['preserve'];
+                    continue;
+                }
                 $managedCanonical = str_starts_with($rule['feature_slug'], 'racial-'.$raceSlug.'-');
                 $planned = isset($plannedRules[$raceId][$rule['feature_slug']][(int) $rule['unlock_level']]);
                 if ($planned) continue;

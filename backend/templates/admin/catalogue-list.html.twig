@@ -20,12 +20,11 @@
             {% if (item.description ?? '')|trim(' ') == '' %}<div class="badge">Description manquante</div>{% endif %}
         </td><td>
             {% if category == 'classes' %}d{{ item.hitDie }} · {{ item.spellcastingProgression.value }}
-            {% elseif category == 'subclasses' %}<a href="{{ path('admin_catalogue_edit', {category: 'classes', id: item.characterClass.id}) }}">{{ item.characterClass.name }}</a>
-            {% elseif category == 'races' %}{{ item.selectable ? 'Sélectionnable' : 'Non sélectionnable' }}{% if item.parentRace %} · <a href="{{ path('admin_catalogue_edit', {category: 'races', id: item.parentRace.id}) }}">{{ item.parentRace.name }}</a>{% endif %}
+            {% elseif category == 'subclasses' and item.characterClass.origin.value == 'OFFICIAL' %}<a href="{{ path('admin_catalogue_edit', {category: 'classes', id: item.characterClass.id}) }}">{{ item.characterClass.name }}</a>
+            {% elseif category == 'races' %}{{ item.selectable ? 'Sélectionnable' : 'Non sélectionnable' }}{% if item.parentRace and item.parentRace.origin.value == 'OFFICIAL' %} · <a href="{{ path('admin_catalogue_edit', {category: 'races', id: item.parentRace.id}) }}">{{ item.parentRace.name }}</a>{% endif %}
             {% elseif category == 'resources' %}{{ item.rechargeType.value }} · {{ item.maximumType.value }} · Base : {{ item.baseMaximum }}
             {% elseif category == 'progressions' %}Minimum : {{ item.minimumValue }} · Maximum : {{ item.maximumValue ?? 'Non renseigné' }}
             {% elseif category == 'feats' %}{{ item.repeatable ? 'Répétable' : 'Non répétable' }}{% endif %}
-            <div class="muted">{{ item.custom ? 'Personnalisé' : 'Référentiel' }}</div>
         </td></tr>
     {% else %}<tr><td colspan="2">Aucune entrée ne correspond aux critères.</td></tr>{% endfor %}
     </tbody></table></div>

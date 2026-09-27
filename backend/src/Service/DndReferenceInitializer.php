@@ -244,11 +244,13 @@ private function initializeFeats(): void
     $slasher = $featRepository->findOneBy([
         'slug' => 'slasher',
     ]);
+    $this->assertOfficialReference($slasher);
 
     if (!$slasher instanceof Feat) {
         $slasher = $featRepository->findOneBy([
             'slug' => 'mage-slayer',
         ]);
+        $this->assertOfficialReference($slasher);
 
         if ($slasher instanceof Feat) {
             $slasher
@@ -293,6 +295,7 @@ private function initializeFeats(): void
     ): CharacterRace {
         $repository = $this->entityManager->getRepository(CharacterRace::class);
         $race = $repository->findOneBy(['slug' => $slug]);
+        $this->assertOfficialReference($race);
 
         if (!$race instanceof CharacterRace) {
             $race = new CharacterRace($slug, $name);
@@ -315,6 +318,7 @@ private function initializeFeats(): void
     ): CharacterClass {
         $repository = $this->entityManager->getRepository(CharacterClass::class);
         $class = $repository->findOneBy(['slug' => $slug]);
+        $this->assertOfficialReference($class);
 
         if (!$class instanceof CharacterClass) {
             $class = new CharacterClass(
@@ -351,6 +355,7 @@ private function initializeFeats(): void
             'characterClass' => $class,
             'slug' => $slug,
         ]);
+        $this->assertOfficialReference($subclass);
 
         if (!$subclass instanceof CharacterSubclass) {
             $subclass = new CharacterSubclass($class, $slug, $name);
@@ -368,6 +373,7 @@ private function initializeFeats(): void
     {
         $repository = $this->entityManager->getRepository(Feat::class);
         $feat = $repository->findOneBy(['slug' => $slug]);
+        $this->assertOfficialReference($feat);
 
         if (!$feat instanceof Feat) {
             $feat = new Feat($slug, $name);
@@ -509,6 +515,7 @@ private function resource(
     );
 
     $resource = $repository->findOneBy(['slug' => $slug]);
+    $this->assertOfficialReference($resource);
 
     if (!$resource instanceof TrackableResourceDefinition) {
         $resource = new TrackableResourceDefinition(
@@ -548,6 +555,7 @@ private function classResourceRule(
         'characterClass' => $characterClass,
         'unlockLevel' => $unlockLevel,
     ]);
+    $this->assertOfficialReference($rule);
 
     if ($rule instanceof TrackableResourceRule) {
         $rule->setMaximumOverride($maximumOverride);
@@ -566,4 +574,12 @@ private function classResourceRule(
 
     return $rule;
 }
+
+    private function assertOfficialReference(CharacterClass|CharacterRace|CharacterSubclass|Feat|TrackableResourceDefinition|TrackableResourceRule|null $reference): void
+    {
+        if ($reference !== null
+            && $reference->getOrigin() !== \App\Enum\ReferenceOrigin::Official) {
+            throw new \LogicException('Official initializer cannot use or overwrite a CUSTOM reference.');
+        }
+    }
 }

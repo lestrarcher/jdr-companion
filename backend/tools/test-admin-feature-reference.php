@@ -199,7 +199,7 @@ try {
     $back = html_entity_decode($dom($edit)->evaluate('string(//a[@class="back-link"]/@href)'));
     parse_str(parse_url($back, PHP_URL_QUERY), $backContext);
     $check($backContext == $context, 'List context round-trip');
-    foreach (['shared-test', 'Activation', 'Visibilité', 'custom', 'Magicien test', 'Dés test', 'Maximum imposé : 0'] as $text) $check(str_contains($edit->getContent(), $text), 'Technical info '.$text);
+    foreach (['shared-test', 'Activation', 'Visibilité', 'Magicien test', 'Dés test', 'Maximum imposé : 0'] as $text) $check(str_contains($edit->getContent(), $text), 'Technical info '.$text);
     $check($dom($edit)->query('//form[@data-editor]//input[@name!="_token"]')->length === 1 && $dom($edit)->query('//form[@data-editor]//textarea[@name="description"]')->length === 1, 'Only editorial inputs');
     $mechanics = $reference->detail($shared);
     $csrf = $token($edit);
@@ -234,7 +234,7 @@ try {
     $check($request($base.'/'.$sub->getId(), 'POST', $payload)->getStatusCode() === 403, 'CSRF token bound to feature');
     $em->clear();
     $after = $reference->detail($reference->find($id));
-    foreach (['id', 'slug', 'origins', 'resource', 'activationLabel', 'visible', 'custom'] as $field) $check($after[$field] === $mechanics[$field], 'Mechanics unchanged '.$field);
+    foreach (['id', 'slug', 'origins', 'resource', 'activationLabel', 'visible'] as $field) $check($after[$field] === $mechanics[$field], 'Mechanics unchanged '.$field);
     $check($after['name'] === $payload['name'] && $after['description'] === $description, 'Rejected updates never persist');
     $check($request($base.'/999999')->getStatusCode() === 404, 'Missing feature');
     $check($request($base.'/'.$id, 'PATCH', $payload)->getStatusCode() === 405, 'Former PATCH route removed');
@@ -312,7 +312,7 @@ try {
     $check($total($request('/admin/reference/races?parent='.$race->getId())) === 26, 'Race parent filter');
     $check($total($request('/admin/reference/races?selectable=0')) === 0, 'False selectable filter');
     $check($total($request('/admin/reference/resources?recharge=long-rest')) === 27, 'Recharge filter');
-    $check($total($request('/admin/reference/classes?custom=0')) === 27, 'False custom filter');
+    $check($total($request('/admin/reference/classes?custom=0')) === 27, 'Obsolete custom parameter ignored');
     $linkedPages = [
         ['/admin/reference/features/'.$id, '/admin/reference/classes/'.$class->getId()],
         ['/admin/reference/features/'.$sub->getId(), '/admin/reference/subclasses/'.$subclass->getId()],
@@ -365,7 +365,6 @@ try {
         $db->executeStatement("UPDATE $table SET name = 'Éditorial test', description = NULL");
         $em->clear();
         $params = ['q' => 'Éditorial', 'editorial' => 'missing-description'];
-        if ($category !== 'features') $params['custom'] = '0';
         $first = $request($path.'?'.http_build_query($params));
         $check($total($first) === count($fixtures), 'Combined filters count '.$category);
         $next = $dom($first)->evaluate('string(//a[@rel="next"]/@href)');
@@ -392,6 +391,7 @@ try {
         $em->clear();
     }
     require __DIR__.'/test-admin-reference-editor-cases.php';
+    require __DIR__.'/test-admin-reference-official-cases.php';
     foreach ($before as $table => $data) $check($data === $db->fetchAllAssociative('SELECT * FROM public.'.$table.' ORDER BY id'), 'Real data unchanged '.$table);
     $session->remove('_security_main');
     $check($request('/admin')->getStatusCode() === 401, 'Anonymous dashboard requires existing login');

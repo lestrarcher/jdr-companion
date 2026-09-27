@@ -49,10 +49,15 @@ try {
     $check($code === 0, 'Initial import must succeed');
     $check((int) $db->fetchOne('SELECT count(*) FROM character_class') === 13, 'Create 13 classes');
     $check((int) $db->fetchOne('SELECT count(*) FROM character_subclass') === 103, 'Create 103 subclasses');
-    $check((int) $db->fetchOne('SELECT count(*) FROM character_feature_definition') === 719, 'Create 719 feature definitions');
-    $check((int) $db->fetchOne('SELECT count(*) FROM character_feature_rule') === 751, 'Create only 751 approved feature rules');
+    $check((int) $db->fetchOne('SELECT count(*) FROM character_feature_definition') === 745, 'Create 745 feature definitions');
+    $check((int) $db->fetchOne('SELECT count(*) FROM character_feature_rule') === 803, 'Create only 803 approved feature rules');
     $check((int) $db->fetchOne("SELECT count(*) FROM character_feature_rule r JOIN character_feature_definition f ON f.id=r.feature_definition_id WHERE f.slug LIKE 'hunter-%'") === 4, 'Never create the 11 pending Hunter choice rules');
     $before = $snapshot();
+    $db->executeStatement("UPDATE character_class SET origin='CUSTOM', owner_id=1 WHERE slug='wizard'");
+    $privateBefore = $snapshot();
+    [$code] = $run($source, ['--update-existing' => true]);
+    $check($code !== 0 && $snapshot() === $privateBefore, 'Origin CUSTOM blocks import even with legacy custom=false');
+    $db->executeStatement("UPDATE character_class SET origin='OFFICIAL', owner_id=NULL WHERE slug='wizard'");
     [$code] = $run($source);
     $check($code === 0 && $snapshot() === $before, 'Replay must preserve all rows, IDs and timestamps');
 

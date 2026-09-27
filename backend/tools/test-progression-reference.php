@@ -41,7 +41,7 @@ $ruleRequest = static function (int $parent, string $method, array $payload = []
 
 try {
     $db->beginTransaction();
-    $metadata = array_map($em->getClassMetadata(...), [ProgressionDefinition::class, ProgressionStage::class, ProgressionAdjustmentRule::class]);
+    $metadata = array_map($em->getClassMetadata(...), [User::class, ProgressionDefinition::class, ProgressionStage::class, ProgressionAdjustmentRule::class]);
     foreach ((new SchemaTool($em))->getCreateSchemaSql($metadata) as $sql) {
         $db->executeStatement(preg_replace('/^CREATE TABLE /', 'CREATE TEMP TABLE ', $sql));
     }
@@ -106,8 +106,8 @@ try {
     $character->addProgression(new CharacterProgression($character, $definition));
     $session = new CharacterSessionState(new GameSession($campaign, 'test', 'Test'), $character, ['progressions' => [['id' => 'test-reference', 'currentValue' => 4]]]);
     $stateController = $container->get(CharacterSessionStateController::class);
-    $serialize = new ReflectionMethod($stateController, 'serializeState');
-    $public = $serialize->invoke($stateController, $session);
+    $serializer = (new ReflectionProperty($stateController, 'sessionStateSerializer'))->getValue($stateController);
+    $public = $serializer->serialize($session);
     $progression = $public['character']['progressions'][0];
     $check(!array_key_exists('adjustmentRules', $progression), 'Public response has no adjustmentRules');
     foreach ($progression['stages'] as $publicStage) {

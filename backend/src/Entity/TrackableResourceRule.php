@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Enum\ReferenceOrigin;
 use App\Repository\TrackableResourceRuleRepository;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -25,8 +26,39 @@ use Doctrine\ORM\Mapping as ORM;
     name: 'uniq_feat_resource_level',
     columns: ['feat_id', 'resource_definition_id', 'unlock_level'],
 )]
+#[ORM\Index(name: 'idx_trackable_resource_rule_owner', columns: ['owner_id'])]
+#[ORM\HasLifecycleCallbacks]
 class TrackableResourceRule
 {
+    // Existing constructors and factories create official references only.
+    #[ORM\Column(length: 8, enumType: ReferenceOrigin::class, options: ['default' => 'OFFICIAL'])]
+    private ReferenceOrigin $origin = ReferenceOrigin::Official;
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'RESTRICT')]
+    private ?User $owner = null;
+
+    public function getOrigin(): ReferenceOrigin
+    {
+        return $this->origin;
+    }
+
+    public function getOwner(): ?User
+    {
+        return $this->owner;
+    }
+
+    // No independent setters: custom creation is deliberately not exposed yet.
+    #[ORM\PrePersist]
+    #[ORM\PreUpdate]
+    #[ORM\PostLoad]
+    public function validateReferenceOwnership(): void
+    {
+        if (($this->origin === ReferenceOrigin::Official) !== ($this->owner === null)) {
+            throw new \LogicException('Invalid reference origin/owner pair.');
+        }
+    }
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]

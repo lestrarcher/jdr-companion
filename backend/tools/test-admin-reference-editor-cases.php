@@ -39,7 +39,7 @@ foreach (['features' => App\Entity\CharacterFeatureDefinition::class] + array_ma
         'subclasses' => ['class' => (string) $class->getId()],
         'races' => ['selectable' => '1'],
         'resources' => ['recharge' => 'long-rest'],
-        default => ['custom' => '0'],
+        default => [],
     };
     $context = ['q' => 'Édition', 'editorial' => 'missing-description', 'page' => 2] + $business;
     $url = $path.'/'.$ordered[0]['id'].'?'.http_build_query($context);

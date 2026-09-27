@@ -258,7 +258,14 @@ final class ImportClassFeaturesCommand extends Command
         if ($write && $update) { $this->connection->update($table, $values, ['id' => $existing['id']]); }
     }
 
-    private function row(string $sql, array $params): ?array { $row = $this->connection->fetchAssociative($sql, $params); return $row === false ? null : $row; }
+    private function row(string $sql, array $params): ?array
+    {
+        $row = $this->connection->fetchAssociative($sql, $params);
+        if ($row !== false && ($row['origin'] ?? null) === 'CUSTOM') {
+            throw new \RuntimeException('Official import cannot use or overwrite CUSTOM reference #'.$row['id']);
+        }
+        return $row === false ? null : $row;
+    }
     private function diff(array $before, array $after): array
     {
         $diff = [];
