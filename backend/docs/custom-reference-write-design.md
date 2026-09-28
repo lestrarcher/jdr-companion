@@ -945,3 +945,39 @@ Sans nouveau marqueur persistant, « utilisée » est déduite des références 
 conservées ; une utilisation dont tous les liens et toutes les traces auraient été
 supprimés par un autre outil ne peut pas être reconstruite. Ce CRUD ne supprime
 aucune de ces traces. Aucun versioning ni migration ajouté.
+
+## 21. CRUD des définitions de capacités CUSTOM
+
+GET/POST /reference/custom/features et GET/PATCH/DELETE /{id}, préfixe /api via
+le proxy. Même authentification, scope personnel, erreurs JSON et slug serveur
+custom-<32 hex> que resources ; aucune attribution créée. Liste triée name/id.
+POST/PATCH acceptent seulement name (trim, 1..150), description nullable et
+resourceDefinitionId nullable, entier positif strict lorsqu'il est fourni.
+POST exige name ; les deux autres champs valent NULL par défaut. Origin/owner/slug,
+objet resourceDefinition complet, sources, niveaux/seuils et champs inconnus sont
+refusés. ActivationType=passive et visible=true à la création ; ces paramètres,
+le booléen legacy custom et les timestamps ne sont pas exposés en écriture.
+PATCH conserve les valeurs techniques des définitions existantes.
+
+La ressource peut être OFFICIAL ou CUSTOM du même User ; étrangère ou absente
+donne le même 400. Validation sous verrou dans la transaction avant écriture.
+GET/LIST contrôlent aussi cette dépendance : une relation étrangère incohérente
+préexistante ne fuit pas par sérialisation. Réponse feature/features contenant
+id/name/description/slug et resourceDefinition NULL ou {id,name,slug,origin}.
+Pas de catalogue OFFICIAL global supplémentaire, aucun owner sérialisé.
+
+Usage Feature : présence d'une CharacterFeatureRule pointant la capacité,
+quelle que soit sa source, son niveau/seuil ou sa provenance (une anomalie étrangère
+bloque aussi sans divulgation). C'est la seule FK entrante observée ; ni acquisition
+directe Character→Feature ni marqueur Feature persistant dans le state/runtime
+actuel. Une trace de RESOURCE ne constitue donc pas une utilisation de FEATURE.
+Après usage, changer la ressource ou supprimer la capacité donne 409 ; descriptif
+et renvoi du même ID restent permis. Un PATCH mixte refusé ne modifie rien.
+L'usage est observable via les liens conservés, sans nouveau marqueur historique.
+
+Mutations sous transaction et verrous SHARE ROW EXCLUSIVE dans l'ordre ressource,
+capacité, règles de capacité, compatible avec le CRUD Resource. La FK sortante ne
+supprime jamais la ressource. Le service Resource existant détecte automatiquement
+la nouvelle FK ; après suppression d'une capacité inutilisée, la ressource peut
+redevenir supprimable si aucun autre lien/state ne subsiste. Aucune purge,
+migration, modification de resolver ou abstraction CRUD commune.
