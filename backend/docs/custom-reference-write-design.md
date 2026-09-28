@@ -895,3 +895,53 @@ Ne sont PAS ouverts : propriété User, réutilisation inter-campagnes, slugs CU
 globaux immuables, origin/owner immuables, matrice A/B/O, absence d'override implicite,
 DELETE bloqué si utilisé, aucune purge, actions CUSTOM fermées V1, Angular MJ,
 pas de CampaignVoter pour le catalogue personnel.
+
+## 20. Premier CRUD livré : définitions de ressources CUSTOM
+
+API personnelle : GET/POST /reference/custom/resources et GET/PATCH/DELETE
+/reference/custom/resources/{id} côté Symfony ; préfixe /api ajouté par le proxy.
+Réponses : resources pour la liste, resource pour un item, message pour une erreur ;
+201 à la création, 204 à la suppression, 400 pour payload invalide, 404 identique
+pour absent/OFFICIAL/autre owner, 409 pour usage bloquant ou conflit unique.
+
+Liste blanche POST/PATCH : name (trim, 1..150 caractères), description nullable,
+rechargeType (none/short-rest/long-rest), maximumType
+(fixed/proficiency-bonus/ability-modifier), baseMaximum >=0, multiplier >=1,
+minimumMaximum >=0, scalingAbility (enum, obligatoire uniquement pour
+ability-modifier, NULL sinon). Entiers limités à la capacité des colonnes PostgreSQL.
+POST exige name ; défauts : description/scalingAbility NULL, recharge none,
+maximum fixed, base/minimum 0, multiplier 1. Tous les champs inconnus sont refusés,
+notamment origin/owner/ownerId/slug/custom, maximumOverride/maximumBonus et
+storedValuesConfig. Le slug serveur est custom- suivi de 32 chiffres hexadécimaux
+aléatoires minuscules ; UNIQUE(slug) arbitre une collision, traduite en 409 sans
+boucle de retry. La réponse expose id/slug et les huit champs métier, aucun owner.
+
+storedValuesConfig reste fermé : aucune colonne correspondante sur la définition.
+Portent utilise une configuration runtime spécifique, que ce CRUD ne produit pas.
+Aucun nouveau modèle, handler, repository runtime ou attribution.
+Le service ciblé utilise DBAL et des listes blanches explicites sur la table
+existante ; aucune mutation générique d'entité ni changement de mapping.
+
+Usage observable : toute FK entrante depuis CharacterFeatureDefinition ou
+TrackableResourceRule ; présence exacte du slug dans resources[].id d'un state
+historique ou d'une définition personnelle Character. La campagne de la session
+détermine le propriétaire du state. Zéro, inactive, non-participation et autres
+campagnes ne retirent pas l'usage. Une référence étrangère incohérente bloque
+également, sans divulgation ; une structure resources illisible dans le périmètre
+du propriétaire bloque conservativement. Aucune purge.
+
+Une différence mécanique détectée est refusée si utilisée ; name/description
+restent éditables et renvoyer une valeur mécanique inchangée est permis.
+Validation complète avant écriture : un PATCH mixte refusé ne modifie rien.
+DELETE n'est autorisé qu'en l'absence de ces usages. Ces mutations vérifient à
+nouveau le scope et l'usage sous transaction avec verrous de table
+SHARE ROW EXCLUSIVE sur ressource, capacités, règles, states et personnages.
+Ces verrous courts protègent le contrôle face aux écritures concurrentes, sans
+modifier les writers runtime ; leur granularité est volontairement conservatrice
+pour ce premier catalogue personnel. Les FK CASCADE/SET NULL existantes ne sont
+jamais utilisées comme mécanisme de nettoyage par ce CRUD.
+
+Sans nouveau marqueur persistant, « utilisée » est déduite des références et traces
+conservées ; une utilisation dont tous les liens et toutes les traces auraient été
+supprimés par un autre outil ne peut pas être reconstruite. Ce CRUD ne supprime
+aucune de ces traces. Aucun versioning ni migration ajouté.
