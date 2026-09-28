@@ -1064,3 +1064,93 @@ en transaction READ ONLY : #243 progression1→feature247 seuil10, #244 progress
 personnage owner1 et used=true lors de la validation du 28/09/2026. Le resolver
 existant est testé à seuil-1/seuil/seuil+1, sans contexte et entre A/B. Aucun
 resolver/runtime, mapping, migration, Angular ou TrackableResourceRule modifié.
+
+## 23. CRUD des attributions TrackableResourceRule CUSTOM
+
+GET/POST /reference/custom/resource-rules et GET/PATCH/DELETE /{id} côté Symfony,
+préfixe /api via le proxy. Authentification ROLE_USER existante, scope User personnel,
+sans CampaignId/Voter ni owner envoyé par le client. Réponses rules/rule/message,
+liste triée par ID ; POST 201, DELETE 204, payload invalide 400, absent/OFFICIAL/
+autre owner même 404, usage bloquant ou conflit unique 409.
+
+Le modèle réel porte id, origin/owner, resourceDefinition, quatre sources nullable
+(class/subclass/race/feat), unlockLevel, maximumOverride nullable et maximumBonus.
+Ni slug, ni displayOrder, ni source progression. Le CHECK existant impose une seule
+source ; huit index partiels séparent OFFICIAL et CUSTOM par owner/source/resource/
+niveau. Le bonus n'entre pas dans cette unicité ; la DB arbitre les collisions.
+
+Liste blanche POST/PATCH : resourceDefinitionId, sourceType, sourceId, unlockLevel,
+maximumBonus. POST exige les quatre premiers ; maximumBonus vaut 0 par défaut.
+IDs entiers stricts 1..2147483647 ; unlockLevel entier 1..20 pour toutes les sources.
+maximumBonus entier 0..2147483647 : l'entité refuse explicitement les négatifs,
+zéro attribue la ressource sans augmenter son maximum. Le plafond correspond à la
+colonne PostgreSQL integer. Aucun nombre converti depuis une chaîne/booléen/flottant.
+PATCH partiel ; changer de famille exige sourceId et unlockLevel explicites et
+efface toutes les anciennes FK. Le bonus est conservé s'il n'est pas fourni.
+
+maximumOverride est fermé : même maximumOverride:null donne 400. POST écrit NULL ;
+PATCH ne touche jamais cette colonne. Pas de nouveau CHECK ni de modification des
+overrides OFFICIAL. Origin=CUSTOM et owner courant sont imposés serveur. Tout autre
+champ est refusé, dont id/origin/owner/ownerId/slug/custom, FK brutes, objets complets,
+rechargeType, progressionThreshold, progressionDefinitionId et displayOrder.
+
+JSON : {id, resourceDefinition:{id,name,slug,origin},
+source:{type,id,name,slug,origin}, unlockLevel, maximumBonus}.
+Pas de maximumOverride, owner ou graphe complet dans le contrat V1.
+Resource et source peuvent indépendamment être OFFICIAL ou CUSTOM du même owner ;
+les quatre compositions sont couvertes pour chaque famille. Référence étrangère
+ou absente : même 400. Les lectures excluent les dépendances incohérentes.
+Validation DBAL conforme à ReferenceVisibility, dont subclass→class et ascendance
+raciale ; OFFICIAL ne peut dépendre de CUSTOM, même du même propriétaire. Aucun
+parent de source n'est modifié, aucune décision fondée sur le booléen legacy custom.
+
+Usage bloquant via Character→Campaign→owner de la règle : niveau de classe acquis,
+sous-classe acquise dans CharacterClassLevel, race égale ou descendante (comme le
+resolver), ou CharacterFeat acquis. Dès l'acquisition, même sous unlockLevel, la
+règle fait partie de la mécanique future. Un personnage d'un autre propriétaire
+ne bloque pas ; la seule existence de la source ne suffit pas. Toute différence
+réelle de l'un des cinq champs est refusée après usage ; valeurs identiques et
+PATCH vide restent autorisés. Une règle inutilisée reste modifiable/supprimable.
+
+Limite historique : les ressources du state sont identifiées par slug avec leur
+currentValue ; le synchronizer recalcule les maxima et conserve les entrées
+historiques. Ni Rule ID ni provenance de la contribution au maximum n'est conservé.
+Après retrait de la source, une trace de ressource ne permet donc pas d'attribuer
+son usage à cette règle. Elle ne fige pas arbitrairement toutes les règles de cette
+ressource. Aucun marqueur, purge, changement de state ou synchronizer ajouté.
+Le garde propre à ResourceDefinition continue de protéger la ressource historique.
+
+Mutations transactionnelles ; PATCH/DELETE relisent la règle sous FOR UPDATE.
+Verrous SHARE ROW EXCLUSIVE dans l'ordre : ressource, règle de ressource, classe,
+sous-classe, race, don, campagne, personnage, niveaux de classe, dons acquis.
+Le verrou ressource pris en premier est commun aux CRUD précédents et protège la
+validation contre un DELETE concurrent. Les acquisitions et changements de owner
+de campagne ne peuvent courir entre le contrôle d'usage et l'écriture. Granularité
+de table volontairement conservatrice V1. Erreur de validation ou d'unicité : rollback
+complet, aucun PATCH partiel. Pas de nouvelle infrastructure ni de service générique.
+
+ResourceRule→Resource bloque déjà PATCH mécanique/DELETE de ResourceDefinition.
+Supprimer une règle inutilisée libère la ressource si aucune autre dépendance/trace
+ne subsiste ; aucun parent n'est supprimé. Une FeatureDefinition peut continuer à
+référencer la même ressource indépendamment ; aucune relation Rule→Feature ajoutée.
+Les futurs DELETE de sources devront prendre ces attributions en compte.
+
+Runtime inchangé : somme de tous les bonus applicables, ajoutée au maximum calculé
+ou à l'override applicable existant (plus grand unlockLevel). Exemple testé : base 5,
+bonus OFFICIAL 2 au niveau 1, bonus CUSTOM A 3 au niveau 2 : A/B valent 7 sous le
+niveau 2, puis A=10 et B=7. Avec override OFFICIAL 11 au niveau 2 : A=16, B=13.
+Aucune priorité CUSTOM/OFFICIAL introduite ; zéro peut également donner accès à
+une ressource sans bonus. Ces tests passent par CharacterResourceResolver existant.
+
+Harness : tools/test-custom-reference-resource-rules.php, tables/séquences temporaires,
+CHECKs déployés copiés sur ces tables, rollback et empreintes public avant/après.
+Probe READ ONLY du 28/09/2026 : 104 règles OFFICIAL, aucune CUSTOM (LIST owner1 vide),
+103 bonus à 0, un bonus à 2 et 95 overrides non NULL. Parmi les quatre familles,
+seule la sous-classe CUSTOM owner1 #20 arch-hag existe ; sa visibilité est vérifiée
+en lecture seule. Aucun resolver, migration, mapping, Angular ou import modifié.
+
+Validation de ce jalon : 404 assertions dédiées et 3362 de non-régression. Les
+contrôles Symfony et les harness ont tourné sur une copie identique dans le filesystem
+Linux du conteneur : sur le montage Windows, DirectoryIterator::rewind() du dossier
+Service sautait au dernier fichier et empêchait la compilation du conteneur Symfony.
+Le contournement de validation n'ajoute aucun changement de configuration au dépôt.
