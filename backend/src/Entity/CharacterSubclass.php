@@ -18,6 +18,11 @@ use Doctrine\ORM\Mapping as ORM;
     name: 'uniq_subclass_class_slug',
     columns: ['character_class_id', 'slug'],
 )]
+#[ORM\UniqueConstraint(
+    name: 'uniq_subclass_custom_slug',
+    columns: ['slug'],
+    options: ['where' => "((origin)::text = 'CUSTOM'::text)"],
+)]
 #[ORM\Index(name: 'idx_character_subclass_owner', columns: ['owner_id'])]
 #[ORM\HasLifecycleCallbacks]
 class CharacterSubclass

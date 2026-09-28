@@ -11,28 +11,54 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity(repositoryClass: CharacterFeatureRuleRepository::class)]
 #[ORM\Table(name: 'character_feature_rule')]
 #[ORM\UniqueConstraint(
-    name: 'uniq_class_feature_level',
+    name: 'uniq_class_feature_level_off',
     columns: ['character_class_id', 'feature_definition_id', 'unlock_level'],
+    options: ['where' => "(((origin)::text = 'OFFICIAL'::text) AND (character_class_id IS NOT NULL))"],
 )]
 #[ORM\UniqueConstraint(
-    name: 'uniq_subclass_feature_level',
+    name: 'uniq_class_feature_level_own',
+    columns: ['owner_id', 'character_class_id', 'feature_definition_id', 'unlock_level'],
+    options: ['where' => "(((origin)::text = 'CUSTOM'::text) AND (character_class_id IS NOT NULL))"],
+)]
+#[ORM\UniqueConstraint(
+    name: 'uniq_subclass_feature_level_off',
     columns: ['character_subclass_id', 'feature_definition_id', 'unlock_level'],
+    options: ['where' => "(((origin)::text = 'OFFICIAL'::text) AND (character_subclass_id IS NOT NULL))"],
 )]
 #[ORM\UniqueConstraint(
-    name: 'uniq_race_feature_level',
+    name: 'uniq_subclass_feature_level_own',
+    columns: ['owner_id', 'character_subclass_id', 'feature_definition_id', 'unlock_level'],
+    options: ['where' => "(((origin)::text = 'CUSTOM'::text) AND (character_subclass_id IS NOT NULL))"],
+)]
+#[ORM\UniqueConstraint(
+    name: 'uniq_race_feature_level_off',
     columns: ['character_race_id', 'feature_definition_id', 'unlock_level'],
+    options: ['where' => "(((origin)::text = 'OFFICIAL'::text) AND (character_race_id IS NOT NULL))"],
 )]
 #[ORM\UniqueConstraint(
-    name: 'uniq_feat_feature_level',
+    name: 'uniq_race_feature_level_own',
+    columns: ['owner_id', 'character_race_id', 'feature_definition_id', 'unlock_level'],
+    options: ['where' => "(((origin)::text = 'CUSTOM'::text) AND (character_race_id IS NOT NULL))"],
+)]
+#[ORM\UniqueConstraint(
+    name: 'uniq_feat_feature_level_off',
     columns: ['feat_id', 'feature_definition_id', 'unlock_level'],
+    options: ['where' => "(((origin)::text = 'OFFICIAL'::text) AND (feat_id IS NOT NULL))"],
 )]
 #[ORM\UniqueConstraint(
-    name: 'uniq_progression_feature_threshold',
-    columns: [
-        'progression_definition_id',
-        'feature_definition_id',
-        'progression_threshold',
-    ],
+    name: 'uniq_feat_feature_level_own',
+    columns: ['owner_id', 'feat_id', 'feature_definition_id', 'unlock_level'],
+    options: ['where' => "(((origin)::text = 'CUSTOM'::text) AND (feat_id IS NOT NULL))"],
+)]
+#[ORM\UniqueConstraint(
+    name: 'uniq_progression_feature_threshold_off',
+    columns: ['progression_definition_id', 'feature_definition_id', 'progression_threshold'],
+    options: ['where' => "(((origin)::text = 'OFFICIAL'::text) AND (progression_definition_id IS NOT NULL))"],
+)]
+#[ORM\UniqueConstraint(
+    name: 'uniq_progression_feature_threshold_own',
+    columns: ['owner_id', 'progression_definition_id', 'feature_definition_id', 'progression_threshold'],
+    options: ['where' => "(((origin)::text = 'CUSTOM'::text) AND (progression_definition_id IS NOT NULL))"],
 )]
 #[ORM\Index(name: 'idx_character_feature_rule_owner', columns: ['owner_id'])]
 #[ORM\HasLifecycleCallbacks]

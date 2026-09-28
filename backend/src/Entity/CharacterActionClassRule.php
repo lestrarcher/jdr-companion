@@ -13,11 +13,14 @@ use Doctrine\ORM\Mapping as ORM;
 )]
 #[ORM\Table(name: 'character_action_class_rule')]
 #[ORM\UniqueConstraint(
-    name: 'uniq_character_action_class',
-    columns: [
-        'action_definition_id',
-        'character_class_id',
-    ],
+    name: 'uniq_character_action_class_off',
+    columns: ['action_definition_id', 'character_class_id'],
+    options: ['where' => "((origin)::text = 'OFFICIAL'::text)"],
+)]
+#[ORM\UniqueConstraint(
+    name: 'uniq_character_action_class_own',
+    columns: ['owner_id', 'action_definition_id', 'character_class_id'],
+    options: ['where' => "((origin)::text = 'CUSTOM'::text)"],
 )]
 #[ORM\Index(name: 'idx_character_action_class_rule_owner', columns: ['owner_id'])]
 #[ORM\HasLifecycleCallbacks]

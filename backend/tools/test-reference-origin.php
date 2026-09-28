@@ -74,10 +74,13 @@ try {
         foreach (["origin='OFFICIAL',owner_id=1", "origin='CUSTOM',owner_id=NULL", "origin='INVALID',owner_id=NULL"] as $set) {
             $reject(fn () => $db->executeStatement("UPDATE $table SET $set WHERE id=$id"), "$table rejects $set", '23514');
         }
-        $reject(fn () => $db->executeStatement("UPDATE $table SET origin='CUSTOM',owner_id=-2147483648 WHERE id=$id"), "$table missing owner", \Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException::class);
+        // Keep the subclass fixture valid for the independent namespace CHECK.
+        // These temporary slug changes are covered by the savepoint rollbacks.
+        $customSlug = $table === 'character_subclass' ? ",slug='custom-".str_repeat('0', 32)."'" : '';
+        $reject(fn () => $db->executeStatement("UPDATE $table SET origin='CUSTOM',owner_id=-2147483648$customSlug WHERE id=$id"), "$table missing owner", \Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException::class);
         $db->createSavepoint('valid_origin');
         $db->executeStatement("UPDATE $table SET origin='OFFICIAL',owner_id=NULL WHERE id=$id");
-        $db->executeStatement("UPDATE $table SET origin='CUSTOM',owner_id=1 WHERE id=$id");
+        $db->executeStatement("UPDATE $table SET origin='CUSTOM',owner_id=1$customSlug WHERE id=$id");
         $db->rollbackSavepoint('valid_origin');
         $db->releaseSavepoint('valid_origin');
         $check(true, "$table valid pairs accepted");
