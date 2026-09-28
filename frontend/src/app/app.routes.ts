@@ -40,6 +40,11 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       {
+        path: 'custom-content',
+        loadComponent: () =>
+          import('./features/custom-content/custom-content').then(component => component.CustomContent),
+      },
+      {
         path: 'campaigns',
         loadComponent: () =>
           import('./features/campaign-list/campaign-list').then(

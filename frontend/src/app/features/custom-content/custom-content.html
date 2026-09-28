@@ -1,0 +1,40 @@
+<main class="catalogue-page">
+  <header class="page-header">
+    <span class="eyebrow">Bibliothèque personnelle</span>
+    <h1>Contenu personnalisé</h1>
+    <p>Consultez vos éléments personnels, réutilisables dans toutes vos campagnes.</p>
+  </header>
+
+  <nav class="categories" aria-label="Catégories du contenu personnalisé">
+    @for (category of categories; track category.id) {
+      <button type="button" [attr.aria-pressed]="active() === category.id"
+        aria-controls="custom-collection" (click)="select(category.id)">
+        {{ category.label }}
+      </button>
+    }
+  </nav>
+
+  <section id="custom-collection" aria-labelledby="collection-title" [attr.aria-busy]="current().status === 'loading'">
+    <h2 id="collection-title">{{ category().label }}</h2>
+    @if (current().status === 'loading' || current().status === 'idle') {
+      <p class="collection-state" role="status">Chargement de la collection…</p>
+    } @else if (current().status === 'error') {
+      <div class="collection-state">
+        <p class="error-message" role="alert">Impossible de charger cette collection. Veuillez réessayer.</p>
+        <button type="button" (click)="retry()">Réessayer</button>
+      </div>
+    } @else {
+      <div class="catalogue-grid">
+        @for (item of current().items; track item.id) {
+          <article class="catalogue-card">
+            <h3>{{ item.title }}</h3>
+            @if (item.description) { <p class="description">{{ item.description }}</p> }
+            @for (detail of item.details; track $index) { <p class="detail">{{ detail }}</p> }
+          </article>
+        } @empty {
+          <p class="collection-state" role="status">{{ category().empty }}</p>
+        }
+      </div>
+    }
+  </section>
+</main>

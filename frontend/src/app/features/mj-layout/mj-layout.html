@@ -18,6 +18,10 @@
           Campagnes
         </a>
 
+        <a routerLink="/custom-content" routerLinkActive="active" ariaCurrentWhenActive="page">
+          Contenu personnalisé
+        </a>
+
         @if (sessionsUrl(); as url) {
           <a
             [routerLink]="url"

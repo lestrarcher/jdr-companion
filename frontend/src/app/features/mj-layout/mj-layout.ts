@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   ActivatedRoute,
@@ -8,7 +8,7 @@ import {
   RouterLinkActive,
   RouterOutlet,
 } from '@angular/router';
-import { filter, finalize, forkJoin, startWith } from 'rxjs';
+import { filter, finalize, forkJoin, startWith, Subscription } from 'rxjs';
 import { CampaignConfigurationRegistryService } from '@core/services/campaign-configuration-registry.service';
 import { GameSessionApiService } from '@core/services/game-session-api.service';
 
@@ -28,6 +28,7 @@ export class MjLayout {
   private readonly route = inject(ActivatedRoute);
   private readonly campaignRegistry = inject(CampaignConfigurationRegistryService);
   private readonly gameSessionApi = inject(GameSessionApiService);
+  private navigationRequest?: Subscription;
 
   protected readonly breadcrumbs = signal<Breadcrumb[]>([]);
   protected readonly campaignId = signal<number | null>(null);
@@ -38,6 +39,7 @@ export class MjLayout {
   );
 
   constructor() {
+    inject(DestroyRef).onDestroy(() => this.navigationRequest?.unsubscribe());
     this.router.events
       .pipe(
         filter(event => event instanceof NavigationEnd),
@@ -48,9 +50,13 @@ export class MjLayout {
   }
 
   private updateNavigationContext(): void {
+    this.navigationRequest?.unsubscribe();
     const childRoute = this.getDeepestChildRoute();
-    const rawCampaignId = Number(childRoute.snapshot.paramMap.get('campaignId'));
-    const rawSessionId = Number(childRoute.snapshot.paramMap.get('sessionId'));
+    const snapshot = childRoute.snapshot;
+    // The initial child snapshot can be pending while the layout is constructed.
+    if (!snapshot) return;
+    const rawCampaignId = Number(snapshot.paramMap.get('campaignId'));
+    const rawSessionId = Number(snapshot.paramMap.get('sessionId'));
     const campaignId =
       Number.isInteger(rawCampaignId) && rawCampaignId > 0 ? rawCampaignId : null;
     const sessionId =
@@ -61,14 +67,15 @@ export class MjLayout {
 
     if (!campaignId) {
       this.navigationLoading.set(false);
-      this.breadcrumbs.set([{ label: 'Campagnes' }]);
+      this.breadcrumbs.set([{ label: snapshot.routeConfig?.path === 'custom-content'
+        ? 'Contenu personnalisé' : 'Campagnes' }]);
       return;
     }
 
     this.navigationLoading.set(true);
 
     if (!sessionId) {
-      this.campaignRegistry
+      this.navigationRequest = this.campaignRegistry
         .getCampaign(campaignId)
         .pipe(finalize(() => this.navigationLoading.set(false)))
         .subscribe({
@@ -101,7 +108,7 @@ export class MjLayout {
       return;
     }
 
-    forkJoin({
+    this.navigationRequest = forkJoin({
       campaignContext: this.campaignRegistry.getCampaign(campaignId),
       session: this.gameSessionApi.get(sessionId),
     })

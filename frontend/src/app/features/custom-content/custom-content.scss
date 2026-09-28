@@ -1,0 +1,55 @@
+:host {
+  display: block;
+  min-height: 100%;
+  color: #f4efe5;
+  background: radial-gradient(circle at top, #25243a 0, #11121d 42%, #090a10 100%);
+}
+.catalogue-page {
+  width: min(1100px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 3rem 0;
+  overflow-wrap: anywhere;
+}
+.page-header {
+  margin-bottom: 2rem;
+  h1 { margin: 0.3rem 0 0.6rem; font-size: clamp(2rem, 5vw, 3.5rem); }
+  p { color: rgba(244, 239, 229, 0.72); line-height: 1.6; }
+}
+.eyebrow {
+  color: #c7a55b;
+  font-size: 0.72rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+.categories { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 2rem; }
+button {
+  min-height: 2.75rem;
+  padding: 0.65rem 1rem;
+  border: 1px solid rgba(199, 165, 91, 0.4);
+  color: inherit;
+  background: #11131e;
+  font: inherit;
+  cursor: pointer;
+  &:hover { border-color: #c7a55b; }
+  &[aria-pressed='true'] { color: #11121a; background: #c7a55b; border-color: #c7a55b; }
+  &:focus-visible { outline: 2px solid #e0c471; outline-offset: 3px; }
+}
+h2 { font-size: 1.6rem; }
+.catalogue-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 1rem; }
+.catalogue-card {
+  min-width: 0;
+  padding: 1.25rem;
+  border: 1px solid rgba(199, 165, 91, 0.25);
+  background: linear-gradient(145deg, rgba(199, 165, 91, 0.08), rgba(20, 21, 34, 0.75));
+  h3 { margin: 0 0 0.8rem; font-size: 1.25rem; }
+  p { line-height: 1.6; }
+}
+.description { white-space: pre-wrap; color: rgba(244, 239, 229, 0.8); }
+.detail { margin: 0.4rem 0 0; color: #ddc28e; }
+.collection-state { padding: 1rem 0; color: rgba(244, 239, 229, 0.72); }
+.error-message { color: #ef9a9a; }
+@media (max-width: 650px) {
+  .catalogue-page { padding: 1.5rem 0; }
+  .categories { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  button { min-width: 0; padding: 0.65rem 0.5rem; }
+}
