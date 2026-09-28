@@ -981,3 +981,86 @@ supprime jamais la ressource. Le service Resource existant détecte automatiquem
 la nouvelle FK ; après suppression d'une capacité inutilisée, la ressource peut
 redevenir supprimable si aucun autre lien/state ne subsiste. Aucune purge,
 migration, modification de resolver ou abstraction CRUD commune.
+
+## 22. CRUD des attributions CharacterFeatureRule CUSTOM
+
+GET/POST /reference/custom/feature-rules et GET/PATCH/DELETE /{id} côté Symfony,
+préfixe /api via le proxy. Authentification ROLE_USER existante, propriétaire User
+imposé côté serveur ; aucun CampaignId/Voter ni owner fourni par le client.
+Réponses rules pour la liste (ordre ID croissant), rule pour un item, message pour
+les erreurs. POST 201, DELETE 204 ; payload invalide 400, absent/OFFICIAL/autre
+owner même 404, collision unique ou modification/suppression utilisée 409.
+
+POST exige featureDefinitionId, sourceType, sourceId et le paramètre de déblocage.
+sourceType : class, subclass, race, feat ou progression. IDs entiers stricts
+1..2147483647. Pour les quatre sources ordinaires, unlockLevel est requis, entier
+1..20 ; progressionThreshold doit être absent ou NULL. Pour progression, seuil
+entier requis 0..2147483647 ; unlockLevel absent ou NULL. Le dummy technique 1
+reste en base comme dans la factory existante, jamais comme critère d'activation.
+PATCH est partiel ; un changement de famille exige sourceId et le nouveau
+niveau/seuil explicites, et efface les anciennes FK et l'ancien paramètre.
+Les mêmes valeurs et le payload vide sont des no-op autorisés, même après usage.
+displayOrder vaut 0 à la création et reste inchangé ; il n'est pas éditable V1.
+Tous les autres champs sont refusés, notamment id, origin, owner, ownerId, slug,
+custom, displayOrder, les cinq FK brutes, les objets source/featureDefinition.
+Une attribution n'a ni slug, ni nom, ni description ; elle ne crée pas de capacité.
+
+JSON compact : {id, featureDefinition:{id,name,slug,origin},
+source:{type,id,name,slug,origin}, unlockLevel, progressionThreshold}.
+Le champ inapplicable vaut NULL ; aucun owner ni graphe complet sérialisé.
+Feature et source peuvent chacune être OFFICIAL ou CUSTOM du même propriétaire :
+les quatre compositions sont admises. Étrangère/absente : même erreur 400.
+Les lectures excluent aussi les relations incohérentes. Le contrôle DBAL reproduit
+ReferenceVisibility, y compris feature→resource, subclass→class et l'ascendance
+raciale : une référence OFFICIAL ne peut dépendre d'une CUSTOM. Aucun parent de
+sous-classe n'est modifié ou réinterprété. Les lectures fraîches évitent un cache
+d'entités périmé ; liste V1 non paginée, validation des dépendances par item.
+
+Politique « utilisée » : compter les personnages distincts via Character→Campaign
+→owner de la règle, avec une acquisition persistée de sa source :
+
+| Source | Acquisition bloquante |
+| --- | --- |
+| class | CharacterClassLevel.characterClass, même sous le niveau requis |
+| subclass | CharacterClassLevel.subclass |
+| race | Character.race égale à la source ou descendante, comme le resolver |
+| feat | CharacterFeat.feat |
+| progression | CharacterProgression.progressionDefinition, indépendamment du seuil/state |
+
+Ni la seule existence de la source, ni un personnage d'un autre propriétaire ne
+gèlent la règle. Une acquisition dans toute campagne du même propriétaire suffit,
+sans session implicite ni condition de participation. Ce gel couvre la mécanique
+future d'une progression acquise mais encore sous le seuil. PATCH structurel réel
+et DELETE donnent 409 ; aucune mutation partielle sur erreur. Une règle inutilisée
+reste modifiable/supprimable. La création de nouvelles attributions reste permise.
+
+Limite historique : CharacterSessionState stocke notamment ressources/progressions
+par slug, pas l'ID de CharacterFeatureRule ayant produit une capacité/ressource.
+Après retrait de toutes les acquisitions pertinentes, on ne peut pas reconstruire
+son usage antérieur depuis ces traces. Le gel repose donc sur les acquisitions
+conservées ; aucun marqueur historique, purge ou reconstruction ajouté.
+
+POST/PATCH/DELETE sont transactionnels. PATCH/DELETE relisent la règle sous FOR
+UPDATE. Verrous SHARE ROW EXCLUSIVE, dans l'ordre : ressource, capacité, règle,
+classes/sous-classes/races/dons/progressions, campagne, personnage, niveaux de
+classe, acquisitions de dons et de progressions. Le préfixe respecte les CRUD
+Resource/Feature ; ces verrous courts empêchent une suppression de définition ou
+une acquisition/changement de propriétaire de courir entre validation et écriture.
+Granularité volontairement conservatrice pour ce catalogue personnel V1.
+Les dix index partiels existants arbitrent l'unicité : même owner/source/feature/
+niveau ou seuil donne 409, deux owners sur les mêmes références OFFICIAL restent
+autorisés. Les CHECK exactement une source et seuil cohérent restent inchangés.
+
+Rule→Feature bloque déjà le changement de ressource et le DELETE de Feature ;
+Feature→Resource bloque déjà Resource. Aucun garde transitif dupliqué. Supprimer
+une règle inutilisée libère la capacité si aucun autre lien ne subsiste et ne
+supprime ni capacité, ni ressource, ni source. Les futurs DELETE de sources CUSTOM
+devront traiter CharacterFeatureRule comme dépendance malgré leurs FK CASCADE.
+
+Harness : tools/test-custom-reference-feature-rules.php, fixtures sur tables et
+séquences temporaires avec rollback et empreintes public avant/après. Probes réels
+en transaction READ ONLY : #243 progression1→feature247 seuil10, #244 progression2
+→feature248 seuil15, #245 progression3→feature249 seuil50 ; chacun concerne un
+personnage owner1 et used=true lors de la validation du 28/09/2026. Le resolver
+existant est testé à seuil-1/seuil/seuil+1, sans contexte et entre A/B. Aucun
+resolver/runtime, mapping, migration, Angular ou TrackableResourceRule modifié.
