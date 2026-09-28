@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { map } from 'rxjs';
-import { CustomFeature, CustomFeatureRule, CustomResource, CustomResourceRule } from '@core/models/custom-content.model';
+import { CreateCustomResourcePayload, CustomFeature, CustomFeatureRule, CustomResource, CustomResourceRule, UpdateCustomResourcePayload } from '@core/models/custom-content.model';
 
 @Injectable({ providedIn: 'root' })
 export class CustomContentApiService {
@@ -16,6 +16,20 @@ export class CustomContentApiService {
   resources() {
     return this.http.get<{ resources: CustomResource[] }>(`${this.base}/resources`, { withCredentials: true })
       .pipe(map(response => response.resources));
+  }
+
+  createResource(payload: CreateCustomResourcePayload) {
+    return this.http.post<{ resource: CustomResource }>(`${this.base}/resources`, payload, { withCredentials: true })
+      .pipe(map(response => response.resource));
+  }
+
+  updateResource(id: number, payload: UpdateCustomResourcePayload) {
+    return this.http.patch<{ resource: CustomResource }>(`${this.base}/resources/${id}`, payload, { withCredentials: true })
+      .pipe(map(response => response.resource));
+  }
+
+  deleteResource(id: number) {
+    return this.http.delete<void>(`${this.base}/resources/${id}`, { withCredentials: true });
   }
 
   featureRules() {

@@ -8,6 +8,7 @@
   <nav class="categories" aria-label="Catégories du contenu personnalisé">
     @for (category of categories; track category.id) {
       <button type="button" [attr.aria-pressed]="active() === category.id"
+        [disabled]="busy()"
         aria-controls="custom-collection" (click)="select(category.id)">
         {{ category.label }}
       </button>
@@ -16,6 +17,16 @@
 
   <section id="custom-collection" aria-labelledby="collection-title" [attr.aria-busy]="current().status === 'loading'">
     <h2 id="collection-title">{{ category().label }}</h2>
+    @if (active() === 'resources') {
+      @if (feedback()) { <p role="status">{{ feedback() }}</p> }
+      @if (mutationError()) { <p class="error-message" role="alert">{{ mutationError() }}</p> }
+      @if (current().status === 'ready') {
+        <button #createResource type="button" class="create-resource" [disabled]="busy() || !!editor()" (click)="openEditor(null, $event)">Créer une ressource</button>
+      }
+      @if (editor(); as editing) {
+        <app-resource-editor [resource]="editing.resource" (saved)="resourceSaved($event)" (closed)="closeEditor()" />
+      }
+    }
     @if (current().status === 'loading' || current().status === 'idle') {
       <p class="collection-state" role="status">Chargement de la collection…</p>
     } @else if (current().status === 'error') {
@@ -30,6 +41,12 @@
             <h3>{{ item.title }}</h3>
             @if (item.description) { <p class="description">{{ item.description }}</p> }
             @for (detail of item.details; track $index) { <p class="detail">{{ detail }}</p> }
+            @if (active() === 'resources' && item.resource; as resource) {
+              <div class="resource-actions">
+                <button type="button" [disabled]="busy() || !!editor()" (click)="openEditor(resource, $event)" [attr.aria-label]="'Modifier ' + item.title">Modifier</button>
+                <button type="button" [disabled]="busy() || !!editor()" (click)="deleteResource(resource, $event)" [attr.aria-label]="'Supprimer ' + item.title">{{ deletingId() === item.id ? 'Suppression…' : 'Supprimer' }}</button>
+              </div>
+            }
           </article>
         } @empty {
           <p class="collection-state" role="status">{{ category().empty }}</p>

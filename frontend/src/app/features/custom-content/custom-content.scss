@@ -48,6 +48,9 @@ h2 { font-size: 1.6rem; }
 .detail { margin: 0.4rem 0 0; color: #ddc28e; }
 .collection-state { padding: 1rem 0; color: rgba(244, 239, 229, 0.72); }
 .error-message { color: #ef9a9a; }
+.create-resource { margin-bottom: 1rem; }
+.resource-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1rem; }
+button:disabled { opacity: 0.55; cursor: default; }
 @media (max-width: 650px) {
   .catalogue-page { padding: 1.5rem 0; }
   .categories { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }

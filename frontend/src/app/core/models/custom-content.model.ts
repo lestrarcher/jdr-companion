@@ -25,6 +25,11 @@ export interface CustomResource {
   scalingAbility: CustomScalingAbility | null;
 }
 
+export type CreateCustomResourcePayload = Pick<CustomResource,
+  'name' | 'description' | 'rechargeType' | 'maximumType' | 'baseMaximum' |
+  'multiplier' | 'minimumMaximum' | 'scalingAbility'>;
+export type UpdateCustomResourcePayload = Partial<CreateCustomResourcePayload>;
+
 export interface CustomFeature {
   id: number;
   name: string;
