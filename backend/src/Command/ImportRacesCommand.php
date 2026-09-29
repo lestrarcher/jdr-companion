@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Service\RaceCatalogueValidator;
-use App\Service\RaceImportPlanner;
+use App\Service\Catalogue\RaceCatalogueValidator;
+use App\Service\Catalogue\RaceImportPlanner;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 use Symfony\Component\Console\Attribute\AsCommand;

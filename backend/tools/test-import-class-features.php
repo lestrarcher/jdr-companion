@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use App\Command\ImportClassFeaturesCommand;
 use App\Kernel;
-use App\Service\ClassFeatureCatalogueValidator;
+use App\Service\Catalogue\ClassFeatureCatalogueValidator;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\Dotenv\Dotenv;
 

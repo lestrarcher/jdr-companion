@@ -6,7 +6,7 @@ namespace App\Command;
 
 use App\Entity\Feat;
 use App\Enum\Ability;
-use App\Service\FeatCatalogueValidator;
+use App\Service\Catalogue\FeatCatalogueValidator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;

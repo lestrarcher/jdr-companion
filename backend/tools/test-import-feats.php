@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Command\ImportFeatsCommand;
 use App\Entity\Feat;
 use App\Kernel;
-use App\Service\FeatCatalogueValidator;
+use App\Service\Catalogue\FeatCatalogueValidator;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\Dotenv\Dotenv;
 

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 use App\Command\ImportRacesCommand;
 use App\Kernel;
-use App\Service\{DndReferenceInitializer, RaceCatalogueValidator, RaceImportPlanner};
+use App\Service\DndReferenceInitializer;
+use App\Service\Catalogue\RaceCatalogueValidator;
+use App\Service\Catalogue\RaceImportPlanner;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\Dotenv\Dotenv;
 

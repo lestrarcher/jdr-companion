@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Service\RaceImportPlanner;
+use App\Service\Catalogue\RaceImportPlanner;
 
 require __DIR__.'/../vendor/autoload.php';
 
