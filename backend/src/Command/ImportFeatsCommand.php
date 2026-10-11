@@ -6,7 +6,7 @@ namespace App\Command;
 
 use App\Entity\Feat;
 use App\Enum\Ability;
-use App\Service\FeatCatalogueValidator;
+use App\Service\Catalogue\FeatCatalogueValidator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -67,6 +67,9 @@ final class ImportFeatsCommand extends Command
                     ->setAllowedAbilities(...array_map(Ability::from(...), $entry->allowedAbilities))
                     ->setCustom($entry->custom);
                 $existing = $this->entityManager->getRepository(Feat::class)->findOneBy(['slug' => $entry->slug]);
+                if ($existing?->getOrigin() === \App\Enum\ReferenceOrigin::Custom) {
+                    throw new \RuntimeException('Official import cannot overwrite CUSTOM feat: '.$entry->slug);
+                }
                 if ($existing === null) {
                     ++$counts['À créer'];
                     $io->writeln('À créer : ' . $entry->slug);

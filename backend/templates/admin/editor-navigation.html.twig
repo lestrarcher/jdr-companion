@@ -1,0 +1,7 @@
+<nav class="pagination" aria-label="Navigation dans la liste filtrée">
+    {% if neighbours.previous is not null %}<a rel="prev" href="{{ path(editRoute, routeContext|merge({id: neighbours.previous})) }}">← Précédent</a>{% endif %}
+    {% if neighbours.next is not null %}<a rel="next" href="{{ path(editRoute, routeContext|merge({id: neighbours.next})) }}">Suivant →</a>{% endif %}
+</nav>
+{% if not neighbours.matches %}
+    <p class="muted">Cet élément ne correspond plus aux critères de la liste. La navigation propose les résultats restants ; à la fin, Suivant reprend au premier résultat restant.</p>
+{% endif %}

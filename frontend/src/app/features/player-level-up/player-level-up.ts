@@ -20,10 +20,6 @@ import {
 import {
   CharacterSessionStateApiService,
 } from '@core/services/character-session-state-api.service';
-import {
-  DndReferenceApiService,
-  DndReferenceResponse,
-} from '@core/services/dnd-reference-api.service';
 
 import {
   CharacterLevelUp,
@@ -48,8 +44,6 @@ export class PlayerLevelUp implements OnInit {
   private readonly characterSessionStateApi =
     inject(CharacterSessionStateApiService);
 
-  private readonly referenceApi =
-    inject(DndReferenceApiService);
 
   private readonly campaignId =
     this.route.snapshot.paramMap.get(
@@ -72,8 +66,6 @@ export class PlayerLevelUp implements OnInit {
   protected readonly options =
     signal<LevelUpOptions | null>(null);
 
-  protected readonly reference =
-    signal<DndReferenceResponse | null>(null);
 
   protected readonly loading =
     signal(true);
@@ -85,11 +77,11 @@ export class PlayerLevelUp implements OnInit {
     signal<string | null>(null);
 
   protected readonly abilities = computed(
-    () => this.reference()?.abilities ?? [],
+    () => this.options()?.abilities ?? [],
   );
 
   protected readonly feats = computed(
-    () => this.reference()?.feats ?? [],
+    () => this.options()?.feats ?? [],
   );
 
   protected readonly playerPortalRoute = [
@@ -113,9 +105,6 @@ export class PlayerLevelUp implements OnInit {
           .getLevelUpOptions(
             this.accessToken,
           ),
-      reference:
-        this.referenceApi
-          .getReference(),
     })
       .pipe(
         finalize(() =>
@@ -129,9 +118,6 @@ export class PlayerLevelUp implements OnInit {
           );
           this.options.set(
             result.options,
-          );
-          this.reference.set(
-            result.reference,
           );
         },
         error: error => {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Enum\ReferenceOrigin;
 use App\Repository\CharacterActionClassRuleRepository;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -12,14 +13,48 @@ use Doctrine\ORM\Mapping as ORM;
 )]
 #[ORM\Table(name: 'character_action_class_rule')]
 #[ORM\UniqueConstraint(
-    name: 'uniq_character_action_class',
-    columns: [
-        'action_definition_id',
-        'character_class_id',
-    ],
+    name: 'uniq_character_action_class_off',
+    columns: ['action_definition_id', 'character_class_id'],
+    options: ['where' => "((origin)::text = 'OFFICIAL'::text)"],
 )]
+#[ORM\UniqueConstraint(
+    name: 'uniq_character_action_class_own',
+    columns: ['owner_id', 'action_definition_id', 'character_class_id'],
+    options: ['where' => "((origin)::text = 'CUSTOM'::text)"],
+)]
+#[ORM\Index(name: 'idx_character_action_class_rule_owner', columns: ['owner_id'])]
+#[ORM\HasLifecycleCallbacks]
 class CharacterActionClassRule
 {
+    // Existing constructors and factories create official references only.
+    #[ORM\Column(length: 8, enumType: ReferenceOrigin::class, options: ['default' => 'OFFICIAL'])]
+    private ReferenceOrigin $origin = ReferenceOrigin::Official;
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'RESTRICT')]
+    private ?User $owner = null;
+
+    public function getOrigin(): ReferenceOrigin
+    {
+        return $this->origin;
+    }
+
+    public function getOwner(): ?User
+    {
+        return $this->owner;
+    }
+
+    // No independent setters: custom creation is deliberately not exposed yet.
+    #[ORM\PrePersist]
+    #[ORM\PreUpdate]
+    #[ORM\PostLoad]
+    public function validateReferenceOwnership(): void
+    {
+        if (($this->origin === ReferenceOrigin::Official) !== ($this->owner === null)) {
+            throw new \LogicException('Invalid reference origin/owner pair.');
+        }
+    }
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]

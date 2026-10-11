@@ -81,6 +81,9 @@ final class CharacterProgressionController extends AbstractController
             $campaign,
         );
 
+        if (!\App\Service\ReferenceVisibility::allows($progressionDefinition, $character->getCampaign()->getOwner())) {
+            throw $this->createNotFoundException('Progression introuvable.');
+        }
         if ($character->hasProgression($progressionDefinition)) {
             return $this->json(
                 [

@@ -1,0 +1,65 @@
+<section class="resource-editor" aria-labelledby="resource-editor-title" [attr.aria-busy]="saving()">
+  <h3 id="resource-editor-title">{{ resource() ? 'Modifier la ressource' : 'Créer une ressource' }}</h3>
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <fieldset [disabled]="saving()">
+      <legend>Informations</legend>
+      <label for="resource-name">Nom</label>
+      <input #nameInput id="resource-name" formControlName="name" required
+        [attr.aria-invalid]="form.controls.name.touched && form.controls.name.invalid" aria-describedby="resource-name-error" />
+      <p id="resource-name-error" class="field-error">
+        @if (form.controls.name.touched && form.controls.name.invalid) { Le nom doit contenir entre 1 et 150 caractères. }
+      </p>
+      <label for="resource-description">Description (facultative)</label>
+      <textarea id="resource-description" formControlName="description" rows="3" aria-describedby="resource-description-error"
+        [attr.aria-invalid]="form.controls.description.touched && form.controls.description.invalid"></textarea>
+      @if (form.controls.description.touched && form.controls.description.invalid) {
+        <p id="resource-description-error" class="field-error" role="alert">La description contient un caractère non valide.</p>
+      }
+    </fieldset>
+    <fieldset [disabled]="saving() || mechanicsFrozen()" aria-describedby="resource-mechanics-help">
+      <legend>Mécanique</legend>
+      <p id="resource-mechanics-help">Le maximum est fixe ou calculé à partir de la base et du facteur choisi, avec un minimum garanti.</p>
+      <div class="mechanics-grid">
+        <label>Recharge
+          <select formControlName="rechargeType">
+            @for (option of rechargeOptions; track option.value) { <option [value]="option.value">{{ option.label }}</option> }
+          </select>
+        </label>
+        <label>Calcul du maximum
+          <select formControlName="maximumType">
+            @for (option of maximumOptions; track option.value) { <option [value]="option.value">{{ option.label }}</option> }
+          </select>
+        </label>
+        <label>{{ form.controls.maximumType.value === 'fixed' ? 'Maximum de base' : 'Base ajoutée au calcul' }}
+          <input type="number" formControlName="baseMaximum" min="0" max="2147483647" step="1" />
+        </label>
+        @if (form.controls.maximumType.value !== 'fixed') {
+          <label>Multiplicateur
+            <input type="number" formControlName="multiplier" min="1" max="2147483647" step="1" />
+          </label>
+        }
+        <label>Minimum garanti
+          <input type="number" formControlName="minimumMaximum" min="0" max="2147483647" step="1" />
+        </label>
+        @if (form.controls.maximumType.value === 'ability-modifier') {
+          <label>Caractéristique
+            <select formControlName="scalingAbility">
+              <option [ngValue]="null">Choisir une caractéristique</option>
+              @for (ability of abilities; track ability.value) { <option [ngValue]="ability.value">{{ ability.label }}</option> }
+            </select>
+          </label>
+        }
+      </div>
+    </fieldset>
+    @if (attempted() && form.invalid && !mechanicsFrozen()) {
+      <p class="field-error" role="alert">Vérifiez le nom et la description. Les valeurs mécaniques doivent être des entiers de 0 à 2 147 483 647 (multiplicateur : 1 minimum). Choisissez une caractéristique si nécessaire.</p>
+    }
+    @if (error()) { <p class="field-error" role="alert">{{ error() }}</p> }
+    <div class="editor-actions">
+      <button type="submit" [disabled]="saving()">
+        {{ saving() ? 'Enregistrement…' : mechanicsFrozen() ? 'Enregistrer le nom et la description' : 'Enregistrer' }}
+      </button>
+      <button type="button" [disabled]="saving()" (click)="cancel()">Annuler</button>
+    </div>
+  </form>
+</section>

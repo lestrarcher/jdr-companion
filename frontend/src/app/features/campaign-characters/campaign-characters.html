@@ -74,8 +74,8 @@
                 <app-character-level-up
                   [character]="character"
                   [options]="options"
-                  [abilities]="abilities()"
-                  [feats]="feats()"
+                  [abilities]="options.abilities"
+                  [feats]="options.feats"
                   [submitting]="levelUpSubmitting()"
                   (submitted)="submitLevelUp($event)"
                   (cancelled)="closeEditor()"

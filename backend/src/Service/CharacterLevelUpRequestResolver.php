@@ -30,8 +30,15 @@ final readonly class CharacterLevelUpRequestResolver
      *     hitPointGain: int|null
      * }
      */
-    public function resolve(array $payload): array
+    public function resolve(array $payload, \App\Entity\Character $character): array
     {
+        foreach ([CharacterClass::class => $payload['classId'] ?? null, CharacterSubclass::class => $payload['subclassId'] ?? null,
+            Feat::class => is_array($payload['advancement'] ?? null) ? ($payload['advancement']['featId'] ?? null) : null] as $type => $rawId) {
+            $id = $this->integer($rawId);
+            if ($id !== null && ($reference = $this->entityManager->find($type, $id)) !== null) {
+                ReferenceVisibility::requireVisible($reference, $character->getCampaign()->getOwner());
+            }
+        }
         $classId = $this->integer(
             $payload['classId'] ?? null,
         );

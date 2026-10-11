@@ -63,9 +63,11 @@ final class CharacterLevelUpController extends AbstractController
             return $character;
         }
 
-        return $this->json(
-            $optionsService->getOptions($character),
-        );
+        try {
+            return $this->json($optionsService->getOptions($character));
+        } catch (\DomainException $exception) {
+            return $this->validationError($exception->getMessage());
+        }
     }
 
     #[Route('', name: 'api_character_level_up', methods: ['POST'])]
@@ -112,6 +114,7 @@ final class CharacterLevelUpController extends AbstractController
         try {
             $selection = $requestResolver->resolve(
                 $payload,
+                $character,
             );
         } catch (\InvalidArgumentException $exception) {
             return $this->validationError(

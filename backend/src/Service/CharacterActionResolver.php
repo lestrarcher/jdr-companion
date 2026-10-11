@@ -22,7 +22,11 @@ final readonly class CharacterActionResolver
     {
         $actions = [];
 
-        foreach ($this->ruleRepository->findActiveOrdered() as $rule) {
+        $owner = $character->getCampaign()->getOwner();
+        foreach ($this->ruleRepository->findVisibleForOwner($owner) as $rule) {
+            if (!ReferenceVisibility::allows($rule, $owner)) {
+                continue;
+            }
             if (
                 $character->getLevelInClass($rule->getCharacterClass())
                 < $rule->getUnlockLevel()

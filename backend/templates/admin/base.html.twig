@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Administration{% endblock %} · JdR Companion</title>
+    <link rel="stylesheet" href="{{ app.request.basePath }}/assets/admin/admin.css">
+    <script src="{{ app.request.basePath }}/assets/admin/admin.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#content">Aller au contenu</a>
+<aside class="sidebar">
+    <a class="brand" href="{{ path('admin_dashboard') }}">JdR Companion<span>Administration</span></a>
+    <nav aria-label="Administration">
+        <a href="{{ path('admin_dashboard') }}">Tableau de bord</a>
+        <a href="{{ path('admin_reference') }}">Référentiel</a>
+        <a class="subnav" href="{{ path('admin_features') }}">Capacités</a>
+        {% for category, label in {'classes': 'Classes', 'subclasses': 'Sous-classes', 'races': 'Races', 'feats': 'Dons', 'resources': 'Ressources', 'progressions': 'Progressions'} %}
+            <a class="subnav" href="{{ path('admin_catalogue_list', {category: category}) }}">{{ label }}</a>
+        {% endfor %}
+    </nav>
+</aside>
+<main id="content">
+    {% for type, messages in app.flashes %}
+        {% for message in messages %}<p class="flash {{ type }}" role="status">{{ message }}</p>{% endfor %}
+    {% endfor %}
+    {% block body %}{% endblock %}
+</main>
+</body>
+</html>

@@ -4,29 +4,85 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Enum\ReferenceOrigin;
 use App\Repository\TrackableResourceRuleRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: TrackableResourceRuleRepository::class)]
 #[ORM\Table(name: 'trackable_resource_rule')]
 #[ORM\UniqueConstraint(
-    name: 'uniq_class_resource_level',
+    name: 'uniq_class_resource_level_off',
     columns: ['character_class_id', 'resource_definition_id', 'unlock_level'],
+    options: ['where' => "(((origin)::text = 'OFFICIAL'::text) AND (character_class_id IS NOT NULL))"],
 )]
 #[ORM\UniqueConstraint(
-    name: 'uniq_subclass_resource_level',
+    name: 'uniq_class_resource_level_own',
+    columns: ['owner_id', 'character_class_id', 'resource_definition_id', 'unlock_level'],
+    options: ['where' => "(((origin)::text = 'CUSTOM'::text) AND (character_class_id IS NOT NULL))"],
+)]
+#[ORM\UniqueConstraint(
+    name: 'uniq_subclass_resource_level_off',
     columns: ['character_subclass_id', 'resource_definition_id', 'unlock_level'],
+    options: ['where' => "(((origin)::text = 'OFFICIAL'::text) AND (character_subclass_id IS NOT NULL))"],
 )]
 #[ORM\UniqueConstraint(
-    name: 'uniq_race_resource_level',
+    name: 'uniq_subclass_resource_level_own',
+    columns: ['owner_id', 'character_subclass_id', 'resource_definition_id', 'unlock_level'],
+    options: ['where' => "(((origin)::text = 'CUSTOM'::text) AND (character_subclass_id IS NOT NULL))"],
+)]
+#[ORM\UniqueConstraint(
+    name: 'uniq_race_resource_level_off',
     columns: ['character_race_id', 'resource_definition_id', 'unlock_level'],
+    options: ['where' => "(((origin)::text = 'OFFICIAL'::text) AND (character_race_id IS NOT NULL))"],
 )]
 #[ORM\UniqueConstraint(
-    name: 'uniq_feat_resource_level',
-    columns: ['feat_id', 'resource_definition_id', 'unlock_level'],
+    name: 'uniq_race_resource_level_own',
+    columns: ['owner_id', 'character_race_id', 'resource_definition_id', 'unlock_level'],
+    options: ['where' => "(((origin)::text = 'CUSTOM'::text) AND (character_race_id IS NOT NULL))"],
 )]
+#[ORM\UniqueConstraint(
+    name: 'uniq_feat_resource_level_off',
+    columns: ['feat_id', 'resource_definition_id', 'unlock_level'],
+    options: ['where' => "(((origin)::text = 'OFFICIAL'::text) AND (feat_id IS NOT NULL))"],
+)]
+#[ORM\UniqueConstraint(
+    name: 'uniq_feat_resource_level_own',
+    columns: ['owner_id', 'feat_id', 'resource_definition_id', 'unlock_level'],
+    options: ['where' => "(((origin)::text = 'CUSTOM'::text) AND (feat_id IS NOT NULL))"],
+)]
+#[ORM\Index(name: 'idx_trackable_resource_rule_owner', columns: ['owner_id'])]
+#[ORM\HasLifecycleCallbacks]
 class TrackableResourceRule
 {
+    // Existing constructors and factories create official references only.
+    #[ORM\Column(length: 8, enumType: ReferenceOrigin::class, options: ['default' => 'OFFICIAL'])]
+    private ReferenceOrigin $origin = ReferenceOrigin::Official;
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'RESTRICT')]
+    private ?User $owner = null;
+
+    public function getOrigin(): ReferenceOrigin
+    {
+        return $this->origin;
+    }
+
+    public function getOwner(): ?User
+    {
+        return $this->owner;
+    }
+
+    // No independent setters: custom creation is deliberately not exposed yet.
+    #[ORM\PrePersist]
+    #[ORM\PreUpdate]
+    #[ORM\PostLoad]
+    public function validateReferenceOwnership(): void
+    {
+        if (($this->origin === ReferenceOrigin::Official) !== ($this->owner === null)) {
+            throw new \LogicException('Invalid reference origin/owner pair.');
+        }
+    }
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]

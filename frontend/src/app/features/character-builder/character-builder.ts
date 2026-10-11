@@ -333,7 +333,7 @@ export class CharacterBuilder {
   private loadReference(): void {
     this.loading.set(true);
 
-    this.referenceApi.getReference()
+    this.referenceApi.getCampaignReference(this.campaignId)
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
         next: (reference) => this.reference.set(reference),

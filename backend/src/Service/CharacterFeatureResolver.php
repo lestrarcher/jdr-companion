@@ -33,7 +33,11 @@ final readonly class CharacterFeatureResolver
     ): array {
         $resolvedRules = [];
 
-        foreach ($this->ruleRepository->findOrdered() as $rule) {
+        $owner = $character->getCampaign()->getOwner();
+        foreach ($this->ruleRepository->findVisibleForOwner($owner) as $rule) {
+            if (!ReferenceVisibility::allows($rule, $owner)) {
+                continue;
+            }
             if (!$this->isRuleApplicable($character, $rule, $progressionValues)) {
                 continue;
             }

@@ -145,9 +145,10 @@ final readonly class CharacterRestService
         $historicalDefinitions = [];
 
         if ($historicalSlugs !== []) {
-            foreach ($this->resourceDefinitionRepository->findBy([
-                'slug' => array_values($historicalSlugs),
-            ]) as $definition) {
+            foreach ($this->resourceDefinitionRepository->findVisibleBySlugs(
+                array_values($historicalSlugs),
+                $character->getCampaign()->getOwner(),
+            ) as $definition) {
                 $historicalDefinitions[$definition->getSlug()] = $definition;
             }
         }
@@ -170,6 +171,7 @@ final readonly class CharacterRestService
                     ?? $historicalDefinitions[$id] ?? null;
 
                 if ($definition === null) {
+                    // Unknown or foreign historical slug: preserve the complete entry.
                     return $resourceState;
                 }
 

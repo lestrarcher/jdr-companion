@@ -1,0 +1,30 @@
+{% extends 'admin/base.html.twig' %}
+{% block title %}Tableau de bord{% endblock %}
+{% block body %}
+    <header><p class="eyebrow">JdR Companion · Administration</p><h1>Tableau de bord</h1></header>
+    <section class="panel" aria-labelledby="catalogue-summary">
+        <h2 id="catalogue-summary">État du catalogue</h2>
+        <dl class="dashboard-summary">
+            <div><dt>Éléments de référence</dt><dd data-summary="total">{{ dashboard.total }}</dd></div>
+            <div><dt>Descriptions manquantes</dt><dd data-summary="missing-descriptions">{{ dashboard.missingDescriptions }}</dd></div>
+            <div><dt>Catégories disponibles</dt><dd data-summary="categories">{{ dashboard.categories|length }}</dd></div>
+        </dl>
+        <a href="{{ path('admin_reference') }}">Consulter le catalogue général</a>
+    </section>
+    <section aria-labelledby="reference-catalogue">
+        <h2 id="reference-catalogue">Catalogue de référence</h2>
+        <p class="muted">Les champs nuls, vides ou composés uniquement d’espaces sont signalés comme manquants.</p>
+        <div class="dashboard-grid">
+            {% for category, stats in dashboard.categories %}
+                <article class="panel dashboard-card" data-category="{{ category }}">
+                    <h3><a href="{{ category == 'features' ? path('admin_features') : path('admin_catalogue_list', {category: category}) }}">{{ stats.label }}</a></h3>
+                    <p><strong class="dashboard-count" data-count="total">{{ stats.total }}</strong> éléments</p>
+                    <dl>
+                        <dt>Sans nom</dt><dd data-count="missing-names" class="{{ stats.missingNames > 0 ? 'badge' : 'muted' }}">{{ stats.missingNames }}</dd>
+                        <dt>Sans description</dt><dd data-count="missing-descriptions" class="{{ stats.missingDescriptions > 0 ? 'badge' : 'muted' }}"><a aria-label="{{ stats.label }} : descriptions manquantes" href="{{ category == 'features' ? path('admin_features', {editorial: 'missing-description'}) : path('admin_catalogue_list', {category: category, editorial: 'missing-description'}) }}">{{ stats.missingDescriptions }}</a></dd>
+                    </dl>
+                </article>
+            {% endfor %}
+        </div>
+    </section>
+{% endblock %}

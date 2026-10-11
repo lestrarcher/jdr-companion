@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable, map } from 'rxjs';
-import { AbilityKey } from './dnd-reference-api.service';
+import { AbilityKey, AbilityReference, FeatReference } from './dnd-reference-api.service';
 
 export type HitPointGainMethod =
   | 'first_level'
@@ -181,6 +181,8 @@ export interface HitPointMethodOption {
 }
 
 export interface LevelUpOptions {
+  abilities: AbilityReference[];
+  feats: FeatReference[];
   canLevelUp: boolean;
   currentTotalLevel: number;
   nextTotalLevel: number;

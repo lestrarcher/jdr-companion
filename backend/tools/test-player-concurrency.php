@@ -39,12 +39,16 @@ function services($registry): array
     $slots = new CharacterSpellSlotCalculator();
     $features = new CharacterFeatureResolver(new CharacterFeatureRuleRepository($registry));
     $resources = new CharacterResourceResolver(new TrackableResourceRuleRepository($registry), $ability, $features);
-    $sync = new CharacterSessionStateSynchronizer($hp, $resources, new CharacterSessionStateRepository($registry), $slots);
+    $hpState = new App\Service\CharacterHitPointStateService($hp);
+    $slotState = new App\Service\CharacterSpellSlotStateService($slots);
+    $effects = new App\Repository\CharacterActiveEffectRepository($registry);
+    $sync = new CharacterSessionStateSynchronizer($hp, $hpState, $resources, new CharacterSessionStateRepository($registry), $slotState);
     $access = new PlayerCharacterAccess(new CharacterSessionStateRepository($registry));
-    $updater = new PlayerCharacterStateUpdater($sync);
+    $updater = new PlayerCharacterStateUpdater($sync, $hpState);
     $levelUp = new CharacterLevelUpService($em, new CharacterClassLevelRuleRepository($registry), $sync, new CharacterMulticlassEligibilityService($ability), $ability);
-    $rest = new CharacterRestService($hp, $resources, $sync, $slots, new TrackableResourceDefinitionRepository($registry), $ability);
-    $controller = new CharacterSessionStateController(new CharacterProfileSerializer($ability, $features, $resources, $hp, $slots), $sync);
+    $rest = new CharacterRestService($hp, $hpState, $resources, $sync, $slots, new TrackableResourceDefinitionRepository($registry), $ability, $effects, new App\Service\CharacterActiveEffectService($hpState), $em);
+    $profile = new CharacterProfileSerializer($ability, $features, $resources, $hp, $slots, new App\Service\CharacterActionResolver(new App\Repository\CharacterActionClassRuleRepository($registry)));
+    $controller = new CharacterSessionStateController($profile, $sync, new App\Service\CharacterSessionStateSerializer($profile, $hpState, $effects, $slotState));
     $controller->setContainer(new Container());
     return compact('em', 'ability', 'access', 'updater', 'levelUp', 'rest', 'controller');
 }

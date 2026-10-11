@@ -18,6 +18,10 @@
           Campagnes
         </a>
 
+        <a routerLink="/custom-content" routerLinkActive="active" ariaCurrentWhenActive="page">
+          Contenu personnalisé
+        </a>
+
         @if (sessionsUrl(); as url) {
           <a
             [routerLink]="url"
@@ -28,13 +32,6 @@
           </a>
         }
 
-        <a
-          routerLink="/dnd/reference"
-          routerLinkActive="active"
-          [routerLinkActiveOptions]="{ exact: true }"
-        >
-          Référentiel D&D
-        </a>
       </nav>
     </div>
 

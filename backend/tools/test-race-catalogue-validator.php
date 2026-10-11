@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Run: docker compose exec -T backend php tools/test-race-catalogue-validator.php
 
-use App\Service\RaceCatalogueValidator;
+use App\Service\Catalogue\RaceCatalogueValidator;
 
 require __DIR__ . '/../vendor/autoload.php';
 

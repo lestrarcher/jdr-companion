@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Service\FeatCatalogueValidator;
+use App\Service\Catalogue\FeatCatalogueValidator;
 
 require __DIR__ . '/../vendor/autoload.php';
 
@@ -21,7 +21,7 @@ try {
         }
         $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
         foreach ($files as $file) {
-            if ($file->getRealPath() === realpath(__DIR__ . '/../src/Service/FeatCatalogueValidator.php')) { continue; }
+            if ($file->getRealPath() === realpath(__DIR__ . '/../src/Service/Catalogue/FeatCatalogueValidator.php')) { continue; }
             if (!$file->isFile() || !in_array($file->getExtension(), ['php', 'ts', 'html', 'json', 'yaml', 'yml'], true)) {
                 continue;
             }

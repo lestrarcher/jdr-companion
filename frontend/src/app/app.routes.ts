@@ -40,6 +40,11 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       {
+        path: 'custom-content',
+        loadComponent: () =>
+          import('./features/custom-content/custom-content').then(component => component.CustomContent),
+      },
+      {
         path: 'campaigns',
         loadComponent: () =>
           import('./features/campaign-list/campaign-list').then(
@@ -73,13 +78,6 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/control-dashboard/control-dashboard').then(
             component => component.ControlDashboard,
-          ),
-      },
-      {
-        path: 'dnd/reference',
-        loadComponent: () =>
-          import('./features/dnd-reference/feature-manager/feature-manager').then(
-            component => component.FeatureManager,
           ),
       },
       {

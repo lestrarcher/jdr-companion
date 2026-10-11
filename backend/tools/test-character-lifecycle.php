@@ -35,7 +35,7 @@ $services = static function () use ($registry): array {
     $slots = new CharacterSpellSlotCalculator();
     $features = new CharacterFeatureResolver(new CharacterFeatureRuleRepository($registry));
     $resources = new CharacterResourceResolver(new TrackableResourceRuleRepository($registry), $ability, $features);
-    $sync = new CharacterSessionStateSynchronizer($hp, $resources, new CharacterSessionStateRepository($registry), $slots);
+    $sync = new CharacterSessionStateSynchronizer($hp, new App\Service\CharacterHitPointStateService($hp), $resources, new CharacterSessionStateRepository($registry), new App\Service\CharacterSpellSlotStateService($slots));
     $eligibility = new CharacterMulticlassEligibilityService($ability);
     $levelUp = new CharacterLevelUpService($em, new CharacterClassLevelRuleRepository($registry), $sync, $eligibility, $ability);
     return compact('em', 'ability', 'hp', 'slots', 'features', 'resources', 'sync', 'eligibility', 'levelUp');
@@ -240,7 +240,7 @@ try {
     foreach ([$pact, TrackableResourceRule::forClass($pact, $warlock, 1, 1), TrackableResourceRule::forClass($pact, $warlock, 2, 2)] as $entity) $s['em']->persist($entity);
     $s['em']->flush();
     $s['levelUp']->levelUp($character, $warlock);
-    $factory = new CharacterSessionStateFactory($s['hp'], $s['resources'], $s['slots']);
+    $factory = new CharacterSessionStateFactory($s['hp'], $s['resources'], $s['slots'], new App\Repository\CharacterActiveEffectRepository($registry));
     $state = $factory->create($character);
     foreach ($state['resources'] as &$pool) $pool['currentValue'] = 0;
     unset($pool);
@@ -281,8 +281,10 @@ try {
 
     // Exercise public rest service behavior, not just its private pool helper.
     $s = $services();
-    $rest = new App\Service\CharacterRestService($s['hp'], $s['resources'], $s['sync'], $s['slots'],
-        new App\Repository\TrackableResourceDefinitionRepository($registry), $s['ability']);
+    $hpState = new App\Service\CharacterHitPointStateService($s['hp']);
+    $rest = new App\Service\CharacterRestService($s['hp'], $hpState, $s['resources'], $s['sync'], $s['slots'],
+        new App\Repository\TrackableResourceDefinitionRepository($registry), $s['ability'],
+        new App\Repository\CharacterActiveEffectRepository($registry), new App\Service\CharacterActiveEffectService($hpState), $s['em']);
     foreach ([
         ['single-level', [6], ['d6' => 0], ['d6' => 1]],
         ['single-class', [6, 6, 6, 6, 6], ['d6' => 0], ['d6' => 2]],
