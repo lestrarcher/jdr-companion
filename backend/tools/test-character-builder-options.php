@@ -35,6 +35,18 @@ $check(isset($json['proficiencyRules'],$json['languageRules'],$json['expertiseRu
 $selection['training']=$payload;
 $response=$call($selection); $json=json_decode($response->getContent(),true,512,JSON_THROW_ON_ERROR);
 $check(count($json['resolved']['expertises']) === 2 && count($json['substitutions']) >= 2, 'Preview reflects selected proficiencies and expertise.');
+foreach (range(1, 2) as $refresh) {
+    $json = json_decode($call($selection)->getContent(), true, 512, JSON_THROW_ON_ERROR);
+    $languages = array_column($json['languageRules'], null, 'sourceKey');
+    $check(in_array('elvish', $languages['race:human-phb']['optionSlugs'], true), 'Refreshing retains selected language in editable options');
+    $expertises = array_column($json['expertiseRules'], null, 'ruleId');
+    $chosen = $payload['expertiseChoices'][0];
+    $check(array_diff($chosen['proficiencyIds'], $expertises[$chosen['ruleId']]['optionIds']) === [], 'Refreshing retains selected expertises in editable options');
+}
+$races['human-phb']->setLanguages(null)->setLanguageChoiceCount(null);
+$response = $call(array_diff_key($selection, ['training' => true]));
+$check($response->getStatusCode() === 422 && str_contains($response->getContent(), 'import-training'), 'Missing catalogue metadata rejected before page-two validation');
+$races['human-phb']->setLanguages(['common'])->setLanguageChoiceCount(1);
 $selection['classId']=99999;
 $check($call($selection)->getStatusCode()===422,'Unknown references return 422.');
 $foreign=new User(); $id($foreign,2); $tokens->setToken(new UsernamePasswordToken($foreign,'test',[]));

@@ -128,6 +128,7 @@ try {
     $em->persist($item); $em->persist($owned); $em->flush();
     $access = new App\Service\PlayerCharacterAccess(new CharacterSessionStateRepository($registry));
     $updater = new App\Service\PlayerCharacterStateUpdater($s['sync'], $s['hpState']);
+    $inspiration = new App\Service\CharacterInspirationService($em, new CharacterSessionStateRepository($registry));
     $profile = new App\Service\CharacterProfileSerializer($s['ability'], $s['features'], $s['resources'], $s['hp'], $s['slots'], new App\Service\CharacterActionResolver(new App\Repository\CharacterActionClassRuleRepository($registry)), trainingPresenterForRegistry($registry));
     $serializer = new App\Service\CharacterSessionStateSerializer($profile, $s['hpState'], new App\Repository\CharacterActiveEffectRepository($registry), $s['slotState']);
     $controller = new App\Controller\CharacterSessionStateController($profile, $s['sync'], $serializer);
@@ -146,15 +147,15 @@ try {
     $check(isset($read['character']['training']['proficiencies'], $read['character']['training']['languages'], $read['character']['training']['expertises']), 'Public GET includes resolved training');
     $check($read['revision'] === $initialRevision && $session->getRevision() === $initialRevision, 'Read exposes revision without incrementing it');
     $missingRevision = Symfony\Component\HttpFoundation\Request::create('/', 'PATCH', [], [], [], ['CONTENT_TYPE' => 'application/json'], '{"state":{}}');
-    $check($controller->updatePublic($token, $missingRevision, $access, $em, $updater)->getStatusCode() === 422, 'Omitted revision cannot bypass concurrency');
-    $updated = $controller->updatePublic($token, $request(['state' => [], 'revision' => $initialRevision]), $access, $em, $updater);
+    $check($controller->updatePublic($token, $missingRevision, $access, $em, $updater, $inspiration)->getStatusCode() === 422, 'Omitted revision cannot bypass concurrency');
+    $updated = $controller->updatePublic($token, $request(['state' => [], 'revision' => $initialRevision]), $access, $em, $updater, $inspiration);
     $check($updated->getStatusCode() === 200, 'Current revision accepted');
     $check(json_decode($updated->getContent(), true)['character']['training'] === $read['character']['training'], 'Public PATCH retains resolved training');
     $check($session->getRevision() === $initialRevision + 1, 'Successful mutation increments revision');
-    $check($controller->updatePublic($token, $request(['state' => [], 'revision' => $initialRevision]), $access, $em, $updater)->getStatusCode() === 409, 'Stale revision is a conflict');
+    $check($controller->updatePublic($token, $request(['state' => [], 'revision' => $initialRevision]), $access, $em, $updater, $inspiration)->getStatusCode() === 409, 'Stale revision is a conflict');
     $routes = [
         'character GET' => fn ($t) => $controller->showPublic($t, $access),
-        'character PATCH' => fn ($t) => $controller->updatePublic($t, $request(['state' => []]), $access, $em, $updater),
+        'character PATCH' => fn ($t) => $controller->updatePublic($t, $request(['state' => []]), $access, $em, $updater, $inspiration),
         'wallet GET' => fn ($t) => $wallet->show($t, $access),
         'wallet PATCH' => fn ($t) => $wallet->update($t, $request(['goldPieces' => 1]), $access, $em),
         'inventory GET' => fn ($t) => $inventory->list($t, $access, $s['ability']),
@@ -216,31 +217,31 @@ try {
     ];
     foreach ($invalid as $label => $patch) {
         $before = $session->getState();
-        $check($status(fn () => $controller->updatePublic($token, $request(['state' => $patch]), $access, $em, $updater)) === 422, "$label rejected");
+        $check($status(fn () => $controller->updatePublic($token, $request(['state' => $patch]), $access, $em, $updater, $inspiration)) === 422, "$label rejected");
         $check($session->getState() === $before, "$label rejected atomically");
     }
-    $check($status(fn () => $controller->updatePublic($token, $request(['state' => ['resources' => [['id' => 'ordinary', 'currentValue' => 3]]]]), $access, $em, $updater)) === 403, 'Normal PATCH cannot refill resource');
+    $check($status(fn () => $controller->updatePublic($token, $request(['state' => ['resources' => [['id' => 'ordinary', 'currentValue' => 3]]]]), $access, $em, $updater, $inspiration)) === 403, 'Normal PATCH cannot refill resource');
     $legal = ['hitPoints' => ['current' => 5, 'temporary' => 8], 'hitDice' => [['id' => 'd6', 'current' => 0]],
         'resources' => [['id' => 'ordinary', 'currentValue' => 1], ['id' => 'manual', 'currentValue' => 3, 'notes' => 'player note'],
             ['id' => 'stored', 'currentValue' => 2, 'storedValues' => [7, 12]]]];
-    $check($status(fn () => $controller->updatePublic($token, $request(['state' => $legal]), $access, $em, $updater)) === 200, 'Legitimate healing, temp HP, spending, manual resource, notes and stored rolls');
-    $check($status(fn () => $controller->updatePublic($token, $request(['state' => ['hitDice' => [['id' => 'd6', 'current' => 1]]]]), $access, $em, $updater)) === 403, 'PATCH cannot recover spent hit dice');
-    $check($status(fn () => $controller->updatePublic($token, $request(['state' => ['resources' => [['id' => 'stored', 'currentValue' => 2, 'storedValues' => [20, 20]]]]]), $access, $em, $updater)) === 403, 'Stored rolls cannot be rerolled');
-    $check($status(fn () => $controller->updatePublic($token, $request(['state' => ['resources' => [['id' => 'stored', 'currentValue' => 1, 'storedValues' => [12]]]]]), $access, $em, $updater)) === 200, 'Stored result consumption works');
-    $check($status(fn () => $controller->updatePublic($token, $request(['state' => ['resources' => [['id' => 'stored', 'currentValue' => 1, 'storedValues' => null]]]]), $access, $em, $updater)) === 422, 'Stored rolls cannot be cleared to enable reroll');
-    $check($status(fn () => $controller->updatePublic($token, $request(['state' => ['resources' => [['id' => 'ordinary', 'currentValue' => 1, 'notes' => 'forged']]]]), $access, $em, $updater)) === 403, 'Non-editable resource notes protected');
+    $check($status(fn () => $controller->updatePublic($token, $request(['state' => $legal]), $access, $em, $updater, $inspiration)) === 200, 'Legitimate healing, temp HP, spending, manual resource, notes and stored rolls');
+    $check($status(fn () => $controller->updatePublic($token, $request(['state' => ['hitDice' => [['id' => 'd6', 'current' => 1]]]]), $access, $em, $updater, $inspiration)) === 403, 'PATCH cannot recover spent hit dice');
+    $check($status(fn () => $controller->updatePublic($token, $request(['state' => ['resources' => [['id' => 'stored', 'currentValue' => 2, 'storedValues' => [20, 20]]]]]), $access, $em, $updater, $inspiration)) === 403, 'Stored rolls cannot be rerolled');
+    $check($status(fn () => $controller->updatePublic($token, $request(['state' => ['resources' => [['id' => 'stored', 'currentValue' => 1, 'storedValues' => [12]]]]]), $access, $em, $updater, $inspiration)) === 200, 'Stored result consumption works');
+    $check($status(fn () => $controller->updatePublic($token, $request(['state' => ['resources' => [['id' => 'stored', 'currentValue' => 1, 'storedValues' => null]]]]), $access, $em, $updater, $inspiration)) === 422, 'Stored rolls cannot be cleared to enable reroll');
+    $check($status(fn () => $controller->updatePublic($token, $request(['state' => ['resources' => [['id' => 'ordinary', 'currentValue' => 1, 'notes' => 'forged']]]]), $access, $em, $updater, $inspiration)) === 403, 'Non-editable resource notes protected');
     $beforePartial = $session->getState();
-    $check($status(fn () => $controller->updatePublic($token, $request(['state' => ['resources' => [['id' => 'ordinary', 'currentValue' => 0]]]]), $access, $em, $updater)) === 200, 'Partial resource consumption');
+    $check($status(fn () => $controller->updatePublic($token, $request(['state' => ['resources' => [['id' => 'ordinary', 'currentValue' => 0]]]]), $access, $em, $updater, $inspiration)) === 200, 'Partial resource consumption');
     $afterPartial = $session->getState();
     foreach (['hitPoints', 'hitDice', 'progressions', 'serverOnly'] as $field) $check($afterPartial[$field] === $beforePartial[$field], "Omitted $field preserved");
     $check(array_column($afterPartial['resources'], null, 'id')['history'] === array_column($initial['resources'], null, 'id')['history'], 'Omitted historical entry preserved exactly');
     $activate = ['progressions' => [['id' => 'security-progress', 'currentValue' => 3]]];
-    $check($status(fn () => $controller->updatePublic($token, $request(['state' => $activate]), $access, $em, $updater)) === 200, 'Progression activation allowed');
+    $check($status(fn () => $controller->updatePublic($token, $request(['state' => $activate]), $access, $em, $updater, $inspiration)) === 200, 'Progression activation allowed');
     $check(array_column($session->getState()['resources'], 'currentValue', 'id')['progress-resource'] === 3, 'First activation initializes at maximum');
     $session->setState($updater->merge($session, ['resources' => [['id' => 'progress-resource', 'currentValue' => 1]]]));
     $session->setState($updater->merge($session, ['progressions' => [['id' => 'security-progress', 'currentValue' => 2]], 'resources' => [['id' => 'progress-resource', 'currentValue' => 1]]]));
     $check(array_column($session->getState()['resources'], 'currentValue', 'id')['progress-resource'] === 1, 'Full snapshot can echo unchanged deactivated resource');
-    $check($status(fn () => $controller->updatePublic($token, $request(['state' => ['resources' => [['id' => 'progress-resource', 'currentValue' => 2]]]]), $access, $em, $updater)) === 422, 'Inactive historical resource cannot change');
+    $check($status(fn () => $controller->updatePublic($token, $request(['state' => ['resources' => [['id' => 'progress-resource', 'currentValue' => 2]]]]), $access, $em, $updater, $inspiration)) === 422, 'Inactive historical resource cannot change');
     $session->setState($updater->merge($session, $activate));
     $check(array_column($session->getState()['resources'], 'currentValue', 'id')['progress-resource'] === 1, 'Reactivation preserves consumption');
     $session->setLevelUpAllowed(true); $em->flush();
@@ -250,6 +251,7 @@ try {
     $check(!array_key_exists('levelUpAllowed', $session->getState()), 'Unknown state keys never persisted');
     // Portent uses the same isolated database, API controller and security validator.
     require __DIR__ . '/test-portent-scenarios.php';
+    require __DIR__ . '/test-inspiration-scenarios.php';
     echo "OK: $checks player security and Portent assertions; temporary tables rolled back.\n";
 } finally {
     while ($db->isTransactionActive()) $db->rollBack();

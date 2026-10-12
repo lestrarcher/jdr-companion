@@ -61,6 +61,7 @@ final readonly class CharacterSessionStateSynchronizer
      */
     public function synchronizeResources(Character $character, array $state): array
     {
+        $state['inspiration'] = $character->hasInspiration();
         $maximums = $this->resourceMaximums($character, $this->extractProgressionValues($state), $state);
         $resources = $state['resources'] ?? [];
 

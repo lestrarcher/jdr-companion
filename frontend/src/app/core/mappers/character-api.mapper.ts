@@ -6,6 +6,7 @@ export interface CharacterActionsState {
 }
 
 export interface CharacterSessionStatePayload {
+  inspiration?: boolean;
   hitPoints: {
     current: number;
     temporary: number;

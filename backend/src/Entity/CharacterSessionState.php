@@ -73,6 +73,7 @@ class CharacterSessionState
     ) {
         $this->gameSession = $gameSession;
         $this->character = $character;
+        unset($state['inspiration']);
         $this->state = $state;
         $this->accessToken = bin2hex(random_bytes(32));
 
@@ -106,7 +107,7 @@ class CharacterSessionState
      */
     public function getState(): array
     {
-        return $this->state;
+        return array_replace($this->state, ['inspiration' => $this->character->hasInspiration()]);
     }
 
     /**
@@ -114,6 +115,8 @@ class CharacterSessionState
      */
     public function setState(array $state): static
     {
+        // Inspiration is character-wide and can only change through its controlled operation.
+        unset($state['inspiration']);
         $this->state = $state;
         $this->touch();
 

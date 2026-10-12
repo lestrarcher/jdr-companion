@@ -48,7 +48,10 @@ final readonly class CharacterTrainingPresenter
                 'sourceKey' => $requirement['sourceKey'], 'sourceType' => $requirement['sourceType'], 'sourceId' => $requirement['sourceId'],
                 'automaticSlugs' => array_map(static fn ($l) => $l->getSlug(), $requirement['automatic']),
                 'choiceCount' => $requirement['choiceCount'],
-                'optionSlugs' => array_values(array_map(static fn ($l) => $l->getSlug(), array_filter($requirement['options'], static fn ($l) => !isset($effective['languages'][$l->getSlug()])))),
+                // Keep this source's resolved selections visible when refreshing the editor.
+                'optionSlugs' => array_values(array_map(static fn ($l) => $l->getSlug(), array_filter($requirement['options'], static fn ($l) => !isset($effective['languages'][$l->getSlug()])
+                    || ($requirement['choiceCount'] > 0 && !in_array($l, $requirement['automatic'], true)
+                        && in_array($requirement['sourceKey'], $effective['languages'][$l->getSlug()]['sources'], true))))),
             ];
         }
         $substitutions = [];
@@ -67,7 +70,8 @@ final readonly class CharacterTrainingPresenter
             $expertises[] = ['ruleId' => $rule->getId(), 'key' => $rule->getImportKey(), 'label' => $rule->getLabel(),
                 'unlockLevel' => $rule->getUnlockLevel(), 'choiceCount' => $rule->getChoiceCount(),
                 'optionIds' => array_values(array_map(static fn ($d) => $d->getId(), array_filter($rule->getOptions()->toArray(),
-                    static fn ($d) => isset($effective['proficiencies'][$d->getSlug()]) && !isset($effective['expertises'][$d->getSlug()]))))];
+                    static fn ($d) => isset($effective['proficiencies'][$d->getSlug()]) && (!isset($effective['expertises'][$d->getSlug()])
+                        || in_array($rule->getImportKey(), $effective['expertises'][$d->getSlug()]['sources'], true)))))];
         }
         $isRanger = false;
         foreach ($character->getClassLevels() as $level) if ($level->getCharacterClass()->getSlug() === 'ranger') $isRanger = true;

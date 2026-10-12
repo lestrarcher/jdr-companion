@@ -18,6 +18,7 @@ use App\Repository\CharacterActiveEffectRepository;
 use App\Repository\ProgressionDefinitionRepository;
 use App\Service\PlayerCharacterAccess;
 use App\Service\PlayerCharacterStateUpdater;
+use App\Service\CharacterInspirationService;
 use App\Service\CharacterActiveEffectService;
 use App\Service\CharacterHitPointStateService;
 use App\Service\CharacterSessionStateFactory;
@@ -652,6 +653,7 @@ public function terminateActiveEffect(
         PlayerCharacterAccess $playerAccess,
         EntityManagerInterface $entityManager,
         PlayerCharacterStateUpdater $updater,
+        CharacterInspirationService $inspiration,
     ): JsonResponse {
         $state = $playerAccess->requireParticipating($accessToken);
 
@@ -680,13 +682,13 @@ public function terminateActiveEffect(
         }
         $mergedState = $updater->merge($state, $newState);
         try {
-            return $entityManager->wrapInTransaction(function () use ($entityManager, $state, $revision, $mergedState): JsonResponse {
-                $entityManager->lock($state->getGameSession(), LockMode::PESSIMISTIC_READ);
-                $entityManager->refresh($state->getGameSession());
-                if ($state->getGameSession()->getStatus() !== GameSession::STATUS_LIVE) {
-                    return $this->json(['message' => 'Cette session n’est pas ouverte.'], 409);
+            return $entityManager->wrapInTransaction(function () use ($entityManager, $state, $revision, $mergedState, $inspiration): JsonResponse {
+                PlayerCharacterAccess::lockForMutation($entityManager, $state);
+                if ($state->getRevision() !== $revision) {
+                    return $this->json(['message' => 'Le personnage a été modifié ailleurs. Rechargez son état.'], 409);
                 }
                 $entityManager->lock($state, LockMode::OPTIMISTIC, $revision);
+                $inspiration->changeLocked($state->getCharacter(), $mergedState['inspiration']);
                 $state->setState($mergedState);
                 $entityManager->flush();
                 return $this->json($this->sessionStateSerializer->serialize($state));

@@ -137,7 +137,7 @@ declare(strict_types=1);
     $fresh = new App\Entity\CharacterSessionState($game, $characters['5/0'], ['resources' => []]);
     $assert($pool($sync->synchronize($characters['5/0'], $fresh->getState()), $slug)['currentValue'] === 25, 'missing pool initializes at calculated maximum');
     $firstConsumption = $updater->merge($fresh, ['resources' => [['id' => $slug, 'currentValue' => 15]]]);
-    $assert($pool($firstConsumption, $slug)['currentValue'] === 15 && $fresh->getState() === ['resources' => []], 'first consumption works without rewriting existing sessions in migration');
+    $assert($pool($firstConsumption, $slug)['currentValue'] === 15 && $fresh->getState() === ['resources' => [], 'inspiration' => false], 'first consumption works without rewriting existing sessions in migration');
     $session = $sessions[25];
     $session->setState($updater->merge($session, ['resources' => [['id' => $slug, 'currentValue' => 15]]]));
     $assert($pool($session->getState(), $slug)['currentValue'] === 15, 'spending ten points leaves fifteen');

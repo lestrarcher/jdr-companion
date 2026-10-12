@@ -131,6 +131,7 @@ try {
         ['id' => 'pact-magic', 'currentValue' => 1],
     ]];
     $session->setState($server);
+    $server = $session->getState(); // Includes the character-wide inspiration projection.
     $reject = static function (array $patch, int $status) use ($updater, $session, $check): void {
         $before = $session->getState();
         try {
@@ -377,6 +378,7 @@ try {
         $state = $httpState;
         $state['resources'][0]['currentValue'] = $ps;
         $session->setState($state);
+        $state = $session->getState();
         $em->flush();
         $revision = $session->getRevision();
         $response = $call($method, $session, ['level' => $level, 'revision' => $revision]);

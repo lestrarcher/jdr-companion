@@ -19,7 +19,7 @@ final readonly class PlayerCharacterStateUpdater
 
     public function merge(CharacterSessionState $session, array $patch): array
     {
-        $this->keys($patch, ['hitPoints', 'hitDice', 'resources', 'progressions']);
+        $this->keys($patch, ['hitPoints', 'hitDice', 'resources', 'progressions', 'inspiration']);
         $character = $session->getCharacter();
         $state = $session->getState();
         $before = $this->synchronizer->snapshot($character, $this->synchronizer->extractProgressionValues($state), $state);
@@ -152,6 +152,12 @@ final readonly class PlayerCharacterStateUpdater
         foreach ($initialized['resources'] as $entry) {
             if ($this->find($state['resources'] ?? [], $entry['id']) === null) $state['resources'][] = $entry;
         }
+        if (array_key_exists('inspiration', $patch)) {
+            if (!is_bool($patch['inspiration'])) $this->invalid('L’inspiration doit être un booléen.');
+            if ($patch['inspiration'] && !$character->hasInspiration()) $this->forbidden('Seul le MJ peut accorder l’inspiration.');
+            $state['inspiration'] = $patch['inspiration'];
+        }
+
         return $state;
     }
 

@@ -35,6 +35,10 @@ final class ImportTrainingCommand extends Command
                     foreach ($this->em->getRepository($class)->findAll() as $entity) $existing[$kind][str_ends_with($kind, 'Rules') ? $entity->getImportKey() : $entity->getSlug()] = $entity;
                 }
                 $plan = $this->planner->plan($catalogue, $races, $existing, (bool) $input->getOption('update-existing'));
+                $missingRaces = array_keys(array_filter($plan['races'], static fn ($item) => $item['action'] === 'keep'));
+                if ($missingRaces !== []) {
+                    throw new \DomainException(count($missingRaces).' races nécessitent un complément de langues ('.implode(', ', $missingRaces).'). Relancer app:dnd:import-training --update-existing --dry-run, puis --update-existing après vérification. Aucune écriture.');
+                }
                 foreach ($plan as $kind => $items) foreach ($items as $key => $item) {
                     $io->writeln($kind.' '.$key.' : '.$item['action']);
                     if ($input->getOption('dry-run')) continue;

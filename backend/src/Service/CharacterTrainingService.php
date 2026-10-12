@@ -19,6 +19,10 @@ final readonly class CharacterTrainingService
         if ($character->getCampaign()->getOwner() !== $actor
             && ($actor->getId() === null || $character->getCampaign()->getOwner()->getId() !== $actor->getId())) throw new \DomainException('Seul le MJ peut attribuer ces choix.');
         foreach (array_keys($payload) as $key) if (!in_array($key, ['proficiencyChoices', 'languageChoices', 'substitutions', 'expertiseChoices', 'manualGrants'], true)) throw new \DomainException('Champ de formation inconnu : '.$key);
+        $race = $character->getRace();
+        if ($race && $race->getOrigin()->value === 'OFFICIAL' && $this->raceMetadata->resolve($race)['languages'] === []) {
+            throw new \DomainException('Métadonnées de langues raciales manquantes pour '.$race->getSlug().' : exécuter app:dnd:import-training --update-existing après vérification avec --dry-run.');
+        }
         $refs = $this->references->load($character);
         $definitions = $languages = $rules = [];
         foreach ($refs['proficiencies'] as $definition) $definitions[$definition->getId()] = $definition;
@@ -102,8 +106,6 @@ final readonly class CharacterTrainingService
         }
         if ($complete) {
             foreach ($requirements as $key => $requirement) if ($requirement['choiceCount'] > 0 && !isset($seen[$key])) throw new \DomainException('Choix de langues incomplets : '.$key);
-            $race = $character->getRace();
-            if ($race && $race->getOrigin()->value === 'OFFICIAL' && $this->raceMetadata->resolve($race)['languages'] === []) throw new \DomainException('Métadonnées de langues raciales manquantes : importer le catalogue avant création.');
         }
         $expertiseRules = [];
         foreach ($refs['expertiseRules'] as $rule) if ($this->resolver->applicable($character, $rule)) $expertiseRules[$rule->getId()] = $rule;

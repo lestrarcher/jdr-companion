@@ -96,11 +96,11 @@ foreach ([2, 6, 13, 14, 'other'] as $tier) {
     $check(in_array('divination-greater-portent', $slugs, true) === ($tier === 14), 'Greater Portent activates at 14');
 }
 $pool = static fn ($session) => array_column($session->getState()['resources'], null, 'id')['des-de-presage'];
-$saveRolls = static function ($session, array $values, int $expected = 200) use ($controller, $access, $em, $updater, $status, $check): void {
+$saveRolls = static function ($session, array $values, int $expected = 200) use ($controller, $access, $em, $updater, $inspiration, $status, $check): void {
     $before = $session->getState();
     $body = ['revision' => $session->getRevision(), 'state' => ['resources' => [['id' => 'des-de-presage', 'currentValue' => count($values), 'storedValues' => $values]]]];
     $request = Symfony\Component\HttpFoundation\Request::create('/', 'PATCH', [], [], [], ['CONTENT_TYPE' => 'application/json'], json_encode($body, JSON_THROW_ON_ERROR));
-    $check($status(fn () => $controller->updatePublic($session->getAccessToken(), $request, $access, $em, $updater)) === $expected, 'Portent PATCH returns ' . $expected);
+    $check($status(fn () => $controller->updatePublic($session->getAccessToken(), $request, $access, $em, $updater, $inspiration)) === $expected, 'Portent PATCH returns ' . $expected);
     if ($expected !== 200) $check($session->getState() === $before, 'Invalid Portent input leaves state untouched');
 };
 $session = $portentSessions[6];
@@ -134,6 +134,7 @@ $legacyDefinition = ['portraitUrl' => '/portrait.png', 'resources' => [
     ['id' => 'stored', 'storedValuesConfig' => ['requiredCount' => 2, 'minimumValue' => 1, 'maximumValue' => 20]],
 ]];
 $character->setDefinition($legacyDefinition);
+$em->flush(); // API mutations refresh the character under its cross-session lock.
 $definition = $profile->serialize($character)['definition'];
 $check($definition['resources'][0]['storedValuesConfig']['requiredCount'] === 2, 'Runtime Portent overrides stale personal configuration');
 $check($definition['resources'][1] === $legacyDefinition['resources'][1] && $definition['portraitUrl'] === '/portrait.png', 'Other legacy configuration preserved exactly');

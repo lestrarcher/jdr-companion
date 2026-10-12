@@ -30,6 +30,19 @@ class Character
     #[ORM\Column]
     private ?int $id = null;
 
+    #[ORM\Column(options: ['default' => false])]
+    private bool $inspiration = false;
+
+    public function hasInspiration(): bool
+    {
+        return $this->inspiration;
+    }
+
+    public function setInspiration(bool $inspiration): void
+    {
+        $this->inspiration = $inspiration;
+    }
+
     #[ORM\ManyToOne(targetEntity: Campaign::class)]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private Campaign $campaign;

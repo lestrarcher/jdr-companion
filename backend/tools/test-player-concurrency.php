@@ -82,7 +82,7 @@ if ($worker) {
     if (trim((string) fgets(STDIN)) !== 'GO') exit(2);
     try {
         $response = match ($action) {
-            'state' => $s['controller']->updatePublic($session->getAccessToken(), $request, $s['access'], $em, $s['updater']),
+            'state' => $s['controller']->updatePublic($session->getAccessToken(), $request, $s['access'], $em, $s['updater'], new App\Service\CharacterInspirationService($em, new CharacterSessionStateRepository($registry))),
             'level' => $s['controller']->publicLevelUp($session->getAccessToken(), $request, $s['access'], new CharacterLevelUpRequestResolver($em), $s['levelUp'], $em),
             'rest-create' => $rests->create($session->getAccessToken(), $request, $s['access'], new RestRequestRepository($registry), $em),
             'rest-resolve' => $rests->resolve($data['rest'], $request, new RestRequestRepository($registry), $s['rest'], $em),
@@ -179,6 +179,22 @@ try {
     ], 'character_session_state');
     $check($statuses($result) === [200, 409], 'Only one stale-snapshot contender succeeds');
     $check($fresh()->getRevision() === $revision + 1, 'Concurrent state write increments once');
+
+    // Two live session tokens must not spend the same character-wide inspiration twice.
+    $secondGame = (new GameSession($campaign, 'second', 'Second'))->setStatus(GameSession::STATUS_LIVE);
+    $secondState = new CharacterSessionState($secondGame, $character, $state->getState());
+    $character->setInspiration(true);
+    $em->persist($secondGame); $em->persist($secondState); $em->flush();
+    $revision = $fresh()->getRevision();
+    $secondRevision = $secondState->getRevision();
+    $result = $run('state', [
+        $base + ['body' => ['revision' => $revision, 'state' => ['inspiration' => false]]],
+        ['session' => $secondState->getId(), 'character' => $character->getId(), 'body' => ['revision' => $secondRevision, 'state' => ['inspiration' => false]]],
+    ]);
+    $check($statuses($result) === [200, 409], 'Cross-session concurrent inspiration spending has one winner');
+    $em->refresh($character); $em->refresh($secondState);
+    $check(!$character->hasInspiration() && !$secondState->getState()['inspiration'], 'Inspiration remains spent in both sessions');
+    $check($fresh()->getRevision() === $revision + 1 && $secondState->getRevision() === $secondRevision + 1, 'Both session revisions change once');
 
     $result = $run('wallet', [$base + ['body' => ['goldPieces' => 3]], $base + ['body' => ['goldPieces' => 7]]]);
     $check($statuses($result) === [200, 200], 'Both wallet deltas succeed');
