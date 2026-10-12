@@ -1,0 +1,1069 @@
+{
+  "edition": "2014",
+  "sources": [
+    "https://www.dndbeyond.com/sources/dnd/basic-rules-2014/classes",
+    "https://www.dndbeyond.com/sources/dnd/basic-rules-2014/customization-options"
+  ],
+  "rules": [
+    {
+      "key": "phb-2014-barbarian-starting-saves",
+      "classSlug": "barbarian",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "saves",
+      "label": "Barbare — Sauvegardes (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "saving-throw-strength",
+        "saving-throw-constitution"
+      ]
+    },
+    {
+      "key": "phb-2014-barbarian-starting-weapons",
+      "classSlug": "barbarian",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "weapons",
+      "label": "Barbare — Armes (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "simple-weapons",
+        "martial-weapons"
+      ]
+    },
+    {
+      "key": "phb-2014-barbarian-starting-armor",
+      "classSlug": "barbarian",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "armor",
+      "label": "Barbare — Armures et boucliers (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "light-armor",
+        "medium-armor",
+        "shields"
+      ]
+    },
+    {
+      "key": "phb-2014-barbarian-starting-skills",
+      "classSlug": "barbarian",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "skills",
+      "label": "Barbare — Compétences (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 2,
+      "options": [
+        "animal-handling",
+        "athletics",
+        "intimidation",
+        "nature",
+        "perception",
+        "survival"
+      ]
+    },
+    {
+      "key": "phb-2014-barbarian-multiclass-weapons",
+      "classSlug": "barbarian",
+      "acquisitionMode": "MULTICLASS",
+      "category": "weapons",
+      "label": "Barbare — Armes (multiclassage)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "simple-weapons",
+        "martial-weapons"
+      ]
+    },
+    {
+      "key": "phb-2014-barbarian-multiclass-armor",
+      "classSlug": "barbarian",
+      "acquisitionMode": "MULTICLASS",
+      "category": "armor",
+      "label": "Barbare — Armures et boucliers (multiclassage)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "shields"
+      ]
+    },
+    {
+      "key": "phb-2014-bard-starting-saves",
+      "classSlug": "bard",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "saves",
+      "label": "Barde — Sauvegardes (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "saving-throw-dexterity",
+        "saving-throw-charisma"
+      ]
+    },
+    {
+      "key": "phb-2014-bard-starting-weapons",
+      "classSlug": "bard",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "weapons",
+      "label": "Barde — Armes (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "simple-weapons",
+        "hand-crossbow",
+        "longsword",
+        "rapier",
+        "shortsword"
+      ]
+    },
+    {
+      "key": "phb-2014-bard-starting-armor",
+      "classSlug": "bard",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "armor",
+      "label": "Barde — Armures et boucliers (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "light-armor"
+      ]
+    },
+    {
+      "key": "phb-2014-bard-starting-tools",
+      "classSlug": "bard",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "tools",
+      "label": "Barde — Outils et instruments (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 3,
+      "options": [
+        "shawm",
+        "horn",
+        "bagpipes",
+        "flute",
+        "pan-flute",
+        "lute",
+        "lyre",
+        "drum",
+        "dulcimer",
+        "viol"
+      ]
+    },
+    {
+      "key": "phb-2014-bard-starting-skills",
+      "classSlug": "bard",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "skills",
+      "label": "Barde — Compétences (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 3,
+      "options": [
+        "acrobatics",
+        "animal-handling",
+        "arcana",
+        "athletics",
+        "deception",
+        "history",
+        "insight",
+        "intimidation",
+        "investigation",
+        "medicine",
+        "nature",
+        "perception",
+        "performance",
+        "persuasion",
+        "religion",
+        "sleight-of-hand",
+        "stealth",
+        "survival"
+      ]
+    },
+    {
+      "key": "phb-2014-bard-multiclass-armor",
+      "classSlug": "bard",
+      "acquisitionMode": "MULTICLASS",
+      "category": "armor",
+      "label": "Barde — Armures et boucliers (multiclassage)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "light-armor"
+      ]
+    },
+    {
+      "key": "phb-2014-bard-multiclass-tools",
+      "classSlug": "bard",
+      "acquisitionMode": "MULTICLASS",
+      "category": "tools",
+      "label": "Barde — Outils et instruments (multiclassage)",
+      "unlockLevel": 1,
+      "choiceCount": 1,
+      "options": [
+        "shawm",
+        "horn",
+        "bagpipes",
+        "flute",
+        "pan-flute",
+        "lute",
+        "lyre",
+        "drum",
+        "dulcimer",
+        "viol"
+      ]
+    },
+    {
+      "key": "phb-2014-bard-multiclass-skills",
+      "classSlug": "bard",
+      "acquisitionMode": "MULTICLASS",
+      "category": "skills",
+      "label": "Barde — Compétences (multiclassage)",
+      "unlockLevel": 1,
+      "choiceCount": 1,
+      "options": [
+        "acrobatics",
+        "animal-handling",
+        "arcana",
+        "athletics",
+        "deception",
+        "history",
+        "insight",
+        "intimidation",
+        "investigation",
+        "medicine",
+        "nature",
+        "perception",
+        "performance",
+        "persuasion",
+        "religion",
+        "sleight-of-hand",
+        "stealth",
+        "survival"
+      ]
+    },
+    {
+      "key": "phb-2014-cleric-starting-saves",
+      "classSlug": "cleric",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "saves",
+      "label": "Clerc — Sauvegardes (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "saving-throw-wisdom",
+        "saving-throw-charisma"
+      ]
+    },
+    {
+      "key": "phb-2014-cleric-starting-weapons",
+      "classSlug": "cleric",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "weapons",
+      "label": "Clerc — Armes (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "simple-weapons"
+      ]
+    },
+    {
+      "key": "phb-2014-cleric-starting-armor",
+      "classSlug": "cleric",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "armor",
+      "label": "Clerc — Armures et boucliers (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "light-armor",
+        "medium-armor",
+        "shields"
+      ]
+    },
+    {
+      "key": "phb-2014-cleric-starting-skills",
+      "classSlug": "cleric",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "skills",
+      "label": "Clerc — Compétences (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 2,
+      "options": [
+        "history",
+        "insight",
+        "medicine",
+        "persuasion",
+        "religion"
+      ]
+    },
+    {
+      "key": "phb-2014-cleric-multiclass-armor",
+      "classSlug": "cleric",
+      "acquisitionMode": "MULTICLASS",
+      "category": "armor",
+      "label": "Clerc — Armures et boucliers (multiclassage)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "light-armor",
+        "medium-armor",
+        "shields"
+      ]
+    },
+    {
+      "key": "phb-2014-druid-starting-saves",
+      "classSlug": "druid",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "saves",
+      "label": "Druide — Sauvegardes (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "saving-throw-intelligence",
+        "saving-throw-wisdom"
+      ]
+    },
+    {
+      "key": "phb-2014-druid-starting-weapons",
+      "classSlug": "druid",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "weapons",
+      "label": "Druide — Armes (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "club",
+        "dagger",
+        "dart",
+        "javelin",
+        "mace",
+        "quarterstaff",
+        "scimitar",
+        "sickle",
+        "sling",
+        "spear"
+      ]
+    },
+    {
+      "key": "phb-2014-druid-starting-armor",
+      "classSlug": "druid",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "armor",
+      "label": "Druide — Armures et boucliers (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "light-armor",
+        "medium-armor",
+        "shields"
+      ]
+    },
+    {
+      "key": "phb-2014-druid-starting-tools",
+      "classSlug": "druid",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "tools",
+      "label": "Druide — Outils et instruments (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "herbalism-kit"
+      ]
+    },
+    {
+      "key": "phb-2014-druid-starting-skills",
+      "classSlug": "druid",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "skills",
+      "label": "Druide — Compétences (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 2,
+      "options": [
+        "arcana",
+        "animal-handling",
+        "insight",
+        "medicine",
+        "nature",
+        "perception",
+        "religion",
+        "survival"
+      ]
+    },
+    {
+      "key": "phb-2014-druid-multiclass-armor",
+      "classSlug": "druid",
+      "acquisitionMode": "MULTICLASS",
+      "category": "armor",
+      "label": "Druide — Armures et boucliers (multiclassage)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "light-armor",
+        "medium-armor",
+        "shields"
+      ]
+    },
+    {
+      "key": "phb-2014-sorcerer-starting-saves",
+      "classSlug": "sorcerer",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "saves",
+      "label": "Ensorceleur — Sauvegardes (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "saving-throw-constitution",
+        "saving-throw-charisma"
+      ]
+    },
+    {
+      "key": "phb-2014-sorcerer-starting-weapons",
+      "classSlug": "sorcerer",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "weapons",
+      "label": "Ensorceleur — Armes (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "dagger",
+        "dart",
+        "sling",
+        "quarterstaff",
+        "light-crossbow"
+      ]
+    },
+    {
+      "key": "phb-2014-sorcerer-starting-skills",
+      "classSlug": "sorcerer",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "skills",
+      "label": "Ensorceleur — Compétences (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 2,
+      "options": [
+        "arcana",
+        "deception",
+        "insight",
+        "intimidation",
+        "persuasion",
+        "religion"
+      ]
+    },
+    {
+      "key": "phb-2014-fighter-starting-saves",
+      "classSlug": "fighter",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "saves",
+      "label": "Guerrier — Sauvegardes (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "saving-throw-strength",
+        "saving-throw-constitution"
+      ]
+    },
+    {
+      "key": "phb-2014-fighter-starting-weapons",
+      "classSlug": "fighter",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "weapons",
+      "label": "Guerrier — Armes (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "simple-weapons",
+        "martial-weapons"
+      ]
+    },
+    {
+      "key": "phb-2014-fighter-starting-armor",
+      "classSlug": "fighter",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "armor",
+      "label": "Guerrier — Armures et boucliers (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "light-armor",
+        "medium-armor",
+        "heavy-armor",
+        "shields"
+      ]
+    },
+    {
+      "key": "phb-2014-fighter-starting-skills",
+      "classSlug": "fighter",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "skills",
+      "label": "Guerrier — Compétences (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 2,
+      "options": [
+        "acrobatics",
+        "animal-handling",
+        "athletics",
+        "history",
+        "insight",
+        "intimidation",
+        "perception",
+        "survival"
+      ]
+    },
+    {
+      "key": "phb-2014-fighter-multiclass-weapons",
+      "classSlug": "fighter",
+      "acquisitionMode": "MULTICLASS",
+      "category": "weapons",
+      "label": "Guerrier — Armes (multiclassage)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "simple-weapons",
+        "martial-weapons"
+      ]
+    },
+    {
+      "key": "phb-2014-fighter-multiclass-armor",
+      "classSlug": "fighter",
+      "acquisitionMode": "MULTICLASS",
+      "category": "armor",
+      "label": "Guerrier — Armures et boucliers (multiclassage)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "light-armor",
+        "medium-armor",
+        "shields"
+      ]
+    },
+    {
+      "key": "phb-2014-wizard-starting-saves",
+      "classSlug": "wizard",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "saves",
+      "label": "Magicien — Sauvegardes (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "saving-throw-intelligence",
+        "saving-throw-wisdom"
+      ]
+    },
+    {
+      "key": "phb-2014-wizard-starting-weapons",
+      "classSlug": "wizard",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "weapons",
+      "label": "Magicien — Armes (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "dagger",
+        "dart",
+        "sling",
+        "quarterstaff",
+        "light-crossbow"
+      ]
+    },
+    {
+      "key": "phb-2014-wizard-starting-skills",
+      "classSlug": "wizard",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "skills",
+      "label": "Magicien — Compétences (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 2,
+      "options": [
+        "arcana",
+        "history",
+        "insight",
+        "investigation",
+        "medicine",
+        "religion"
+      ]
+    },
+    {
+      "key": "phb-2014-monk-starting-saves",
+      "classSlug": "monk",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "saves",
+      "label": "Moine — Sauvegardes (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "saving-throw-strength",
+        "saving-throw-dexterity"
+      ]
+    },
+    {
+      "key": "phb-2014-monk-starting-weapons",
+      "classSlug": "monk",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "weapons",
+      "label": "Moine — Armes (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "simple-weapons",
+        "shortsword"
+      ]
+    },
+    {
+      "key": "phb-2014-monk-starting-tools",
+      "classSlug": "monk",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "tools",
+      "label": "Moine — Outils et instruments (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 1,
+      "options": [
+        "alchemists-supplies",
+        "brewers-supplies",
+        "calligraphers-supplies",
+        "painters-supplies",
+        "jewelers-tools",
+        "tinkers-tools",
+        "cartographers-tools",
+        "carpenters-tools",
+        "cobblers-tools",
+        "smiths-tools",
+        "masons-tools",
+        "woodcarvers-tools",
+        "potters-tools",
+        "glassblowers-tools",
+        "leatherworkers-tools",
+        "weavers-tools",
+        "cooks-utensils",
+        "shawm",
+        "horn",
+        "bagpipes",
+        "flute",
+        "pan-flute",
+        "lute",
+        "lyre",
+        "drum",
+        "dulcimer",
+        "viol"
+      ]
+    },
+    {
+      "key": "phb-2014-monk-starting-skills",
+      "classSlug": "monk",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "skills",
+      "label": "Moine — Compétences (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 2,
+      "options": [
+        "acrobatics",
+        "athletics",
+        "history",
+        "insight",
+        "religion",
+        "stealth"
+      ]
+    },
+    {
+      "key": "phb-2014-monk-multiclass-weapons",
+      "classSlug": "monk",
+      "acquisitionMode": "MULTICLASS",
+      "category": "weapons",
+      "label": "Moine — Armes (multiclassage)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "simple-weapons",
+        "shortsword"
+      ]
+    },
+    {
+      "key": "phb-2014-warlock-starting-saves",
+      "classSlug": "warlock",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "saves",
+      "label": "Occultiste — Sauvegardes (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "saving-throw-wisdom",
+        "saving-throw-charisma"
+      ]
+    },
+    {
+      "key": "phb-2014-warlock-starting-weapons",
+      "classSlug": "warlock",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "weapons",
+      "label": "Occultiste — Armes (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "simple-weapons"
+      ]
+    },
+    {
+      "key": "phb-2014-warlock-starting-armor",
+      "classSlug": "warlock",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "armor",
+      "label": "Occultiste — Armures et boucliers (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "light-armor"
+      ]
+    },
+    {
+      "key": "phb-2014-warlock-starting-skills",
+      "classSlug": "warlock",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "skills",
+      "label": "Occultiste — Compétences (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 2,
+      "options": [
+        "arcana",
+        "deception",
+        "history",
+        "intimidation",
+        "investigation",
+        "nature",
+        "religion"
+      ]
+    },
+    {
+      "key": "phb-2014-warlock-multiclass-weapons",
+      "classSlug": "warlock",
+      "acquisitionMode": "MULTICLASS",
+      "category": "weapons",
+      "label": "Occultiste — Armes (multiclassage)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "simple-weapons"
+      ]
+    },
+    {
+      "key": "phb-2014-warlock-multiclass-armor",
+      "classSlug": "warlock",
+      "acquisitionMode": "MULTICLASS",
+      "category": "armor",
+      "label": "Occultiste — Armures et boucliers (multiclassage)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "light-armor"
+      ]
+    },
+    {
+      "key": "phb-2014-paladin-starting-saves",
+      "classSlug": "paladin",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "saves",
+      "label": "Paladin — Sauvegardes (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "saving-throw-wisdom",
+        "saving-throw-charisma"
+      ]
+    },
+    {
+      "key": "phb-2014-paladin-starting-weapons",
+      "classSlug": "paladin",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "weapons",
+      "label": "Paladin — Armes (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "simple-weapons",
+        "martial-weapons"
+      ]
+    },
+    {
+      "key": "phb-2014-paladin-starting-armor",
+      "classSlug": "paladin",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "armor",
+      "label": "Paladin — Armures et boucliers (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "light-armor",
+        "medium-armor",
+        "heavy-armor",
+        "shields"
+      ]
+    },
+    {
+      "key": "phb-2014-paladin-starting-skills",
+      "classSlug": "paladin",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "skills",
+      "label": "Paladin — Compétences (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 2,
+      "options": [
+        "athletics",
+        "insight",
+        "intimidation",
+        "medicine",
+        "persuasion",
+        "religion"
+      ]
+    },
+    {
+      "key": "phb-2014-paladin-multiclass-weapons",
+      "classSlug": "paladin",
+      "acquisitionMode": "MULTICLASS",
+      "category": "weapons",
+      "label": "Paladin — Armes (multiclassage)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "simple-weapons",
+        "martial-weapons"
+      ]
+    },
+    {
+      "key": "phb-2014-paladin-multiclass-armor",
+      "classSlug": "paladin",
+      "acquisitionMode": "MULTICLASS",
+      "category": "armor",
+      "label": "Paladin — Armures et boucliers (multiclassage)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "light-armor",
+        "medium-armor",
+        "shields"
+      ]
+    },
+    {
+      "key": "phb-2014-ranger-starting-saves",
+      "classSlug": "ranger",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "saves",
+      "label": "Rôdeur — Sauvegardes (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "saving-throw-strength",
+        "saving-throw-dexterity"
+      ]
+    },
+    {
+      "key": "phb-2014-ranger-starting-weapons",
+      "classSlug": "ranger",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "weapons",
+      "label": "Rôdeur — Armes (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "simple-weapons",
+        "martial-weapons"
+      ]
+    },
+    {
+      "key": "phb-2014-ranger-starting-armor",
+      "classSlug": "ranger",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "armor",
+      "label": "Rôdeur — Armures et boucliers (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "light-armor",
+        "medium-armor",
+        "shields"
+      ]
+    },
+    {
+      "key": "phb-2014-ranger-starting-skills",
+      "classSlug": "ranger",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "skills",
+      "label": "Rôdeur — Compétences (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 3,
+      "options": [
+        "animal-handling",
+        "athletics",
+        "insight",
+        "investigation",
+        "nature",
+        "perception",
+        "stealth",
+        "survival"
+      ]
+    },
+    {
+      "key": "phb-2014-ranger-multiclass-weapons",
+      "classSlug": "ranger",
+      "acquisitionMode": "MULTICLASS",
+      "category": "weapons",
+      "label": "Rôdeur — Armes (multiclassage)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "simple-weapons",
+        "martial-weapons"
+      ]
+    },
+    {
+      "key": "phb-2014-ranger-multiclass-armor",
+      "classSlug": "ranger",
+      "acquisitionMode": "MULTICLASS",
+      "category": "armor",
+      "label": "Rôdeur — Armures et boucliers (multiclassage)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "light-armor",
+        "medium-armor",
+        "shields"
+      ]
+    },
+    {
+      "key": "phb-2014-ranger-multiclass-skills",
+      "classSlug": "ranger",
+      "acquisitionMode": "MULTICLASS",
+      "category": "skills",
+      "label": "Rôdeur — Compétences (multiclassage)",
+      "unlockLevel": 1,
+      "choiceCount": 1,
+      "options": [
+        "animal-handling",
+        "athletics",
+        "insight",
+        "investigation",
+        "nature",
+        "perception",
+        "stealth",
+        "survival"
+      ]
+    },
+    {
+      "key": "phb-2014-rogue-starting-saves",
+      "classSlug": "rogue",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "saves",
+      "label": "Roublard — Sauvegardes (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "saving-throw-dexterity",
+        "saving-throw-intelligence"
+      ]
+    },
+    {
+      "key": "phb-2014-rogue-starting-weapons",
+      "classSlug": "rogue",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "weapons",
+      "label": "Roublard — Armes (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "simple-weapons",
+        "hand-crossbow",
+        "longsword",
+        "rapier",
+        "shortsword"
+      ]
+    },
+    {
+      "key": "phb-2014-rogue-starting-armor",
+      "classSlug": "rogue",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "armor",
+      "label": "Roublard — Armures et boucliers (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "light-armor"
+      ]
+    },
+    {
+      "key": "phb-2014-rogue-starting-tools",
+      "classSlug": "rogue",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "tools",
+      "label": "Roublard — Outils et instruments (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "thieves-tools"
+      ]
+    },
+    {
+      "key": "phb-2014-rogue-starting-skills",
+      "classSlug": "rogue",
+      "acquisitionMode": "STARTING_CLASS",
+      "category": "skills",
+      "label": "Roublard — Compétences (initial)",
+      "unlockLevel": 1,
+      "choiceCount": 4,
+      "options": [
+        "acrobatics",
+        "athletics",
+        "deception",
+        "insight",
+        "intimidation",
+        "investigation",
+        "perception",
+        "performance",
+        "persuasion",
+        "sleight-of-hand",
+        "stealth"
+      ]
+    },
+    {
+      "key": "phb-2014-rogue-multiclass-armor",
+      "classSlug": "rogue",
+      "acquisitionMode": "MULTICLASS",
+      "category": "armor",
+      "label": "Roublard — Armures et boucliers (multiclassage)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "light-armor"
+      ]
+    },
+    {
+      "key": "phb-2014-rogue-multiclass-tools",
+      "classSlug": "rogue",
+      "acquisitionMode": "MULTICLASS",
+      "category": "tools",
+      "label": "Roublard — Outils et instruments (multiclassage)",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "thieves-tools"
+      ]
+    },
+    {
+      "key": "phb-2014-rogue-multiclass-skills",
+      "classSlug": "rogue",
+      "acquisitionMode": "MULTICLASS",
+      "category": "skills",
+      "label": "Roublard — Compétences (multiclassage)",
+      "unlockLevel": 1,
+      "choiceCount": 1,
+      "options": [
+        "acrobatics",
+        "athletics",
+        "deception",
+        "insight",
+        "intimidation",
+        "investigation",
+        "perception",
+        "performance",
+        "persuasion",
+        "sleight-of-hand",
+        "stealth"
+      ]
+    }
+  ]
+}

@@ -5,6 +5,12 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\Campaign;
+use App\Entity\CharacterBackground;
+use App\Entity\CharacterClassLevel;
+use App\Entity\CharacterFeat;
+use App\Service\CharacterTrainingService;
+use App\Service\CharacterTrainingPresenter;
+use App\Service\ReferenceVisibility;
 use App\Entity\Character;
 use App\Entity\CharacterClass;
 use App\Entity\CharacterRace;
@@ -38,6 +44,7 @@ final class CharacterBuilderController extends AbstractController
         CharacterBuilderService $builder,
         CharacterAbilityCalculator $abilityCalculator,
         CharacterResourceResolver $resourceResolver,
+        CharacterTrainingPresenter $trainingPresenter,
     ): JsonResponse {
         $this->denyAccessUnlessGranted(
             CampaignVoter::MANAGE,
@@ -46,6 +53,9 @@ final class CharacterBuilderController extends AbstractController
 
         try {
             $payload = $request->toArray();
+            if (isset($payload['level']) && $payload['level'] !== 1) throw new \DomainException('Le POST du créateur démarre au niveau 1.');
+            foreach (['slug', 'name', 'type'] as $field) if (!is_string($payload[$field] ?? null)) throw new \DomainException('Chaîne attendue : '.$field);
+            if (isset($payload['playerName']) && !is_string($payload['playerName'])) throw new \DomainException('Chaîne attendue : playerName');
 
             $race = $entityManager->find(
                 CharacterRace::class,
@@ -94,6 +104,8 @@ final class CharacterBuilderController extends AbstractController
                 ),
                 startingClass: $startingClass,
                 startingSubclass: $startingSubclass,
+                background: $this->resolveBackground($payload, $entityManager),
+                training: $this->parseTraining($payload),
             );
 
             return $this->json(
@@ -102,7 +114,7 @@ final class CharacterBuilderController extends AbstractController
                         $character,
                         $abilityCalculator,
                         $resourceResolver,
-                    ),
+                    ) + ['background' => $character->getBackground() === null ? null : ['id' => $character->getBackground()->getId(), 'slug' => $character->getBackground()->getSlug(), 'name' => $character->getBackground()->getName()], 'training' => $trainingPresenter->resolved($character)],
                 ],
                 JsonResponse::HTTP_CREATED,
             );
@@ -119,6 +131,59 @@ final class CharacterBuilderController extends AbstractController
      *
      * @return array<string, int>
      */
+    /** Read-only preview; selection is JSON in the query string, never persisted. */
+    #[Route('/options', name: 'api_character_build_options', methods: ['GET'])]
+    public function options(
+        #[MapEntity(id: 'campaignId')] Campaign $campaign,
+        Request $request,
+        EntityManagerInterface $entityManager,
+        CharacterTrainingService $trainingService,
+        CharacterTrainingPresenter $presenter,
+    ): JsonResponse {
+        $this->denyAccessUnlessGranted(CampaignVoter::MANAGE, $campaign);
+        try {
+            $payload = json_decode($request->query->getString('selection', '{}'), true, 128, JSON_THROW_ON_ERROR);
+            if (!is_array($payload)) throw new \DomainException('Objet selection attendu.');
+            $race = $entityManager->find(CharacterRace::class, $this->requiredId($payload, 'raceId'));
+            $class = $entityManager->find(CharacterClass::class, $this->requiredId($payload, 'classId'));
+            if (!$race instanceof CharacterRace || !$class instanceof CharacterClass || !$race->isSelectable()) throw new \DomainException('Race ou classe indisponible.');
+            $background = $this->resolveBackground($payload, $entityManager);
+            $subclass = $this->resolveSubclass($payload, $entityManager);
+            foreach (array_filter([$race, $class, $background, $subclass]) as $reference) ReferenceVisibility::requireVisible($reference, $campaign->getOwner());
+            $level = $payload['level'] ?? 1;
+            if (!is_int($level) || $level < 1 || $level > 20) throw new \DomainException('Niveau invalide.');
+            if ($subclass && ($subclass->getCharacterClass() !== $class || $level < $class->getSubclassSelectionLevel())) throw new \DomainException('Sous-classe incompatible.');
+            $character = (new Character($campaign, 'preview', 'Preview', Character::TYPE_PLAYER))->setRace($race)->setBackground($background);
+            for ($position = 1; $position <= $level; ++$position) $character->addClassLevel(new CharacterClassLevel($character, $class, $position, $subclass));
+            $feats = $this->parseRacialFeatChoices($payload, $entityManager);
+            if (count($feats) > $race->getInheritedFeatChoiceCount()) throw new \DomainException('Trop de dons raciaux.');
+            foreach ($feats as $choice) {
+                ReferenceVisibility::requireVisible($choice['feat'], $campaign->getOwner());
+                $character->addFeat((new CharacterFeat($character, $choice['feat']))->setChosenAbility($choice['ability'])->setAcquiredAtLevel(1));
+            }
+            $trainingService->apply($character, $this->parseTraining($payload), $campaign->getOwner(), false);
+            return $this->json($presenter->options($character));
+        } catch (\DomainException|\InvalidArgumentException|\JsonException $exception) {
+            return $this->json(['message' => $exception->getMessage()], 422);
+        }
+    }
+
+    private function resolveBackground(array $payload, EntityManagerInterface $em): ?CharacterBackground
+    {
+        if (!isset($payload['backgroundId'])) return null;
+        $background = $em->find(CharacterBackground::class, $this->requiredId($payload, 'backgroundId'));
+        if (!$background instanceof CharacterBackground) throw new \DomainException('Historique introuvable.');
+        return $background;
+    }
+
+    private function parseTraining(array $payload): array
+    {
+        $training = $payload['training'] ?? [];
+        if (!is_array($training) || ($training !== [] && array_is_list($training))) throw new \DomainException('Objet training attendu.');
+        return $training;
+    }
+
+
     private function parseAbilityScores(array $payload): array
     {
         $values = $payload['abilities'] ?? null;

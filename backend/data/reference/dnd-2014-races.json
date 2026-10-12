@@ -20,7 +20,11 @@
         "sizeOptions": [
           "medium"
         ],
-        "walkingSpeed": 9
+        "walkingSpeed": 9,
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -157,7 +161,11 @@
         "damageResistances": [
           "necrotic",
           "radiant"
-        ]
+        ],
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -300,7 +308,11 @@
         "walkingSpeed": 9,
         "senses": {
           "darkvision": 18
-        }
+        },
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -446,7 +458,11 @@
         "sizeOptions": [
           "medium"
         ],
-        "walkingSpeed": 12
+        "walkingSpeed": 12,
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -561,7 +577,11 @@
           "small",
           "medium"
         ],
-        "walkingSpeed": 9
+        "walkingSpeed": 9,
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -789,7 +809,11 @@
         "walkingSpeed": 9,
         "senses": {
           "darkvision": 36
-        }
+        },
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -939,7 +963,11 @@
         "walkingSpeed": 10.5,
         "senses": {
           "darkvision": 18
-        }
+        },
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -1148,7 +1176,11 @@
           "medium"
         ],
         "walkingSpeed": 9,
-        "damageResistances": []
+        "damageResistances": [],
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -1262,7 +1294,11 @@
           "medium"
         ],
         "walkingSpeed": 9,
-        "damageResistances": []
+        "damageResistances": [],
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -1392,7 +1428,11 @@
           "medium"
         ],
         "walkingSpeed": 9,
-        "damageResistances": []
+        "damageResistances": [],
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -1511,7 +1551,11 @@
         },
         "damageResistances": [
           "poison"
-        ]
+        ],
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -1822,7 +1866,11 @@
         "walkingSpeed": 9,
         "senses": {
           "darkvision": 18
-        }
+        },
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -2066,7 +2114,11 @@
         "sizeOptions": [
           "small"
         ],
-        "walkingSpeed": 9
+        "walkingSpeed": 9,
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -2180,7 +2232,11 @@
         "sizeOptions": [
           "medium"
         ],
-        "walkingSpeed": 9
+        "walkingSpeed": 9,
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -2282,7 +2338,11 @@
         "walkingSpeed": 9,
         "senses": {
           "darkvision": 18
-        }
+        },
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -2334,7 +2394,11 @@
         "walkingSpeed": 9,
         "damageResistances": [
           "psychic"
-        ]
+        ],
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -2463,7 +2527,11 @@
         "walkingSpeed": 9,
         "damageResistances": [
           "psychic"
-        ]
+        ],
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -2658,7 +2726,11 @@
         "walkingSpeed": 9,
         "senses": {
           "darkvision": 18
-        }
+        },
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -2804,7 +2876,11 @@
         "walkingSpeed": 9,
         "damageResistances": [
           "cold"
-        ]
+        ],
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -3218,7 +3294,11 @@
           "small",
           "medium"
         ],
-        "walkingSpeed": 9
+        "walkingSpeed": 9,
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -3320,7 +3400,11 @@
         "walkingSpeed": 9,
         "senses": {
           "darkvision": 18
-        }
+        },
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -3449,7 +3533,11 @@
         "walkingSpeed": 9,
         "senses": {
           "darkvision": 18
-        }
+        },
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -3630,7 +3718,11 @@
           "small",
           "medium"
         ],
-        "walkingSpeed": 9
+        "walkingSpeed": 9,
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -3726,7 +3818,11 @@
         "walkingSpeed": 9,
         "senses": {
           "darkvision": 18
-        }
+        },
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -3833,7 +3929,11 @@
         "sizeOptions": [
           "medium"
         ],
-        "walkingSpeed": 9
+        "walkingSpeed": 9,
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -3947,7 +4047,11 @@
         "sizeOptions": [
           "medium"
         ],
-        "walkingSpeed": 9
+        "walkingSpeed": 9,
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -4046,7 +4150,11 @@
         "walkingSpeed": 9,
         "senses": {
           "darkvision": 18
-        }
+        },
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -4146,7 +4254,11 @@
         "walkingSpeed": 9,
         "senses": {
           "darkvision": 36
-        }
+        },
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -4263,7 +4375,11 @@
         "walkingSpeed": 9,
         "damageResistances": [
           "poison"
-        ]
+        ],
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -4345,7 +4461,11 @@
         "sizeOptions": [
           "medium"
         ],
-        "walkingSpeed": 10.5
+        "walkingSpeed": 10.5,
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -4465,7 +4585,11 @@
         },
         "damageResistances": [
           "cold"
-        ]
+        ],
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -4648,7 +4772,11 @@
         },
         "damageResistances": [
           "necrotic"
-        ]
+        ],
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -4799,7 +4927,11 @@
         "walkingSpeed": 9,
         "senses": {
           "darkvision": 18
-        }
+        },
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -4913,7 +5045,11 @@
         "walkingSpeed": 9,
         "senses": {
           "darkvision": 18
-        }
+        },
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -5150,7 +5286,11 @@
           "small",
           "medium"
         ],
-        "walkingSpeed": 9
+        "walkingSpeed": 9,
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -5270,7 +5410,11 @@
         },
         "damageResistances": [
           "cold"
-        ]
+        ],
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {
@@ -5559,7 +5703,11 @@
         },
         "damageResistances": [
           "poison"
-        ]
+        ],
+        "languages": [
+          "common"
+        ],
+        "languageChoiceCount": 1
       },
       "traits": [
         {

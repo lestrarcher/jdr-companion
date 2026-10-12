@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\Campaign;
+use App\Entity\CharacterBackground;
 use App\Entity\Character;
 use App\Entity\CharacterClass;
 use App\Entity\CharacterFeat;
@@ -23,6 +24,7 @@ final readonly class CharacterBuilderService
         private EntityManagerInterface $entityManager,
         private CharacterRepository $characterRepository,
         private CharacterLevelUpService $levelUpService,
+        private CharacterTrainingService $trainingService,
     ) {
     }
 
@@ -43,7 +45,11 @@ final readonly class CharacterBuilderService
         array $racialFeatChoices,
         CharacterClass $startingClass,
         ?CharacterSubclass $startingSubclass = null,
+        ?CharacterBackground $background = null,
+        array $training = [],
     ): Character {
+        if (!$race->isSelectable()) throw new \DomainException('Cette race ne peut pas être sélectionnée.');
+        if ($background !== null) ReferenceVisibility::requireVisible($background, $campaign->getOwner());
         foreach ([$race, $startingClass, ...($startingSubclass ? [$startingSubclass] : []), ...array_column($racialAbilityChoices, 'modifier'), ...array_column($racialFeatChoices, 'feat')] as $reference) {
             ReferenceVisibility::requireVisible($reference, $campaign->getOwner());
         }
@@ -59,6 +65,8 @@ final readonly class CharacterBuilderService
             $racialFeatChoices,
             $startingClass,
             $startingSubclass,
+            $background,
+            $training,
         ): Character {
             $slug = strtolower(trim($slug));
             $name = trim($name);
@@ -81,7 +89,8 @@ final readonly class CharacterBuilderService
 
             $character
                 ->setPlayerName($playerName !== '' ? $playerName : null)
-                ->setRace($race);
+                ->setRace($race)
+                ->setBackground($background);
 
             $this->applyAbilityScores(
                 $character,
@@ -108,6 +117,7 @@ final readonly class CharacterBuilderService
                 subclass: $startingSubclass,
             );
 
+            $this->trainingService->apply($character, $training, $campaign->getOwner());
             $this->entityManager->flush();
 
             return $character;

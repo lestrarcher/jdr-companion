@@ -1,0 +1,493 @@
+{
+  "edition": "2014",
+  "source": "PHB",
+  "sources": [
+    "https://www.dndbeyond.com/sources/dnd/basic-rules-2014/personality-and-background",
+    "https://www.dndbeyond.com/backgrounds",
+    "https://www.aidedd.org/regles/historiques/"
+  ],
+  "backgrounds": [
+    {
+      "slug": "acolyte-phb",
+      "name": "Acolyte",
+      "description": null,
+      "deferred": [
+        "Deux langues au choix."
+      ],
+      "rules": [
+        {
+          "key": "phb-2014-background-acolyte-phb-skills",
+          "category": "skills",
+          "label": "Acolyte : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "insight",
+            "religion"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "charlatan-phb",
+      "name": "Charlatan",
+      "description": null,
+      "deferred": [],
+      "rules": [
+        {
+          "key": "phb-2014-background-charlatan-phb-skills",
+          "category": "skills",
+          "label": "Charlatan : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "deception",
+            "sleight-of-hand"
+          ]
+        },
+        {
+          "key": "phb-2014-background-charlatan-phb-tools-automatic",
+          "category": "tools-automatic",
+          "label": "Charlatan : outils",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "disguise-kit",
+            "forgery-kit"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "criminal-phb",
+      "name": "Criminel",
+      "description": null,
+      "deferred": [],
+      "rules": [
+        {
+          "key": "phb-2014-background-criminal-phb-skills",
+          "category": "skills",
+          "label": "Criminel : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "deception",
+            "stealth"
+          ]
+        },
+        {
+          "key": "phb-2014-background-criminal-phb-tools-automatic",
+          "category": "tools-automatic",
+          "label": "Criminel : outils",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "thieves-tools"
+          ]
+        },
+        {
+          "key": "phb-2014-background-criminal-phb-tools-choice",
+          "category": "tools-choice",
+          "label": "Criminel : choix d’outil",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "dice-set",
+            "dragonchess-set",
+            "playing-card-set",
+            "three-dragon-ante-set"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "entertainer-phb",
+      "name": "Artiste",
+      "description": null,
+      "deferred": [],
+      "rules": [
+        {
+          "key": "phb-2014-background-entertainer-phb-skills",
+          "category": "skills",
+          "label": "Artiste : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "acrobatics",
+            "performance"
+          ]
+        },
+        {
+          "key": "phb-2014-background-entertainer-phb-tools-automatic",
+          "category": "tools-automatic",
+          "label": "Artiste : outils",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "disguise-kit"
+          ]
+        },
+        {
+          "key": "phb-2014-background-entertainer-phb-tools-choice",
+          "category": "tools-choice",
+          "label": "Artiste : choix d’outil",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "bagpipes",
+            "drum",
+            "dulcimer",
+            "flute",
+            "horn",
+            "lute",
+            "lyre",
+            "pan-flute",
+            "shawm",
+            "viol"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "folk-hero-phb",
+      "name": "Héros du peuple",
+      "description": null,
+      "deferred": [
+        "Véhicules terrestres : définition de maîtrise absente du référentiel."
+      ],
+      "rules": [
+        {
+          "key": "phb-2014-background-folk-hero-phb-skills",
+          "category": "skills",
+          "label": "Héros du peuple : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "animal-handling",
+            "survival"
+          ]
+        },
+        {
+          "key": "phb-2014-background-folk-hero-phb-tools-choice",
+          "category": "tools-choice",
+          "label": "Héros du peuple : choix d’outil",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "alchemists-supplies",
+            "brewers-supplies",
+            "calligraphers-supplies",
+            "carpenters-tools",
+            "cartographers-tools",
+            "cobblers-tools",
+            "cooks-utensils",
+            "glassblowers-tools",
+            "jewelers-tools",
+            "leatherworkers-tools",
+            "masons-tools",
+            "painters-supplies",
+            "potters-tools",
+            "smiths-tools",
+            "tinkers-tools",
+            "weavers-tools",
+            "woodcarvers-tools"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "guild-artisan-phb",
+      "name": "Artisan de guilde",
+      "description": null,
+      "deferred": [
+        "Une langue au choix."
+      ],
+      "rules": [
+        {
+          "key": "phb-2014-background-guild-artisan-phb-skills",
+          "category": "skills",
+          "label": "Artisan de guilde : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "insight",
+            "persuasion"
+          ]
+        },
+        {
+          "key": "phb-2014-background-guild-artisan-phb-tools-choice",
+          "category": "tools-choice",
+          "label": "Artisan de guilde : choix d’outil",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "alchemists-supplies",
+            "brewers-supplies",
+            "calligraphers-supplies",
+            "carpenters-tools",
+            "cartographers-tools",
+            "cobblers-tools",
+            "cooks-utensils",
+            "glassblowers-tools",
+            "jewelers-tools",
+            "leatherworkers-tools",
+            "masons-tools",
+            "painters-supplies",
+            "potters-tools",
+            "smiths-tools",
+            "tinkers-tools",
+            "weavers-tools",
+            "woodcarvers-tools"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "hermit-phb",
+      "name": "Ermite",
+      "description": null,
+      "deferred": [
+        "Une langue au choix."
+      ],
+      "rules": [
+        {
+          "key": "phb-2014-background-hermit-phb-skills",
+          "category": "skills",
+          "label": "Ermite : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "medicine",
+            "religion"
+          ]
+        },
+        {
+          "key": "phb-2014-background-hermit-phb-tools-automatic",
+          "category": "tools-automatic",
+          "label": "Ermite : outils",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "herbalism-kit"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "noble-phb",
+      "name": "Noble",
+      "description": null,
+      "deferred": [
+        "Une langue au choix."
+      ],
+      "rules": [
+        {
+          "key": "phb-2014-background-noble-phb-skills",
+          "category": "skills",
+          "label": "Noble : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "history",
+            "persuasion"
+          ]
+        },
+        {
+          "key": "phb-2014-background-noble-phb-tools-choice",
+          "category": "tools-choice",
+          "label": "Noble : choix d’outil",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "dice-set",
+            "dragonchess-set",
+            "playing-card-set",
+            "three-dragon-ante-set"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "outlander-phb",
+      "name": "Sauvageon",
+      "description": null,
+      "deferred": [
+        "Une langue au choix."
+      ],
+      "rules": [
+        {
+          "key": "phb-2014-background-outlander-phb-skills",
+          "category": "skills",
+          "label": "Sauvageon : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "athletics",
+            "survival"
+          ]
+        },
+        {
+          "key": "phb-2014-background-outlander-phb-tools-choice",
+          "category": "tools-choice",
+          "label": "Sauvageon : choix d’outil",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "bagpipes",
+            "drum",
+            "dulcimer",
+            "flute",
+            "horn",
+            "lute",
+            "lyre",
+            "pan-flute",
+            "shawm",
+            "viol"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "sage-phb",
+      "name": "Sage",
+      "description": null,
+      "deferred": [
+        "Deux langues au choix."
+      ],
+      "rules": [
+        {
+          "key": "phb-2014-background-sage-phb-skills",
+          "category": "skills",
+          "label": "Sage : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "arcana",
+            "history"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "sailor-phb",
+      "name": "Marin",
+      "description": null,
+      "deferred": [
+        "Véhicules aquatiques : définition de maîtrise absente du référentiel."
+      ],
+      "rules": [
+        {
+          "key": "phb-2014-background-sailor-phb-skills",
+          "category": "skills",
+          "label": "Marin : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "athletics",
+            "perception"
+          ]
+        },
+        {
+          "key": "phb-2014-background-sailor-phb-tools-automatic",
+          "category": "tools-automatic",
+          "label": "Marin : outils",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "navigators-tools"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "soldier-phb",
+      "name": "Soldat",
+      "description": null,
+      "deferred": [
+        "Véhicules terrestres : définition de maîtrise absente du référentiel."
+      ],
+      "rules": [
+        {
+          "key": "phb-2014-background-soldier-phb-skills",
+          "category": "skills",
+          "label": "Soldat : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "athletics",
+            "intimidation"
+          ]
+        },
+        {
+          "key": "phb-2014-background-soldier-phb-tools-choice",
+          "category": "tools-choice",
+          "label": "Soldat : choix d’outil",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "dice-set",
+            "dragonchess-set",
+            "playing-card-set",
+            "three-dragon-ante-set"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "urchin-phb",
+      "name": "Enfant des rues",
+      "description": null,
+      "deferred": [],
+      "rules": [
+        {
+          "key": "phb-2014-background-urchin-phb-skills",
+          "category": "skills",
+          "label": "Enfant des rues : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "sleight-of-hand",
+            "stealth"
+          ]
+        },
+        {
+          "key": "phb-2014-background-urchin-phb-tools-automatic",
+          "category": "tools-automatic",
+          "label": "Enfant des rues : outils",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "disguise-kit",
+            "thieves-tools"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,13 +1,16 @@
-FROM php:8.4-cli-alpine AS development
+# Debian avoids incomplete directory rewinds observed on Windows bind mounts.
+# See docs/docker-service-discovery.md before switching back to Alpine.
+FROM php:8.4-cli-bookworm AS development
 
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     unzip \
-    icu-dev \
-    postgresql-dev \
+    libicu-dev \
+    libpq-dev \
     && docker-php-ext-install \
         intl \
-        pdo_pgsql
+        pdo_pgsql \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 

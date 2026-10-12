@@ -49,6 +49,9 @@ final class DndReferenceController extends AbstractController
         $feats = \App\Service\ReferenceVisibility::choices($entityManager, Feat::class, $owner);
 
         return $this->json([
+            'backgrounds' => array_map(static fn ($b) => ['id' => $b->getId(), 'slug' => $b->getSlug(), 'name' => $b->getName(), 'description' => $b->getDescription()], \App\Service\ReferenceVisibility::choices($entityManager, \App\Entity\CharacterBackground::class, $owner)),
+            'proficiencies' => array_map(static fn ($p) => ['id' => $p->getId(), 'slug' => $p->getSlug(), 'name' => $p->getName(), 'type' => $p->getType()->value], \App\Service\ReferenceVisibility::choices($entityManager, \App\Entity\ProficiencyDefinition::class, $owner)),
+            'languages' => array_map(static fn ($l) => ['id' => $l->getId(), 'slug' => $l->getSlug(), 'name' => $l->getName(), 'category' => $l->getCategory(), 'ordinaryChoice' => $l->getCategory() !== 'SECRET'], \App\Service\ReferenceVisibility::choices($entityManager, \App\Entity\LanguageDefinition::class, $owner)),
             'abilities' => array_map(
                 static fn (Ability $ability): array => [
                     'value' => $ability->value,

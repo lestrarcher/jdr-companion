@@ -1,0 +1,975 @@
+{
+  "edition": "2014",
+  "scope": "canonical-selectable-and-structural-parents",
+  "sources": [
+    "dnd-2014-races.json",
+    "https://www.dndbeyond.com/sources/dnd/basic-rules-2014/races",
+    "https://www.dndbeyond.com/posts/1675-how-to-build-and-play-a-changeling"
+  ],
+  "races": [
+    {
+      "slug": "aarakocra-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "aasimar-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "bugbear-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 1,
+      "deferred": []
+    },
+    {
+      "slug": "centaur-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 1,
+      "deferred": []
+    },
+    {
+      "slug": "changeling-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 1,
+      "deferred": []
+    },
+    {
+      "slug": "custom-lineage-tce",
+      "parentSlug": null,
+      "sourceCode": "TCE",
+      "ruleCount": 0,
+      "deferred": [
+        "Variable Trait : alternative entre vision dans le noir et compétence, choix de trait non persisté."
+      ]
+    },
+    {
+      "slug": "deep-gnome-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "dhampir-vrgr",
+      "parentSlug": null,
+      "sourceCode": "VRGR",
+      "ruleCount": 0,
+      "deferred": [
+        "Ancestral Legacy : choix dépendant de la création ou de la transformation et des maîtrises antérieures."
+      ]
+    },
+    {
+      "slug": "dragonborn-phb",
+      "parentSlug": null,
+      "sourceCode": "PHB",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "dragonborn-chromatic-ftd",
+      "parentSlug": null,
+      "sourceCode": "FTD",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "dragonborn-gem-ftd",
+      "parentSlug": null,
+      "sourceCode": "FTD",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "dragonborn-metallic-ftd",
+      "parentSlug": null,
+      "sourceCode": "FTD",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "duergar-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "dwarf-phb",
+      "parentSlug": null,
+      "sourceCode": "PHB",
+      "ruleCount": 2,
+      "deferred": [
+        "Stonecunning : maîtrise/expertise d'Histoire conditionnelle à un ouvrage en pierre."
+      ]
+    },
+    {
+      "slug": "eladrin-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 1,
+      "deferred": [
+        "Trance : deux maîtrises temporaires d'armes/outils renouvelées au repos long."
+      ]
+    },
+    {
+      "slug": "elf-phb",
+      "parentSlug": null,
+      "sourceCode": "PHB",
+      "ruleCount": 1,
+      "deferred": []
+    },
+    {
+      "slug": "fairy-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "firbolg-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "genasi-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "githyanki-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 0,
+      "deferred": [
+        "Astral Knowledge : maîtrises temporaires renouvelées au repos long."
+      ]
+    },
+    {
+      "slug": "githzerai-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "gnome-phb",
+      "parentSlug": null,
+      "sourceCode": "PHB",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "goblin-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "goliath-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 1,
+      "deferred": []
+    },
+    {
+      "slug": "half-elf-phb",
+      "parentSlug": null,
+      "sourceCode": "PHB",
+      "ruleCount": 1,
+      "deferred": []
+    },
+    {
+      "slug": "half-orc-phb",
+      "parentSlug": null,
+      "sourceCode": "PHB",
+      "ruleCount": 1,
+      "deferred": []
+    },
+    {
+      "slug": "halfling-phb",
+      "parentSlug": null,
+      "sourceCode": "PHB",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "harengon-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 1,
+      "deferred": [
+        "Hare-Trigger : ajout du bonus à l'initiative, qui n'est pas une maîtrise de compétence."
+      ]
+    },
+    {
+      "slug": "hexblood-vrgr",
+      "parentSlug": null,
+      "sourceCode": "VRGR",
+      "ruleCount": 0,
+      "deferred": [
+        "Ancestral Legacy : choix dépendant de la création ou de la transformation et des maîtrises antérieures."
+      ]
+    },
+    {
+      "slug": "hobgoblin-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "human-phb",
+      "parentSlug": null,
+      "sourceCode": "PHB",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "kenku-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 1,
+      "deferred": []
+    },
+    {
+      "slug": "kobold-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 0,
+      "deferred": [
+        "Kobold Legacy : maîtrise conditionnée au choix Craftiness, choix de trait non persisté."
+      ]
+    },
+    {
+      "slug": "lizardfolk-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 1,
+      "deferred": []
+    },
+    {
+      "slug": "minotaur-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "orc-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "owlin-scc",
+      "parentSlug": null,
+      "sourceCode": "SCC",
+      "ruleCount": 1,
+      "deferred": []
+    },
+    {
+      "slug": "reborn-vrgr",
+      "parentSlug": null,
+      "sourceCode": "VRGR",
+      "ruleCount": 0,
+      "deferred": [
+        "Ancestral Legacy : choix dépendant de la création ou de la transformation et des maîtrises antérieures."
+      ]
+    },
+    {
+      "slug": "satyr-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 2,
+      "deferred": []
+    },
+    {
+      "slug": "sea-elf-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 1,
+      "deferred": [
+        "Trance : deux maîtrises temporaires d'armes/outils renouvelées au repos long."
+      ]
+    },
+    {
+      "slug": "shadar-kai-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 1,
+      "deferred": [
+        "Trance : deux maîtrises temporaires d'armes/outils renouvelées au repos long."
+      ]
+    },
+    {
+      "slug": "shifter-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 1,
+      "deferred": []
+    },
+    {
+      "slug": "tabaxi-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 1,
+      "deferred": []
+    },
+    {
+      "slug": "tiefling-phb",
+      "parentSlug": null,
+      "sourceCode": "PHB",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "tortle-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 1,
+      "deferred": []
+    },
+    {
+      "slug": "triton-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "warforged-erlw",
+      "parentSlug": null,
+      "sourceCode": "ERLW",
+      "ruleCount": 2,
+      "deferred": []
+    },
+    {
+      "slug": "yuan-ti-mpmm",
+      "parentSlug": null,
+      "sourceCode": "MPMM",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "dwarf-hill-phb",
+      "parentSlug": "dwarf-phb",
+      "sourceCode": "PHB",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "dwarf-mountain-phb",
+      "parentSlug": "dwarf-phb",
+      "sourceCode": "PHB",
+      "ruleCount": 1,
+      "deferred": []
+    },
+    {
+      "slug": "elf-drow-phb",
+      "parentSlug": "elf-phb",
+      "sourceCode": "PHB",
+      "ruleCount": 1,
+      "deferred": []
+    },
+    {
+      "slug": "elf-high-phb",
+      "parentSlug": "elf-phb",
+      "sourceCode": "PHB",
+      "ruleCount": 1,
+      "deferred": []
+    },
+    {
+      "slug": "elf-wood-phb",
+      "parentSlug": "elf-phb",
+      "sourceCode": "PHB",
+      "ruleCount": 1,
+      "deferred": []
+    },
+    {
+      "slug": "genasi-air-mpmm",
+      "parentSlug": "genasi-mpmm",
+      "sourceCode": "MPMM",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "genasi-earth-mpmm",
+      "parentSlug": "genasi-mpmm",
+      "sourceCode": "MPMM",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "genasi-fire-mpmm",
+      "parentSlug": "genasi-mpmm",
+      "sourceCode": "MPMM",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "genasi-water-mpmm",
+      "parentSlug": "genasi-mpmm",
+      "sourceCode": "MPMM",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "gnome-forest-phb",
+      "parentSlug": "gnome-phb",
+      "sourceCode": "PHB",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "gnome-rock-phb",
+      "parentSlug": "gnome-phb",
+      "sourceCode": "PHB",
+      "ruleCount": 1,
+      "deferred": [
+        "Artificer's Lore : bonus conditionnel d'Histoire, pas une maîtrise générale."
+      ]
+    },
+    {
+      "slug": "halfling-ghostwise-scag",
+      "parentSlug": "halfling-phb",
+      "sourceCode": "SCAG",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "halfling-lightfoot-phb",
+      "parentSlug": "halfling-phb",
+      "sourceCode": "PHB",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "halfling-stout-phb",
+      "parentSlug": "halfling-phb",
+      "sourceCode": "PHB",
+      "ruleCount": 0,
+      "deferred": []
+    },
+    {
+      "slug": "human-variant-phb",
+      "parentSlug": null,
+      "sourceCode": "PHB",
+      "ruleCount": 1,
+      "deferred": []
+    }
+  ],
+  "rules": [
+    {
+      "key": "dnd-2014-race-dwarf-phb-weapons",
+      "raceSlug": "dwarf-phb",
+      "category": "weapons",
+      "label": "Nain — Armes",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "battleaxe",
+        "handaxe",
+        "light-hammer",
+        "warhammer"
+      ]
+    },
+    {
+      "key": "dnd-2014-race-dwarf-phb-tools",
+      "raceSlug": "dwarf-phb",
+      "category": "tools",
+      "label": "Nain — Outils",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 1,
+      "options": [
+        "smiths-tools",
+        "brewers-supplies",
+        "masons-tools"
+      ]
+    },
+    {
+      "key": "dnd-2014-race-dwarf-mountain-phb-armor",
+      "raceSlug": "dwarf-mountain-phb",
+      "category": "armor",
+      "label": "Nain des montagnes — Armures",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "light-armor",
+        "medium-armor"
+      ]
+    },
+    {
+      "key": "dnd-2014-race-elf-phb-skills",
+      "raceSlug": "elf-phb",
+      "category": "skills",
+      "label": "Elfe — Compétences",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "perception"
+      ]
+    },
+    {
+      "key": "dnd-2014-race-elf-high-phb-weapons",
+      "raceSlug": "elf-high-phb",
+      "category": "weapons",
+      "label": "Haut-elfe — Armes",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "longsword",
+        "shortsword",
+        "shortbow",
+        "longbow"
+      ]
+    },
+    {
+      "key": "dnd-2014-race-elf-wood-phb-weapons",
+      "raceSlug": "elf-wood-phb",
+      "category": "weapons",
+      "label": "Elfe des bois — Armes",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "longsword",
+        "shortsword",
+        "shortbow",
+        "longbow"
+      ]
+    },
+    {
+      "key": "dnd-2014-race-elf-drow-phb-weapons",
+      "raceSlug": "elf-drow-phb",
+      "category": "weapons",
+      "label": "Elfe noir (Drow) — Armes",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "rapier",
+        "shortsword",
+        "hand-crossbow"
+      ]
+    },
+    {
+      "key": "dnd-2014-race-half-elf-phb-skills",
+      "raceSlug": "half-elf-phb",
+      "category": "skills",
+      "label": "Demi-elfe — Compétences",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 2,
+      "options": [
+        "acrobatics",
+        "animal-handling",
+        "arcana",
+        "athletics",
+        "deception",
+        "history",
+        "insight",
+        "intimidation",
+        "investigation",
+        "medicine",
+        "nature",
+        "perception",
+        "performance",
+        "persuasion",
+        "religion",
+        "sleight-of-hand",
+        "stealth",
+        "survival"
+      ]
+    },
+    {
+      "key": "dnd-2014-race-half-orc-phb-skills",
+      "raceSlug": "half-orc-phb",
+      "category": "skills",
+      "label": "Demi-orc — Compétences",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "intimidation"
+      ]
+    },
+    {
+      "key": "dnd-2014-race-gnome-rock-phb-tools",
+      "raceSlug": "gnome-rock-phb",
+      "category": "tools",
+      "label": "Gnome des roches — Outils",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "tinkers-tools"
+      ]
+    },
+    {
+      "key": "dnd-2014-race-human-variant-phb-skills",
+      "raceSlug": "human-variant-phb",
+      "category": "skills",
+      "label": "Humain (don) — Compétences",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 1,
+      "options": [
+        "acrobatics",
+        "animal-handling",
+        "arcana",
+        "athletics",
+        "deception",
+        "history",
+        "insight",
+        "intimidation",
+        "investigation",
+        "medicine",
+        "nature",
+        "perception",
+        "performance",
+        "persuasion",
+        "religion",
+        "sleight-of-hand",
+        "stealth",
+        "survival"
+      ]
+    },
+    {
+      "key": "dnd-2014-race-bugbear-mpmm-skills",
+      "raceSlug": "bugbear-mpmm",
+      "category": "skills",
+      "label": "Gobelours — Compétences",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "stealth"
+      ]
+    },
+    {
+      "key": "dnd-2014-race-centaur-mpmm-skills",
+      "raceSlug": "centaur-mpmm",
+      "category": "skills",
+      "label": "Centaure — Compétences",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 1,
+      "options": [
+        "animal-handling",
+        "medicine",
+        "nature",
+        "survival"
+      ]
+    },
+    {
+      "key": "dnd-2014-race-changeling-mpmm-skills",
+      "raceSlug": "changeling-mpmm",
+      "category": "skills",
+      "label": "Changelin — Compétences",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 2,
+      "options": [
+        "deception",
+        "insight",
+        "intimidation",
+        "performance",
+        "persuasion"
+      ]
+    },
+    {
+      "key": "dnd-2014-race-eladrin-mpmm-skills",
+      "raceSlug": "eladrin-mpmm",
+      "category": "skills",
+      "label": "Éladrin — Compétences",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "perception"
+      ]
+    },
+    {
+      "key": "dnd-2014-race-goliath-mpmm-skills",
+      "raceSlug": "goliath-mpmm",
+      "category": "skills",
+      "label": "Goliath — Compétences",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "athletics"
+      ]
+    },
+    {
+      "key": "dnd-2014-race-harengon-mpmm-skills",
+      "raceSlug": "harengon-mpmm",
+      "category": "skills",
+      "label": "Conil — Compétences",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "perception"
+      ]
+    },
+    {
+      "key": "dnd-2014-race-kenku-mpmm-skills",
+      "raceSlug": "kenku-mpmm",
+      "category": "skills",
+      "label": "Kenku — Compétences",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 2,
+      "options": [
+        "acrobatics",
+        "animal-handling",
+        "arcana",
+        "athletics",
+        "deception",
+        "history",
+        "insight",
+        "intimidation",
+        "investigation",
+        "medicine",
+        "nature",
+        "perception",
+        "performance",
+        "persuasion",
+        "religion",
+        "sleight-of-hand",
+        "stealth",
+        "survival"
+      ]
+    },
+    {
+      "key": "dnd-2014-race-lizardfolk-mpmm-skills",
+      "raceSlug": "lizardfolk-mpmm",
+      "category": "skills",
+      "label": "Homme-lézard — Compétences",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 2,
+      "options": [
+        "animal-handling",
+        "medicine",
+        "nature",
+        "perception",
+        "stealth",
+        "survival"
+      ]
+    },
+    {
+      "key": "dnd-2014-race-owlin-scc-skills",
+      "raceSlug": "owlin-scc",
+      "category": "skills",
+      "label": "Hiboulin — Compétences",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "stealth"
+      ]
+    },
+    {
+      "key": "dnd-2014-race-satyr-mpmm-skills",
+      "raceSlug": "satyr-mpmm",
+      "category": "skills",
+      "label": "Satyre — Compétences",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "performance",
+        "persuasion"
+      ]
+    },
+    {
+      "key": "dnd-2014-race-satyr-mpmm-tools",
+      "raceSlug": "satyr-mpmm",
+      "category": "tools",
+      "label": "Satyre — Outils",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 1,
+      "options": [
+        "shawm",
+        "horn",
+        "bagpipes",
+        "flute",
+        "pan-flute",
+        "lute",
+        "lyre",
+        "drum",
+        "dulcimer",
+        "viol"
+      ]
+    },
+    {
+      "key": "dnd-2014-race-sea-elf-mpmm-skills",
+      "raceSlug": "sea-elf-mpmm",
+      "category": "skills",
+      "label": "Elfe des mers — Compétences",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "perception"
+      ]
+    },
+    {
+      "key": "dnd-2014-race-shadar-kai-mpmm-skills",
+      "raceSlug": "shadar-kai-mpmm",
+      "category": "skills",
+      "label": "Shadar-kai — Compétences",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "perception"
+      ]
+    },
+    {
+      "key": "dnd-2014-race-shifter-mpmm-skills",
+      "raceSlug": "shifter-mpmm",
+      "category": "skills",
+      "label": "Féral — Compétences",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 1,
+      "options": [
+        "acrobatics",
+        "athletics",
+        "intimidation",
+        "survival"
+      ]
+    },
+    {
+      "key": "dnd-2014-race-tabaxi-mpmm-skills",
+      "raceSlug": "tabaxi-mpmm",
+      "category": "skills",
+      "label": "Tabaxi — Compétences",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "perception",
+        "stealth"
+      ]
+    },
+    {
+      "key": "dnd-2014-race-tortle-mpmm-skills",
+      "raceSlug": "tortle-mpmm",
+      "category": "skills",
+      "label": "Torte — Compétences",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 1,
+      "options": [
+        "animal-handling",
+        "medicine",
+        "nature",
+        "perception",
+        "stealth",
+        "survival"
+      ]
+    },
+    {
+      "key": "dnd-2014-race-warforged-erlw-skills",
+      "raceSlug": "warforged-erlw",
+      "category": "skills",
+      "label": "Forgelier — Compétences",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 1,
+      "options": [
+        "acrobatics",
+        "animal-handling",
+        "arcana",
+        "athletics",
+        "deception",
+        "history",
+        "insight",
+        "intimidation",
+        "investigation",
+        "medicine",
+        "nature",
+        "perception",
+        "performance",
+        "persuasion",
+        "religion",
+        "sleight-of-hand",
+        "stealth",
+        "survival"
+      ]
+    },
+    {
+      "key": "dnd-2014-race-warforged-erlw-tools",
+      "raceSlug": "warforged-erlw",
+      "category": "tools",
+      "label": "Forgelier — Outils",
+      "acquisitionMode": "ANY",
+      "unlockLevel": 1,
+      "choiceCount": 1,
+      "options": [
+        "alchemists-supplies",
+        "brewers-supplies",
+        "calligraphers-supplies",
+        "painters-supplies",
+        "jewelers-tools",
+        "tinkers-tools",
+        "cartographers-tools",
+        "carpenters-tools",
+        "cobblers-tools",
+        "smiths-tools",
+        "masons-tools",
+        "woodcarvers-tools",
+        "potters-tools",
+        "glassblowers-tools",
+        "leatherworkers-tools",
+        "weavers-tools",
+        "cooks-utensils",
+        "shawm",
+        "horn",
+        "bagpipes",
+        "flute",
+        "pan-flute",
+        "lute",
+        "lyre",
+        "drum",
+        "dulcimer",
+        "viol",
+        "dice-set",
+        "dragonchess-set",
+        "playing-card-set",
+        "three-dragon-ante-set",
+        "poisoners-kit",
+        "herbalism-kit",
+        "forgery-kit",
+        "disguise-kit",
+        "navigators-tools",
+        "thieves-tools"
+      ]
+    }
+  ]
+}

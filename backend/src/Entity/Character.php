@@ -38,6 +38,22 @@ class Character
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?CharacterRace $race = null;
 
+    #[ORM\ManyToOne(targetEntity: CharacterBackground::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'RESTRICT')]
+    private ?CharacterBackground $background = null;
+
+    public function getBackground(): ?CharacterBackground
+    {
+        return $this->background;
+    }
+
+    public function setBackground(?CharacterBackground $background): static
+    {
+        $this->background = $background;
+
+        return $this;
+    }
+
     #[ORM\Column(length: 80)]
     private string $slug;
 
@@ -118,6 +134,54 @@ class Character
     #[ORM\OneToMany(mappedBy: 'character', targetEntity: CharacterRaceAbilityChoice::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $raceAbilityChoices;
 
+    /** @var Collection<int, CharacterProficiencyChoice> */
+    #[ORM\OneToMany(mappedBy: 'character', targetEntity: CharacterProficiencyChoice::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private Collection $proficiencyChoices;
+
+    /** @var Collection<int, CharacterLanguageChoice> */
+    #[ORM\OneToMany(mappedBy: 'character', targetEntity: CharacterLanguageChoice::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private Collection $languageChoices;
+
+    public function getLanguageChoices(): Collection { return $this->languageChoices; }
+    public function addLanguageChoice(CharacterLanguageChoice $entry): void
+    {
+        if ($entry->getCharacter() !== $this) throw new \DomainException('Attribution pour un autre personnage.');
+        if (!$this->languageChoices->contains($entry)) $this->languageChoices->add($entry);
+    }
+
+    /** @var Collection<int, CharacterExpertiseChoice> */
+    #[ORM\OneToMany(mappedBy: 'character', targetEntity: CharacterExpertiseChoice::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private Collection $expertiseChoices;
+
+    public function getExpertiseChoices(): Collection { return $this->expertiseChoices; }
+    public function addExpertiseChoice(CharacterExpertiseChoice $entry): void
+    {
+        if ($entry->getCharacter() !== $this) throw new \DomainException('Attribution pour un autre personnage.');
+        if (!$this->expertiseChoices->contains($entry)) $this->expertiseChoices->add($entry);
+    }
+
+    /** @var Collection<int, CharacterProficiencySubstitution> */
+    #[ORM\OneToMany(mappedBy: 'character', targetEntity: CharacterProficiencySubstitution::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private Collection $proficiencySubstitutions;
+
+    public function getProficiencySubstitutions(): Collection { return $this->proficiencySubstitutions; }
+    public function addProficiencySubstitution(CharacterProficiencySubstitution $entry): void
+    {
+        if ($entry->getCharacter() !== $this) throw new \DomainException('Attribution pour un autre personnage.');
+        if (!$this->proficiencySubstitutions->contains($entry)) $this->proficiencySubstitutions->add($entry);
+    }
+
+    /** @var Collection<int, CharacterManualGrant> */
+    #[ORM\OneToMany(mappedBy: 'character', targetEntity: CharacterManualGrant::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private Collection $manualGrants;
+
+    public function getManualGrants(): Collection { return $this->manualGrants; }
+    public function addManualGrant(CharacterManualGrant $entry): void
+    {
+        if ($entry->getCharacter() !== $this) throw new \DomainException('Attribution pour un autre personnage.');
+        if (!$this->manualGrants->contains($entry)) $this->manualGrants->add($entry);
+    }
+
     /**
      * @var Collection<int, CharacterAbilityAdjustment>
      */
@@ -151,6 +215,11 @@ class Character
         $this->feats = new ArrayCollection();
         $this->progressions = new ArrayCollection();
         $this->raceAbilityChoices = new ArrayCollection();
+        $this->proficiencyChoices = new ArrayCollection();
+        $this->languageChoices = new ArrayCollection();
+        $this->expertiseChoices = new ArrayCollection();
+        $this->proficiencySubstitutions = new ArrayCollection();
+        $this->manualGrants = new ArrayCollection();
         $this->abilityAdjustments = new ArrayCollection();
 
         foreach (Ability::cases() as $ability) {
@@ -161,6 +230,32 @@ class Character
     public function getId(): ?int
     {
         return $this->id;
+    }
+
+    /** @return Collection<int, CharacterProficiencyChoice> */
+    public function getProficiencyChoices(): Collection
+    {
+        return $this->proficiencyChoices;
+    }
+
+    public function addProficiencyChoice(CharacterProficiencyChoice $choice): static
+    {
+        if ($choice->getCharacter() !== $this) {
+            throw new \InvalidArgumentException('Ce choix appartient à un autre personnage.');
+        }
+
+        if (!$this->proficiencyChoices->contains($choice)) {
+            $this->proficiencyChoices->add($choice);
+        }
+
+        return $this;
+    }
+
+    public function removeProficiencyChoice(CharacterProficiencyChoice $choice): static
+    {
+        $this->proficiencyChoices->removeElement($choice);
+
+        return $this;
     }
 
     public function getCampaign(): Campaign

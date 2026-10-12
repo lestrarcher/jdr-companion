@@ -1,0 +1,391 @@
+{
+  "edition": "2014",
+  "languages": [
+    {
+      "slug": "common",
+      "name": "Commun",
+      "category": "STANDARD"
+    },
+    {
+      "slug": "dwarvish",
+      "name": "Nain",
+      "category": "STANDARD"
+    },
+    {
+      "slug": "elvish",
+      "name": "Elfique",
+      "category": "STANDARD"
+    },
+    {
+      "slug": "giant",
+      "name": "Géant",
+      "category": "STANDARD"
+    },
+    {
+      "slug": "gnomish",
+      "name": "Gnome",
+      "category": "STANDARD"
+    },
+    {
+      "slug": "goblin",
+      "name": "Gobelin",
+      "category": "STANDARD"
+    },
+    {
+      "slug": "halfling",
+      "name": "Halfelin",
+      "category": "STANDARD"
+    },
+    {
+      "slug": "orc",
+      "name": "Orc",
+      "category": "STANDARD"
+    },
+    {
+      "slug": "abyssal",
+      "name": "Abyssal",
+      "category": "EXOTIC"
+    },
+    {
+      "slug": "celestial",
+      "name": "Céleste",
+      "category": "EXOTIC"
+    },
+    {
+      "slug": "draconic",
+      "name": "Draconique",
+      "category": "EXOTIC"
+    },
+    {
+      "slug": "deep-speech",
+      "name": "Profond",
+      "category": "EXOTIC"
+    },
+    {
+      "slug": "infernal",
+      "name": "Infernal",
+      "category": "EXOTIC"
+    },
+    {
+      "slug": "primordial",
+      "name": "Primordial",
+      "category": "EXOTIC"
+    },
+    {
+      "slug": "sylvan",
+      "name": "Sylvestre",
+      "category": "EXOTIC"
+    },
+    {
+      "slug": "undercommon",
+      "name": "Commun des profondeurs",
+      "category": "EXOTIC"
+    },
+    {
+      "slug": "druidic",
+      "name": "Druidique",
+      "category": "SECRET"
+    },
+    {
+      "slug": "thieves-cant",
+      "name": "Argot des voleurs",
+      "category": "SECRET"
+    }
+  ],
+  "languageRules": [
+    {
+      "key": "phb-2014-background-acolyte-languages",
+      "sourceType": "background",
+      "sourceSlug": "acolyte-phb",
+      "label": "Langues : acolyte",
+      "unlockLevel": 1,
+      "choiceCount": 2,
+      "options": [
+        "common",
+        "dwarvish",
+        "elvish",
+        "giant",
+        "gnomish",
+        "goblin",
+        "halfling",
+        "orc",
+        "abyssal",
+        "celestial",
+        "draconic",
+        "deep-speech",
+        "infernal",
+        "primordial",
+        "sylvan",
+        "undercommon"
+      ]
+    },
+    {
+      "key": "phb-2014-background-sage-languages",
+      "sourceType": "background",
+      "sourceSlug": "sage-phb",
+      "label": "Langues : sage",
+      "unlockLevel": 1,
+      "choiceCount": 2,
+      "options": [
+        "common",
+        "dwarvish",
+        "elvish",
+        "giant",
+        "gnomish",
+        "goblin",
+        "halfling",
+        "orc",
+        "abyssal",
+        "celestial",
+        "draconic",
+        "deep-speech",
+        "infernal",
+        "primordial",
+        "sylvan",
+        "undercommon"
+      ]
+    },
+    {
+      "key": "phb-2014-background-guild-artisan-languages",
+      "sourceType": "background",
+      "sourceSlug": "guild-artisan-phb",
+      "label": "Langues : guild-artisan",
+      "unlockLevel": 1,
+      "choiceCount": 1,
+      "options": [
+        "common",
+        "dwarvish",
+        "elvish",
+        "giant",
+        "gnomish",
+        "goblin",
+        "halfling",
+        "orc",
+        "abyssal",
+        "celestial",
+        "draconic",
+        "deep-speech",
+        "infernal",
+        "primordial",
+        "sylvan",
+        "undercommon"
+      ]
+    },
+    {
+      "key": "phb-2014-background-hermit-languages",
+      "sourceType": "background",
+      "sourceSlug": "hermit-phb",
+      "label": "Langues : hermit",
+      "unlockLevel": 1,
+      "choiceCount": 1,
+      "options": [
+        "common",
+        "dwarvish",
+        "elvish",
+        "giant",
+        "gnomish",
+        "goblin",
+        "halfling",
+        "orc",
+        "abyssal",
+        "celestial",
+        "draconic",
+        "deep-speech",
+        "infernal",
+        "primordial",
+        "sylvan",
+        "undercommon"
+      ]
+    },
+    {
+      "key": "phb-2014-background-noble-languages",
+      "sourceType": "background",
+      "sourceSlug": "noble-phb",
+      "label": "Langues : noble",
+      "unlockLevel": 1,
+      "choiceCount": 1,
+      "options": [
+        "common",
+        "dwarvish",
+        "elvish",
+        "giant",
+        "gnomish",
+        "goblin",
+        "halfling",
+        "orc",
+        "abyssal",
+        "celestial",
+        "draconic",
+        "deep-speech",
+        "infernal",
+        "primordial",
+        "sylvan",
+        "undercommon"
+      ]
+    },
+    {
+      "key": "phb-2014-background-outlander-languages",
+      "sourceType": "background",
+      "sourceSlug": "outlander-phb",
+      "label": "Langues : outlander",
+      "unlockLevel": 1,
+      "choiceCount": 1,
+      "options": [
+        "common",
+        "dwarvish",
+        "elvish",
+        "giant",
+        "gnomish",
+        "goblin",
+        "halfling",
+        "orc",
+        "abyssal",
+        "celestial",
+        "draconic",
+        "deep-speech",
+        "infernal",
+        "primordial",
+        "sylvan",
+        "undercommon"
+      ]
+    },
+    {
+      "key": "phb-2014-druid-secret-language",
+      "sourceType": "class",
+      "sourceSlug": "druid",
+      "label": "Druidique",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "druidic"
+      ]
+    },
+    {
+      "key": "phb-2014-rogue-secret-language",
+      "sourceType": "class",
+      "sourceSlug": "rogue",
+      "label": "Argot des voleurs",
+      "unlockLevel": 1,
+      "choiceCount": 0,
+      "options": [
+        "thieves-cant"
+      ]
+    }
+  ],
+  "expertiseRules": [
+    {
+      "key": "phb-2014-rogue-expertise-1",
+      "sourceType": "class",
+      "sourceSlug": "rogue",
+      "label": "Expertise : rogue 1",
+      "unlockLevel": 1,
+      "choiceCount": 2,
+      "options": [
+        "acrobatics",
+        "animal-handling",
+        "arcana",
+        "athletics",
+        "deception",
+        "history",
+        "insight",
+        "intimidation",
+        "investigation",
+        "medicine",
+        "nature",
+        "perception",
+        "performance",
+        "persuasion",
+        "religion",
+        "sleight-of-hand",
+        "stealth",
+        "survival",
+        "thieves-tools"
+      ]
+    },
+    {
+      "key": "phb-2014-rogue-expertise-6",
+      "sourceType": "class",
+      "sourceSlug": "rogue",
+      "label": "Expertise : rogue 6",
+      "unlockLevel": 6,
+      "choiceCount": 2,
+      "options": [
+        "acrobatics",
+        "animal-handling",
+        "arcana",
+        "athletics",
+        "deception",
+        "history",
+        "insight",
+        "intimidation",
+        "investigation",
+        "medicine",
+        "nature",
+        "perception",
+        "performance",
+        "persuasion",
+        "religion",
+        "sleight-of-hand",
+        "stealth",
+        "survival",
+        "thieves-tools"
+      ]
+    },
+    {
+      "key": "phb-2014-bard-expertise-3",
+      "sourceType": "class",
+      "sourceSlug": "bard",
+      "label": "Expertise : bard 3",
+      "unlockLevel": 3,
+      "choiceCount": 2,
+      "options": [
+        "acrobatics",
+        "animal-handling",
+        "arcana",
+        "athletics",
+        "deception",
+        "history",
+        "insight",
+        "intimidation",
+        "investigation",
+        "medicine",
+        "nature",
+        "perception",
+        "performance",
+        "persuasion",
+        "religion",
+        "sleight-of-hand",
+        "stealth",
+        "survival"
+      ]
+    },
+    {
+      "key": "phb-2014-bard-expertise-10",
+      "sourceType": "class",
+      "sourceSlug": "bard",
+      "label": "Expertise : bard 10",
+      "unlockLevel": 10,
+      "choiceCount": 2,
+      "options": [
+        "acrobatics",
+        "animal-handling",
+        "arcana",
+        "athletics",
+        "deception",
+        "history",
+        "insight",
+        "intimidation",
+        "investigation",
+        "medicine",
+        "nature",
+        "perception",
+        "performance",
+        "persuasion",
+        "religion",
+        "sleight-of-hand",
+        "stealth",
+        "survival"
+      ]
+    }
+  ]
+}
