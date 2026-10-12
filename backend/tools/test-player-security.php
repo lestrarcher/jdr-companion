@@ -15,6 +15,7 @@ use Doctrine\ORM\Tools\SchemaTool;
 use Symfony\Component\Dotenv\Dotenv;
 
 require __DIR__ . '/../vendor/autoload.php';
+require __DIR__.'/training-presenter-fixture.php';
 (new Dotenv())->bootEnv(__DIR__ . '/../.env');
 $kernel = new Kernel('dev', true);
 $kernel->boot();
@@ -127,7 +128,7 @@ try {
     $em->persist($item); $em->persist($owned); $em->flush();
     $access = new App\Service\PlayerCharacterAccess(new CharacterSessionStateRepository($registry));
     $updater = new App\Service\PlayerCharacterStateUpdater($s['sync'], $s['hpState']);
-    $profile = new App\Service\CharacterProfileSerializer($s['ability'], $s['features'], $s['resources'], $s['hp'], $s['slots'], new App\Service\CharacterActionResolver(new App\Repository\CharacterActionClassRuleRepository($registry)));
+    $profile = new App\Service\CharacterProfileSerializer($s['ability'], $s['features'], $s['resources'], $s['hp'], $s['slots'], new App\Service\CharacterActionResolver(new App\Repository\CharacterActionClassRuleRepository($registry)), trainingPresenterForRegistry($registry));
     $serializer = new App\Service\CharacterSessionStateSerializer($profile, $s['hpState'], new App\Repository\CharacterActiveEffectRepository($registry), $s['slotState']);
     $controller = new App\Controller\CharacterSessionStateController($profile, $s['sync'], $serializer);
     $wallet = new App\Controller\CharacterWalletController();
@@ -142,10 +143,13 @@ try {
     $token = $session->getAccessToken();
     $initialRevision = $session->getRevision();
     $read = json_decode($controller->showPublic($token, $access)->getContent(), true);
+    $check(isset($read['character']['training']['proficiencies'], $read['character']['training']['languages'], $read['character']['training']['expertises']), 'Public GET includes resolved training');
     $check($read['revision'] === $initialRevision && $session->getRevision() === $initialRevision, 'Read exposes revision without incrementing it');
     $missingRevision = Symfony\Component\HttpFoundation\Request::create('/', 'PATCH', [], [], [], ['CONTENT_TYPE' => 'application/json'], '{"state":{}}');
     $check($controller->updatePublic($token, $missingRevision, $access, $em, $updater)->getStatusCode() === 422, 'Omitted revision cannot bypass concurrency');
-    $check($controller->updatePublic($token, $request(['state' => [], 'revision' => $initialRevision]), $access, $em, $updater)->getStatusCode() === 200, 'Current revision accepted');
+    $updated = $controller->updatePublic($token, $request(['state' => [], 'revision' => $initialRevision]), $access, $em, $updater);
+    $check($updated->getStatusCode() === 200, 'Current revision accepted');
+    $check(json_decode($updated->getContent(), true)['character']['training'] === $read['character']['training'], 'Public PATCH retains resolved training');
     $check($session->getRevision() === $initialRevision + 1, 'Successful mutation increments revision');
     $check($controller->updatePublic($token, $request(['state' => [], 'revision' => $initialRevision]), $access, $em, $updater)->getStatusCode() === 409, 'Stale revision is a conflict');
     $routes = [

@@ -21,6 +21,7 @@ use Doctrine\ORM\Tools\SchemaTool;
 use Symfony\Component\Dotenv\Dotenv;
 
 require __DIR__ . '/../vendor/autoload.php';
+require __DIR__.'/training-presenter-fixture.php';
 (new Dotenv())->bootEnv(__DIR__ . '/../.env');
 $kernel = new Kernel('dev', true);
 $kernel->boot();
@@ -175,7 +176,7 @@ try {
         $check($pool($result, 'spell-slot-5') === $server['resources'][1], 'Exhausted temporary pool remains valid');
     }
     $reject(['resources' => [['id' => 'spell-slot-5', 'currentValue' => 1]]], 403);
-    $profileSerializer = new CharacterProfileSerializer($ability, $features, $resources, $hp, new CharacterSpellSlotCalculator(), new CharacterActionResolver(new CharacterActionClassRuleRepository($registry)));
+    $profileSerializer = new CharacterProfileSerializer($ability, $features, $resources, $hp, new CharacterSpellSlotCalculator(), new CharacterActionResolver(new CharacterActionClassRuleRepository($registry)), trainingPresenterForRegistry($registry));
     $serializer = new CharacterSessionStateSerializer($profileSerializer, new CharacterHitPointStateService($hp), new CharacterActiveEffectRepository($registry), $slots);
     $naturalProfile = $profileSerializer->serialize($character);
     $naturalResources = array_column($naturalProfile['resources'], null, 'slug');

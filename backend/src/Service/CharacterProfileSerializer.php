@@ -20,6 +20,7 @@ final readonly class CharacterProfileSerializer
         private CharacterHitPointCalculator $hitPointCalculator,
         private CharacterSpellSlotCalculator $spellSlotCalculator,
         private CharacterActionResolver $actionResolver,
+        private CharacterTrainingPresenter $trainingPresenter,
     ) {
     }
 
@@ -50,6 +51,7 @@ final readonly class CharacterProfileSerializer
                 : null,
             'totalLevel' => $character->getTotalLevel(),
             'proficiencyBonus' => $character->getProficiencyBonus(),
+            'training' => $this->trainingPresenter->resolved($character, includeManualGrantDetails: false),
             'hitPoints' => $this->hitPointCalculator->calculate($character)->toArray(),
             'classLevels' => array_map(
                 $this->serializeClassLevel(...),

@@ -7,7 +7,8 @@ use App\Entity\{Character, ProficiencyGrantRule};
 final readonly class CharacterTrainingPresenter
 {
     public function __construct(private CharacterTrainingReferences $references, private CharacterTrainingResolver $resolver, private CharacterProficiencyResolver $proficiencies) {}
-    public function resolved(Character $character): array
+    /** Public profiles omit the GM audit log, while retaining effective manual grants. */
+    public function resolved(Character $character, bool $includeManualGrantDetails = true): array
     {
         $resolved = $this->resolver->resolve($character);
         $output = [];
@@ -16,6 +17,10 @@ final readonly class CharacterTrainingPresenter
             foreach ($entries as $entry) {
                 $definition = $entry['definition'];
                 $item = ['id' => $definition->getId(), 'slug' => $definition->getSlug(), 'name' => $definition->getName()];
+                if ($kind === 'proficiencies' || $kind === 'expertises') {
+                    $item['type'] = $definition->getType()->value;
+                }
+                if ($kind === 'expertises') $item['proficiencyId'] = $definition->getId();
                 if ($kind === 'proficiencies') {
                     $item['grants'] = array_map(fn ($r) => $this->proficiencyRule($r), $entry['grants']);
                     $item['manualGrantIds'] = array_map(static fn ($g) => $g->getId(), $entry['manualGrants'] ?? []);
@@ -24,7 +29,7 @@ final readonly class CharacterTrainingPresenter
                 $output[$kind][] = $item;
             }
         }
-        $output['manualGrants'] = array_map(static fn ($g) => [
+        if ($includeManualGrantDetails) $output['manualGrants'] = array_map(static fn ($g) => [
             'id' => $g->getId(), 'kind' => $g->getKind(), 'proficiencyId' => $g->getProficiencyDefinition()?->getId(),
             'languageSlug' => $g->getLanguage()?->getSlug(), 'reason' => $g->getReason(),
             'grantedById' => $g->getGrantedBy()->getId(), 'createdAt' => $g->getCreatedAt()->format(DATE_ATOM),

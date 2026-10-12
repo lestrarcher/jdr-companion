@@ -16,6 +16,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 require __DIR__ . '/../vendor/autoload.php';
+require __DIR__.'/training-presenter-fixture.php';
 (new Symfony\Component\Dotenv\Dotenv())->bootEnv(__DIR__ . '/../.env');
 $kernel = new Kernel('dev', true);
 $kernel->boot();
@@ -47,7 +48,7 @@ function services($registry): array
     $updater = new PlayerCharacterStateUpdater($sync, $hpState);
     $levelUp = new CharacterLevelUpService($em, new CharacterClassLevelRuleRepository($registry), $sync, new CharacterMulticlassEligibilityService($ability), $ability);
     $rest = new CharacterRestService($hp, $hpState, $resources, $sync, $slots, new TrackableResourceDefinitionRepository($registry), $ability, $effects, new App\Service\CharacterActiveEffectService($hpState), $em);
-    $profile = new CharacterProfileSerializer($ability, $features, $resources, $hp, $slots, new App\Service\CharacterActionResolver(new App\Repository\CharacterActionClassRuleRepository($registry)));
+    $profile = new CharacterProfileSerializer($ability, $features, $resources, $hp, $slots, new App\Service\CharacterActionResolver(new App\Repository\CharacterActionClassRuleRepository($registry)), trainingPresenterForRegistry($registry));
     $controller = new CharacterSessionStateController($profile, $sync, new App\Service\CharacterSessionStateSerializer($profile, $hpState, $effects, $slotState));
     $controller->setContainer(new Container());
     return compact('em', 'ability', 'access', 'updater', 'levelUp', 'rest', 'controller');

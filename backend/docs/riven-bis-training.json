@@ -1,0 +1,499 @@
+{
+    "proficiencies": [
+        {
+            "id": 1,
+            "slug": "acrobatics",
+            "name": "Acrobaties",
+            "type": "SKILL",
+            "grants": [
+                {
+                    "ruleId": 66,
+                    "key": "phb-2014-rogue-starting-skills",
+                    "label": "Roublard — Compétences (initial)",
+                    "sourceType": "class",
+                    "sourceId": 7,
+                    "unlockLevel": 1,
+                    "choiceCount": 4,
+                    "acquisitionMode": "STARTING_CLASS",
+                    "optionIds": [
+                        1,
+                        4,
+                        5,
+                        7,
+                        8,
+                        9,
+                        12,
+                        13,
+                        14,
+                        16,
+                        17
+                    ]
+                }
+            ],
+            "manualGrantIds": [],
+            "substitutions": []
+        },
+        {
+            "id": 102,
+            "slug": "disguise-kit",
+            "name": "Kit de déguisement",
+            "type": "TOOL",
+            "grants": [
+                {
+                    "ruleId": 124,
+                    "key": "phb-2014-background-urchin-phb-tools-automatic",
+                    "label": "Enfant des rues : outils",
+                    "sourceType": "background",
+                    "sourceId": 13,
+                    "unlockLevel": 1,
+                    "choiceCount": 0,
+                    "acquisitionMode": "ANY",
+                    "optionIds": [
+                        102,
+                        104
+                    ]
+                }
+            ],
+            "manualGrantIds": [],
+            "substitutions": []
+        },
+        {
+            "id": 59,
+            "slug": "hand-crossbow",
+            "name": "Arbalète de poing",
+            "type": "WEAPON",
+            "grants": [
+                {
+                    "ruleId": 63,
+                    "key": "phb-2014-rogue-starting-weapons",
+                    "label": "Roublard — Armes (initial)",
+                    "sourceType": "class",
+                    "sourceId": 7,
+                    "unlockLevel": 1,
+                    "choiceCount": 0,
+                    "acquisitionMode": "STARTING_CLASS",
+                    "optionIds": [
+                        59,
+                        45,
+                        57,
+                        44,
+                        25
+                    ]
+                }
+            ],
+            "manualGrantIds": [],
+            "substitutions": []
+        },
+        {
+            "id": 7,
+            "slug": "insight",
+            "name": "Intuition",
+            "type": "SKILL",
+            "grants": [
+                {
+                    "ruleId": 66,
+                    "key": "phb-2014-rogue-starting-skills",
+                    "label": "Roublard — Compétences (initial)",
+                    "sourceType": "class",
+                    "sourceId": 7,
+                    "unlockLevel": 1,
+                    "choiceCount": 4,
+                    "acquisitionMode": "STARTING_CLASS",
+                    "optionIds": [
+                        1,
+                        4,
+                        5,
+                        7,
+                        8,
+                        9,
+                        12,
+                        13,
+                        14,
+                        16,
+                        17
+                    ]
+                }
+            ],
+            "manualGrantIds": [],
+            "substitutions": []
+        },
+        {
+            "id": 64,
+            "slug": "light-armor",
+            "name": "Armures légères",
+            "type": "ARMOR",
+            "grants": [
+                {
+                    "ruleId": 64,
+                    "key": "phb-2014-rogue-starting-armor",
+                    "label": "Roublard — Armures et boucliers (initial)",
+                    "sourceType": "class",
+                    "sourceId": 7,
+                    "unlockLevel": 1,
+                    "choiceCount": 0,
+                    "acquisitionMode": "STARTING_CLASS",
+                    "optionIds": [
+                        64
+                    ]
+                }
+            ],
+            "manualGrantIds": [],
+            "substitutions": []
+        },
+        {
+            "id": 45,
+            "slug": "longsword",
+            "name": "Épée longue",
+            "type": "WEAPON",
+            "grants": [
+                {
+                    "ruleId": 63,
+                    "key": "phb-2014-rogue-starting-weapons",
+                    "label": "Roublard — Armes (initial)",
+                    "sourceType": "class",
+                    "sourceId": 7,
+                    "unlockLevel": 1,
+                    "choiceCount": 0,
+                    "acquisitionMode": "STARTING_CLASS",
+                    "optionIds": [
+                        59,
+                        45,
+                        57,
+                        44,
+                        25
+                    ]
+                }
+            ],
+            "manualGrantIds": [],
+            "substitutions": []
+        },
+        {
+            "id": 12,
+            "slug": "perception",
+            "name": "Perception",
+            "type": "SKILL",
+            "grants": [
+                {
+                    "ruleId": 66,
+                    "key": "phb-2014-rogue-starting-skills",
+                    "label": "Roublard — Compétences (initial)",
+                    "sourceType": "class",
+                    "sourceId": 7,
+                    "unlockLevel": 1,
+                    "choiceCount": 4,
+                    "acquisitionMode": "STARTING_CLASS",
+                    "optionIds": [
+                        1,
+                        4,
+                        5,
+                        7,
+                        8,
+                        9,
+                        12,
+                        13,
+                        14,
+                        16,
+                        17
+                    ]
+                }
+            ],
+            "manualGrantIds": [],
+            "substitutions": []
+        },
+        {
+            "id": 14,
+            "slug": "persuasion",
+            "name": "Persuasion",
+            "type": "SKILL",
+            "grants": [
+                {
+                    "ruleId": 66,
+                    "key": "phb-2014-rogue-starting-skills",
+                    "label": "Roublard — Compétences (initial)",
+                    "sourceType": "class",
+                    "sourceId": 7,
+                    "unlockLevel": 1,
+                    "choiceCount": 4,
+                    "acquisitionMode": "STARTING_CLASS",
+                    "optionIds": [
+                        1,
+                        4,
+                        5,
+                        7,
+                        8,
+                        9,
+                        12,
+                        13,
+                        14,
+                        16,
+                        17
+                    ]
+                }
+            ],
+            "manualGrantIds": [],
+            "substitutions": []
+        },
+        {
+            "id": 57,
+            "slug": "rapier",
+            "name": "Rapière",
+            "type": "WEAPON",
+            "grants": [
+                {
+                    "ruleId": 63,
+                    "key": "phb-2014-rogue-starting-weapons",
+                    "label": "Roublard — Armes (initial)",
+                    "sourceType": "class",
+                    "sourceId": 7,
+                    "unlockLevel": 1,
+                    "choiceCount": 0,
+                    "acquisitionMode": "STARTING_CLASS",
+                    "optionIds": [
+                        59,
+                        45,
+                        57,
+                        44,
+                        25
+                    ]
+                }
+            ],
+            "manualGrantIds": [],
+            "substitutions": []
+        },
+        {
+            "id": 20,
+            "slug": "saving-throw-dexterity",
+            "name": "Sauvegarde de Dextérité",
+            "type": "SAVING_THROW",
+            "grants": [
+                {
+                    "ruleId": 62,
+                    "key": "phb-2014-rogue-starting-saves",
+                    "label": "Roublard — Sauvegardes (initial)",
+                    "sourceType": "class",
+                    "sourceId": 7,
+                    "unlockLevel": 1,
+                    "choiceCount": 0,
+                    "acquisitionMode": "STARTING_CLASS",
+                    "optionIds": [
+                        20,
+                        22
+                    ]
+                }
+            ],
+            "manualGrantIds": [],
+            "substitutions": []
+        },
+        {
+            "id": 22,
+            "slug": "saving-throw-intelligence",
+            "name": "Sauvegarde d'Intelligence",
+            "type": "SAVING_THROW",
+            "grants": [
+                {
+                    "ruleId": 62,
+                    "key": "phb-2014-rogue-starting-saves",
+                    "label": "Roublard — Sauvegardes (initial)",
+                    "sourceType": "class",
+                    "sourceId": 7,
+                    "unlockLevel": 1,
+                    "choiceCount": 0,
+                    "acquisitionMode": "STARTING_CLASS",
+                    "optionIds": [
+                        20,
+                        22
+                    ]
+                }
+            ],
+            "manualGrantIds": [],
+            "substitutions": []
+        },
+        {
+            "id": 44,
+            "slug": "shortsword",
+            "name": "Épée courte",
+            "type": "WEAPON",
+            "grants": [
+                {
+                    "ruleId": 63,
+                    "key": "phb-2014-rogue-starting-weapons",
+                    "label": "Roublard — Armes (initial)",
+                    "sourceType": "class",
+                    "sourceId": 7,
+                    "unlockLevel": 1,
+                    "choiceCount": 0,
+                    "acquisitionMode": "STARTING_CLASS",
+                    "optionIds": [
+                        59,
+                        45,
+                        57,
+                        44,
+                        25
+                    ]
+                }
+            ],
+            "manualGrantIds": [],
+            "substitutions": []
+        },
+        {
+            "id": 25,
+            "slug": "simple-weapons",
+            "name": "Armes courantes",
+            "type": "WEAPON_GROUP",
+            "grants": [
+                {
+                    "ruleId": 63,
+                    "key": "phb-2014-rogue-starting-weapons",
+                    "label": "Roublard — Armes (initial)",
+                    "sourceType": "class",
+                    "sourceId": 7,
+                    "unlockLevel": 1,
+                    "choiceCount": 0,
+                    "acquisitionMode": "STARTING_CLASS",
+                    "optionIds": [
+                        59,
+                        45,
+                        57,
+                        44,
+                        25
+                    ]
+                }
+            ],
+            "manualGrantIds": [],
+            "substitutions": []
+        },
+        {
+            "id": 16,
+            "slug": "sleight-of-hand",
+            "name": "Escamotage",
+            "type": "SKILL",
+            "grants": [
+                {
+                    "ruleId": 123,
+                    "key": "phb-2014-background-urchin-phb-skills",
+                    "label": "Enfant des rues : compétences",
+                    "sourceType": "background",
+                    "sourceId": 13,
+                    "unlockLevel": 1,
+                    "choiceCount": 0,
+                    "acquisitionMode": "ANY",
+                    "optionIds": [
+                        16,
+                        17
+                    ]
+                }
+            ],
+            "manualGrantIds": [],
+            "substitutions": []
+        },
+        {
+            "id": 17,
+            "slug": "stealth",
+            "name": "Discrétion",
+            "type": "SKILL",
+            "grants": [
+                {
+                    "ruleId": 123,
+                    "key": "phb-2014-background-urchin-phb-skills",
+                    "label": "Enfant des rues : compétences",
+                    "sourceType": "background",
+                    "sourceId": 13,
+                    "unlockLevel": 1,
+                    "choiceCount": 0,
+                    "acquisitionMode": "ANY",
+                    "optionIds": [
+                        16,
+                        17
+                    ]
+                }
+            ],
+            "manualGrantIds": [],
+            "substitutions": []
+        },
+        {
+            "id": 104,
+            "slug": "thieves-tools",
+            "name": "Outils de voleur",
+            "type": "TOOL",
+            "grants": [
+                {
+                    "ruleId": 65,
+                    "key": "phb-2014-rogue-starting-tools",
+                    "label": "Roublard — Outils et instruments (initial)",
+                    "sourceType": "class",
+                    "sourceId": 7,
+                    "unlockLevel": 1,
+                    "choiceCount": 0,
+                    "acquisitionMode": "STARTING_CLASS",
+                    "optionIds": [
+                        104
+                    ]
+                },
+                {
+                    "ruleId": 124,
+                    "key": "phb-2014-background-urchin-phb-tools-automatic",
+                    "label": "Enfant des rues : outils",
+                    "sourceType": "background",
+                    "sourceId": 13,
+                    "unlockLevel": 1,
+                    "choiceCount": 0,
+                    "acquisitionMode": "ANY",
+                    "optionIds": [
+                        102,
+                        104
+                    ]
+                }
+            ],
+            "manualGrantIds": [],
+            "substitutions": []
+        }
+    ],
+    "languages": [
+        {
+            "id": 1,
+            "slug": "common",
+            "name": "Commun",
+            "sources": [
+                "race:halfling-lightfoot-phb"
+            ]
+        },
+        {
+            "id": 7,
+            "slug": "halfling",
+            "name": "Halfelin",
+            "sources": [
+                "race:halfling-lightfoot-phb"
+            ]
+        },
+        {
+            "id": 18,
+            "slug": "thieves-cant",
+            "name": "Argot des voleurs",
+            "sources": [
+                "phb-2014-rogue-secret-language"
+            ]
+        }
+    ],
+    "expertises": [
+        {
+            "id": 16,
+            "slug": "sleight-of-hand",
+            "name": "Escamotage",
+            "type": "SKILL",
+            "proficiencyId": 16,
+            "sources": [
+                "phb-2014-rogue-expertise-1"
+            ]
+        },
+        {
+            "id": 17,
+            "slug": "stealth",
+            "name": "Discrétion",
+            "type": "SKILL",
+            "proficiencyId": 17,
+            "sources": [
+                "phb-2014-rogue-expertise-1"
+            ]
+        }
+    ]
+}

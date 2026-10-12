@@ -11,6 +11,7 @@ use Symfony\Component\HttpFoundation\{Request, Session\Session, Session\Storage\
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 
 require __DIR__.'/../vendor/autoload.php';
+require __DIR__.'/training-presenter-fixture.php';
 (new Symfony\Component\Dotenv\Dotenv())->bootEnv(__DIR__.'/../.env');
 putenv('SHELL_VERBOSITY=-1');
 $_SERVER['SHELL_VERBOSITY'] = $_ENV['SHELL_VERBOSITY'] = -1;
@@ -87,7 +88,7 @@ try {
     $effectRepo = new CharacterActiveEffectRepository($registry);
     $sync = new CharacterSessionStateSynchronizer($hp, $hpState, $resources, new CharacterSessionStateRepository($registry), $slotState);
     $factory = new CharacterSessionStateFactory($hp, $resources, $slots, $effectRepo);
-    $profile = new CharacterProfileSerializer($ability, $features, $resources, $hp, $slots, $actions);
+    $profile = new CharacterProfileSerializer($ability, $features, $resources, $hp, $slots, $actions, trainingPresenterForRegistry($registry));
     $serializer = new CharacterSessionStateSerializer($profile, $hpState, $effectRepo, $slotState);
     $rest = new CharacterRestService($hp, $hpState, $resources, $sync, $slots, $definitions, $ability, $effectRepo, new CharacterActiveEffectService($hpState), $em);
     $levelUp = new CharacterLevelUpService($em, new CharacterClassLevelRuleRepository($registry), $sync, new CharacterMulticlassEligibilityService($ability), $ability);
