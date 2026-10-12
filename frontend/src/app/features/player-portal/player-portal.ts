@@ -7,7 +7,7 @@ import { CharacterMagicItems } from './components/character-magic-items/characte
 import { EMPTY, Subject, catchError, concatMap, debounceTime, exhaustMap, finalize, of, switchMap, tap, timer } from 'rxjs';
 
 import { Character } from '@core/models/character.model';
-import { CharacterAbilityScore, CharacterActionSummary, CharacterFeatSummary, CharacterFeatureSummary } from '@core/services/character-api.service';
+import { CharacterAbilityScore, CharacterTraining, CharacterActionSummary, CharacterFeatSummary, CharacterFeatureSummary } from '@core/services/character-api.service';
 
 import { CharacterActionsState, CharacterSessionStatePayload, characterProfileToCharacter, toCharacterSessionStatePayload } from '@core/mappers/character-api.mapper';
 import { ActionPreparationModal } from './components/action-preparation-modal/action-preparation-modal';
@@ -25,6 +25,7 @@ import { RestControls } from './components/rest-controls/rest-controls';
 import { AidActionModal, AidActionPayload, AidSpellSlot, AidTarget } from './components/aid-action-modal/aid-action-modal';
 import { HeroesFeastActionModal, HeroesFeastActionPayload } from './components/heroes-feast-action-modal/heroes-feast-action-modal';
 import { FlexibleCastingActionModal, FlexibleCastingPayload } from './components/flexible-casting-action-modal/flexible-casting-action-modal';
+import { CharacterStatistics } from './components/character-statistics/character-statistics';
 import { CharacterFeatures } from './components/character-features/character-features';
 import { ArcaneRecoveryActionModal, ArcaneRecoveryPayload } from './components/arcane-recovery-action-modal/arcane-recovery-action-modal';
 
@@ -40,7 +41,9 @@ type SaveStatus =
   | 'error';
 
 type PlayerPortalTab =
+  | 'overview'
   | 'status'
+  | 'statistics'
   | 'features'
   | 'possessions';
 
@@ -60,6 +63,7 @@ type PlayerPortalTab =
     HeroesFeastActionModal,
     FlexibleCastingActionModal,
     CharacterFeatures,
+    CharacterStatistics,
     ArcaneRecoveryActionModal,
   ],
   templateUrl: './player-portal.html',
@@ -88,10 +92,18 @@ export class PlayerPortal {
   protected readonly loadError = signal<string | null>(null);
   protected readonly saveStatus = signal<SaveStatus>('idle');
   protected readonly saveError = signal<string | null>(null);
-  protected readonly activeTab = signal<PlayerPortalTab>('status');
+  protected readonly activeTab = signal<PlayerPortalTab>(typeof window !== 'undefined' && window.matchMedia('(min-width: 900px)').matches ? 'overview' : 'status');
 
   // Features and actions
   protected readonly abilities = signal<CharacterAbilityScore[]>([]);
+  protected readonly training = signal<CharacterTraining | null>(null);
+  protected readonly proficiencyBonus = signal(0);
+  protected readonly orderedAbilities = computed(() => {
+    const order = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
+    return [...this.abilities()].sort((a, b) => order.indexOf(a.ability) - order.indexOf(b.ability));
+  });
+  protected readonly hasProgressions = computed(() => (this.characterState()?.progressions?.length ?? 0) > 0);
+  protected readonly desktopView = signal(typeof window !== 'undefined' && window.matchMedia('(min-width: 900px)').matches);
   protected readonly features = signal<CharacterFeatureSummary[]>([]);
   protected readonly feats = signal<CharacterFeatSummary[]>([]);
   protected readonly visibleFeatures = computed(() => this.features().filter(feature => feature.visible));
@@ -181,6 +193,15 @@ export class PlayerPortal {
       return;
     }
 
+    if (typeof window !== 'undefined') {
+      const media = window.matchMedia('(min-width: 900px)');
+      const onChange = (event: MediaQueryListEvent) => {
+        this.desktopView.set(event.matches);
+        if (!event.matches && this.activeTab() === 'overview') this.activeTab.set('status');
+      };
+      media.addEventListener('change', onChange);
+      this.destroyRef.onDestroy(() => media.removeEventListener('change', onChange));
+    }
     this.initializeRemoteSynchronization();
     this.initializeRestRequestPolling();
     this.loadCharacter();
@@ -215,7 +236,7 @@ export class PlayerPortal {
       return;
     }
 
-    this.activeTab.set(tab);
+    this.activeTab.set(tab === 'overview' && !this.desktopView() ? 'status' : tab);
   }
 
   protected handleProgressionChange(
@@ -352,8 +373,9 @@ export class PlayerPortal {
           this.campaign.set(campaign);
           this.character.set(loadedCharacter);
           this.abilities.set(response.character.abilities);
+          this.training.set(response.character.training ?? null);
+          this.proficiencyBonus.set(response.character.proficiencyBonus);
           this.features.set(response.character.features);
-      this.feats.set(response.character.feats);
           this.feats.set(response.character.feats);
 
           this.actions.set(response.character.actions ?? []);
@@ -431,8 +453,12 @@ export class PlayerPortal {
                 this.characterStateService.applyServerState(character);
                 this.character.set(character);
                 this.abilities.set(response.character.abilities);
+                this.training.set(response.character.training ?? null);
+                this.proficiencyBonus.set(response.character.proficiencyBonus);
                 this.features.set(response.character.features);
                 this.feats.set(response.character.feats);
+                this.training.set(response.character.training ?? null);
+                this.proficiencyBonus.set(response.character.proficiencyBonus);
                 this.actions.set(response.character.actions ?? []);
                 this.characterActions.set(
                   response.state.characterActions ?? null,
@@ -485,7 +511,11 @@ export class PlayerPortal {
       this.characterStateService.applyServerState(character);
       this.character.set(character);
       this.abilities.set(response.character.abilities);
+      this.training.set(response.character.training ?? null);
+      this.proficiencyBonus.set(response.character.proficiencyBonus);
       this.features.set(response.character.features);
+      this.training.set(response.character.training ?? null);
+      this.proficiencyBonus.set(response.character.proficiencyBonus);
       this.actions.set(response.character.actions ?? []);
       this.characterActions.set(response.state.characterActions ?? null);
       this.levelUpAllowed.set(response.levelUpAllowed);
@@ -681,6 +711,8 @@ protected openAction(
         const character = characterProfileToCharacter(response.character, response.state);
         this.characterStateService.applyServerState(character);
         this.character.set(character);
+        this.training.set(response.character.training ?? null);
+        this.proficiencyBonus.set(response.character.proficiencyBonus);
         this.actions.set(response.character.actions ?? []);
         this.characterActions.set(response.state.characterActions ?? null);
         this.activeAction.set(null);
@@ -714,6 +746,8 @@ protected openAction(
         const character = characterProfileToCharacter(response.character, response.state);
         this.characterStateService.applyServerState(character);
         this.character.set(character);
+        this.training.set(response.character.training ?? null);
+        this.proficiencyBonus.set(response.character.proficiencyBonus);
         this.actions.set(response.character.actions ?? []);
         this.characterActions.set(response.state.characterActions ?? null);
         this.activeAction.set(null);

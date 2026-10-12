@@ -1,0 +1,124 @@
+<div class="character-statistics" [class.character-statistics--summary]="mode() === 'summary'">
+  @if (mode() === 'summary') {
+    <div class="statistics-abilities">
+      @for (ability of orderedAbilities(); track ability.ability) {
+        <div class="statistics-ability">
+          <span>{{ ability.abbreviation }}</span>
+          <strong>{{ format(ability.modifier) }}</strong>
+          <small>{{ ability.effectiveValue }}</small>
+        </div>
+      }
+    </div>
+    <div class="statistics-statblock">
+      <p><strong>Jets de sauvegarde</strong>
+        @for (stat of trainedSaves(); track stat.slug; let last = $last) {
+          {{ stat.name }} {{ format(stat.bonus) }}{{ last ? '' : ', ' }}
+        } @empty { <span class="muted">Aucune maîtrise</span> }
+      </p>
+      <p><strong>Compétences</strong>
+        @for (stat of trainedSkills(); track stat.slug; let last = $last) {
+          {{ stat.name }} {{ format(stat.bonus) }}{{ last ? '' : ', ' }}
+        } @empty { <span class="muted">Aucune maîtrise</span> }
+      </p>
+    </div>
+  } @else {
+    <div class="statistics-detail-header">
+      <div>
+        <span class="statistics-eyebrow">Fiche de personnage</span>
+        <h2>Caractéristiques &amp; compétences</h2>
+      </div>
+      <div class="statistics-switch" role="group" aria-label="Présentation des compétences">
+        <button type="button" [class.selected]="ordering() === 'alphabetical'" [attr.aria-pressed]="ordering() === 'alphabetical'" (click)="setOrdering('alphabetical')">Alphabétique · 2014</button>
+        <button type="button" [class.selected]="ordering() === 'ability'" [attr.aria-pressed]="ordering() === 'ability'" (click)="setOrdering('ability')">Par caractéristique · 2024</button>
+      </div>
+    </div>
+
+    <div class="statistics-derived" aria-label="Statistiques dérivées à venir">
+      <div class="statistics-derived-card"><span aria-hidden="true">♜</span><strong>—</strong><small>Classe d'armure</small></div>
+      <div class="statistics-derived-card"><span aria-hidden="true">⚔</span><strong>—</strong><small>Initiative</small></div>
+      <div class="statistics-derived-card"><span aria-hidden="true">➤</span><strong>—</strong><small>Vitesse</small></div>
+      <div class="statistics-derived-card"><span aria-hidden="true">◉</span><strong>—</strong><small>Perception passive</small></div>
+    </div>
+
+    @if (ordering() === 'ability') {
+      <div class="statistics-ability-cards">
+        @for (group of groups(); track group.ability) {
+          <section class="statistics-sheet-card">
+            <header class="statistics-sheet-card__header">
+              <h3>{{ group.name }}</h3>
+              <div class="statistics-sheet-card__numbers">
+                <div class="statistics-modifier"><strong>{{ group.score ? format(group.score.modifier) : '—' }}</strong><small>Modificateur</small></div>
+                <div class="statistics-score"><strong>{{ group.score?.effectiveValue ?? '—' }}</strong><small>Score</small></div>
+              </div>
+            </header>
+            <div class="statistics-entry statistics-entry--save" [class.trained]="group.save.proficient" [class.expertise]="group.save.expertise">
+              <span class="statistics-mark" [attr.aria-label]="group.save.expertise ? 'Expertise' : group.save.proficient ? 'Maîtrisé' : 'Non maîtrisé'">{{ group.save.expertise ? '◆' : group.save.proficient ? '●' : '○' }}</span>
+              <span>Jet de sauvegarde</span>
+              <strong>{{ format(group.save.bonus) }}</strong>
+            </div>
+            @for (stat of group.skills; track stat.slug) {
+              <div class="statistics-entry" [class.trained]="stat.proficient" [class.expertise]="stat.expertise">
+                <span class="statistics-mark" [attr.aria-label]="stat.expertise ? 'Expertise' : stat.proficient ? 'Maîtrisé' : 'Non maîtrisé'">{{ stat.expertise ? '◆' : stat.proficient ? '●' : '○' }}</span>
+                <span>{{ stat.name }}</span><strong>{{ format(stat.bonus) }}</strong>
+              </div>
+            }
+          </section>
+        }
+      </div>
+    } @else {
+      <div class="statistics-abilities statistics-abilities--detail">
+        @for (ability of orderedAbilities(); track ability.ability) {
+          <div class="statistics-ability">
+            <span>{{ ability.label }}</span>
+            <strong>{{ format(ability.modifier) }}</strong>
+            <small>Score {{ ability.effectiveValue }}</small>
+          </div>
+        }
+      </div>
+      <div class="statistics-classic-layout">
+        <section class="statistics-classic-saves">
+          <h3>Jets de sauvegarde</h3>
+          <div class="statistics-list">
+            @for (stat of alphabeticalSaves(); track stat.slug) {
+              <div class="statistics-entry" [class.trained]="stat.proficient" [class.expertise]="stat.expertise">
+                <span class="statistics-mark" [attr.aria-label]="stat.expertise ? 'Expertise' : stat.proficient ? 'Maîtrisé' : 'Non maîtrisé'">{{ stat.expertise ? '◆' : stat.proficient ? '●' : '○' }}</span>
+                <span>{{ stat.name }}</span><strong>{{ format(stat.bonus) }}</strong>
+              </div>
+            }
+          </div>
+        </section>
+        <section class="statistics-classic-skills">
+          <h3>Compétences</h3>
+          <div class="statistics-skills-columns">
+            @for (stat of alphabeticalSkills(); track stat.slug) {
+              <div class="statistics-entry" [class.trained]="stat.proficient" [class.expertise]="stat.expertise">
+                <span class="statistics-mark" [attr.aria-label]="stat.expertise ? 'Expertise' : stat.proficient ? 'Maîtrisé' : 'Non maîtrisé'">{{ stat.expertise ? '◆' : stat.proficient ? '●' : '○' }}</span>
+                <span>{{ stat.name }} <small>({{ stat.ability === 'strength' ? 'FOR' : stat.ability === 'dexterity' ? 'DEX' : stat.ability === 'constitution' ? 'CON' : stat.ability === 'intelligence' ? 'INT' : stat.ability === 'wisdom' ? 'SAG' : 'CHA' }})</small></span>
+                <strong>{{ format(stat.bonus) }}</strong>
+              </div>
+            }
+          </div>
+        </section>
+      </div>
+    }
+    <section class="statistics-training" aria-label="Autres maîtrises et langues">
+      <div class="statistics-training__heading">
+        <span class="statistics-eyebrow">Formation du personnage</span>
+        <h3>Maîtrises &amp; langues</h3>
+      </div>
+      <div class="statistics-training__grid">
+        @for (category of otherTraining(); track category.title) {
+          <div class="statistics-training__category">
+            <h4><span aria-hidden="true">{{ category.icon }}</span> {{ category.title }}</h4>
+            @if (category.names.length) {
+              <p>{{ category.names.join(', ') }}</p>
+            } @else {
+              <p class="muted">Aucune maîtrise</p>
+            }
+          </div>
+        }
+      </div>
+    </section>
+    <p class="statistics-legend"><span>○ Non maîtrisé</span><span>● Maîtrise</span><span>◆ Expertise</span></p>
+  }
+</div>

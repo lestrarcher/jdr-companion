@@ -142,7 +142,14 @@ export interface CharacterApiResponse {
   definition: Record<string, unknown>;
 }
 
+export interface CharacterTraining {
+  proficiencies: Array<{ id: number; slug: string; name: string; type: 'SKILL' | 'SAVING_THROW' | 'WEAPON' | 'WEAPON_GROUP' | 'ARMOR' | 'TOOL'; grants: Array<{ruleId: number; key: string; label: string; sourceType: string; sourceId: number; unlockLevel: number; choiceCount: number; acquisitionMode: string; optionIds: number[]}>; manualGrantIds: number[]; substitutions: Array<{ruleId: number; originalProficiencyId: number}> }>;
+  languages: Array<{id: number; slug: string; name: string; sources: string[]}>;
+  expertises: Array<{id: number; slug: string; name: string; type: string; proficiencyId: number; sources: string[]}>;
+}
+
 export interface CharacterProfile extends CharacterApiResponse {
+  training?: CharacterTraining;
   hitPoints: CharacterHitPoints;
   classSummary: CharacterClassSummary[];
   abilities: CharacterAbilityScore[];

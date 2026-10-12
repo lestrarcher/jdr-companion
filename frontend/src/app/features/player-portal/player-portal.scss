@@ -599,3 +599,57 @@
     border-left: 0;
   }
 }
+
+/* Responsive player dashboard — desktop summary, mobile full tabs */
+@media (min-width: 900px) {
+  .character-dashboard { max-width: 88rem; }
+  .player-portal { padding: 2rem clamp(1rem, 3vw, 3rem); }
+  .portal-tabs { grid-template-columns: repeat(5, minmax(0, 1fr)); position: static; }
+  .portal-tab-content { width: 100%; }
+  .tracker-layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); align-items: start; }
+  .possessions-sections { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+}
+@media (min-width: 900px) and (max-width: 1199px) {
+  .portal-tabs small { display: none; }
+  .portal-tabs button { justify-content: center; }
+}
+@media (max-width: 899px) {
+  .portal-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+.overview-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+@media (min-width: 900px) {
+  .overview-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; }
+  .overview-panel--statistics { grid-column: span 2; }
+  .overview-panel--progression { grid-column: 1 / -1; }
+}
+@media (min-width: 900px) and (max-width: 1100px) {
+  .overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .overview-panel--statistics { grid-column: span 1; }
+}
+.overview-panel {
+  min-width: 0; padding: 1.25rem;
+  border: 1px solid var(--portal-border);
+  background: var(--portal-surface);
+}
+.overview-panel__heading { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: 1rem; }
+.overview-panel__heading h2 { margin: 0; color: var(--portal-accent); font: 400 1.35rem Georgia, serif; }
+.overview-panel__heading button {
+  padding: .4rem .6rem; border: 1px solid rgba(201,168,95,.35);
+  background: rgba(201,168,95,.07); color: var(--portal-accent);
+  font: inherit; font-size: .8rem; cursor: pointer;
+}
+.overview-panel__heading button:hover, .overview-panel__heading button:focus-visible { border-color: var(--portal-accent); }
+.overview-panel__hint, .overview-empty { color: var(--portal-muted); font-size: .8rem; line-height: 1.5; }
+.ability-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: .5rem; }
+@media (min-width: 600px) { .ability-grid { grid-template-columns: repeat(6, minmax(0,1fr)); } }
+.ability-tile { display: grid; justify-items: center; gap: .25rem; min-width: 0; padding: .75rem .25rem; border: 1px solid rgba(201,168,95,.25); background: var(--portal-surface-soft); }
+.ability-tile__label { color: var(--portal-accent); font-size: .7rem; }
+.ability-tile strong { font: 400 1.5rem Georgia,serif; color: var(--portal-text); }
+.ability-tile small { color: var(--portal-muted); }
+.statistics-detail { width: 100%; }
+@media (max-width: 480px) { .portal-tabs strong { font-size: .69rem; } }
+
+/* Prevent vital actions from overflowing narrow dashboard columns. */
+.overview-panel--state { min-width: 0; overflow-wrap: anywhere; }
+.overview-panel--state :is(button, input, select) { max-width: 100%; }
+.overview-panel--state :is(.vitals-controls, .hit-points-controls, .temporary-hit-points-controls) { flex-wrap: wrap; min-width: 0; }

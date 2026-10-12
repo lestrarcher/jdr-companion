@@ -55,32 +55,26 @@
           </header>
 
           <nav class="portal-tabs" aria-label="Sections du personnage">
+            @if (desktopView()) {
+              <button type="button" [class.portal-tab--active]="activeTab() === 'overview'" [attr.aria-pressed]="activeTab() === 'overview'" (click)="selectTab('overview')">
+                <span class="portal-tab-symbol" aria-hidden="true">⌂</span><span><strong>Tableau de bord</strong><small>Vue d'ensemble</small></span>
+              </button>
+            }
             <button type="button" [class.portal-tab--active]="activeTab() === 'status'" [attr.aria-pressed]="activeTab() === 'status'" (click)="selectTab('status')">
-              <span class="portal-tab-symbol" aria-hidden="true">✦</span>
-              <span>
-                <strong>État</strong>
-                <small>Santé et capacités</small>
-              </span>
+              <span class="portal-tab-symbol" aria-hidden="true">✦</span><span><strong>État</strong><small>Santé et ressources</small></span>
             </button>
-
+            <button type="button" [class.portal-tab--active]="activeTab() === 'statistics'" [attr.aria-pressed]="activeTab() === 'statistics'" (click)="selectTab('statistics')">
+              <span class="portal-tab-symbol" aria-hidden="true">◇</span><span><strong>Caractéristiques</strong><small>Attributs et valeurs</small></span>
+            </button>
             <button type="button" [class.portal-tab--active]="activeTab() === 'features'" [attr.aria-pressed]="activeTab() === 'features'" (click)="selectTab('features')">
-              <span class="portal-tab-symbol" aria-hidden="true">✧</span>
-              <span>
-                <strong>Capacités</strong>
-                <small>Origines et descriptions</small>
-              </span>
+              <span class="portal-tab-symbol" aria-hidden="true">✧</span><span><strong>Capacités</strong><small>Origines et descriptions</small></span>
             </button>
-
             <button type="button" [class.portal-tab--active]="activeTab() === 'possessions'" [attr.aria-pressed]="activeTab() === 'possessions'" (click)="selectTab('possessions')">
-              <span class="portal-tab-symbol" aria-hidden="true">◈</span>
-              <span>
-                <strong>Possessions</strong>
-                <small>Bourse et objets</small>
-              </span>
+              <span class="portal-tab-symbol" aria-hidden="true">◈</span><span><strong>Inventaire</strong><small>Bourse et objets</small></span>
             </button>
           </nav>
 
-          @if (activeTab() === 'status' && levelUpAllowed()) {
+          @if ((activeTab() === 'status' || activeTab() === 'overview') && levelUpAllowed()) {
             <section class="level-up-callout">
               <div>
                 <span class="eyebrow">Progression</span>
@@ -94,6 +88,49 @@
 
           <div class="portal-tab-content">
             @switch (activeTab()) {
+              @case ('overview') {
+                <div class="overview-grid">
+                  <section class="overview-panel overview-panel--state">
+                    <div class="overview-panel__heading">
+                      <h2>État</h2>
+                      <button type="button" (click)="selectTab('status')" aria-label="Ouvrir l'état détaillé">Voir tout ↗</button>
+                    </div>
+                    <app-character-vitals [character]="currentCharacter" />
+                  </section>
+                  <section class="overview-panel overview-panel--statistics">
+                    <div class="overview-panel__heading">
+                      <h2>Caractéristiques</h2>
+                      <button type="button" (click)="selectTab('statistics')" aria-label="Ouvrir les caractéristiques">Voir tout ↗</button>
+                    </div>
+                    <app-character-statistics [abilities]="abilities()" [training]="training()" [proficiencyBonus]="proficiencyBonus()" mode="summary" />
+                  </section>
+                  @if (hasProgressions()) {
+                    <section class="overview-panel overview-panel--progression">
+                      <div class="overview-panel__heading"><h2>Progression</h2><button type="button" (click)="selectTab('status')">Voir l'état ↗</button></div>
+                      <app-character-progressions
+                        [progressions]="currentCharacter.progressions ?? []"
+                        [resources]="currentCharacter.resources"
+                        (progressionChanged)="handleProgressionChange($event)"
+                        (resourceChanged)="handleProgressionResourceChange($event)"
+                      />
+                    </section>
+                  }
+                  <section class="overview-panel overview-panel--link">
+                    <div class="overview-panel__heading"><h2>Capacités</h2><button type="button" (click)="selectTab('features')">Voir tout ↗</button></div>
+                    <p>{{ visibleFeatures().length }} aptitude(s) · {{ feats().length }} don(s)</p>
+                    <p class="overview-panel__hint">Maîtrises et langues seront ajoutées avec les données du backend.</p>
+                  </section>
+                  <section class="overview-panel overview-panel--link">
+                    <div class="overview-panel__heading"><h2>Inventaire</h2><button type="button" (click)="selectTab('possessions')">Voir tout ↗</button></div>
+                    <p>Bourse, objets et objets magiques</p>
+                  </section>
+                </div>
+              }
+              @case ('statistics') {
+                <section class="overview-panel statistics-detail">
+                  <app-character-statistics [abilities]="abilities()" [training]="training()" [proficiencyBonus]="proficiencyBonus()" mode="detail" />
+                </section>
+              }
               @case ('status') {
                 <app-character-progressions
                   [progressions]="currentCharacter.progressions ?? []"
@@ -189,7 +226,7 @@
               }
 
               @case ('features') {
-                <app-character-features [abilities]="abilities()" [features]="visibleFeatures()" [feats]="feats()" />
+                <app-character-features [features]="visibleFeatures()" [feats]="feats()" />
               }
 
               @case ('possessions') {
