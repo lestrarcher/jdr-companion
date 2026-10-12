@@ -1,4 +1,5 @@
 :host {
+  container-type: inline-size;
   display: block;
   min-width: 0;
 }
@@ -217,7 +218,7 @@ input {
   }
 }
 
-@media (min-width: 700px) {
+@container (min-width: 650px) {
   .hit-points-card {
     padding: 2rem;
   }
@@ -253,3 +254,10 @@ input {
     border-left: 0;
   }
 }
+
+/* Keep temporary HP readable even in half-width dashboard panels. */
+.temporary-hit-points { flex-wrap:wrap; }
+.temporary-hit-points > span { min-width:0; overflow-wrap:normal; white-space:normal; }
+.hit-points-summary { min-width:0; }
+.hit-points-value { min-width:0; }
+.hit-points-value strong { font-size:clamp(2.4rem, 7vw, 4.5rem); }

@@ -59,6 +59,13 @@ export class CharacterStatistics {
   readonly mode = input<'summary' | 'detail'>('detail');
   readonly ordering = signal<Ordering>(initialOrdering());
 
+  // Base values only: equipment, features and other modifiers are not yet exposed.
+  readonly baseInitiative = computed(() => this.abilities().find(a => a.ability === 'dexterity')?.modifier ?? null);
+  readonly basePassivePerception = computed(() => {
+    if (!this.abilities().some(a => a.ability === 'wisdom')) return null;
+    const perception = this.skills().find(skill => skill.slug === 'perception');
+    return perception ? 10 + perception.bonus : null;
+  });
   readonly orderedAbilities = computed(() => ABILITIES
     .map(key => this.abilities().find(score => score.ability === key))
     .filter((score): score is CharacterAbilityScore => !!score));

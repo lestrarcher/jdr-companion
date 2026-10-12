@@ -1,4 +1,5 @@
 import { Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CharacterWalletComponent } from './components/character-wallet/character-wallet';
@@ -45,6 +46,7 @@ type PlayerPortalTab =
   | 'status'
   | 'statistics'
   | 'features'
+  | 'spells'
   | 'possessions';
 
 @Component({
@@ -71,6 +73,7 @@ type PlayerPortalTab =
 })
 export class PlayerPortal {
   // Dependencies and route context
+  private readonly http = inject(HttpClient);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   private readonly characterStateService = inject(CharacterStateService);
@@ -92,6 +95,8 @@ export class PlayerPortal {
   protected readonly loadError = signal<string | null>(null);
   protected readonly saveStatus = signal<SaveStatus>('idle');
   protected readonly saveError = signal<string | null>(null);
+  protected readonly inspiration = signal(false);
+  protected readonly inspirationSaving = signal(false);
   protected readonly activeTab = signal<PlayerPortalTab>(typeof window !== 'undefined' && window.matchMedia('(min-width: 900px)').matches ? 'overview' : 'status');
 
   // Features and actions
@@ -239,6 +244,42 @@ export class PlayerPortal {
     this.activeTab.set(tab === 'overview' && !this.desktopView() ? 'status' : tab);
   }
 
+  protected spendInspiration(): void {
+    if (!this.inspiration() || this.inspirationSaving() || this.saveStatus() === 'saving'
+      || this.sessionStatus() !== 'live' || this.pendingRestRequest() || this.preparationPending()) return;
+
+    // Separate PATCH: a player may spend inspiration, but never grant it.
+    const generation = this.loadGeneration;
+    this.inspirationSaving.set(true);
+    this.saveError.set(null);
+    this.saveStatus.set('saving');
+
+    this.http.patch<{ revision: number; state: { inspiration?: boolean } }>(
+      `/api/public/characters/${encodeURIComponent(this.accessToken)}`,
+      { state: { inspiration: false }, revision: this.serverRevision },
+    ).pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.inspirationSaving.set(false)))
+      .subscribe({
+        next: response => {
+          if (generation !== this.loadGeneration) return;
+          this.serverRevision = response.revision;
+          this.inspiration.set(response.state.inspiration === true);
+          this.inspiration.set(response.state.inspiration === true);
+          this.saveStatus.set('saved');
+          this.loadCharacter(false);
+        },
+        error: error => {
+          if (generation !== this.loadGeneration) return;
+          this.saveStatus.set('error');
+          if (error?.status === 409) {
+            this.saveError.set('Modification concurrente : données rechargées, recommencez votre modification.');
+            this.loadCharacter(false);
+          } else {
+            this.saveError.set(error?.error?.message ?? 'Impossible de dépenser l’inspiration.');
+          }
+        },
+      });
+  }
+
   protected handleProgressionChange(
     event: ProgressionChange,
   ): void {
@@ -319,6 +360,7 @@ export class PlayerPortal {
         next: (response) => {
           if (generation !== this.loadGeneration) return;
           this.serverRevision = response.revision;
+          this.inspiration.set(response.state.inspiration === true);
           if (
             String(response.campaign.id) !==
             this.campaignId
@@ -444,6 +486,7 @@ export class PlayerPortal {
                 // Even if newer local edits are queued, this successful write
                 // becomes their server baseline. Never adopt another load's revision.
                 if (generation === this.loadGeneration) this.serverRevision = response.revision;
+          this.inspiration.set(response.state.inspiration === true);
                 if (!isCurrent()) return;
 
                 const character = characterProfileToCharacter(
@@ -505,6 +548,7 @@ export class PlayerPortal {
       if (!response || response.revision === this.serverRevision) return;
 
       this.serverRevision = response.revision;
+          this.inspiration.set(response.state.inspiration === true);
 
       const character = characterProfileToCharacter(response.character, response.state);
 
@@ -627,6 +671,7 @@ private initializeRestRequestPolling(): void {
       .subscribe({
         next: (response) => {
           this.serverRevision = response.revision;
+          this.inspiration.set(response.state.inspiration === true);
 
           this.actions.set(
             response.character.actions ?? [],
@@ -708,6 +753,7 @@ protected openAction(
     request.pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.flexibleCastingSaving.set(false))).subscribe({
       next: response => {
         this.serverRevision = response.revision;
+          this.inspiration.set(response.state.inspiration === true);
         const character = characterProfileToCharacter(response.character, response.state);
         this.characterStateService.applyServerState(character);
         this.character.set(character);
@@ -743,6 +789,7 @@ protected openAction(
     this.characterSessionStateApi.recoverArcaneSlots(this.accessToken, payload.slots, this.serverRevision).pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.arcaneRecoverySaving.set(false))).subscribe({
       next: response => {
         this.serverRevision = response.revision;
+          this.inspiration.set(response.state.inspiration === true);
         const character = characterProfileToCharacter(response.character, response.state);
         this.characterStateService.applyServerState(character);
         this.character.set(character);
@@ -791,6 +838,7 @@ protected openAction(
       .subscribe({
         next: (response) => {
           this.serverRevision = response.revision;
+          this.inspiration.set(response.state.inspiration === true);
 
           const character =
             characterProfileToCharacter(
@@ -849,6 +897,7 @@ protected openAction(
       .subscribe({
         next: (response) => {
           this.serverRevision = response.revision;
+          this.inspiration.set(response.state.inspiration === true);
 
           const character = characterProfileToCharacter(response.character, response.state);
           this.characterStateService.applyServerState(character);

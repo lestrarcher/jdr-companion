@@ -69,6 +69,9 @@
             <button type="button" [class.portal-tab--active]="activeTab() === 'features'" [attr.aria-pressed]="activeTab() === 'features'" (click)="selectTab('features')">
               <span class="portal-tab-symbol" aria-hidden="true">✧</span><span><strong>Capacités</strong><small>Origines et descriptions</small></span>
             </button>
+            <button type="button" [class.portal-tab--active]="activeTab() === 'spells'" [attr.aria-pressed]="activeTab() === 'spells'" (click)="selectTab('spells')">
+              <span class="portal-tab-symbol" aria-hidden="true">✧</span><span><strong>Sorts</strong><small>Grimoire et magie</small></span>
+            </button>
             <button type="button" [class.portal-tab--active]="activeTab() === 'possessions'" [attr.aria-pressed]="activeTab() === 'possessions'" (click)="selectTab('possessions')">
               <span class="portal-tab-symbol" aria-hidden="true">◈</span><span><strong>Inventaire</strong><small>Bourse et objets</small></span>
             </button>
@@ -95,6 +98,11 @@
                       <h2>État</h2>
                       <button type="button" (click)="selectTab('status')" aria-label="Ouvrir l'état détaillé">Voir tout ↗</button>
                     </div>
+                    <div class="inspiration-tracker" [class.inspiration-tracker--active]="inspiration()">
+                      <span class="inspiration-tracker__symbol" aria-hidden="true">✦</span>
+                      <div class="inspiration-tracker__details"><strong>Inspiration</strong><span>{{ inspiration() ? 'Disponible' : 'Non disponible' }}</span></div>
+                      <button type="button" class="inspiration-tracker__action" [disabled]="!inspiration() || inspirationSaving() || saveStatus() === 'saving'" (click)="spendInspiration()">{{ inspirationSaving() ? 'Dépense…' : 'Dépenser' }}</button>
+                    </div>
                     <app-character-vitals [character]="currentCharacter" />
                   </section>
                   <section class="overview-panel overview-panel--statistics">
@@ -105,20 +113,23 @@
                     <app-character-statistics [abilities]="abilities()" [training]="training()" [proficiencyBonus]="proficiencyBonus()" mode="summary" />
                   </section>
                   @if (hasProgressions()) {
-                    <section class="overview-panel overview-panel--progression">
-                      <div class="overview-panel__heading"><h2>Progression</h2><button type="button" (click)="selectTab('status')">Voir l'état ↗</button></div>
+                    <div class="overview-progression">
                       <app-character-progressions
                         [progressions]="currentCharacter.progressions ?? []"
                         [resources]="currentCharacter.resources"
                         (progressionChanged)="handleProgressionChange($event)"
                         (resourceChanged)="handleProgressionResourceChange($event)"
                       />
-                    </section>
+                    </div>
                   }
                   <section class="overview-panel overview-panel--link">
                     <div class="overview-panel__heading"><h2>Capacités</h2><button type="button" (click)="selectTab('features')">Voir tout ↗</button></div>
                     <p>{{ visibleFeatures().length }} aptitude(s) · {{ feats().length }} don(s)</p>
                     <p class="overview-panel__hint">Maîtrises et langues seront ajoutées avec les données du backend.</p>
+                  </section>
+                  <section class="overview-panel overview-panel--link">
+                    <div class="overview-panel__heading"><h2>Sorts</h2><button type="button" (click)="selectTab('spells')">Voir tout ↗</button></div>
+                    <p>Grimoire et emplacements de sorts</p><p class="overview-panel__hint">Bientôt disponible</p>
                   </section>
                   <section class="overview-panel overview-panel--link">
                     <div class="overview-panel__heading"><h2>Inventaire</h2><button type="button" (click)="selectTab('possessions')">Voir tout ↗</button></div>
@@ -229,6 +240,15 @@
                 <app-character-features [features]="visibleFeatures()" [feats]="feats()" />
               }
 
+              @case ('spells') {
+                <section class="spells-placeholder">
+                  <header class="spells-placeholder__header"><span class="eyebrow">Grimoire</span><h2>Sorts et incantations</h2><p>Les sorts connus, préparés et leurs emplacements seront bientôt accessibles ici.</p></header>
+                  <div class="spells-placeholder__layout">
+                    <div class="spells-placeholder__panel"><span class="eyebrow">Magie</span><h3>Répertoire des sorts</h3><div class="spells-placeholder__empty"><span aria-hidden="true">✧</span><strong>Bientôt disponible</strong><p>Vos sorts apparaîtront ici.</p></div></div>
+                    <div class="spells-placeholder__panel"><span class="eyebrow">Ressources magiques</span><h3>Emplacements de sorts</h3><div class="spells-placeholder__empty"><span aria-hidden="true">◇</span><strong>Bientôt disponible</strong><p>Suivi des emplacements et de leur récupération.</p></div></div>
+                  </div>
+                </section>
+              }
               @case ('possessions') {
                 <div class="possessions-sections">
                   <app-character-wallet [accessToken]="accessToken" [disabled]="sessionStatus() !== 'live'" />

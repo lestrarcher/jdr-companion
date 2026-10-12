@@ -20,58 +20,55 @@
   @if (filters().length > 1) {
     <nav class="character-features__filters" aria-label="Filtrer les capacités">
       @for (filter of filters(); track filter.key) {
-        <button type="button" class="feature-filter" [class.feature-filter--active]="activeFilter() === filter.key" (click)="selectFilter(filter.key)">{{ filter.label }} <span>{{ filter.count }}</span></button>
+        <button
+          type="button"
+          class="feature-filter"
+          [class]="sourceClass(filterSourceType(filter.key))"
+          [class.feature-filter--active]="activeFilter() === filter.key"
+          [attr.aria-pressed]="activeFilter() === filter.key"
+          (click)="selectFilter(filter.key)"
+        >{{ filter.label }} <span>{{ filter.count }}</span></button>
       }
     </nav>
   }
 
-  <div class="character-features__list">
-    @for (feature of filteredFeatures(); track feature.slug) {
-      <details class="character-feature">
-        <summary class="character-feature__summary">
-          <span class="character-feature__heading">
-            <span class="character-feature__name">{{ feature.name }}</span>
-            @if (feature.sourceType !== 'progression' && feature.unlockLevel > 0) {
-              <span class="character-feature__level">Niveau {{ feature.unlockLevel }}</span>
+  @if (visibleEntries().length > 0) {
+    <div class="features-reader">
+      <nav class="features-reader__library" aria-label="Liste des capacités">
+        @for (entry of visibleEntries(); track entry.key) {
+          <button
+            type="button"
+            class="character-feature"
+            [class]="sourceClass(entry.sourceType)"
+            [class.character-feature--selected]="selectedEntry()?.key === entry.key"
+            [attr.aria-pressed]="selectedEntry()?.key === entry.key"
+            (click)="selectEntry(entry.key)"
+          >
+            <span class="character-feature__name">{{ entry.name }}</span>
+            <span class="character-feature__meta">
+              @if (entry.level !== null) {
+                <span class="character-feature__level">Niveau {{ entry.level }}</span>
+              }
+            </span>
+          </button>
+        }
+      </nav>
+
+      @if (selectedEntry(); as selected) {
+        <article class="features-reader__detail" aria-live="polite">
+          <div class="features-reader__eyebrow">
+            <span class="feature-tag" [class]="sourceClass(selected.sourceType)">{{ selected.sourceName }}</span>
+            @if (selected.level !== null) {
+              <span>Niveau {{ selected.level }}</span>
             }
-          </span>
-          <span class="character-feature__meta">
-            @if (feature.sourceName) {
-              <span class="feature-tag" [class]="sourceClass(feature.sourceType)">{{ feature.sourceName }}</span>
-            }
-            <span class="character-feature__chevron" aria-hidden="true">⌄</span>
-          </span>
-        </summary>
-
-        <div class="character-feature__content">
-          <p>{{ feature.description || 'Aucune description renseignée.' }}</p>
-        </div>
-      </details>
-    }
-
-    @for (feat of filteredFeats(); track feat.id) {
-      <details class="character-feature">
-        <summary class="character-feature__summary">
-          <span class="character-feature__heading">
-            <span class="character-feature__name">{{ feat.name }}</span>
-            @if (feat.acquiredAtLevel != null) {
-              <span class="character-feature__level">Niveau {{ feat.acquiredAtLevel }}</span>
-            }
-          </span>
-          <span class="character-feature__meta">
-            <span class="feature-tag" [class]="sourceClass('feat')">Don</span>
-            <span class="character-feature__chevron" aria-hidden="true">⌄</span>
-          </span>
-        </summary>
-
-        <div class="character-feature__content">
-          <p>{{ feat.description || 'Aucune description renseignée.' }}</p>
-        </div>
-      </details>
-    }
-
-    @if (filteredFeatures().length === 0 && filteredFeats().length === 0) {
-      <p class="character-features__empty">Aucune capacité acquise n’est renseignée pour ce personnage.</p>
-    }
-  </div>
+          </div>
+          <h2>{{ selected.name }}</h2>
+          <div class="features-reader__rule"></div>
+          <div class="features-reader__description">{{ selected.description || 'Aucune description renseignée.' }}</div>
+        </article>
+      }
+    </div>
+  } @else {
+    <p class="character-features__empty">Aucune capacité acquise n’est renseignée pour ce personnage.</p>
+  }
 </section>

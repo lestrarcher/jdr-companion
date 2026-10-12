@@ -1,5 +1,11 @@
 <div class="character-statistics" [class.character-statistics--summary]="mode() === 'summary'">
   @if (mode() === 'summary') {
+    <div class="statistics-derived statistics-derived--summary" aria-label="Statistiques secondaires">
+      <div class="statistics-derived-card"><span aria-hidden="true">♜</span><strong>—</strong><small>Classe d'armure</small></div>
+      <div class="statistics-derived-card" title="Modificateur de Dextérité uniquement, hors bonus et malus"><span aria-hidden="true">⚔</span><strong>{{ baseInitiative() === null ? '—' : format(baseInitiative()!) }}</strong><small>Initiative (base)</small></div>
+      <div class="statistics-derived-card"><span aria-hidden="true">➤</span><strong>—</strong><small>Vitesse</small></div>
+      <div class="statistics-derived-card" title="10 + bonus de Perception, hors bonus circonstanciels"><span aria-hidden="true">◉</span><strong>{{ basePassivePerception() ?? '—' }}</strong><small>Perception passive (base)</small></div>
+    </div>
     <div class="statistics-abilities">
       @for (ability of orderedAbilities(); track ability.ability) {
         <div class="statistics-ability">

@@ -93,3 +93,14 @@
 .statistics-training__category p { margin: 0; line-height: 1.65; font-size: .85rem; overflow-wrap: anywhere; }
 @media (min-width: 721px) and (max-width: 1199px) { .statistics-training__grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (max-width: 720px) { .statistics-training__grid { grid-template-columns: 1fr; } }
+
+/* V4: summary only; detailed sheet remains unchanged. */
+.character-statistics--summary .statistics-abilities { grid-template-columns:repeat(3,minmax(0,1fr)); }
+
+/* V5: secondary statistics in the dashboard summary. */
+.statistics-derived--summary { margin: .85rem 0 0; gap: .5rem; }
+.statistics-derived--summary .statistics-derived-card { padding: .55rem .2rem; gap: .2rem; }
+.statistics-derived--summary .statistics-derived-card > span { font-size: .85rem; }
+.statistics-derived--summary .statistics-derived-card strong { font-size: 1.25rem; }
+.statistics-derived--summary .statistics-derived-card small { font-size: .67rem; }
+@media (max-width: 450px) { .statistics-derived--summary { grid-template-columns: repeat(2, minmax(0,1fr)); } }
