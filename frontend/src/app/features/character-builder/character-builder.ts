@@ -5,9 +5,14 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { CharacterBuilderIdentity } from './character-builder-identity/character-builder-identity';
+import { CharacterBuilderTraining } from './character-builder-training/character-builder-training';
 import {
   CharacterBuilderApiService,
   StructuredCharacterResponse,
+  BuilderOptions,
+  TrainingPayload,
+  BuilderSelection,
 } from '@core/services/character-builder-api.service';
 import {
   AbilityKey,
@@ -18,6 +23,7 @@ import {
   FeatReference,
   RaceAbilityModifierReference,
   RaceReference,
+  BackgroundReference,
   SubclassReference,
 } from '@core/services/dnd-reference-api.service';
 
@@ -37,6 +43,8 @@ interface FeatFormChoice {
     CommonModule,
     ReactiveFormsModule,
     RouterLink,
+    CharacterBuilderIdentity,
+    CharacterBuilderTraining,
   ],
   templateUrl: './character-builder.html',
   styleUrl: './character-builder.scss',
@@ -56,20 +64,26 @@ export class CharacterBuilder {
     this.route.snapshot.paramMap.get('campaignId'),
   );
 
-  protected readonly reference = signal<DndReferenceResponse | null>(null);
+  public readonly reference = signal<DndReferenceResponse | null>(null);
   protected readonly loading = signal(true);
+  protected readonly currentStep = signal<1 | 2>(1);
+  public readonly options = signal<BuilderOptions | null>(null);
+  public readonly optionsLoading = signal(false);
+  public readonly optionsError = signal<string | null>(null);
+  public readonly training = signal<TrainingPayload>(this.emptyTraining());
+  public readonly trainingStale = signal(true);
   protected readonly submitting = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly createdCharacter =
     signal<StructuredCharacterResponse | null>(null);
 
-  protected readonly racialAbilityChoices =
+  public readonly racialAbilityChoices =
     signal<Record<number, AbilityKey | null>>({});
 
-  protected readonly racialFeatChoices =
+  public readonly racialFeatChoices =
     signal<FeatFormChoice[]>([]);
 
-  protected readonly form = this.formBuilder.nonNullable.group({
+  public readonly form = this.formBuilder.nonNullable.group({
     slug: ['', [
       Validators.required,
       Validators.pattern(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
@@ -78,6 +92,7 @@ export class CharacterBuilder {
     playerName: [''],
     type: ['player' as CharacterType, Validators.required],
     raceId: [0, Validators.min(1)],
+    backgroundId: [0],
     classId: [0, Validators.min(1)],
     subclassId: [0],
     abilities: this.formBuilder.nonNullable.group({
@@ -97,38 +112,46 @@ export class CharacterBuilder {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.resetRacialChoices());
 
+    this.form.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.trainingStale.set(true));
+
     this.form.controls.classId.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.form.controls.subclassId.setValue(0));
   }
 
-  protected abilities(): AbilityReference[] {
+  public abilities(): AbilityReference[] {
     return this.reference()?.abilities ?? [];
   }
 
-  protected races(): RaceReference[] {
+  public races(): RaceReference[] {
     return this.reference()?.races ?? [];
   }
 
-  protected selectableRaces(): RaceReference[] {
+  public selectableRaces(): RaceReference[] {
     return this.races().filter((race) => race.selectable);
   }
 
-  protected classes(): ClassReference[] {
+  public backgrounds(): BackgroundReference[] {
+    return this.reference()?.backgrounds ?? [];
+  }
+
+  public classes(): ClassReference[] {
     return this.reference()?.classes ?? [];
   }
 
-  protected feats(): FeatReference[] {
+  public feats(): FeatReference[] {
     return this.reference()?.feats ?? [];
   }
 
-  protected selectedRace(): RaceReference | null {
+  public selectedRace(): RaceReference | null {
     const raceId = this.form.controls.raceId.value;
 
     return this.races().find((race) => race.id === raceId) ?? null;
   }
 
-  protected selectedClass(): ClassReference | null {
+  public selectedClass(): ClassReference | null {
     const classId = this.form.controls.classId.value;
 
     return this.classes().find(
@@ -136,7 +159,7 @@ export class CharacterBuilder {
     ) ?? null;
   }
 
-  protected availableSubclasses(): SubclassReference[] {
+  public availableSubclasses(): SubclassReference[] {
     const classId = this.form.controls.classId.value;
 
     return (this.reference()?.subclasses ?? []).filter(
@@ -144,23 +167,23 @@ export class CharacterBuilder {
     );
   }
 
-  protected startingSubclassRequired(): boolean {
+  public startingSubclassRequired(): boolean {
     return this.selectedClass()?.subclassSelectionLevel === 1;
   }
 
-  protected requiredRacialModifiers(): RaceAbilityModifierReference[] {
+  public requiredRacialModifiers(): RaceAbilityModifierReference[] {
     return this.selectedRace()?.abilityModifiers.filter(
       (modifier) => modifier.requiresChoice,
     ) ?? [];
   }
 
-  protected fixedRacialModifiers(): RaceAbilityModifierReference[] {
+  public fixedRacialModifiers(): RaceAbilityModifierReference[] {
     return this.selectedRace()?.abilityModifiers.filter(
       (modifier) => !modifier.requiresChoice,
     ) ?? [];
   }
 
-  protected abilityLabel(abilityKey: AbilityKey | null): string {
+  public abilityLabel(abilityKey: AbilityKey | null): string {
     if (abilityKey === null) {
       return 'Au choix';
     }
@@ -170,13 +193,13 @@ export class CharacterBuilder {
     )?.label ?? abilityKey;
   }
 
-  protected selectedFeat(index: number): FeatReference | null {
+  public selectedFeat(index: number): FeatReference | null {
     const featId = this.racialFeatChoices()[index]?.featId;
 
     return this.feats().find((feat) => feat.id === featId) ?? null;
   }
 
-  protected featAbilities(index: number): AbilityReference[] {
+  public featAbilities(index: number): AbilityReference[] {
     const feat = this.selectedFeat(index);
 
     if (!feat) {
@@ -189,7 +212,7 @@ export class CharacterBuilder {
     );
   }
 
-  protected setRacialAbilityChoice(
+  public setRacialAbilityChoice(
     modifierId: number,
     ability: string,
   ): void {
@@ -199,7 +222,7 @@ export class CharacterBuilder {
     }));
   }
 
-  protected setFeat(index: number, featId: string): void {
+  public setFeat(index: number, featId: string): void {
     const parsedFeatId = Number(featId);
 
     this.racialFeatChoices.update((choices) =>
@@ -214,7 +237,7 @@ export class CharacterBuilder {
     );
   }
 
-  protected setFeatAbility(index: number, ability: string): void {
+  public setFeatAbility(index: number, ability: string): void {
     this.racialFeatChoices.update((choices) =>
       choices.map((choice, choiceIndex) =>
         choiceIndex === index
@@ -227,7 +250,7 @@ export class CharacterBuilder {
     );
   }
 
-  protected generateSlug(): void {
+  public generateSlug(): void {
     if (this.form.controls.slug.dirty) {
       return;
     }
@@ -242,9 +265,116 @@ export class CharacterBuilder {
     this.form.controls.slug.setValue(slug);
   }
 
+  protected nextStep(): void {
+    this.error.set(null);
+    this.form.markAllAsTouched();
+    if (this.form.invalid) {
+      this.error.set('Certains champs obligatoires sont absents ou invalides.');
+      return;
+    }
+    if (!this.hasCompletedRacialChoices() || !this.hasCompletedFeatChoices()) {
+      this.error.set('Complète les choix raciaux et les dons.');
+      return;
+    }
+    if (this.startingSubclassRequired() && this.form.controls.subclassId.value < 1) {
+      this.error.set('Choisis une sous-classe de départ.');
+      return;
+    }
+    this.currentStep.set(2);
+    this.refreshOptions(true);
+  }
+
+  public refreshOptions(reset = false): void {
+    if (reset) {
+      this.training.set(this.emptyTraining());
+      this.options.set(null);
+    }
+    this.optionsLoading.set(true);
+    this.optionsError.set(null);
+    this.builderApi.options(this.campaignId, this.buildSelection())
+      .pipe(finalize(() => this.optionsLoading.set(false)))
+      .subscribe({
+        next: (options) => {
+          this.options.set(options);
+          this.trainingStale.set(false);
+        },
+        error: (err: HttpErrorResponse) => {
+          this.optionsError.set(err.error?.message ?? 'Prévisualisation indisponible.');
+        },
+      });
+  }
+
+  public setTraining(training: TrainingPayload): void {
+    this.training.set(training);
+    this.trainingStale.set(true);
+  }
+
+  private emptyTraining(): TrainingPayload {
+    return {
+      proficiencyChoices: [], languageChoices: [], substitutions: [],
+      expertiseChoices: [], manualGrants: [],
+    };
+  }
+
+  private buildSelection(): BuilderSelection {
+    const v = this.form.getRawValue();
+    return {
+      raceId: v.raceId,
+      classId: v.classId,
+      backgroundId: v.backgroundId || null,
+      subclassId: v.subclassId || null,
+      level: 1,
+      racialFeatChoices: this.racialFeatChoices().filter(c => c.featId !== null)
+        .map(c => ({ featId: c.featId as number, ability: c.ability })),
+      training: {
+        ...this.training(),
+        // Le GET refuse les groupes partiels : ne lui transmettre que les groupes complets.
+        proficiencyChoices: this.training().proficiencyChoices.filter(c =>
+          this.options()?.proficiencyRules.find(r => r.ruleId === c.ruleId)?.choiceCount === c.proficiencyIds.length
+        ),
+        languageChoices: this.training().languageChoices.filter(c =>
+          this.options()?.languageRules.find(r => r.sourceKey === c.sourceKey)?.choiceCount === c.languageSlugs.length
+        ),
+        expertiseChoices: this.training().expertiseChoices.filter(c =>
+          this.options()?.expertiseRules.find(r => r.ruleId === c.ruleId)?.choiceCount === c.proficiencyIds.length
+        ),
+        // Ne pas envoyer de subventions manuelles incomplètes pendant la preview.
+        manualGrants: this.training().manualGrants.filter(g =>
+          g.reason.trim().length > 0 && (g.kind === 'LANGUAGE' ? !!g.languageSlug : !!g.proficiencyId)
+        ),
+      },
+    };
+  }
+
+  public trainingComplete(): boolean {
+    const o = this.options();
+    const t = this.training();
+    if (!o || this.optionsLoading() || this.optionsError() || this.trainingStale()) return false;
+    if (!t.manualGrants.every(g =>
+      !!g.reason.trim() && g.reason.length <= 500 &&
+      (g.kind === 'LANGUAGE' ? !!g.languageSlug : !!g.proficiencyId)
+    )) return false;
+    return o.proficiencyRules.every(r =>
+      r.choiceCount === 0 || t.proficiencyChoices.find(c => c.ruleId === r.ruleId)?.proficiencyIds.length === r.choiceCount
+    ) && o.languageRules.every(r =>
+      r.choiceCount === 0 || t.languageChoices.find(c => c.sourceKey === r.sourceKey)?.languageSlugs.length === r.choiceCount
+    ) && o.expertiseRules.every(r =>
+      r.choiceCount === 0 || t.expertiseChoices.find(c => c.ruleId === r.ruleId)?.proficiencyIds.length === r.choiceCount
+    );
+  }
+
+  protected previousStep(): void {
+    this.error.set(null);
+    this.currentStep.set(1);
+  }
+
   protected submit(): void {
     this.error.set(null);
     this.createdCharacter.set(null);
+    if (!this.trainingComplete()) {
+      this.error.set('Actualise et complète les choix de formation avant de créer le personnage.');
+      return;
+    }
     this.form.markAllAsTouched();
 
     if (this.form.invalid) {
@@ -292,6 +422,8 @@ export class CharacterBuilder {
       playerName: rawValue.playerName || null,
       type: rawValue.type,
       raceId: rawValue.raceId,
+      backgroundId: rawValue.backgroundId || null,
+      training: this.training(),
       classId: rawValue.classId,
       subclassId: rawValue.subclassId || null,
       abilities: rawValue.abilities,

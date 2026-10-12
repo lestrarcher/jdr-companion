@@ -99,6 +99,21 @@ export interface ClassReference {
   custom?: boolean;
 }
 
+export interface ProficiencyReference {
+  id: number;
+  slug: string;
+  name: string;
+  type: string;
+}
+
+export interface LanguageReference {
+  id: number;
+  slug: string;
+  name: string;
+  category: 'STANDARD' | 'EXOTIC' | 'SECRET' | 'CUSTOM';
+  ordinaryChoice: boolean;
+}
+
 export interface SubclassReference {
   id: number;
   classId: number;
@@ -163,10 +178,20 @@ export interface DndReferenceResponse {
   classes: ClassReference[];
   subclasses: SubclassReference[];
   feats: FeatReference[];
+  backgrounds: BackgroundReference[];
+  proficiencies: ProficiencyReference[];
+  languages: LanguageReference[];
 }
 
 export interface ProgressionListResponse {
   progressions: ProgressionReference[];
+}
+
+export interface BackgroundReference {
+  id: number;
+  slug: string;
+  name: string;
+  description: string | null;
 }
 
 @Injectable({ providedIn: 'root' })

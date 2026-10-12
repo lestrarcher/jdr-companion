@@ -1,0 +1,158 @@
+<section class="form-section training-step">
+  <div class="section-heading">
+    <span>04</span>
+    <div><p class="eyebrow">Formation</p><h2>Maîtrises, langues et expertises</h2></div>
+  </div>
+
+  <div class="training-intro">
+    <p>Les aptitudes automatiques sont déjà acquises. Choisis uniquement les maîtrises et langues supplémentaires autorisées par tes origines.</p>
+    <button type="button" class="secondary-button" [disabled]="vm().optionsLoading()" (click)="vm().refreshOptions()">
+      {{ vm().optionsLoading() ? 'Actualisation…' : 'Actualiser les options' }}
+    </button>
+  </div>
+  @if (vm().trainingStale()) {
+    <p class="training-notice">Les choix ont changé. Actualise les options pour vérifier les nouvelles possibilités avant de créer le personnage.</p>
+  }
+  @if (vm().optionsError(); as message) { <p class="message message--error">{{ message }}</p> }
+
+  @if (vm().options(); as options) {
+    <div class="training-group">
+      <div class="training-group-title"><h3>Acquis automatiquement</h3><span class="training-counter">{{ automaticProficiencyIds().size }} maîtrises</span></div>
+      <p class="training-hint">Ces maîtrises sont accordées par la classe, la race ou l'historique. Elles ne consomment aucun choix.</p>
+      <div class="granted-grid">
+        @for (item of automaticProficiencies(); track item.id) {
+          <div class="granted-item">
+            <span class="granted-check" aria-hidden="true">✓</span>
+            <div><strong>{{ item.name }}</strong>
+              <small>@for (grant of item.grants; track grant.ruleId) { {{ grant.label }} }</small>
+            </div>
+          </div>
+        } @empty { <p class="training-hint">Aucune maîtrise automatique pour cette sélection.</p> }
+      </div>
+      @if (options.resolved.languages.length) {
+        <h4>Langues acquises</h4>
+        <div class="granted-grid">
+          @for (language of options.resolved.languages; track language.slug) {
+            <div class="granted-item"><span class="granted-check" aria-hidden="true">✓</span><div><strong>{{ language.name }}</strong><small>Attribution automatique ou choix résolu</small></div></div>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="training-group">
+      <div class="training-group-title"><h3>Choix de maîtrises</h3></div>
+      @for (rule of options.proficiencyRules; track rule.ruleId) {
+        @if (rule.choiceCount > 0) {
+          <div class="training-rule">
+            <div class="training-rule-head">
+              <div><h4>{{ rule.label }}</h4><p>Choisis {{ rule.choiceCount }} maîtrise(s).</p></div>
+              <span class="training-counter" [class.complete]="selectedCount('proficiency', rule.ruleId) === rule.choiceCount">{{ selectedCount('proficiency', rule.ruleId) }} / {{ rule.choiceCount }}</span>
+            </div>
+            <div class="training-options">
+              @for (id of rule.optionIds; track id) {
+                <label class="training-option" [class.selected]="chosen('proficiency', rule.ruleId, id)" [class.unavailable]="alreadyGranted(id)">
+                  <input type="checkbox" [checked]="chosen('proficiency', rule.ruleId, id)" [disabled]="alreadyGranted(id)" (change)="toggle('proficiency', rule.ruleId, id, $any($event.target).checked, rule.choiceCount)" />
+                  <span class="option-text"><strong>{{ proficiencyName(id) }}</strong>@if (alreadyGranted(id)) { <small>Déjà acquise</small> }</span>
+                </label>
+              }
+            </div>
+          </div>
+        }
+      } @empty { <p class="training-hint">Aucune règle de maîtrise supplémentaire.</p> }
+    </div>
+
+    <div class="training-group">
+      <div class="training-group-title"><h3>Langues supplémentaires</h3></div>
+      @for (rule of options.languageRules; track rule.sourceKey) {
+        @if (rule.choiceCount > 0) {
+          <div class="training-rule">
+            <div class="training-rule-head"><div><h4>{{ sourceLabel(rule.sourceType) }}</h4><p>Choisis {{ rule.choiceCount }} langue(s).</p></div>
+              <span class="training-counter" [class.complete]="selectedCount('language', rule.sourceKey) === rule.choiceCount">{{ selectedCount('language', rule.sourceKey) }} / {{ rule.choiceCount }}</span>
+            </div>
+            <div class="training-options">
+              @for (slug of rule.optionSlugs; track slug) {
+                <label class="training-option" [class.selected]="chosen('language', rule.sourceKey, slug)" [class.unavailable]="rule.automaticSlugs.includes(slug)">
+                  <input type="checkbox" [checked]="chosen('language', rule.sourceKey, slug)" [disabled]="rule.automaticSlugs.includes(slug)" (change)="toggle('language', rule.sourceKey, slug, $any($event.target).checked, rule.choiceCount)" />
+                  <span class="option-text"><strong>{{ languageName(slug) }}</strong>@if (rule.automaticSlugs.includes(slug)) { <small>Déjà connue</small> }</span>
+                </label>
+              }
+            </div>
+          </div>
+        }
+      }
+    </div>
+
+    @if (options.substitutions.length) {
+      <div class="training-group"><div class="training-group-title"><h3>Substitutions d'historique</h3></div>
+        <p class="training-hint">Lorsqu'une maîtrise est obtenue deux fois, Symfony peut autoriser son remplacement.</p>
+        @for (rule of options.substitutions; track rule.ruleId + '-' + rule.originalProficiencyId) {
+          <label class="training-select"><span>Remplacer {{ proficiencyName(rule.originalProficiencyId) }}</span>
+            <select [value]="replacement(rule.ruleId, rule.originalProficiencyId)" (change)="substitution(rule.ruleId, rule.originalProficiencyId, $any($event.target).value)">
+              <option value="">Ne pas remplacer</option>
+              @for (id of rule.optionIds; track id) { <option [value]="id">{{ proficiencyName(id) }}</option> }
+            </select>
+          </label>
+        }
+      </div>
+    }
+
+    @if (options.expertiseRules.length) {
+      <div class="training-group"><div class="training-group-title"><h3>Expertises</h3></div>
+        @for (rule of options.expertiseRules; track rule.ruleId) {
+          @if (rule.choiceCount > 0) {
+            <div class="training-rule"><div class="training-rule-head"><div><h4>{{ rule.label }}</h4><p>Choisis {{ rule.choiceCount }} expertise(s).</p></div>
+              <span class="training-counter" [class.complete]="selectedCount('expertise', rule.ruleId) === rule.choiceCount">{{ selectedCount('expertise', rule.ruleId) }} / {{ rule.choiceCount }}</span></div>
+              <div class="expertise-section-label">Expertises sélectionnées</div>
+              <div class="training-options">
+                @for (id of selectedExpertiseIds(rule.ruleId); track id) {
+                  <label class="training-option selected expertise-selected">
+                    <input type="checkbox" [checked]="true" (change)="toggle('expertise', rule.ruleId, id, false, rule.choiceCount)" />
+                    <span class="option-text"><strong>{{ proficiencyName(id) }}</strong><small>Expertise sélectionnée · décocher pour retirer</small></span>
+                  </label>
+                } @empty {
+                  <p class="training-hint">Aucune expertise sélectionnée.</p>
+                }
+              </div>
+              <div class="expertise-section-label">Expertises disponibles</div>
+              <div class="training-options">
+                @for (id of availableExpertiseIds(rule.ruleId, rule.optionIds); track id) {
+                  <label class="training-option" [class.unavailable]="selectedCount('expertise', rule.ruleId) >= rule.choiceCount">
+                    <input type="checkbox" [checked]="false" [disabled]="selectedCount('expertise', rule.ruleId) >= rule.choiceCount" (change)="toggle('expertise', rule.ruleId, id, $any($event.target).checked, rule.choiceCount)" />
+                    <span class="option-text"><strong>{{ proficiencyName(id) }}</strong></span>
+                  </label>
+                } @empty {
+                  <p class="training-hint">Aucune autre expertise disponible.</p>
+                }
+              </div>
+            </div>
+          }
+        }
+      </div>
+    }
+
+    @if (options.notImplemented.length) {
+      <div class="training-group"><h3>Règles à traiter manuellement</h3>
+        @for (notice of options.notImplemented; track notice) { <p class="training-hint">{{ notice }}</p> }
+      </div>
+    }
+
+    <div class="training-group">
+      <div class="training-group-title"><h3>Attributions manuelles du MJ</h3></div>
+      <p class="training-hint">Facultatif : ajoute une maîtrise, une langue ou une expertise exceptionnelle, avec sa justification.</p>
+      <button type="button" class="secondary-button" (click)="addGrant()">+ Ajouter une attribution</button>
+      @for (grant of vm().training().manualGrants; track $index; let i = $index) {
+        <div class="manual-grant">
+          <label><span>Nature</span><select [value]="grant.kind" (change)="editGrant(i, 'kind', $any($event.target).value)"><option value="LANGUAGE">Langue</option><option value="PROFICIENCY">Maîtrise</option><option value="EXPERTISE">Expertise</option></select></label>
+          <label><span>Attribution</span><select [value]="grant.kind === 'LANGUAGE' ? (grant.languageSlug ?? '') : (grant.proficiencyId ?? 0)" (change)="editGrant(i, 'target', $any($event.target).value)">
+            <option value="">Choisir</option>
+            @if (grant.kind === 'LANGUAGE') { @for (language of vm().reference()?.languages ?? []; track language.slug) { <option [value]="language.slug">{{ language.name }}</option> } }
+            @else { @for (proficiency of vm().reference()?.proficiencies ?? []; track proficiency.id) { <option [value]="proficiency.id">{{ proficiency.name }}</option> } }
+          </select></label>
+          <label class="grant-reason"><span>Justification</span><input type="text" maxlength="500" [value]="grant.reason" (input)="editGrant(i, 'reason', $any($event.target).value)" /></label>
+          <button type="button" class="secondary-button" (click)="removeGrant(i)">Supprimer</button>
+        </div>
+      }
+      @if (!grantValid()) { <p class="message message--error">Complète les attributions manuelles et leurs justifications.</p> }
+    </div>
+  }
+</section>

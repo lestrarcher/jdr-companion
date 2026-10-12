@@ -60,240 +60,29 @@
   @if (loading()) {
     <div class="loading">Chargement du référentiel D&amp;D…</div>
   } @else if (reference()) {
-    <form class="builder-form" [formGroup]="form" (ngSubmit)="submit()">
-      <section class="form-section">
-        <div class="section-heading">
-          <span>01</span>
+    <div class="builder-form">
+      <nav class="builder-steps" aria-label="Étapes de création">
+        <span [class.active]="currentStep() === 1">1. Identité et caractéristiques</span>
+        <span [class.active]="currentStep() === 2">2. Maîtrises et langues</span>
+      </nav>
 
-          <div>
-            <p class="eyebrow">Identité</p>
-            <h2>Qui est ce personnage ?</h2>
-          </div>
-        </div>
-
-        <div class="form-grid form-grid--two">
-          <label>
-            <span>Nom du personnage</span>
-            <input
-              type="text"
-              formControlName="name"
-              placeholder="Ex. Guts"
-              (input)="generateSlug()"
-            />
-          </label>
-
-          <label>
-            <span>Nom du joueur</span>
-            <input
-              type="text"
-              formControlName="playerName"
-              placeholder="Facultatif pour un PNJ"
-            />
-          </label>
-
-          <label>
-            <span>Identifiant technique</span>
-            <input type="text" formControlName="slug" placeholder="ex. guts" />
-            <small>Lettres minuscules, chiffres et tirets.</small>
-          </label>
-
-          <label>
-            <span>Type</span>
-
-            <select formControlName="type">
-              <option value="player">Personnage joueur</option>
-              <option value="npc">Personnage non-joueur</option>
-            </select>
-          </label>
-        </div>
-      </section>
-
-      <section class="form-section">
-        <div class="section-heading">
-          <span>02</span>
-
-          <div>
-            <p class="eyebrow">Origines</p>
-            <h2>Race et premier niveau</h2>
-          </div>
-        </div>
-
-        <div class="form-grid form-grid--two">
-          <label>
-            <span>Race</span>
-
-            <select formControlName="raceId">
-              <option [ngValue]="0">Choisir une race</option>
-
-              @for (race of selectableRaces(); track race.id) {
-                <option [ngValue]="race.id">{{ race.name }}</option>
-              }
-            </select>
-          </label>
-
-          <label>
-            <span>Classe de départ</span>
-
-            <select formControlName="classId">
-              <option [ngValue]="0">Choisir une classe</option>
-
-              @for (characterClass of classes(); track characterClass.id) {
-                <option [ngValue]="characterClass.id">
-                  {{ characterClass.name }} — d{{ characterClass.hitDie }}
-                </option>
-              }
-            </select>
-          </label>
-        </div>
-
-        @if (startingSubclassRequired()) {
-          <label class="standalone-field">
-            <span>Sous-classe de départ</span>
-
-            <select formControlName="subclassId">
-              <option [ngValue]="0">Choisir une sous-classe</option>
-
-              @for (subclass of availableSubclasses(); track subclass.id) {
-                <option [ngValue]="subclass.id">{{ subclass.name }}</option>
-              }
-            </select>
-          </label>
-        } @else if (selectedClass(); as selectedClass) {
-          <p class="information">
-            La sous-classe sera choisie au niveau
-            {{ selectedClass.subclassSelectionLevel }}
-            de {{ selectedClass.name }}.
-          </p>
-        }
-
-        @if (fixedRacialModifiers().length > 0) {
-          <div class="racial-summary">
-            <h3>Bonus fixes</h3>
-
-            <div>
-              @for (modifier of fixedRacialModifiers(); track modifier.id) {
-                <span>
-                  +{{ modifier.value }} {{ abilityLabel(modifier.ability) }}
-                </span>
-              }
-            </div>
-          </div>
-        }
-
-        @if (requiredRacialModifiers().length > 0) {
-          <div class="choice-panel">
-            <h3>Bonus raciaux au choix</h3>
-
-            <div class="form-grid form-grid--two">
-              @for (modifier of requiredRacialModifiers(); track modifier.id; let index = $index) {
-                <label>
-                  <span>Choix {{ index + 1 }} · +{{ modifier.value }}</span>
-
-                  <select
-                    [value]="racialAbilityChoices()[modifier.id] ?? ''"
-                    (change)="setRacialAbilityChoice(modifier.id, $any($event.target).value)"
-                  >
-                    <option value="">Choisir</option>
-
-                    @for (ability of abilities(); track ability.value) {
-                      <option [value]="ability.value">{{ ability.label }}</option>
-                    }
-                  </select>
-                </label>
-              }
-            </div>
-          </div>
-        }
-
-        @if (racialFeatChoices().length > 0) {
-          <div class="choice-panel">
-            <h3>Don racial</h3>
-
-            @for (choice of racialFeatChoices(); track $index; let index = $index) {
-              <div class="feat-choice">
-                <label>
-                  <span>Don</span>
-
-                  <select
-                    [value]="choice.featId ?? ''"
-                    (change)="setFeat(index, $any($event.target).value)"
-                  >
-                    <option value="">Choisir un don</option>
-
-                    @for (feat of feats(); track feat.id) {
-                      <option [value]="feat.id">{{ feat.name }}</option>
-                    }
-                  </select>
-                </label>
-
-                @if (selectedFeat(index); as feat) {
-                  @if (feat.requiresAbilityChoice) {
-                    <label>
-                      <span>Caractéristique du don</span>
-
-                      <select
-                        [value]="choice.ability ?? ''"
-                        (change)="setFeatAbility(index, $any($event.target).value)"
-                      >
-                        <option value="">Choisir</option>
-
-                        @for (ability of featAbilities(index); track ability.value) {
-                          <option [value]="ability.value">{{ ability.label }}</option>
-                        }
-                      </select>
-                    </label>
-                  }
-
-                  @if (feat.description) {
-                    <p>{{ feat.description }}</p>
-                  }
-                }
-              </div>
-            }
-          </div>
-        }
-      </section>
-
-      <section class="form-section" formGroupName="abilities">
-        <div class="section-heading">
-          <span>03</span>
-
-          <div>
-            <p class="eyebrow">Caractéristiques</p>
-            <h2>Valeurs avant les bonus raciaux</h2>
-          </div>
-        </div>
-
-        <p class="information">
-          Saisis les valeurs obtenues avant d’appliquer les bonus de race et les dons.
-        </p>
-
-        <div class="abilities-grid">
-          @for (ability of abilities(); track ability.value) {
-            <label>
-              <span>{{ ability.abbreviation }}</span>
-              <small>{{ ability.label }}</small>
-
-              <input
-                type="number"
-                min="1"
-                max="20"
-                [formControlName]="ability.value"
-              />
-            </label>
-          }
-        </div>
-      </section>
+      @if (currentStep() === 1) {
+        <app-character-builder-identity [vm]="this" />
+      } @else {
+        <app-character-builder-training [vm]="this" />
+      }
 
       <footer class="form-actions">
-        <a class="secondary-button" [routerLink]="['/campaigns', campaignId]">
-          Annuler
-        </a>
-
-        <button type="submit" [disabled]="submitting()">
-          {{ submitting() ? 'Création en cours…' : 'Créer le personnage niveau 1' }}
-        </button>
+        @if (currentStep() === 1) {
+          <a class="secondary-button" [routerLink]="['/campaigns', campaignId]">Annuler</a>
+          <button type="button" (click)="nextStep()">Suivant : maîtrises et langues</button>
+        } @else {
+          <button type="button" class="secondary-button" (click)="previousStep()">Retour</button>
+          <button type="button" [disabled]="submitting() || !trainingComplete()" (click)="submit()">
+            {{ submitting() ? 'Création en cours…' : 'Créer le personnage niveau 1' }}
+          </button>
+        }
       </footer>
-    </form>
+    </div>
   }
 </section>

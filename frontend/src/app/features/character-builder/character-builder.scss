@@ -345,3 +345,7 @@ button {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+.builder-steps { display: flex; gap: 1rem; margin-bottom: 2rem; }
+.builder-steps span { flex: 1; padding: 1rem; text-align: center; border-bottom: 3px solid transparent; opacity: .5; font-weight: 600; }
+.builder-steps span.active { opacity: 1; border-bottom-color: currentColor; }
