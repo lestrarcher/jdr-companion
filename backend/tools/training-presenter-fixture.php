@@ -16,3 +16,13 @@ function trainingPresenterForRegistry(ManagerRegistry $registry): CharacterTrain
         $proficiencies, new CharacterRaceMetadataResolver(), $references,
     ), $proficiencies);
 }
+
+function trainingServiceForRegistry(ManagerRegistry $registry): App\Service\CharacterTrainingService
+{
+    $rules = new ProficiencyGrantRuleRepository($registry);
+    $proficiencies = new CharacterProficiencyResolver($rules);
+    $references = new CharacterTrainingReferences($registry->getManager(), $rules);
+    $metadata = new CharacterRaceMetadataResolver();
+    return new App\Service\CharacterTrainingService($references, new CharacterTrainingResolver($proficiencies, $metadata, $references),
+        $proficiencies, new App\Service\CharacterProficiencyChoiceService(), $metadata);
+}

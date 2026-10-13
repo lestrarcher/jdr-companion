@@ -15,6 +15,7 @@ use Doctrine\ORM\Tools\SchemaTool;
 use Symfony\Component\Dotenv\Dotenv;
 
 require __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__.'/training-presenter-fixture.php';
 (new Dotenv())->bootEnv(__DIR__ . '/../.env');
 $kernel = new Kernel('dev', true);
 $kernel->boot();
@@ -37,7 +38,7 @@ $services = static function () use ($registry): array {
     $resources = new CharacterResourceResolver(new TrackableResourceRuleRepository($registry), $ability, $features);
     $sync = new CharacterSessionStateSynchronizer($hp, new App\Service\CharacterHitPointStateService($hp), $resources, new CharacterSessionStateRepository($registry), new App\Service\CharacterSpellSlotStateService($slots));
     $eligibility = new CharacterMulticlassEligibilityService($ability);
-    $levelUp = new CharacterLevelUpService($em, new CharacterClassLevelRuleRepository($registry), $sync, $eligibility, $ability);
+    $levelUp = new CharacterLevelUpService($em, new CharacterClassLevelRuleRepository($registry), $sync, $eligibility, $ability, trainingServiceForRegistry($registry), trainingPresenterForRegistry($registry));
     return compact('em', 'ability', 'hp', 'slots', 'features', 'resources', 'sync', 'eligibility', 'levelUp');
 };
 $fixture = static function (array $s, int $levels = 0): array {
@@ -88,14 +89,15 @@ try {
     $wizard = new CharacterClass('wizard', 'Wizard', 6, 20, SpellcastingProgressionType::Full);
     $fighter = new CharacterClass('fighter', 'Fighter', 10, 20);
     $warlock = new CharacterClass('warlock', 'Warlock', 8, 20, SpellcastingProgressionType::Pact);
-    $race = new CharacterRace('test-race', 'Test race');
-    foreach ([$wizard, $fighter, $warlock, $race, new CharacterClassLevelRule($wizard, 4, LevelAdvancementChoice::AbilityScoreImprovementOrFeat)] as $entity) $em->persist($entity);
+    $race = (new CharacterRace('test-race', 'Test race'))->setLanguages(['common'])->setLanguageChoiceCount(0);
+    $common = new App\Entity\LanguageDefinition('common', 'Common');
+    foreach ([$wizard, $fighter, $warlock, $race, $common, new CharacterClassLevelRule($wizard, 4, LevelAdvancementChoice::AbilityScoreImprovementOrFeat)] as $entity) $em->persist($entity);
     $em->flush();
 
     $s = $services();
     [$character, $wizard, $campaign] = $fixture($s);
     $check($s['eligibility']->canTakeLevel($character, $wizard), 'Initial wizard INT 10 eligible');
-    $builder = new CharacterBuilderService($s['em'], new CharacterRepository($registry), $s['levelUp']);
+    $builder = new CharacterBuilderService($s['em'], new CharacterRepository($registry), $s['levelUp'], trainingServiceForRegistry($registry));
     $created = $builder->create($campaign, 'built', 'Built', null, Character::TYPE_PLAYER,
         $s['em']->getRepository(CharacterRace::class)->findOneBy(['slug' => 'test-race']),
         array_fill_keys(array_map(static fn (Ability $a) => $a->value, Ability::cases()), 10), [], [], $wizard);
@@ -301,6 +303,7 @@ try {
         $state = ['hitPoints' => ['current' => 1, 'temporary' => 2], 'hitDice' => $hitDice,
             'resources' => [], 'progressions' => [['id' => 'narrative', 'currentValue' => 7]]];
         $session = new CharacterSessionState(new GameSession($character->getCampaign(), 'rest', 'Rest'), $character, $state);
+        $state = $session->getState(); // Includes the character-wide inspiration field.
         $rest->apply($session, App\Entity\RestRequest::TYPE_SHORT_REST);
         $check($session->getState() === $state, "$label: short rest leaves HP, hit dice and narrative state untouched");
         $rest->apply($session, App\Entity\RestRequest::TYPE_LONG_REST);
@@ -345,7 +348,7 @@ try {
             $session = new CharacterSessionState($game, $character, $state);
             if ($name === 'inactive-history') $session->setParticipating(false);
             $s['em']->persist($game); $s['em']->persist($session);
-            $sessions[] = [$session, $state, $value, $historical];
+            $sessions[] = [$session, $session->getState(), $value, $historical];
         }
         $s['em']->flush();
         $tokens = new Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorage();

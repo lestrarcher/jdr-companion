@@ -13,6 +13,16 @@ final readonly class CharacterTrainingService
         private CharacterProficiencyChoiceService $choices,
         private CharacterRaceMetadataResolver $raceMetadata,
     ) {}
+    /** Restricted player/GM selection payload; authorization and transaction belong to the caller. */
+    public function applyChoices(Character $character, array $payload): array
+    {
+        foreach (array_keys($payload) as $key) {
+            if (!in_array($key, ['proficiencyChoices', 'languageChoices', 'expertiseChoices'], true)) {
+                throw new \DomainException('Seuls les choix de formation sont autorisés.');
+            }
+        }
+        return $this->apply($character, $payload, $character->getCampaign()->getOwner(), false);
+    }
     /** Called on an ephemeral preview or inside the final builder transaction. */
     public function apply(Character $character, array $payload, User $actor, bool $complete = true): array
     {
@@ -91,7 +101,12 @@ final readonly class CharacterTrainingService
         $known = $seen = [];
         foreach ($requirements as $r) foreach ($r['automatic'] as $l) $known[$l->getSlug()] = true;
         foreach ($character->getManualGrants() as $grant) if ($grant->getKind() === 'LANGUAGE') $known[$grant->getLanguage()->getSlug()] = true;
-        foreach ($this->list($payload, 'languageChoices') as $selection) {
+        $languageSelections = $this->list($payload, 'languageChoices');
+        $editedSources = array_column($languageSelections, 'sourceKey');
+        foreach ($this->resolver->resolve($character, $refs)['languages'] as $slug => $entry) {
+            if (array_diff($entry['sources'], $editedSources) !== []) $known[$slug] = true;
+        }
+        foreach ($languageSelections as $selection) {
             if (!is_array($selection) || !is_string($selection['sourceKey'] ?? null)) throw new \DomainException('Source de langue invalide.');
             $key = $selection['sourceKey']; $requirement = $requirements[$key] ?? null;
             if (!$requirement || isset($seen[$key]) || $requirement['choiceCount'] === 0) throw new \DomainException('Source de choix de langue absente ou répétée.');
@@ -101,8 +116,15 @@ final readonly class CharacterTrainingService
             foreach ($selected as $slug) {
                 if (!is_string($slug) || !isset($languages[$slug]) || isset($known[$slug]) || !in_array($languages[$slug], $requirement['options'], true)) throw new \DomainException('Langue indisponible ou déjà connue.');
                 $known[$slug] = true;
-                $character->addLanguageChoice(new CharacterLanguageChoice($character, $key, $languages[$slug]));
             }
+            $retained = [];
+            foreach ($character->getLanguageChoices()->toArray() as $choice) {
+                if ($choice->getSourceKey() !== $key) continue;
+                $slug = $choice->getLanguage()->getSlug();
+                if (in_array($slug, $selected, true) && !isset($retained[$slug])) $retained[$slug] = true;
+                else $character->getLanguageChoices()->removeElement($choice);
+            }
+            foreach ($selected as $slug) if (!isset($retained[$slug])) $character->addLanguageChoice(new CharacterLanguageChoice($character, $key, $languages[$slug]));
         }
         if ($complete) {
             foreach ($requirements as $key => $requirement) if ($requirement['choiceCount'] > 0 && !isset($seen[$key])) throw new \DomainException('Choix de langues incomplets : '.$key);
@@ -110,8 +132,16 @@ final readonly class CharacterTrainingService
         $expertiseRules = [];
         foreach ($refs['expertiseRules'] as $rule) if ($this->resolver->applicable($character, $rule)) $expertiseRules[$rule->getId()] = $rule;
         $expertiseSeen = $expertiseTargets = [];
-        foreach ($this->resolver->resolve($character, $refs)['expertises'] as $slug => $entry) $expertiseTargets[$slug] = true;
-        foreach ($this->list($payload, 'expertiseChoices') as $selection) {
+        $expertiseSelections = $this->list($payload, 'expertiseChoices');
+        $editedKeys = [];
+        foreach ($expertiseSelections as $selection) {
+            $id = $this->id($selection, 'ruleId');
+            if (isset($expertiseRules[$id])) $editedKeys[] = $expertiseRules[$id]->getImportKey();
+        }
+        foreach ($this->resolver->resolve($character, $refs)['expertises'] as $slug => $entry) {
+            if (array_diff($entry['sources'], $editedKeys) !== []) $expertiseTargets[$slug] = true;
+        }
+        foreach ($expertiseSelections as $selection) {
             $id = $this->id($selection, 'ruleId'); $rule = $expertiseRules[$id] ?? null;
             if (!$rule || $rule->getChoiceCount() === 0 || isset($expertiseSeen[$id])) throw new \DomainException('Règle d’expertise absente, automatique ou répétée.');
             $expertiseSeen[$id] = true;
@@ -122,8 +152,15 @@ final readonly class CharacterTrainingService
                 $definition = $definitions[$target]; $slug = $definition->getSlug();
                 if (!$rule->getOptions()->contains($definition) || !isset($effective[$slug]) || isset($expertiseTargets[$slug])) throw new \DomainException('Expertise indisponible, déjà acquise ou sans maîtrise.');
                 $expertiseTargets[$slug] = true;
-                $character->addExpertiseChoice(new CharacterExpertiseChoice($character, $rule, $definition));
             }
+            $retained = [];
+            foreach ($character->getExpertiseChoices()->toArray() as $choice) {
+                if ($choice->getGrantRule() !== $rule) continue;
+                $target = $choice->getProficiencyDefinition()->getId();
+                if (in_array($target, $selected, true) && !isset($retained[$target])) $retained[$target] = true;
+                else $character->getExpertiseChoices()->removeElement($choice);
+            }
+            foreach ($selected as $target) if (!isset($retained[$target])) $character->addExpertiseChoice(new CharacterExpertiseChoice($character, $rule, $definitions[$target]));
         }
         if ($complete) foreach ($expertiseRules as $id => $rule) if ($rule->getChoiceCount() > 0 && !isset($expertiseSeen[$id])) throw new \DomainException('Choix d’expertises incomplets : '.$rule->getLabel());
         return $this->resolver->resolve($character, $refs);

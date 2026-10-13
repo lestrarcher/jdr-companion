@@ -10,12 +10,13 @@ import {
   Router,
   RouterLink,
 } from '@angular/router';
-import { finalize, forkJoin } from 'rxjs';
+import { finalize, forkJoin, Observable, map } from 'rxjs';
 
 import {
   CharacterProfile,
   LevelUpOptions,
   LevelUpPayload,
+  TrainingOptions,
 } from '@core/services/character-api.service';
 import {
   CharacterSessionStateApiService,
@@ -83,6 +84,14 @@ export class PlayerLevelUp implements OnInit {
   protected readonly feats = computed(
     () => this.options()?.feats ?? [],
   );
+
+  protected readonly loadTraining = (classId: number, subclassId: number | null): Observable<TrainingOptions> =>
+    this.characterSessionStateApi.getLevelUpOptions(this.accessToken, classId, subclassId).pipe(
+      map(options => {
+        if (!options.training) throw new Error('Aucun aperçu de formation renvoyé par l’API.');
+        return options.training;
+      }),
+    );
 
   protected readonly playerPortalRoute = [
     '/campaigns',

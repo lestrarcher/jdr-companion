@@ -65,7 +65,7 @@ try {
     $sync = new App\Service\CharacterSessionStateSynchronizer($hp, new App\Service\CharacterHitPointStateService($hp), $resources,
         new App\Repository\CharacterSessionStateRepository($registry), new App\Service\CharacterSpellSlotStateService(new App\Service\CharacterSpellSlotCalculator()));
     $levelUp = new App\Service\CharacterLevelUpService($em, new App\Repository\CharacterClassLevelRuleRepository($registry), $sync,
-        new App\Service\CharacterMulticlassEligibilityService($ability), $ability);
+        new App\Service\CharacterMulticlassEligibilityService($ability), $ability, trainingServiceForRegistry($registry), trainingPresenterForRegistry($registry));
     $builder = new App\Service\CharacterBuilderService($em, new App\Repository\CharacterRepository($registry), $levelUp, $service);
     $scores = array_fill_keys(array_map(static fn ($a) => $a->value, App\Enum\Ability::cases()), 12);
     $character = $builder->create($campaign, 'language-roundtrip', 'Language roundtrip', 'Player', 'player', $race, $scores, [], [], $classes['fighter'], null, $backgrounds['acolyte-phb'], $restored);

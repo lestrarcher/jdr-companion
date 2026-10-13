@@ -501,6 +501,8 @@ public function terminateActiveEffect(
         string $accessToken,
         PlayerCharacterAccess $playerAccess,
         CharacterLevelUpOptionsService $optionsService,
+        Request $request,
+        CharacterLevelUpService $levelUpService,
     ): JsonResponse {
         $state = $playerAccess->requireParticipating( $accessToken, );
 
@@ -513,7 +515,9 @@ public function terminateActiveEffect(
         }
 
         try {
-            return $this->json($optionsService->getOptions($state->getCharacter()));
+            $options = $optionsService->getOptions($state->getCharacter());
+            if ($request->query->has('classId')) $options['training'] = $levelUpService->trainingOptionsForSelection($state->getCharacter(), $request->query->all());
+            return $this->json($options);
         } catch (\DomainException $exception) {
             return $this->json(['message' => $exception->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
@@ -565,6 +569,7 @@ public function terminateActiveEffect(
                 hitPointGain:
                     $selection['hitPointGain'],
                 authorization: $state,
+                training: $selection['training'],
             );
         } catch (
             \InvalidArgumentException

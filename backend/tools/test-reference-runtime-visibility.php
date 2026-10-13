@@ -91,7 +91,7 @@ try {
     $profile = new CharacterProfileSerializer($ability, $features, $resources, $hp, $slots, $actions, trainingPresenterForRegistry($registry));
     $serializer = new CharacterSessionStateSerializer($profile, $hpState, $effectRepo, $slotState);
     $rest = new CharacterRestService($hp, $hpState, $resources, $sync, $slots, $definitions, $ability, $effectRepo, new CharacterActiveEffectService($hpState), $em);
-    $levelUp = new CharacterLevelUpService($em, new CharacterClassLevelRuleRepository($registry), $sync, new CharacterMulticlassEligibilityService($ability), $ability);
+    $levelUp = new CharacterLevelUpService($em, new CharacterClassLevelRuleRepository($registry), $sync, new CharacterMulticlassEligibilityService($ability), $ability, trainingServiceForRegistry($registry), trainingPresenterForRegistry($registry));
     foreach (['a', 'b'] as $key) {
         foreach (['feature' => $features, 'resource' => $resources, 'action' => $actions] as $type => $resolver) {
             $check($keys($resolver->resolve($characters[$key])) === [$type.'-'.$key, $type.'-o'], "$type O + $key only on shared official parent");

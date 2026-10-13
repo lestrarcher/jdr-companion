@@ -50,6 +50,14 @@ export class CampaignCharacters {
   protected readonly campaignId = Number(
     this.route.snapshot.paramMap.get('campaignId'),
   );
+  protected readonly loadTraining = (classId: number, subclassId: number | null) => {
+    const characterId = this.selectedCharacterId();
+    if (characterId === null) {
+      throw new Error('Aucun personnage sélectionné.');
+    }
+    return this.characterApi.getTrainingOptions(characterId, classId, subclassId);
+  };
+
   protected readonly levelUpSubmitting = signal(false);
   protected readonly progressionSubmitting = signal(false);
   protected readonly characters = signal<CharacterApiResponse[]>([]);

@@ -46,7 +46,7 @@ function services($registry): array
     $sync = new CharacterSessionStateSynchronizer($hp, $hpState, $resources, new CharacterSessionStateRepository($registry), $slotState);
     $access = new PlayerCharacterAccess(new CharacterSessionStateRepository($registry));
     $updater = new PlayerCharacterStateUpdater($sync, $hpState);
-    $levelUp = new CharacterLevelUpService($em, new CharacterClassLevelRuleRepository($registry), $sync, new CharacterMulticlassEligibilityService($ability), $ability);
+    $levelUp = new CharacterLevelUpService($em, new CharacterClassLevelRuleRepository($registry), $sync, new CharacterMulticlassEligibilityService($ability), $ability, trainingServiceForRegistry($registry), trainingPresenterForRegistry($registry));
     $rest = new CharacterRestService($hp, $hpState, $resources, $sync, $slots, new TrackableResourceDefinitionRepository($registry), $ability, $effects, new App\Service\CharacterActiveEffectService($hpState), $em);
     $profile = new CharacterProfileSerializer($ability, $features, $resources, $hp, $slots, new App\Service\CharacterActionResolver(new App\Repository\CharacterActionClassRuleRepository($registry)), trainingPresenterForRegistry($registry));
     $controller = new CharacterSessionStateController($profile, $sync, new App\Service\CharacterSessionStateSerializer($profile, $hpState, $effects, $slotState));

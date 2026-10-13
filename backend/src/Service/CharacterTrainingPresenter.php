@@ -36,7 +36,7 @@ final readonly class CharacterTrainingPresenter
         ], $character->getManualGrants()->toArray());
         return $output;
     }
-    public function options(Character $character): array
+    public function options(Character $character, bool $includeManualGrantDetails = true): array
     {
         $refs = $this->references->load($character);
         $effective = $this->resolver->resolve($character, $refs);
@@ -75,9 +75,55 @@ final readonly class CharacterTrainingPresenter
         }
         $isRanger = false;
         foreach ($character->getClassLevels() as $level) if ($level->getCharacterClass()->getSlug() === 'ranger') $isRanger = true;
+        $optionIds = [];
+        foreach ([...$rules, ...$expertises] as $rule) foreach ($rule['optionIds'] as $id) $optionIds[$id] = true;
+        $languageSlugs = [];
+        foreach ($languages as $rule) foreach ([...$rule['optionSlugs'], ...$rule['automaticSlugs']] as $slug) $languageSlugs[$slug] = true;
+        $definitions = [
+            'proficiencies' => array_values(array_map(static fn ($d) => ['id'=>$d->getId(), 'slug'=>$d->getSlug(), 'name'=>$d->getName(), 'type'=>$d->getType()->value],
+                array_filter($refs['proficiencies'], static fn ($d) => isset($optionIds[$d->getId()])))),
+            'languages' => array_values(array_map(static fn ($d) => ['id'=>$d->getId(), 'slug'=>$d->getSlug(), 'name'=>$d->getName()],
+                array_filter($refs['languages'], static fn ($d) => isset($languageSlugs[$d->getSlug()])))),
+        ];
         return ['proficiencyRules' => $rules, 'languageRules' => $languages, 'substitutions' => $substitutions,
-            'expertiseRules' => $expertises, 'resolved' => $this->resolved($character),
+            'definitions' => $definitions,
+            'choices' => $this->choices($character),
+            'expertiseRules' => $expertises, 'resolved' => $this->resolved($character, $includeManualGrantDetails),
             'notImplemented' => $isRanger ? ['favored-enemy-language: manual GM grant required'] : []];
+    }
+    /** Active requirements only. Historical choices remain stored but cannot satisfy another source. */
+    public function choices(Character $character): array
+    {
+        $refs = $this->references->load($character);
+        $effective = $this->resolver->resolve($character, $refs);
+        $result = [];
+        foreach (['proficiency' => $refs['proficiencyRules'], 'expertise' => $refs['expertiseRules']] as $kind => $rules) {
+            foreach ($rules as $rule) {
+                if ($rule->getChoiceCount() === 0 || !($kind === 'proficiency' ? $this->proficiencies->isApplicable($character, $rule) : $this->resolver->applicable($character, $rule))) continue;
+                $selected = [];
+                foreach ($kind === 'proficiency' ? $character->getProficiencyChoices() : $character->getExpertiseChoices() as $choice) {
+                    if ($choice->getGrantRule() === $rule) $selected[] = $choice->getProficiencyDefinition()->getId();
+                }
+                $count = count(array_filter($effective[$kind === 'proficiency' ? 'proficiencies' : 'expertises'],
+                    static fn ($entry) => $kind === 'proficiency' ? in_array($rule, $entry['grants'], true) : in_array($rule->getImportKey(), $entry['sources'], true)));
+                $result[] = $this->choiceState($kind.':'.$rule->getId(), $kind, $rule->getChoiceCount(), $selected, $count) + ['ruleId' => $rule->getId()];
+            }
+        }
+        foreach ($this->resolver->languageRequirements($character, $refs) as $key => $requirement) {
+            if ($requirement['choiceCount'] === 0) continue;
+            $selected = [];
+            foreach ($character->getLanguageChoices() as $choice) if ($choice->getSourceKey() === $key) $selected[] = $choice->getLanguage()->getSlug();
+            $count = count(array_filter($effective['languages'], static fn ($entry) => in_array($key, $entry['sources'], true)
+                && !in_array($entry['definition'], $requirement['automatic'], true)));
+            $result[] = $this->choiceState('language:'.$key, 'language', $requirement['choiceCount'], $selected, $count) + ['sourceKey' => $key];
+        }
+        return $result;
+    }
+
+    private function choiceState(string $key, string $kind, int $required, array $selected, int $effective): array
+    {
+        return ['key' => $key, 'kind' => $kind, 'choiceCount' => $required, 'selected' => $selected,
+            'status' => $effective === $required ? 'complete' : ($selected === [] ? 'missing' : 'invalid')];
     }
     private function proficiencyRule(ProficiencyGrantRule $rule): array
     {

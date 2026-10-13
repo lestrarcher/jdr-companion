@@ -123,9 +123,15 @@ export class CharacterSessionStateApiService {
 
   getLevelUpOptions(
     accessToken: string,
+    classId?: number,
+    subclassId?: number | null,
   ): Observable<LevelUpOptions> {
+    const params: Record<string, string> = {};
+    if (classId !== undefined) params['classId'] = String(classId);
+    if (subclassId != null) params['subclassId'] = String(subclassId);
     return this.http.get<LevelUpOptions>(
       `${this.apiUrl}/public/characters/${accessToken}/level-up/options`,
+      { params },
     );
   }
 

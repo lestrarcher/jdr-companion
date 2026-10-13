@@ -40,7 +40,7 @@ $services = static function () use ($registry): array {
     $slotState = new App\Service\CharacterSpellSlotStateService($slots);
     $sync = new CharacterSessionStateSynchronizer($hp, $hpState, $resources, new CharacterSessionStateRepository($registry), $slotState);
     $eligibility = new CharacterMulticlassEligibilityService($ability);
-    $levelUp = new CharacterLevelUpService($em, new CharacterClassLevelRuleRepository($registry), $sync, $eligibility, $ability);
+    $levelUp = new CharacterLevelUpService($em, new CharacterClassLevelRuleRepository($registry), $sync, $eligibility, $ability, trainingServiceForRegistry($registry), trainingPresenterForRegistry($registry));
     return compact('em', 'ability', 'hp', 'hpState', 'slots', 'slotState', 'features', 'resources', 'sync', 'eligibility', 'levelUp');
 };
 $fixture = static function (array $s, int $levels = 0): array {
@@ -162,7 +162,7 @@ try {
         'inventory PATCH' => fn ($t) => $inventory->update($t, $owned->getId(), $request(['equipped' => true]), $access, $itemRepository, $s['ability'], $em),
         'rest POST' => fn ($t) => $rests->create($t, $request(['type' => 'short-rest']), $access, $restRepository, $em),
         'rest GET' => fn ($t) => $rests->latest($t, $access, $restRepository),
-        'level-up options' => fn ($t) => $controller->publicLevelUpOptions($t, $access, $options),
+        'level-up options' => fn ($t) => $controller->publicLevelUpOptions($t, $access, $options, $request([]), $s['levelUp']),
         'level-up POST' => fn ($t) => $controller->publicLevelUp($t, $request(['classId' => $wizard->getId()]), $access, $requests, $s['levelUp'], $em),
     ];
     $status = static function (callable $operation): int {

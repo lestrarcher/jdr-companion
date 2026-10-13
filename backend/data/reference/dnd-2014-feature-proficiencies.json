@@ -1,0 +1,41 @@
+{
+  "edition": "2014",
+  "rules": [
+    {
+      "key": "tce-bladesinging-training-automatic",
+      "sourceBook": "Tasha's Cauldron of Everything",
+      "sourceType": "subclass",
+      "sourceSlug": "bladesinging",
+      "classSlug": "wizard",
+      "label": "Entraînement à la guerre et au chant : maîtrises",
+      "unlockLevel": 2,
+      "choiceCount": 0,
+      "acquisitionMode": "ANY",
+      "options": ["light-armor", "performance"]
+    },
+    {
+      "key": "tce-bladesinging-training-weapon",
+      "sourceBook": "Tasha's Cauldron of Everything",
+      "sourceType": "subclass",
+      "sourceSlug": "bladesinging",
+      "classSlug": "wizard",
+      "label": "Entraînement à la guerre et au chant : arme",
+      "unlockLevel": 2,
+      "choiceCount": 1,
+      "acquisitionMode": "ANY",
+      "options": ["club", "dagger", "handaxe", "javelin", "light-hammer", "mace", "quarterstaff", "sickle", "spear", "battleaxe", "flail", "longsword", "morningstar", "rapier", "scimitar", "shortsword", "trident", "war-pick", "warhammer", "whip"]
+    },
+    {
+      "key": "phb-2014-assassin-bonus-proficiencies",
+      "sourceBook": "Player's Handbook 2014",
+      "sourceType": "subclass",
+      "sourceSlug": "assassin",
+      "classSlug": "rogue",
+      "label": "Assassin : maîtrises supplémentaires",
+      "unlockLevel": 3,
+      "choiceCount": 0,
+      "acquisitionMode": "ANY",
+      "options": ["disguise-kit", "poisoners-kit"]
+    }
+  ]
+}

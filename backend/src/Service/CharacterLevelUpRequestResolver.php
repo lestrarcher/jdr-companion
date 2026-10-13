@@ -27,7 +27,8 @@ final readonly class CharacterLevelUpRequestResolver
      *     subclass: CharacterSubclass|null,
      *     advancement: LevelAdvancementSelection|null,
      *     hitPointGainMethod: HitPointGainMethod,
-     *     hitPointGain: int|null
+     *     hitPointGain: int|null,
+     *     training: array<string, mixed>
      * }
      */
     public function resolve(array $payload, \App\Entity\Character $character): array
@@ -72,7 +73,11 @@ final readonly class CharacterLevelUpRequestResolver
             $characterClass,
         );
 
+        $training = $payload['training'] ?? [];
+        if (!is_array($training) || ($training !== [] && array_is_list($training))) throw new \InvalidArgumentException('Objet training attendu.');
+
         return [
+            'training' => $training,
             'characterClass' => $characterClass,
             'subclass' => $subclass,
             'advancement' => $advancement,

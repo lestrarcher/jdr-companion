@@ -28,6 +28,8 @@ final readonly class CharacterLevelUpService
         private CharacterSessionStateSynchronizer $stateSynchronizer,
         private CharacterMulticlassEligibilityService $multiclassEligibility,
         private CharacterAbilityCalculator $abilityCalculator,
+        private CharacterTrainingService $trainingService,
+        private CharacterTrainingPresenter $trainingPresenter,
     ) {
     }
 
@@ -39,6 +41,7 @@ final readonly class CharacterLevelUpService
         ?HitPointGainMethod $hitPointGainMethod = null,
         ?int $hitPointGain = null,
         ?CharacterSessionState $authorization = null,
+        array $training = [],
     ): CharacterClassLevel {
         foreach ([$characterClass, $subclass, $advancement?->getFeat(), $character->getSubclassFor($characterClass)] as $reference) {
             if ($reference !== null) ReferenceVisibility::requireVisible($reference, $character->getCampaign()->getOwner());
@@ -51,6 +54,7 @@ final readonly class CharacterLevelUpService
             $hitPointGainMethod,
             $hitPointGain,
             $authorization,
+            $training,
         ): CharacterClassLevel {
             if ($authorization !== null) {
                 if ($authorization->getCharacter() !== $character) {
@@ -72,6 +76,7 @@ final readonly class CharacterLevelUpService
 
             $stateBeforeLevelUp =
                 $this->stateSynchronizer->snapshotForLevelUp($character);
+            $previousChoices = array_column($this->trainingPresenter->choices($character), 'key');
 
             $totalLevel = $character->getNextLevelPosition();
             $classLevel = $character->getLevelInClass($characterClass) + 1;
@@ -112,6 +117,16 @@ final readonly class CharacterLevelUpService
             $character->addClassLevel($level);
             $this->entityManager->persist($level);
 
+            // The builder validates first-level training inside its enclosing transaction.
+            if ($totalLevel > 1) {
+                if ($training !== []) $this->trainingService->applyChoices($character, $training);
+                foreach ($this->trainingPresenter->choices($character) as $choice) {
+                    if (!in_array($choice['key'], $previousChoices, true) && $choice['status'] !== 'complete') {
+                        throw new \DomainException('Nouveau choix de formation incomplet : '.$choice['key']);
+                    }
+                }
+            }
+
             $this->stateSynchronizer->synchronizeAfterLevelUp(
                 $character,
                 $stateBeforeLevelUp,
@@ -125,6 +140,33 @@ final readonly class CharacterLevelUpService
 
             return $level;
         });
+    }
+
+    /** Preview without persisting a level or altering existing choices. */
+    public function trainingOptionsForSelection(Character $character, array $selection): array
+    {
+        $classId = filter_var($selection['classId'] ?? null, FILTER_VALIDATE_INT);
+        $subclassId = isset($selection['subclassId']) ? filter_var($selection['subclassId'], FILTER_VALIDATE_INT) : null;
+        $class = $classId && $classId > 0 ? $this->entityManager->find(CharacterClass::class, $classId) : null;
+        $subclass = $subclassId && $subclassId > 0 ? $this->entityManager->find(CharacterSubclass::class, $subclassId) : null;
+        if (!$class || ($subclassId !== null && !$subclass)) throw new \DomainException('Classe ou sous-classe introuvable.');
+        return $this->trainingOptions($character, $class, $subclass);
+    }
+
+    public function trainingOptions(Character $character, CharacterClass $class, ?CharacterSubclass $subclass = null): array
+    {
+        ReferenceVisibility::requireVisible($class, $character->getCampaign()->getOwner());
+        if ($subclass !== null) ReferenceVisibility::requireVisible($subclass, $character->getCampaign()->getOwner());
+        $this->validateCharacterCanLevelUp($character);
+        $this->validateMulticlassEligibility($character, $class);
+        $subclass = $this->resolveSubclass($character, $class, $character->getLevelInClass($class) + 1, $subclass);
+        $level = new CharacterClassLevel($character, $class, $character->getNextLevelPosition(), $subclass);
+        $character->addClassLevel($level);
+        try {
+            return $this->trainingPresenter->options($character, includeManualGrantDetails: false);
+        } finally {
+            $character->removeClassLevel($level);
+        }
     }
 
     private function validateCharacterCanLevelUp(Character $character): void

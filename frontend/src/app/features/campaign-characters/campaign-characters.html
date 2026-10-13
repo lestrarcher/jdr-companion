@@ -77,6 +77,7 @@
                   [abilities]="options.abilities"
                   [feats]="options.feats"
                   [submitting]="levelUpSubmitting()"
+                  [trainingPreview]="loadTraining"
                   (submitted)="submitLevelUp($event)"
                   (cancelled)="closeEditor()"
                 />

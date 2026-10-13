@@ -187,7 +187,50 @@ export interface HitPointMethodOption {
   label: string;
 }
 
+export interface TrainingChoice {
+  key: string;
+  kind: 'proficiency' | 'language' | 'expertise';
+  ruleId?: number;
+  sourceKey?: string;
+  choiceCount: number;
+  selected: Array<number | string>;
+  status: 'complete' | 'missing' | 'invalid';
+}
+
+export interface TrainingRule {
+  ruleId: number;
+  key: string;
+  label: string;
+  sourceType: string;
+  sourceId: number;
+  unlockLevel: number;
+  choiceCount: number;
+  acquisitionMode: string;
+  optionIds: number[];
+}
+
+export interface TrainingOptions {
+  proficiencyRules: TrainingRule[];
+  choices: TrainingChoice[];
+  definitions: {
+    proficiencies: Array<{ id: number; slug: string; name: string; type: string }>;
+    languages: Array<{ id?: number; slug: string; name: string }>;
+  };
+  languageRules: unknown[];
+  expertiseRules: unknown[];
+  substitutions: unknown[];
+  resolved: CharacterTraining;
+  notImplemented: unknown[];
+}
+
+export interface TrainingChoicesPayload {
+  proficiencyChoices?: Array<{ ruleId: number; proficiencyIds: number[] }>;
+  languageChoices?: Array<{ sourceKey: string; languageSlugs: string[] }>;
+  expertiseChoices?: Array<{ ruleId: number; proficiencyIds: number[] }>;
+}
+
 export interface LevelUpOptions {
+  training?: TrainingOptions;
   abilities: AbilityReference[];
   feats: FeatReference[];
   canLevelUp: boolean;
@@ -234,6 +277,7 @@ export interface LevelUpPayload {
   subclassId: number | null;
   advancement: LevelAdvancementPayload | null;
   hitPoints: LevelUpHitPointPayload;
+  training?: TrainingChoicesPayload;
 }
 
 export interface LevelUpResponse {
@@ -345,6 +389,16 @@ export class CharacterApiService {
         `${this.apiUrl}/campaigns/${campaignId}/characters/${characterId}`,
       )
       .pipe(map(response => response.character));
+  }
+
+  getTrainingOptions(characterId: number, classId: number, subclassId: number | null): Observable<TrainingOptions> {
+    const params: Record<string, string> = { classId: String(classId) };
+    if (subclassId !== null) params['subclassId'] = String(subclassId);
+    return this.http.get<TrainingOptions>(`${this.apiUrl}/characters/${characterId}/training/options`, { params });
+  }
+
+  updateTrainingChoices(characterId: number, payload: TrainingChoicesPayload): Observable<TrainingOptions> {
+    return this.http.patch<TrainingOptions>(`${this.apiUrl}/characters/${characterId}/training/choices`, payload);
   }
 
   getLevelUpOptions(

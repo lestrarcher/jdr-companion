@@ -233,3 +233,13 @@ select {
     flex-direction: column;
   }
 }
+
+.training-panel { grid-column: 1 / -1; padding: .85rem; border-left: 2px solid #d8b45d; background: rgba(216,180,93,.055); }
+.training-panel h4 { margin: .25rem 0 .75rem; }
+.training-auto { margin: .45rem 0; }
+.training-auto small { color: #aaa4a1; margin-left: .5rem; }
+.training-choice { border: 1px solid rgba(216,180,93,.22); padding: .75rem; margin: .75rem 0; }
+.training-choice legend { color: #d8b45d; font-weight: 600; padding: 0 .35rem; }
+.training-option { display: flex; align-items: center; gap: .6rem; padding: .3rem 0; cursor: pointer; }
+.training-option input { width: 1rem; min-height: 1rem; accent-color: #d8b45d; }
+.training-warning { color: #ffb3a8; }

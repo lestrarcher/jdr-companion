@@ -57,6 +57,7 @@
 
           <select
             [(ngModel)]="form.subclassId"
+            (ngModelChange)="subclassChanged()"
           >
             <option [ngValue]="null">
               Sélectionner une sous-classe
@@ -72,6 +73,31 @@
             }
           </select>
         </label>
+      }
+
+
+      @if (trainingPreview() && (trainingLoading() || trainingError() || trainingChoices().length > 0)) {
+        <section class="training-panel">
+          <header><span class="eyebrow">Formation</span><h4>Nouvelles maîtrises</h4></header>
+          @if (trainingLoading()) {
+            <p>Chargement des maîtrises…</p>
+          } @else if (trainingError()) {
+            <p class="message message--error">{{ trainingError() }}</p>
+          } @else if (training()) {
+            @for (choice of trainingChoices(); track choice.key) {
+              <fieldset class="training-choice">
+                <legend>{{ choiceLabel(choice) }} — {{ (trainingSelection()[choice.key] ?? []).length }}/{{ choice.choiceCount }}</legend>
+                @for (option of choiceOptions(choice); track option.value) {
+                  <label class="training-option">
+                    <input type="checkbox" [checked]="isSelected(choice, option.value)" (change)="toggleChoice(choice, option.value)" />
+                    <span>{{ option.label }}</span>
+                  </label>
+                }
+                @if (choice.status === 'invalid') { <small class="training-warning">La sélection précédente doit être corrigée.</small> }
+              </fieldset>
+            }
+          }
+        </section>
       }
 
       <section class="hit-point-choice">
@@ -266,7 +292,7 @@
     <button
       type="button"
       class="primary-button"
-      [disabled]="submitting() || !form.classId"
+      [disabled]="submitting() || !form.classId || (trainingPreview() && (trainingLoading() || !!trainingError() || !training() || !trainingComplete()))"
       (click)="submit()"
     >
       {{ submitting() ? 'Progression en cours…' : 'Confirmer le niveau' }}
