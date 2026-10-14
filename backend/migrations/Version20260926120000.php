@@ -25,11 +25,9 @@ DECLARE
     pool_id INTEGER;
     feature_id INTEGER;
 BEGIN
-    -- These roots are distinct. The old red/silver variants inherit only dragonborn.
+    -- Validate the existing dragonborn racial roots.
     FOR ancestry IN SELECT * FROM (VALUES
         ('dragonborn', NULL),
-        ('chromatic-dragonborn-red', 'dragonborn'),
-        ('metallic-dragonborn-silver', 'dragonborn'),
         ('dragonborn-chromatic-ftd', NULL),
         ('dragonborn-gem-ftd', NULL),
         ('dragonborn-metallic-ftd', NULL)
@@ -65,13 +63,10 @@ BEGIN
     END LOOP;
 
     FOR provider IN SELECT * FROM (VALUES
-        ('breath-weapon-uses', 'breath-weapon', ARRAY['dragonborn', 'chromatic-dragonborn-red', 'metallic-dragonborn-silver'], 1, true),
         ('breath-weapon-uses', 'racial-dragonborn-chromatic-ftd-breath-weapon-2', ARRAY['dragonborn-chromatic-ftd'], 1, false),
         ('breath-weapon-uses', 'racial-dragonborn-gem-ftd-breath-weapon-2', ARRAY['dragonborn-gem-ftd'], 1, false),
         ('breath-weapon-uses', 'racial-dragonborn-metallic-ftd-breath-weapon-2', ARRAY['dragonborn-metallic-ftd'], 1, false),
-        ('chromatic-warding-use', 'chromatic-warding', ARRAY['chromatic-dragonborn-red'], 5, true),
         ('chromatic-warding-use', 'racial-dragonborn-chromatic-ftd-chromatic-warding-4', ARRAY['dragonborn-chromatic-ftd'], 5, false),
-        ('metallic-breath-weapon-use', 'metallic-breath-weapon', ARRAY['metallic-dragonborn-silver'], 5, true),
         ('metallic-breath-weapon-use', 'racial-dragonborn-metallic-ftd-metallic-breath-weapon-4', ARRAY['dragonborn-metallic-ftd'], 5, false)
     ) AS providers(pool_slug, feature_slug, race_slugs, acquisition, legacy)
     LOOP
