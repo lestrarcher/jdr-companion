@@ -96,7 +96,7 @@ SQL);
             'character_feature_definition' => '247,248,249',
             'trackable_resource_definition' => '54,55,56',
             'progression_definition' => '1,2,3',
-            'character_feature_rule' => '243,244,245',
+            'character_feature_rule' => '243,244,245,1186,1187,1188,1189,1190,1191,1192',
         ] as $table => $ids) {
             $this->addSql("UPDATE $table SET origin = 'CUSTOM', owner_id = 1 WHERE id IN ($ids)");
         }
