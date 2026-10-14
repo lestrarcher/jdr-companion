@@ -21,8 +21,10 @@ import { CharacterLevelUp } from './components/character-level-up/character-leve
 import { CharacterProfile } from './components/character-profile/character-profile';
 import { CharacterRoster } from './components/character-roster/character-roster';
 import { CharacterProgressions } from './components/character-progressions/character-progressions';
+import { CharacterTraining } from './components/character-training/character-training';
 
 type CharacterEditor =
+  | 'training'
   | 'level-up'
   | 'hit-points'
   | 'progressions'
@@ -38,6 +40,7 @@ type CharacterEditor =
     CharacterLevelUp,
     CharacterHitPointHistory,
     CharacterProgressions,
+    CharacterTraining,
   ],
   templateUrl: './campaign-characters.html',
   styleUrl: './campaign-characters.scss',

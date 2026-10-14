@@ -56,6 +56,7 @@
             (levelUpRequested)="openEditor('level-up')"
             (hitPointHistoryRequested)="openEditor('hit-points')"
             (progressionsRequested)="openEditor('progressions')"
+            (trainingRequested)="openEditor('training')"
           >
             @if (success()) {
               <p class="message message--success">
@@ -69,6 +70,9 @@
               </p>
             }
 
+            @if (activeEditor() === 'training') {
+              <app-character-training [characterId]="character.id" (completed)="closeEditor(); refreshProfile()" (cancelled)="closeEditor()" />
+            }
             @if (activeEditor() === 'level-up') {
               @if (levelUpOptions(); as options) {
                 <app-character-level-up

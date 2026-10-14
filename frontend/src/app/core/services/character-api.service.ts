@@ -391,8 +391,8 @@ export class CharacterApiService {
       .pipe(map(response => response.character));
   }
 
-  getTrainingOptions(characterId: number, classId: number, subclassId: number | null): Observable<TrainingOptions> {
-    const params: Record<string, string> = { classId: String(classId) };
+  getTrainingOptions(characterId: number, classId?: number, subclassId: number | null = null): Observable<TrainingOptions> {
+    const params: Record<string, string> = classId === undefined ? {} : { classId: String(classId) };
     if (subclassId !== null) params['subclassId'] = String(subclassId);
     return this.http.get<TrainingOptions>(`${this.apiUrl}/characters/${characterId}/training/options`, { params });
   }

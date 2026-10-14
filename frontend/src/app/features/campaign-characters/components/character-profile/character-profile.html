@@ -16,6 +16,9 @@
   </div>
 
   <div class="profile-actions">
+    @if (isStructured(currentCharacter) && !editorOpened()) {
+      <button type="button" class="secondary-button" (click)="trainingRequested.emit()">Compléter les maîtrises</button>
+    }
     <button
       type="button"
       class="secondary-button"
