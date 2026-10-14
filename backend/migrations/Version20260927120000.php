@@ -44,8 +44,8 @@ BEGIN
         ('progression_definition', 3, 'bombe-electrique'),
         ('trackable_resource_definition', 4, 'utilisations-de-magie-galvanisante'),
         ('trackable_resource_definition', 53, 'utilisations-d-ailes-protectrices'),
-        ('character_feature_definition', 365, 'circle-of-spores-fungal-infestation'),
-        ('character_feature_definition', 368, 'circle-of-spores-symbiotic-entity')
+        ('character_feature_definition', 368, 'circle-of-spores-fungal-infestation'),
+        ('character_feature_definition', 371, 'circle-of-spores-symbiotic-entity')
     ) AS expected(table_name, id, slug)
     LOOP
         IF NOT EXISTS (
