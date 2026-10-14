@@ -54,6 +54,10 @@ ssh "$REMOTE_HOST" "
   APP_ENV=prod php bin/console doctrine:migrations:migrate \
     --no-interaction
 
+  # Fail closed: schema migrations do not install D&D reference catalogues.
+  # Imports require a separate reviewed dry-run and explicit operator action.
+  APP_ENV=prod php bin/console app:dnd:check-reference --no-interaction
+
   APP_ENV=prod php bin/console cache:clear
 
   mkdir -p '$REMOTE_FRONTEND'

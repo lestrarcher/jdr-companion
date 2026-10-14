@@ -578,7 +578,9 @@ private function classResourceRule(
     private function assertOfficialReference(CharacterClass|CharacterRace|CharacterSubclass|Feat|TrackableResourceDefinition|TrackableResourceRule|null $reference): void
     {
         if ($reference !== null
-            && $reference->getOrigin() !== \App\Enum\ReferenceOrigin::Official) {
+            && ($reference->getOrigin() !== \App\Enum\ReferenceOrigin::Official
+                || $reference->getOwner() !== null
+                || (method_exists($reference, 'isCustom') && $reference->isCustom()))) {
             throw new \LogicException('Official initializer cannot use or overwrite a CUSTOM reference.');
         }
     }

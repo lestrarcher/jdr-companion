@@ -67,7 +67,8 @@ final class ImportFeatsCommand extends Command
                     ->setAllowedAbilities(...array_map(Ability::from(...), $entry->allowedAbilities))
                     ->setCustom($entry->custom);
                 $existing = $this->entityManager->getRepository(Feat::class)->findOneBy(['slug' => $entry->slug]);
-                if ($existing?->getOrigin() === \App\Enum\ReferenceOrigin::Custom) {
+                if ($existing !== null && ($existing->getOrigin() !== \App\Enum\ReferenceOrigin::Official
+                    || $existing->getOwner() !== null || $existing->isCustom())) {
                     throw new \RuntimeException('Official import cannot overwrite CUSTOM feat: '.$entry->slug);
                 }
                 if ($existing === null) {

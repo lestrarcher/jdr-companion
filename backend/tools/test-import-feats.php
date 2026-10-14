@@ -62,6 +62,11 @@ try {
     [$code] = $run(['--update-existing' => true]);
     $check($code !== 0 && $snapshot() === $privateBefore, 'CUSTOM origin protects a legacy false feat');
     $db->executeStatement("UPDATE feat SET origin='OFFICIAL',owner_id=NULL WHERE slug='resilient'");
+    $db->executeStatement("UPDATE feat SET custom=true WHERE slug='resilient'");
+    $legacyBefore = $snapshot();
+    [$code] = $run(['--update-existing' => true]);
+    $check($code !== 0 && $snapshot() === $legacyBefore, 'Legacy custom flag also blocks updates');
+    $db->executeStatement("UPDATE feat SET custom=false WHERE slug='resilient'");
     [$code, $output] = $run();
     $check($code === 0 && $snapshot() === $before && str_contains($output, 'Existants identiques'), 'Replay must be identical, including timestamps and IDs');
 
