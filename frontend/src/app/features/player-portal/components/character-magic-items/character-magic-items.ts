@@ -25,6 +25,7 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CharacterMagicItems implements OnInit {
+  readonly readonly = input(false);
   readonly accessToken = input.required<string>();
 
   private readonly magicItemApi =
@@ -60,6 +61,7 @@ export class CharacterMagicItems implements OnInit {
   protected toggleEquipped(
     ownedItem: CharacterMagicItemResponse,
   ): void {
+    if (this.readonly()) return;
     if (this.isUpdating(ownedItem)) {
       return;
     }
@@ -86,6 +88,7 @@ export class CharacterMagicItems implements OnInit {
   protected toggleAttuned(
     ownedItem: CharacterMagicItemResponse,
   ): void {
+    if (this.readonly()) return;
     if (
       this.isUpdating(ownedItem)
       || !ownedItem.magicItem.requiresAttunement
@@ -116,6 +119,7 @@ export class CharacterMagicItems implements OnInit {
   protected spendCharge(
     ownedItem: CharacterMagicItemResponse,
   ): void {
+    if (this.readonly()) return;
     if (
       this.isUpdating(ownedItem)
       || ownedItem.currentCharges <= 0
@@ -129,6 +133,7 @@ export class CharacterMagicItems implements OnInit {
   protected restoreCharge(
     ownedItem: CharacterMagicItemResponse,
   ): void {
+    if (this.readonly()) return;
     const maximumCharges =
       ownedItem.magicItem.maximumCharges;
 
@@ -208,6 +213,7 @@ export class CharacterMagicItems implements OnInit {
     ownedItem: CharacterMagicItemResponse,
     chargeChange: number,
   ): void {
+    if (this.readonly()) return;
     this.startUpdate(ownedItem.id);
 
     this.magicItemApi

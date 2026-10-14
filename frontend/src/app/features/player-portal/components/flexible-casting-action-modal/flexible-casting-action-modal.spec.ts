@@ -70,6 +70,7 @@ describe('Conversion flexible', () => {
   function portal() {
     const instance = Object.create(PlayerPortal.prototype) as any;
     Object.assign(instance, {
+      canEdit: () => instance.sessionStatus() === 'live',
       destroyRef: TestBed.inject(DestroyRef), accessToken: 'token', serverRevision: 12,
       flexibleCastingAction: signal({ handlerType: 'flexible-casting' }), sessionStatus: signal('live'),
       saveStatus: signal('idle'), saveError: signal(null), flexibleCastingError: signal(null), flexibleCastingSaving: signal(false),

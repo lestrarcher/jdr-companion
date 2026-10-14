@@ -17,17 +17,9 @@
       <p>{{ errorMessage }}</p>
     </section>
   } @else if (character(); as portalCharacter) {
-    @if (sessionStatus() !== 'live') {
-      <section class="portal-message">
-        <span class="eyebrow">{{ campaign()?.name ?? 'JDR Companion' }}</span>
-        <h1>{{ portalCharacter.name }}</h1>
-        <div class="closed-symbol" aria-hidden="true">◆</div>
-        <p>{{ closedMessage() }}</p>
-        <small>Cette page s’ouvrira lorsque le MJ lancera la session.</small>
-      </section>
-    } @else if (characterState(); as currentCharacter) {
+    @if (characterState(); as currentCharacter) {
       <section class="character-dashboard">
-        <div class="dashboard-content" [attr.inert]="pendingRestRequest() || preparationPending() ? '' : null">
+        <div class="dashboard-content" [attr.inert]="canEdit() && (pendingRestRequest() || preparationPending()) ? '' : null">
           <header class="character-header">
             <div>
               <span class="eyebrow">{{ campaign()?.name ?? 'JDR Companion' }}</span>
@@ -37,10 +29,10 @@
             <div class="session-indicators">
               <span class="live-badge">
                 <span aria-hidden="true"></span>
-                En cours
+                {{ canEdit() ? 'En cours' : 'Lecture seule' }}
               </span>
 
-              <span class="save-status" [class.save-status-error]="saveStatus() === 'error'" aria-live="polite">
+              <span [hidden]="!canEdit()" class="save-status" [class.save-status-error]="saveStatus() === 'error'" aria-live="polite">
                 @switch (saveStatus()) {
                   @case ('saving') {
                     Enregistrement…
@@ -81,7 +73,7 @@
             </button>
           </nav>
 
-          @if ((activeTab() === 'status' || activeTab() === 'overview') && levelUpAllowed()) {
+          @if ((activeTab() === 'status' || activeTab() === 'overview') && canEdit() && levelUpAllowed()) {
             <section class="level-up-callout">
               <div>
                 <span class="eyebrow">Progression</span>
@@ -105,9 +97,9 @@
                     <div class="inspiration-tracker" [class.inspiration-tracker--active]="inspiration()">
                       <span class="inspiration-tracker__symbol" aria-hidden="true">✦</span>
                       <div class="inspiration-tracker__details"><strong>Inspiration</strong><span>{{ inspiration() ? 'Disponible' : 'Non disponible' }}</span></div>
-                      <button type="button" class="inspiration-tracker__action" [disabled]="!inspiration() || inspirationSaving() || saveStatus() === 'saving'" (click)="spendInspiration()">{{ inspirationSaving() ? 'Dépense…' : 'Dépenser' }}</button>
+                      <button type="button" [hidden]="!canEdit()" class="inspiration-tracker__action" [disabled]="!canEdit() || !inspiration() || inspirationSaving() || saveStatus() === 'saving'" (click)="spendInspiration()">{{ inspirationSaving() ? 'Dépense…' : 'Dépenser' }}</button>
                     </div>
-                    <app-character-vitals [character]="currentCharacter" />
+                    <app-character-vitals [readonly]="!canEdit()" [character]="currentCharacter" />
                   </section>
                   <section class="overview-panel overview-panel--statistics">
                     <div class="overview-panel__heading">
@@ -118,7 +110,7 @@
                   </section>
                   @if (hasProgressions()) {
                     <div class="overview-progression">
-                      <app-character-progressions
+                      <app-character-progressions [readonly]="!canEdit()"
                         [progressions]="currentCharacter.progressions ?? []"
                         [resources]="currentCharacter.resources"
                         (progressionChanged)="handleProgressionChange($event)"
@@ -147,18 +139,18 @@
                 </section>
               }
               @case ('status') {
-                <app-character-progressions
+                <app-character-progressions [readonly]="!canEdit()"
                   [progressions]="currentCharacter.progressions ?? []"
                   [resources]="currentCharacter.resources"
                   (progressionChanged)="handleProgressionChange($event)"
                   (resourceChanged)="handleProgressionResourceChange($event)"
                 />
 
-                <app-character-stored-values [resources]="storedValueResources()" />
+                <app-character-stored-values [readonly]="!canEdit()" [resources]="storedValueResources()" />
 
                 <div class="tracker-layout">
-                  <app-character-vitals [character]="currentCharacter" />
-                  <app-character-resources [readonly]="sessionStatus() !== 'live'" [resources]="sortedResources()" [hasSupplement]="hasTinkering()" [tinkeringNotes]="tinkeringEditor">
+                  <app-character-vitals [readonly]="!canEdit()" [character]="currentCharacter" />
+                  <app-character-resources [readonly]="!canEdit()" [resources]="sortedResources()" [hasSupplement]="hasTinkering()" [tinkeringNotes]="tinkeringEditor">
                     @if (hasTinkering() && !tinkeringResources().length) {
                       <app-magical-tinkering-notes [notes]="tinkeringNotes()" [token]="accessToken" [revision]="serverRevision"
                         [editable]="sessionStatus() === 'live'" [busy]="saveStatus() === 'saving'" (refreshed)="refreshTinkering()" />
@@ -215,7 +207,7 @@
 
                     <div class="prepared-actions__list">
                       @for (action of preparedActions(); track action.slug) {
-                        <button type="button" class="prepared-action-card" (click)="openAction(action)">
+                        <button type="button" class="prepared-action-card" [disabled]="!canEdit()" (click)="openAction(action)">
                           <div class="prepared-action-card__icon" aria-hidden="true">✦</div>
 
                           <div class="prepared-action-card__content">
@@ -238,11 +230,12 @@
                   </section>
                 }
 
-                <app-rest-controls
+                @if (canEdit()) { <app-rest-controls
                   [request]="pendingRestRequest()"
                   [feedback]="restFeedback()"
                   (restRequested)="requestRest($event)"
                 />
+                }
               }
 
               @case ('features') {
@@ -261,7 +254,7 @@
               @case ('possessions') {
                 <div class="possessions-sections">
                   <app-character-wallet [accessToken]="accessToken" [disabled]="sessionStatus() !== 'live'" />
-                  <app-character-magic-items [accessToken]="accessToken" />
+                  <app-character-magic-items [readonly]="!canEdit()" [accessToken]="accessToken" />
                 </div>
               }
             }
@@ -277,7 +270,7 @@
     </section>
   }
 
-  @if (preparationPending()) {
+  @if (canEdit() && preparationPending()) {
     <app-action-preparation-modal
       [actions]="preparationActions()"
       [prepared]="characterActions()?.prepared ?? []"
@@ -287,7 +280,7 @@
     />
   }
 
-  @if (activeAction()?.handlerType === 'aid') {
+  @if (canEdit() && activeAction()?.handlerType === 'aid') {
     <app-aid-action-modal
       [spellSlots]="aidSpellSlots()"
       [targets]="aidTargets()"
@@ -296,7 +289,7 @@
     />
   }
 
-  @if (activeAction()?.handlerType === 'flexible-casting') {
+  @if (canEdit() && activeAction()?.handlerType === 'flexible-casting') {
     <app-flexible-casting-action-modal
       [resources]="characterState()?.resources ?? []"
       [saving]="flexibleCastingSaving() || saveStatus() === 'saving'"
@@ -306,7 +299,7 @@
     />
   }
 
-  @if (activeAction()?.handlerType === 'heroes-feast') {
+  @if (canEdit() && activeAction()?.handlerType === 'heroes-feast') {
     <app-heroes-feast-action-modal
       [targets]="aidTargets()"
       (closed)="closeAction()"
@@ -314,7 +307,7 @@
     />
   }
 
-  @if (activeAction()?.handlerType === 'arcane-recovery') {
+  @if (canEdit() && activeAction()?.handlerType === 'arcane-recovery') {
     <app-arcane-recovery-action-modal
       [resources]="characterState()?.resources ?? []"
       [budget]="activeAction()?.budget ?? 0"

@@ -5,7 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CharacterWalletComponent } from './components/character-wallet/character-wallet';
 import { CharacterMagicItems } from './components/character-magic-items/character-magic-items';
 
-import { EMPTY, Subject, catchError, concatMap, debounceTime, exhaustMap, finalize, of, switchMap, tap, timer } from 'rxjs';
+import { EMPTY, Subject, catchError, concatMap, map, takeUntil, exhaustMap, finalize, of, switchMap, tap, timer } from 'rxjs';
 
 import { Character } from '@core/models/character.model';
 import { CharacterAbilityScore, CharacterTraining, CharacterActionSummary, CharacterFeatSummary, CharacterFeatureSummary } from '@core/services/character-api.service';
@@ -19,8 +19,8 @@ import { RestRequestApiResponse, RestRequestApiService } from '@core/services/re
 import { CampaignConfig } from '@core/models/campaign.model';
 import { CampaignConfigurationRegistryService } from '@core/services/campaign-configuration-registry.service';
 import { CharacterProgressions, ProgressionChange, ProgressionResourceChange } from './components/character-progressions/character-progressions';
-import { MagicalTinkeringNotes } from './components/magical-tinkering-notes/magical-tinkering-notes';
 import { CharacterResources } from './components/character-resources/character-resources';
+import { MagicalTinkeringNotes } from './components/magical-tinkering-notes/magical-tinkering-notes';
 import { CharacterStoredValues } from './components/character-stored-values/character-stored-values';
 import { CharacterVitals } from './components/character-vitals/character-vitals';
 import { RestControls } from './components/rest-controls/rest-controls';
@@ -92,6 +92,7 @@ export class PlayerPortal {
   protected readonly campaign = signal<CampaignConfig | null>(null);
   protected readonly character = signal<Character | null>(null);
   protected readonly sessionStatus = signal<SessionStatus | null>(null);
+  protected readonly canEdit = computed(() => this.sessionStatus() === 'live');
   protected readonly levelUpAllowed = signal(false);
   protected readonly loading = signal(true);
   protected readonly loadError = signal<string | null>(null);
@@ -180,7 +181,8 @@ export class PlayerPortal {
     state: CharacterSessionStatePayload;
     revision: number;
     generation: number;
-  }>();
+  } | null>();
+  private readonly sessionClosed = new Subject<void>();
   private readonly remoteSynchronizationEnabled = signal(false);
   private lastQueuedRevision = 0;
   protected serverRevision = 0;
@@ -189,6 +191,20 @@ export class PlayerPortal {
   protected readonly hasTinkering = computed(() => this.features().some(feature => feature.slug === 'magical-tinkering'));
   protected refreshTinkering(): void { this.loadCharacter(false); }
   private loadGeneration = 0;
+  private refreshPending = false;
+
+  private setSessionStatus(status: SessionStatus): void {
+    if (status !== this.sessionStatus()) {
+      // Invalidate queued snapshots across either transition, including a quick reopen.
+      this.loadGeneration++;
+      this.remoteSynchronization.next(null);
+      this.sessionClosed.next();
+      this.lastQueuedRevision = this.characterStateService.revision();
+      this.activeAction.set(null);
+      this.saveStatus.set('idle');
+    }
+    this.sessionStatus.set(status);
+  }
 
   constructor() {
     if (
@@ -223,7 +239,7 @@ export class PlayerPortal {
         untracked(this.characterState);
 
       if (
-        !this.remoteSynchronizationEnabled() ||
+        !this.remoteSynchronizationEnabled() || this.sessionStatus() !== 'live' ||
         !character || revision === this.lastQueuedRevision
       ) {
         return;
@@ -243,7 +259,7 @@ export class PlayerPortal {
   protected selectTab(
     tab: PlayerPortalTab,
   ): void {
-    if (this.pendingRestRequest()) {
+    if (this.canEdit() && this.pendingRestRequest()) {
       return;
     }
 
@@ -269,7 +285,6 @@ export class PlayerPortal {
           if (generation !== this.loadGeneration) return;
           this.serverRevision = response.revision;
           this.inspiration.set(response.state.inspiration === true);
-          this.inspiration.set(response.state.inspiration === true);
           this.saveStatus.set('saved');
           this.loadCharacter(false);
         },
@@ -289,6 +304,7 @@ export class PlayerPortal {
   protected handleProgressionChange(
     event: ProgressionChange,
   ): void {
+    if (!this.canEdit()) return;
     this.characterStateService
       .adjustProgression(
         event.progressionId,
@@ -299,6 +315,7 @@ export class PlayerPortal {
   protected handleProgressionResourceChange(
     event: ProgressionResourceChange,
   ): void {
+    if (!this.canEdit()) return;
     this.characterStateService.adjustResource(
       event.resourceId,
       event.change,
@@ -416,9 +433,9 @@ export class PlayerPortal {
               response.character,
               response.state,
             );
-
-
           this.tinkeringNotes.set(response.state.magicalTinkeringNotes ?? '');
+
+
           this.campaign.set(campaign);
           this.character.set(loadedCharacter);
           this.abilities.set(response.character.abilities);
@@ -432,7 +449,7 @@ export class PlayerPortal {
             response.state.characterActions ?? null,
           );
 
-          this.sessionStatus.set(response.session.status);
+          this.setSessionStatus(response.session.status);
           this.levelUpAllowed.set(response.levelUpAllowed);
 
           this.characterStateService.initialize(
@@ -473,14 +490,15 @@ export class PlayerPortal {
   private initializeRemoteSynchronization(): void {
     this.remoteSynchronization
       .pipe(
-        debounceTime(400),
+        // A null event cancels the timer without completing the live save stream.
+        switchMap(change => change === null || !this.canEdit() ? EMPTY : timer(400).pipe(map(() => change))),
 
         concatMap(({ state, revision, generation }) => {
           const isCurrent = () =>
             generation === this.loadGeneration &&
             revision === this.characterStateService.revision();
 
-          if (!isCurrent()) return EMPTY;
+          if (!isCurrent() || this.sessionStatus() !== 'live') return EMPTY;
 
           return this.characterSessionStateApi
             .updateByAccessToken(
@@ -489,11 +507,13 @@ export class PlayerPortal {
               this.serverRevision,
             )
             .pipe(
+              takeUntil(this.sessionClosed),
               tap((response) => {
                 // Even if newer local edits are queued, this successful write
                 // becomes their server baseline. Never adopt another load's revision.
-                if (generation === this.loadGeneration) this.serverRevision = response.revision;
-          this.inspiration.set(response.state.inspiration === true);
+                if (generation !== this.loadGeneration) return;
+                this.serverRevision = response.revision;
+                this.inspiration.set(response.state.inspiration === true);
                 if (!isCurrent()) return;
 
                 const character = characterProfileToCharacter(
@@ -513,7 +533,7 @@ export class PlayerPortal {
                 this.characterActions.set(
                   response.state.characterActions ?? null,
                 );
-                this.sessionStatus.set(response.session.status);
+                this.setSessionStatus(response.session.status);
                 this.levelUpAllowed.set(response.levelUpAllowed);
                 this.saveStatus.set('saved');
               }),
@@ -546,21 +566,36 @@ export class PlayerPortal {
   }
 
   private refreshCharacterIfChanged(): void {
-    if (this.sessionStatus() !== 'live' || this.saveStatus() === 'saving') return;
+    if (!this.character() || this.loading() || !this.remoteSynchronizationEnabled()
+      || this.refreshPending) return;
+    const generation = this.loadGeneration;
+    const revision = this.serverRevision;
+    const localRevision = this.characterStateService.revision();
+    this.refreshPending = true;
 
     this.characterSessionStateApi.getByAccessToken(this.accessToken).pipe(
       takeUntilDestroyed(this.destroyRef),
       catchError(() => of(null)),
+      finalize(() => { this.refreshPending = false; }),
     ).subscribe(response => {
-      if (!response || response.revision === this.serverRevision) return;
+      if (!response || generation !== this.loadGeneration || revision !== this.serverRevision
+        || response.revision < this.serverRevision) return;
+      const statusChanged = response.session.status !== this.sessionStatus();
+      if (response.session.status !== 'closed' && (localRevision !== this.characterStateService.revision() || this.saveStatus() === 'saving')) return;
 
+      // Session status is independent of the character state's revision.
+      this.setSessionStatus(response.session.status);
+      this.levelUpAllowed.set(response.levelUpAllowed);
+      if (!statusChanged && response.revision === this.serverRevision) return;
       this.tinkeringNotes.set(response.state.magicalTinkeringNotes ?? '');
+
       this.serverRevision = response.revision;
-          this.inspiration.set(response.state.inspiration === true);
+      this.inspiration.set(response.state.inspiration === true);
 
       const character = characterProfileToCharacter(response.character, response.state);
 
       this.characterStateService.applyServerState(character);
+      this.lastQueuedRevision = this.characterStateService.revision();
       this.character.set(character);
       this.abilities.set(response.character.abilities);
       this.training.set(response.character.training ?? null);
@@ -656,7 +691,7 @@ private initializeRestRequestPolling(): void {
     prepared: string[],
   ): void {
     if (
-      !this.preparationPending()
+      !this.canEdit() || !this.preparationPending()
       || this.preparationSaving()
     ) {
       return;
@@ -711,6 +746,7 @@ private initializeRestRequestPolling(): void {
 protected openAction(
   action: CharacterActionSummary,
 ): void {
+  if (!this.canEdit()) return;
   switch (action.handlerType) {
     case 'flexible-casting':
       if (!this.flexibleCastingAction() || this.sessionStatus() !== 'live' || this.saveStatus() === 'saving') return;

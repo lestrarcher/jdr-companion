@@ -15,6 +15,7 @@ import { CharacterStateService } from '@core/services/character-state.service';
   styleUrl: './character-vitals.scss',
 })
 export class CharacterVitals {
+  readonly readonly = input(false);
   private readonly characterStateService =
     inject(CharacterStateService);
 
@@ -22,6 +23,7 @@ export class CharacterVitals {
   protected hitPointAmount = 0;
 
   protected applyDamage(): void {
+    if (this.readonly()) return;
     if (this.hitPointAmount <= 0) {
       return;
     }
@@ -34,6 +36,7 @@ export class CharacterVitals {
   }
 
   protected heal(): void {
+    if (this.readonly()) return;
     if (this.hitPointAmount <= 0) {
       return;
     }
@@ -46,10 +49,12 @@ export class CharacterVitals {
   }
 
   protected changeTemporaryHitPoints(change: number): void {
+    if (this.readonly()) return;
     this.characterStateService.adjustTemporaryHitPoints(change);
   }
 
   protected spendHitDie(hitDicePoolId: string): void {
+    if (this.readonly()) return;
     this.characterStateService.adjustHitDice(
       hitDicePoolId,
       -1,

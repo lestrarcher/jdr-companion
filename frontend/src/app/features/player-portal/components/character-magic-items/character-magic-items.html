@@ -108,7 +108,7 @@
               </div>
 
               <div class="charges__controls">
-                <button
+                <button [hidden]="readonly()"
                   type="button"
                   class="charges__button"
                   aria-label="Dépenser une charge"
@@ -133,7 +133,7 @@
                 @if (
                   canRestoreManually(ownedItem)
                 ) {
-                  <button
+                  <button [hidden]="readonly()"
                     type="button"
                     class="charges__button"
                     aria-label="Récupérer une charge"
@@ -153,7 +153,10 @@
           }
 
           <footer class="magic-item__actions">
-            <button
+            @if (readonly()) {
+              <span>{{ ownedItem.equipped ? 'Équipé' : 'Non équipé' }}{{ ownedItem.attuned ? ' · Harmonisé' : '' }}</span>
+            }
+            <button [hidden]="readonly()"
               type="button"
               class="item-action"
               [class.item-action--active]="
@@ -172,7 +175,7 @@
             @if (
               ownedItem.magicItem.requiresAttunement
             ) {
-              <button
+              <button [hidden]="readonly()"
                 type="button"
                 class="item-action"
                 [class.item-action--active]="

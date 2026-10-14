@@ -22,6 +22,9 @@
             les nouveaux résultats doivent être saisis
           -->
           @if (resource.storedValues === undefined) {
+            @if (readonly()) {
+              <p class="resource-instruction">Résultats non renseignés.</p>
+            } @else {
             <p class="resource-instruction">
               Lancez vos
               {{ config.requiredCount }} d20 après votre
@@ -68,6 +71,7 @@
                 Enregistrer les présages
               </button>
             </div>
+            }
           }
 
           <!--
@@ -76,8 +80,7 @@
           -->
           @else if (resource.storedValues.length > 0) {
             <p class="resource-instruction">
-              Sélectionnez le présage que vous venez
-              d’utiliser.
+              {{ readonly() ? 'Présages disponibles.' : 'Sélectionnez le présage que vous venez d’utiliser.' }}
             </p>
 
             <div
@@ -91,6 +94,7 @@
                 track $index
               ) {
                 <button
+                  [disabled]="readonly()"
                   type="button"
                   class="portent-die"
                   (click)="
@@ -101,7 +105,7 @@
                   "
                 >
                   <span>{{ value }}</span>
-                  <small>Utiliser</small>
+                  @if (!readonly()) { <small>Utiliser</small> }
                 </button>
               }
             </div>

@@ -78,7 +78,7 @@
           }
 
           <div class="progression-controls">
-            <button
+            <button [hidden]="readonly()"
               type="button"
               [attr.aria-label]="
                 'Réduire ' + progression.name
@@ -101,7 +101,7 @@
               {{ progression.currentValue }}
             </strong>
 
-            <button
+            <button [hidden]="readonly()"
               type="button"
               [attr.aria-label]="
                 'Augmenter ' + progression.name
@@ -117,7 +117,7 @@
             </button>
           </div>
 
-          @if (progression.bulkAdjustment) {
+          @if (!readonly() && progression.bulkAdjustment) {
             <div class="bulk-controls">
               <div class="bulk-control">
                 <label
@@ -153,7 +153,7 @@
                     "
                   />
 
-                  <button
+                  <button [hidden]="readonly()"
                     type="button"
                     [disabled]="
                       bulkValue(
@@ -209,7 +209,7 @@
                     "
                   />
 
-                  <button
+                  <button [hidden]="readonly()"
                     type="button"
                     [disabled]="
                       bulkValue(
@@ -252,7 +252,7 @@
               </div>
 
               <div class="linked-resource-controls">
-                <button
+                <button [hidden]="readonly()"
                   type="button"
                   [disabled]="
                     resource.currentValue <= 0

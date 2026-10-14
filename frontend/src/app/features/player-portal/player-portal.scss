@@ -669,3 +669,5 @@
 .overview-progression { min-width: 0; grid-column: 1 / -1; }
 
 
+
+:host [hidden] { display: none !important; }

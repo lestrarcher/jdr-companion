@@ -174,7 +174,12 @@ try {
     $beforeDenied = $session->getState();
     foreach ($routes as $label => $operation) $check($status(fn () => $operation($token)) === 404, "$label: removed participant");
     $check($session->getState() === $beforeDenied && $character->getTotalLevel() === 1, 'Denied calls cannot mutate state or level');
-    $session->setParticipating(true); $game->setStatus(GameSession::STATUS_CLOSED); $em->flush();
+    $session->setParticipating(true); $em->flush();
+    $liveProfile = json_decode($controller->showPublic($token, $access)->getContent(), true);
+    $game->setStatus(GameSession::STATUS_CLOSED); $em->flush();
+    $closedProfile = json_decode($controller->showPublic($token, $access)->getContent(), true);
+    $check($closedProfile['character'] === $liveProfile['character'], 'CLOSED exposes the same complete profile as LIVE');
+    $check($closedProfile['state'] === $liveProfile['state'], 'CLOSED read preserves every state value');
     foreach ($routes as $label => $operation) {
         if (str_contains($label, 'PATCH') || str_contains($label, 'POST') || $label === 'level-up options') {
             $check($status(fn () => $operation($token)) === 409, "$label: live restriction preserved");
@@ -301,6 +306,8 @@ try {
     $check($status(fn () => $controller->updatePublic($token, $request(['state' => ['resources' => [['id' => 'magical-tinkering', 'currentValue' => 0]]]]), $access, $em, $updater, $inspiration)) === 409, 'CLOSED rejects tinkering counter');
     $check($status(fn () => $controller->updatePublic($token, $request(['state' => ['magicalTinkeringNotes' => 'Forbidden']]), $access, $em, $updater, $inspiration)) === 409, 'CLOSED rejects tinkering changes');
     $publicNotes = json_decode($controller->showPublic($token, $access)->getContent(), true);
+    $check(in_array('magical-tinkering', array_column($publicNotes['character']['resources'], 'slug'), true), 'CLOSED profile includes calculated tinkering resource');
+    $check(in_array('spell-slot-1', array_column($publicNotes['character']['resources'], 'slug'), true), 'CLOSED profile includes wizard spell slots');
     $check($publicNotes['state']['magicalTinkeringNotes'] === 'Clochette', 'CLOSED still exposes stored notes');
     echo "OK: $checks player security and Portent assertions; temporary tables rolled back.\n";
 } finally {

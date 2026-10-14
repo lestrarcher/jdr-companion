@@ -16,6 +16,7 @@ import { CharacterStateService } from '@core/services/character-state.service';
   styleUrl: './character-stored-values.scss',
 })
 export class CharacterStoredValues {
+  readonly readonly = input(false);
   private readonly characterStateService =
     inject(CharacterStateService);
 
@@ -74,6 +75,7 @@ export class CharacterStoredValues {
     index: number,
     value: number | null,
   ): void {
+    if (this.readonly()) return;
     const values = [
       ...(this.draftValues[resourceId] ?? []),
     ];
@@ -113,6 +115,7 @@ export class CharacterStoredValues {
   protected saveValues(
     resource: CharacterResource,
   ): void {
+    if (this.readonly()) return;
     if (!this.canSave(resource)) {
       return;
     }
@@ -131,6 +134,7 @@ export class CharacterStoredValues {
     resourceId: string,
     valueIndex: number,
   ): void {
+    if (this.readonly()) return;
     this.characterStateService.consumeStoredValue(
       resourceId,
       valueIndex,

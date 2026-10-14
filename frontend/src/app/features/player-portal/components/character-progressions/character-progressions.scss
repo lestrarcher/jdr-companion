@@ -567,3 +567,5 @@ button {
     padding: 0.8rem;
   }
 }
+
+:host [hidden] { display: none !important; }

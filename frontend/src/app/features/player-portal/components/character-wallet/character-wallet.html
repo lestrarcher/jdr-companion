@@ -69,7 +69,7 @@
       }
     </div>
 
-    <div class="wallet-operation">
+    @if (!disabled()) { <div class="wallet-operation">
       <label for="wallet-amount">
         Montant en
         {{ selectedCurrency().abbreviation }}
@@ -114,6 +114,7 @@
       </div>
     </div>
 
+    }
     @if (error()) {
       <p
         class="wallet-message wallet-message--error"

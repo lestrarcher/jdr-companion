@@ -28,6 +28,7 @@ export interface ProgressionResourceChange {
   styleUrl: './character-progressions.scss',
 })
 export class CharacterProgressions {
+  readonly readonly = input(false);
   readonly progressions =
     input.required<readonly CharacterProgression[]>();
 
@@ -66,6 +67,7 @@ export class CharacterProgressions {
     type: 'gain' | 'spend',
     event: Event,
   ): void {
+    if (this.readonly()) return;
     const input =
       event.target as HTMLInputElement;
 
@@ -98,6 +100,7 @@ export class CharacterProgressions {
     progressionId: string,
     type: 'gain' | 'spend',
   ): void {
+    if (this.readonly()) return;
     const value = this.bulkValue(
       progressionId,
       type,
@@ -133,6 +136,7 @@ export class CharacterProgressions {
     progressionId: string,
     change: number,
   ): void {
+    if (this.readonly()) return;
     if (
       !Number.isFinite(change) ||
       change === 0
@@ -151,6 +155,7 @@ export class CharacterProgressions {
     rawValue: number,
     direction: 1 | -1,
   ): void {
+    if (this.readonly()) return;
     if (
       !Number.isFinite(rawValue) ||
       rawValue <= 0
@@ -234,6 +239,7 @@ export class CharacterProgressions {
   protected consumeLinkedResource(
     resource: CharacterResource,
   ): void {
+    if (this.readonly()) return;
     if (resource.currentValue <= 0) {
       return;
     }

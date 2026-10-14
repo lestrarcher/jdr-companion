@@ -16,7 +16,7 @@
       <span>PV temporaires</span>
 
       <div class="counter">
-        <button
+        <button [hidden]="readonly()"
           type="button"
           aria-label="Retirer un point de vie temporaire"
           (click)="changeTemporaryHitPoints(-1)"
@@ -31,7 +31,7 @@
           {{ character().hitPoints.temporary }}
         </strong>
 
-        <button
+        <button [hidden]="readonly()"
           type="button"
           aria-label="Ajouter un point de vie temporaire"
           (click)="changeTemporaryHitPoints(1)"
@@ -42,11 +42,11 @@
     </div>
   </div>
 
-  <div class="hit-points-actions">
+  <div class="hit-points-actions" [hidden]="readonly()">
     <label>
       <span>Montant</span>
 
-      <input
+      <input [disabled]="readonly()"
         type="number"
         min="0"
         inputmode="numeric"
@@ -54,7 +54,7 @@
       />
     </label>
 
-    <button
+    <button [hidden]="readonly()"
       class="damage-button"
       type="button"
       (click)="applyDamage()"
@@ -63,7 +63,7 @@
       Dégâts
     </button>
 
-    <button
+    <button [hidden]="readonly()"
       class="healing-button"
       type="button"
       (click)="heal()"
@@ -86,7 +86,7 @@
             <strong>{{ pool.die }}</strong>
 
             <div class="counter">
-              <button
+              <button [hidden]="readonly()"
                 type="button"
                 [attr.aria-label]="
                   'Dépenser un dé de vie ' + pool.die
