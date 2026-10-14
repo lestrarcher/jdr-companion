@@ -60,15 +60,23 @@ final class CharacterTrainingController extends AbstractController
     }
 
     #[Route('/characters/{id}/manual-grants', name: 'api_character_manual_grants', requirements: ['id' => '\d+'], methods: ['POST'])]
-    public function grant(Character $character, Request $request, EntityManagerInterface $em, CharacterTrainingService $service, CharacterTrainingPresenter $presenter): JsonResponse
+    public function grant(Character $character, Request $request, EntityManagerInterface $em, CharacterTrainingService $service, CharacterTrainingPresenter $presenter, CharacterSessionStateRepository $states): JsonResponse
     {
         $this->denyAccessUnlessGranted(CampaignVoter::MANAGE, $character->getCampaign());
         try {
             $payload = $request->toArray();
             if (array_keys($payload) !== ['manualGrants'] || !is_array($payload['manualGrants']) || $payload['manualGrants'] === []) throw new \DomainException('Une liste manualGrants non vide est requise.');
-            $em->wrapInTransaction(function () use ($em, $character, $payload, $service): void {
+            $em->wrapInTransaction(function () use ($em, $character, $payload, $service, $states): void {
                 $em->lock($character, LockMode::PESSIMISTIC_WRITE);
+                $em->refresh($character);
+                $before = $character->getManualGrants()->count();
                 $service->apply($character, $payload, $character->getCampaign()->getOwner(), false);
+                if ($before === $character->getManualGrants()->count()) return;
+                foreach ($states->findBy(['character' => $character], ['id' => 'ASC']) as $state) {
+                    $em->lock($state, LockMode::PESSIMISTIC_WRITE);
+                    $em->refresh($state);
+                    $state->setState($state->getState());
+                }
             });
             return $this->json($presenter->resolved($character), 201);
         } catch (\DomainException|\InvalidArgumentException $exception) {

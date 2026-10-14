@@ -91,8 +91,7 @@ final readonly class CharacterTrainingResolver
                 foreach ($character->getExpertiseChoices() as $choice) {
                     if ($choice->getGrantRule() !== $rule) continue;
                     $definition = $choice->getProficiencyDefinition();
-                    if (!$rule->getOptions()->contains($definition) || in_array($definition, $selected, true)
-                        || isset($expertises[$definition->getSlug()]) || !isset($proficiencies[$definition->getSlug()])) continue 2;
+                    if (!$rule->getOptions()->contains($definition) || in_array($definition, $selected, true)) continue 2;
                     $selected[] = $definition;
                 }
                 if (count($selected) !== $rule->getChoiceCount()) continue;

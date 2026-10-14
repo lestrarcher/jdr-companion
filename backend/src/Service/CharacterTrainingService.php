@@ -34,6 +34,7 @@ final readonly class CharacterTrainingService
             throw new \DomainException('Métadonnées de langues raciales manquantes pour '.$race->getSlug().' : exécuter app:dnd:import-training --update-existing après vérification avec --dry-run.');
         }
         $refs = $this->references->load($character);
+        $previousExpertises = $this->resolver->resolve($character, $refs)['expertises'];
         $definitions = $languages = $rules = [];
         foreach ($refs['proficiencies'] as $definition) $definitions[$definition->getId()] = $definition;
         foreach ($refs['languages'] as $language) $languages[$language->getSlug()] = $language;
@@ -72,7 +73,6 @@ final readonly class CharacterTrainingService
         }
         // Explicit GM grants are separate records, never fictitious rule choices.
         $manual = $this->list($payload, 'manualGrants');
-        $manualSeen = [];
         foreach ($manual as $selection) {
             if (!is_array($selection) || !in_array($selection['kind'] ?? null, ['PROFICIENCY', 'EXPERTISE', 'LANGUAGE'], true)
                 || !is_string($selection['reason'] ?? null)) throw new \DomainException('Attribution manuelle invalide.');
@@ -88,12 +88,18 @@ final readonly class CharacterTrainingService
                 if (!$definition || isset($selection['languageSlug'])) throw new \DomainException('Maîtrise manuelle inconnue ou ambiguë.');
                 if ($kind === 'EXPERTISE' && !in_array($definition->getType()->value, ['SKILL', 'TOOL'], true)) throw new \DomainException('Expertise incompatible.');
             }
-            $key = $kind.':'.($language?->getSlug() ?? $definition->getSlug());
-            if (isset($manualSeen[$key])) throw new \DomainException('Attribution manuelle répétée.');
-            $manualSeen[$key] = true;
-            $character->addManualGrant(new CharacterManualGrant($character, $kind, $actor, $selection['reason'], $definition, $language));
+            $candidate = new CharacterManualGrant($character, $kind, $actor, $selection['reason'], $definition, $language);
+            foreach ($character->getManualGrants() as $existing) {
+                if ($existing->getKind() === $kind && $existing->getProficiencyDefinition() === $definition
+                    && $existing->getLanguage() === $language && $existing->getGrantedBy() === $actor
+                    && $existing->getReason() === $selection['reason']) continue 2;
+            }
+            $character->addManualGrant($candidate);
         }
         $effective = $this->proficiencies->resolve($character);
+        foreach ($previousExpertises as $slug => $entry) {
+            if (!isset($effective[$slug])) throw new \DomainException('Conflit de formation : la maîtrise '.$entry['definition']->getName().' est nécessaire à une expertise acquise.');
+        }
         foreach ($character->getManualGrants() as $grant) {
             if ($grant->getKind() === 'EXPERTISE' && !isset($effective[$grant->getProficiencyDefinition()->getSlug()])) throw new \DomainException('Une expertise exige une maîtrise préalable.');
         }
@@ -147,10 +153,17 @@ final readonly class CharacterTrainingService
             $expertiseSeen[$id] = true;
             $selected = $this->list($selection, 'proficiencyIds');
             if (count($selected) !== $rule->getChoiceCount()) throw new \DomainException('Nombre d’expertises incorrect.');
+            $historicalTargets = [];
+            foreach ($character->getExpertiseChoices() as $choice) {
+                if ($choice->getGrantRule() === $rule) $historicalTargets[] = $choice->getProficiencyDefinition()->getId();
+            }
+            $selectionSeen = [];
             foreach ($selected as $target) {
                 if (!is_int($target) || !isset($definitions[$target])) throw new \DomainException('Expertise inconnue.');
                 $definition = $definitions[$target]; $slug = $definition->getSlug();
-                if (!$rule->getOptions()->contains($definition) || !isset($effective[$slug]) || isset($expertiseTargets[$slug])) throw new \DomainException('Expertise indisponible, déjà acquise ou sans maîtrise.');
+                if (!$rule->getOptions()->contains($definition) || !isset($effective[$slug]) || isset($selectionSeen[$slug])
+                    || (isset($expertiseTargets[$slug]) && !in_array($target, $historicalTargets, true))) throw new \DomainException('Expertise indisponible, déjà acquise ou sans maîtrise.');
+                $selectionSeen[$slug] = true;
                 $expertiseTargets[$slug] = true;
             }
             $retained = [];

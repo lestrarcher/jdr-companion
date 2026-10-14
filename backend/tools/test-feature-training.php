@@ -148,6 +148,14 @@ try {
     $check($sessionState->getRevision() === $revisionBefore+1 && $sessionState->getState() === $stateBefore, 'Catch-up synchronizes revision without resetting state');
     $response = $call();
     $check($response->getStatusCode() === 200 && $sessionState->getRevision() === $revisionBefore+1, 'Replayed PATCH is idempotent including revision');
+    $manualPayload = ['manualGrants' => [['kind' => 'PROFICIENCY', 'proficiencyId' => $def('nature'), 'reason' => 'Reliability test']]];
+    $grant = static fn () => $controller->grant($legacy, $request($manualPayload), $em, $training, $presenter, new App\Repository\CharacterSessionStateRepository($registry));
+    $check($grant()->getStatusCode() === 201, 'Manual grant endpoint accepts award');
+    $check($sessionState->getRevision() === $revisionBefore+2 && $sessionState->getState() === $stateBefore, 'Manual grant invalidates revision without resetting state');
+    $manualId = $legacy->getManualGrants()->first()->getId();
+    $em->refresh($legacy);
+    $check($grant()->getStatusCode() === 201 && $legacy->getManualGrants()->count() === 1, 'Persisted retry is idempotent');
+    $check($legacy->getManualGrants()->first()->getId() === $manualId && $sessionState->getRevision() === $revisionBefore+2, 'Retry retains row identity and revision');
     $tokens->setToken(new Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken(new App\Entity\User(),'test',[]));
     try { $call(); throw new RuntimeException('Foreign GM accepted'); }
     catch (Symfony\Component\Security\Core\Exception\AccessDeniedException) { $check(true, 'Catch-up respects campaign ownership'); }
