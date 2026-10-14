@@ -1,0 +1,1265 @@
+{
+  "edition": "2014",
+  "sources": [
+    "SCAG",
+    "CoS",
+    "VRGR",
+    "WBtW",
+    "BGG"
+  ],
+  "notes": [
+    "Complément des 13 historiques PHB : ne remplace pas leur catalogue.",
+    "Descriptions synthétiques et noms français éditoriaux lorsque la traduction publiée ne peut être confirmée.",
+    "Les dons de Bigby ne sont pas attribués ; voir les avertissements persistés dans les descriptions."
+  ],
+  "backgrounds": [
+    {
+      "slug": "city-watch-scag",
+      "name": "Garde du guet",
+      "englishName": "City Watch",
+      "edition": "2014",
+      "source": "SCAG",
+      "sourceBook": "Sword Coast Adventurer's Guide",
+      "description": "Source : Sword Coast Adventurer's Guide (règles 2014). Watcher's Eye : repérer les autorités locales et les foyers de criminalité. Équipement de départ (descriptif uniquement) : uniforme du guet, cor, menottes, bourse de 10 po.",
+      "deferred": [
+        "Équipement et capacité narrative conservés dans la description, sans attribution automatique."
+      ],
+      "rules": [
+        {
+          "key": "scag-2014-background-city-watch-scag-skills",
+          "category": "skills",
+          "label": "Garde du guet : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "athletics",
+            "insight"
+          ]
+        }
+      ],
+      "languageRules": [
+        {
+          "key": "scag-2014-background-city-watch-scag-languages-choice",
+          "category": "languages-choice",
+          "label": "Garde du guet : langues au choix",
+          "unlockLevel": 1,
+          "choiceCount": 2,
+          "options": [
+            "common",
+            "dwarvish",
+            "elvish",
+            "giant",
+            "gnomish",
+            "goblin",
+            "halfling",
+            "orc",
+            "abyssal",
+            "celestial",
+            "draconic",
+            "deep-speech",
+            "infernal",
+            "primordial",
+            "sylvan",
+            "undercommon"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "city-watch-investigator-scag",
+      "name": "Enquêteur du guet",
+      "englishName": "City Watch (Investigator)",
+      "edition": "2014",
+      "source": "SCAG",
+      "sourceBook": "Sword Coast Adventurer's Guide",
+      "description": "Source : Sword Coast Adventurer's Guide (règles 2014). Variante du garde du guet : Investigation remplace Athlétisme. Watcher's Eye : repérer les autorités locales et les foyers de criminalité. Équipement de départ (descriptif uniquement) : uniforme du guet, cor, menottes, bourse de 10 po.",
+      "deferred": [
+        "Équipement et capacité narrative conservés dans la description, sans attribution automatique."
+      ],
+      "rules": [
+        {
+          "key": "scag-2014-background-city-watch-investigator-scag-skills",
+          "category": "skills",
+          "label": "Enquêteur du guet : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "investigation",
+            "insight"
+          ]
+        }
+      ],
+      "languageRules": [
+        {
+          "key": "scag-2014-background-city-watch-investigator-scag-languages-choice",
+          "category": "languages-choice",
+          "label": "Enquêteur du guet : langues au choix",
+          "unlockLevel": 1,
+          "choiceCount": 2,
+          "options": [
+            "common",
+            "dwarvish",
+            "elvish",
+            "giant",
+            "gnomish",
+            "goblin",
+            "halfling",
+            "orc",
+            "abyssal",
+            "celestial",
+            "draconic",
+            "deep-speech",
+            "infernal",
+            "primordial",
+            "sylvan",
+            "undercommon"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "clan-crafter-scag",
+      "name": "Artisan de clan",
+      "englishName": "Clan Crafter",
+      "edition": "2014",
+      "source": "SCAG",
+      "sourceBook": "Sword Coast Adventurer's Guide",
+      "description": "Source : Sword Coast Adventurer's Guide (règles 2014). Respect of Stout Folk : accueil auprès des communautés naines. Équipement de départ (descriptif uniquement) : outils artisanaux maîtrisés, ciseau portant la marque du clan, vêtements de voyage, bourse de 5 po et gemme de 10 po. Limites : Si le nain est déjà connu, une autre langue est prévue par la règle ; cette substitution conditionnelle doit être accordée explicitement par le MJ.",
+      "deferred": [
+        "Équipement et capacité narrative conservés dans la description, sans attribution automatique.",
+        "Si le nain est déjà connu, une autre langue est prévue par la règle ; cette substitution conditionnelle doit être accordée explicitement par le MJ."
+      ],
+      "rules": [
+        {
+          "key": "scag-2014-background-clan-crafter-scag-skills",
+          "category": "skills",
+          "label": "Artisan de clan : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "history",
+            "insight"
+          ]
+        },
+        {
+          "key": "scag-2014-background-clan-crafter-scag-tools-choice",
+          "category": "tools-choice",
+          "label": "Artisan de clan : outil au choix",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "alchemists-supplies",
+            "brewers-supplies",
+            "calligraphers-supplies",
+            "carpenters-tools",
+            "cartographers-tools",
+            "cobblers-tools",
+            "cooks-utensils",
+            "glassblowers-tools",
+            "jewelers-tools",
+            "leatherworkers-tools",
+            "masons-tools",
+            "painters-supplies",
+            "potters-tools",
+            "smiths-tools",
+            "tinkers-tools",
+            "weavers-tools",
+            "woodcarvers-tools"
+          ]
+        }
+      ],
+      "languageRules": [
+        {
+          "key": "scag-2014-background-clan-crafter-scag-languages-automatic",
+          "category": "languages-automatic",
+          "label": "Artisan de clan : langues",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "dwarvish"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "cloistered-scholar-scag",
+      "name": "Érudit cloîtré",
+      "englishName": "Cloistered Scholar",
+      "edition": "2014",
+      "source": "SCAG",
+      "sourceBook": "Sword Coast Adventurer's Guide",
+      "description": "Source : Sword Coast Adventurer's Guide (règles 2014). Library Access : accès aux archives de son institution et accueil dans des bibliothèques apparentées. Équipement de départ (descriptif uniquement) : robe de savant, nécessaire à écrire, livre emprunté, bourse de 10 po.",
+      "deferred": [
+        "Équipement et capacité narrative conservés dans la description, sans attribution automatique."
+      ],
+      "rules": [
+        {
+          "key": "scag-2014-background-cloistered-scholar-scag-skills",
+          "category": "skills",
+          "label": "Érudit cloîtré : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "history"
+          ]
+        },
+        {
+          "key": "scag-2014-background-cloistered-scholar-scag-skills-choice",
+          "category": "skills-choice",
+          "label": "Érudit cloîtré : compétences au choix",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "arcana",
+            "nature",
+            "religion"
+          ]
+        }
+      ],
+      "languageRules": [
+        {
+          "key": "scag-2014-background-cloistered-scholar-scag-languages-choice",
+          "category": "languages-choice",
+          "label": "Érudit cloîtré : langues au choix",
+          "unlockLevel": 1,
+          "choiceCount": 2,
+          "options": [
+            "common",
+            "dwarvish",
+            "elvish",
+            "giant",
+            "gnomish",
+            "goblin",
+            "halfling",
+            "orc",
+            "abyssal",
+            "celestial",
+            "draconic",
+            "deep-speech",
+            "infernal",
+            "primordial",
+            "sylvan",
+            "undercommon"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "courtier-scag",
+      "name": "Courtisan",
+      "englishName": "Courtier",
+      "edition": "2014",
+      "source": "SCAG",
+      "sourceBook": "Sword Coast Adventurer's Guide",
+      "description": "Source : Sword Coast Adventurer's Guide (règles 2014). Court Functionary : connaissance des procédures et contacts administratifs. Équipement de départ (descriptif uniquement) : vêtements de qualité, bourse de 5 po.",
+      "deferred": [
+        "Équipement et capacité narrative conservés dans la description, sans attribution automatique."
+      ],
+      "rules": [
+        {
+          "key": "scag-2014-background-courtier-scag-skills",
+          "category": "skills",
+          "label": "Courtisan : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "insight",
+            "persuasion"
+          ]
+        }
+      ],
+      "languageRules": [
+        {
+          "key": "scag-2014-background-courtier-scag-languages-choice",
+          "category": "languages-choice",
+          "label": "Courtisan : langues au choix",
+          "unlockLevel": 1,
+          "choiceCount": 2,
+          "options": [
+            "common",
+            "dwarvish",
+            "elvish",
+            "giant",
+            "gnomish",
+            "goblin",
+            "halfling",
+            "orc",
+            "abyssal",
+            "celestial",
+            "draconic",
+            "deep-speech",
+            "infernal",
+            "primordial",
+            "sylvan",
+            "undercommon"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "faction-agent-scag",
+      "name": "Agent de faction",
+      "englishName": "Faction Agent",
+      "edition": "2014",
+      "source": "SCAG",
+      "sourceBook": "Sword Coast Adventurer's Guide",
+      "description": "Source : Sword Coast Adventurer's Guide (règles 2014). Safe Haven : aide et refuge auprès du réseau de sa faction. Équipement de départ (descriptif uniquement) : insigne de faction, texte ou code secret, vêtements courants, bourse de 15 po. Limites : La compétence choisie doit convenir à la faction : validation narrative par le MJ, faction non structurée.",
+      "deferred": [
+        "Équipement et capacité narrative conservés dans la description, sans attribution automatique.",
+        "La compétence choisie doit convenir à la faction : validation narrative par le MJ, faction non structurée."
+      ],
+      "rules": [
+        {
+          "key": "scag-2014-background-faction-agent-scag-skills",
+          "category": "skills",
+          "label": "Agent de faction : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "insight"
+          ]
+        },
+        {
+          "key": "scag-2014-background-faction-agent-scag-skills-choice",
+          "category": "skills-choice",
+          "label": "Agent de faction : compétences au choix",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "arcana",
+            "animal-handling",
+            "deception",
+            "history",
+            "intimidation",
+            "investigation",
+            "medicine",
+            "nature",
+            "perception",
+            "performance",
+            "persuasion",
+            "religion",
+            "survival"
+          ]
+        }
+      ],
+      "languageRules": [
+        {
+          "key": "scag-2014-background-faction-agent-scag-languages-choice",
+          "category": "languages-choice",
+          "label": "Agent de faction : langues au choix",
+          "unlockLevel": 1,
+          "choiceCount": 2,
+          "options": [
+            "common",
+            "dwarvish",
+            "elvish",
+            "giant",
+            "gnomish",
+            "goblin",
+            "halfling",
+            "orc",
+            "abyssal",
+            "celestial",
+            "draconic",
+            "deep-speech",
+            "infernal",
+            "primordial",
+            "sylvan",
+            "undercommon"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "far-traveler-scag",
+      "name": "Voyageur lointain",
+      "englishName": "Far Traveler",
+      "edition": "2014",
+      "source": "SCAG",
+      "sourceBook": "Sword Coast Adventurer's Guide",
+      "description": "Source : Sword Coast Adventurer's Guide (règles 2014). All Eyes on You : son origine lointaine suscite la curiosité et peut ouvrir des portes. Équipement de départ (descriptif uniquement) : vêtements de voyage, jeu ou instrument maîtrisé, cartes sommaires, bijou du pays natal de 10 po, bourse de 5 po.",
+      "deferred": [
+        "Équipement et capacité narrative conservés dans la description, sans attribution automatique."
+      ],
+      "rules": [
+        {
+          "key": "scag-2014-background-far-traveler-scag-skills",
+          "category": "skills",
+          "label": "Voyageur lointain : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "insight",
+            "perception"
+          ]
+        },
+        {
+          "key": "scag-2014-background-far-traveler-scag-tools-choice",
+          "category": "tools-choice",
+          "label": "Voyageur lointain : outil au choix",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "dice-set",
+            "dragonchess-set",
+            "playing-card-set",
+            "three-dragon-ante-set",
+            "bagpipes",
+            "drum",
+            "dulcimer",
+            "flute",
+            "horn",
+            "lute",
+            "lyre",
+            "pan-flute",
+            "shawm",
+            "viol"
+          ]
+        }
+      ],
+      "languageRules": [
+        {
+          "key": "scag-2014-background-far-traveler-scag-languages-choice",
+          "category": "languages-choice",
+          "label": "Voyageur lointain : langues au choix",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "common",
+            "dwarvish",
+            "elvish",
+            "giant",
+            "gnomish",
+            "goblin",
+            "halfling",
+            "orc",
+            "abyssal",
+            "celestial",
+            "draconic",
+            "deep-speech",
+            "infernal",
+            "primordial",
+            "sylvan",
+            "undercommon"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "inheritor-scag",
+      "name": "Héritier",
+      "englishName": "Inheritor",
+      "edition": "2014",
+      "source": "SCAG",
+      "sourceBook": "Sword Coast Adventurer's Guide",
+      "description": "Source : Sword Coast Adventurer's Guide (règles 2014). Inheritance : définir avec le MJ un héritage et ses enjeux, sans lui attribuer arbitrairement de pouvoir. Équipement de départ (descriptif uniquement) : héritage, vêtements de voyage, jeu ou instrument maîtrisé, bourse de 15 po.",
+      "deferred": [
+        "Équipement et capacité narrative conservés dans la description, sans attribution automatique."
+      ],
+      "rules": [
+        {
+          "key": "scag-2014-background-inheritor-scag-skills",
+          "category": "skills",
+          "label": "Héritier : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "survival"
+          ]
+        },
+        {
+          "key": "scag-2014-background-inheritor-scag-skills-choice",
+          "category": "skills-choice",
+          "label": "Héritier : compétences au choix",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "arcana",
+            "history",
+            "religion"
+          ]
+        },
+        {
+          "key": "scag-2014-background-inheritor-scag-tools-choice",
+          "category": "tools-choice",
+          "label": "Héritier : outil au choix",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "dice-set",
+            "dragonchess-set",
+            "playing-card-set",
+            "three-dragon-ante-set",
+            "bagpipes",
+            "drum",
+            "dulcimer",
+            "flute",
+            "horn",
+            "lute",
+            "lyre",
+            "pan-flute",
+            "shawm",
+            "viol"
+          ]
+        }
+      ],
+      "languageRules": [
+        {
+          "key": "scag-2014-background-inheritor-scag-languages-choice",
+          "category": "languages-choice",
+          "label": "Héritier : langues au choix",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "common",
+            "dwarvish",
+            "elvish",
+            "giant",
+            "gnomish",
+            "goblin",
+            "halfling",
+            "orc",
+            "abyssal",
+            "celestial",
+            "draconic",
+            "deep-speech",
+            "infernal",
+            "primordial",
+            "sylvan",
+            "undercommon"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "knight-of-the-order-scag",
+      "name": "Chevalier d'ordre",
+      "englishName": "Knight of the Order",
+      "edition": "2014",
+      "source": "SCAG",
+      "sourceBook": "Sword Coast Adventurer's Guide",
+      "description": "Source : Sword Coast Adventurer's Guide (règles 2014). Knightly Regard : assistance, nourriture et abri auprès des membres et alliés de son ordre. Équipement de départ (descriptif uniquement) : vêtements de voyage, signe de rang dans son ordre, bourse de 10 po. Limites : La compétence choisie doit convenir à son ordre : validation narrative par le MJ.",
+      "deferred": [
+        "Équipement et capacité narrative conservés dans la description, sans attribution automatique.",
+        "La compétence choisie doit convenir à son ordre : validation narrative par le MJ."
+      ],
+      "rules": [
+        {
+          "key": "scag-2014-background-knight-of-the-order-scag-skills",
+          "category": "skills",
+          "label": "Chevalier d'ordre : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "persuasion"
+          ]
+        },
+        {
+          "key": "scag-2014-background-knight-of-the-order-scag-skills-choice",
+          "category": "skills-choice",
+          "label": "Chevalier d'ordre : compétences au choix",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "arcana",
+            "history",
+            "nature",
+            "religion"
+          ]
+        },
+        {
+          "key": "scag-2014-background-knight-of-the-order-scag-tools-choice",
+          "category": "tools-choice",
+          "label": "Chevalier d'ordre : outil au choix",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "dice-set",
+            "dragonchess-set",
+            "playing-card-set",
+            "three-dragon-ante-set",
+            "bagpipes",
+            "drum",
+            "dulcimer",
+            "flute",
+            "horn",
+            "lute",
+            "lyre",
+            "pan-flute",
+            "shawm",
+            "viol"
+          ]
+        }
+      ],
+      "languageRules": [
+        {
+          "key": "scag-2014-background-knight-of-the-order-scag-languages-choice",
+          "category": "languages-choice",
+          "label": "Chevalier d'ordre : langues au choix",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "common",
+            "dwarvish",
+            "elvish",
+            "giant",
+            "gnomish",
+            "goblin",
+            "halfling",
+            "orc",
+            "abyssal",
+            "celestial",
+            "draconic",
+            "deep-speech",
+            "infernal",
+            "primordial",
+            "sylvan",
+            "undercommon"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "mercenary-veteran-scag",
+      "name": "Mercenaire vétéran",
+      "englishName": "Mercenary Veteran",
+      "edition": "2014",
+      "source": "SCAG",
+      "sourceBook": "Sword Coast Adventurer's Guide",
+      "description": "Source : Sword Coast Adventurer's Guide (règles 2014). Mercenary Life : contacts et connaissance du milieu mercenaire. Équipement de départ (descriptif uniquement) : uniforme de compagnie, insigne de rang, jeu, bourse de 10 po. Limites : Maîtrise des véhicules terrestres non attribuée : cette catégorie manque au référentiel des maîtrises.",
+      "deferred": [
+        "Équipement et capacité narrative conservés dans la description, sans attribution automatique.",
+        "Maîtrise des véhicules terrestres non attribuée : cette catégorie manque au référentiel des maîtrises."
+      ],
+      "rules": [
+        {
+          "key": "scag-2014-background-mercenary-veteran-scag-skills",
+          "category": "skills",
+          "label": "Mercenaire vétéran : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "athletics",
+            "persuasion"
+          ]
+        },
+        {
+          "key": "scag-2014-background-mercenary-veteran-scag-tools-choice",
+          "category": "tools-choice",
+          "label": "Mercenaire vétéran : outil au choix",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "dice-set",
+            "dragonchess-set",
+            "playing-card-set",
+            "three-dragon-ante-set"
+          ]
+        }
+      ],
+      "languageRules": []
+    },
+    {
+      "slug": "urban-bounty-hunter-scag",
+      "name": "Chasseur de primes urbain",
+      "englishName": "Urban Bounty Hunter",
+      "edition": "2014",
+      "source": "SCAG",
+      "sourceBook": "Sword Coast Adventurer's Guide",
+      "description": "Source : Sword Coast Adventurer's Guide (règles 2014). Ear to the Ground : réseau local de contacts et informateurs. Équipement de départ (descriptif uniquement) : vêtements adaptés à son activité, bourse de 20 po. Limites : Outils non attribués : choisir deux catégories distinctes parmi un jeu, un instrument de musique et les outils de voleur. Le modèle ne représente pas ce choix groupé ; ne pas le remplacer par deux outils quelconques.",
+      "deferred": [
+        "Équipement et capacité narrative conservés dans la description, sans attribution automatique.",
+        "Outils non attribués : choisir deux catégories distinctes parmi un jeu, un instrument de musique et les outils de voleur. Le modèle ne représente pas ce choix groupé ; ne pas le remplacer par deux outils quelconques."
+      ],
+      "rules": [
+        {
+          "key": "scag-2014-background-urban-bounty-hunter-scag-skills-choice",
+          "category": "skills-choice",
+          "label": "Chasseur de primes urbain : compétences au choix",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 2,
+          "options": [
+            "deception",
+            "insight",
+            "persuasion",
+            "stealth"
+          ]
+        }
+      ],
+      "languageRules": []
+    },
+    {
+      "slug": "uthgardt-tribe-member-scag",
+      "name": "Membre de tribu uthgardt",
+      "englishName": "Uthgardt Tribe Member",
+      "edition": "2014",
+      "source": "SCAG",
+      "sourceBook": "Sword Coast Adventurer's Guide",
+      "description": "Source : Sword Coast Adventurer's Guide (règles 2014). Uthgardt Heritage : connaissance du Nord, collecte accrue de nourriture et hospitalité des tribus alliées. Équipement de départ (descriptif uniquement) : piège de chasse, marque ou totem tribal, vêtements de voyage, bourse de 10 po.",
+      "deferred": [
+        "Équipement et capacité narrative conservés dans la description, sans attribution automatique."
+      ],
+      "rules": [
+        {
+          "key": "scag-2014-background-uthgardt-tribe-member-scag-skills",
+          "category": "skills",
+          "label": "Membre de tribu uthgardt : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "athletics",
+            "survival"
+          ]
+        },
+        {
+          "key": "scag-2014-background-uthgardt-tribe-member-scag-tools-choice",
+          "category": "tools-choice",
+          "label": "Membre de tribu uthgardt : outil au choix",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "alchemists-supplies",
+            "brewers-supplies",
+            "calligraphers-supplies",
+            "carpenters-tools",
+            "cartographers-tools",
+            "cobblers-tools",
+            "cooks-utensils",
+            "glassblowers-tools",
+            "jewelers-tools",
+            "leatherworkers-tools",
+            "masons-tools",
+            "painters-supplies",
+            "potters-tools",
+            "smiths-tools",
+            "tinkers-tools",
+            "weavers-tools",
+            "woodcarvers-tools",
+            "bagpipes",
+            "drum",
+            "dulcimer",
+            "flute",
+            "horn",
+            "lute",
+            "lyre",
+            "pan-flute",
+            "shawm",
+            "viol"
+          ]
+        }
+      ],
+      "languageRules": [
+        {
+          "key": "scag-2014-background-uthgardt-tribe-member-scag-languages-choice",
+          "category": "languages-choice",
+          "label": "Membre de tribu uthgardt : langues au choix",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "common",
+            "dwarvish",
+            "elvish",
+            "giant",
+            "gnomish",
+            "goblin",
+            "halfling",
+            "orc",
+            "abyssal",
+            "celestial",
+            "draconic",
+            "deep-speech",
+            "infernal",
+            "primordial",
+            "sylvan",
+            "undercommon"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "waterdhavian-noble-scag",
+      "name": "Noble d'Eauprofonde",
+      "englishName": "Waterdhavian Noble",
+      "edition": "2014",
+      "source": "SCAG",
+      "sourceBook": "Sword Coast Adventurer's Guide",
+      "description": "Source : Sword Coast Adventurer's Guide (règles 2014). Kept in Style : soutien familial pour les dépenses de train de vie, à gérer avec le MJ. Équipement de départ (descriptif uniquement) : vêtements de qualité, chevalière ou broche, preuve de lignage, outre de vin fin, bourse de 20 po.",
+      "deferred": [
+        "Équipement et capacité narrative conservés dans la description, sans attribution automatique."
+      ],
+      "rules": [
+        {
+          "key": "scag-2014-background-waterdhavian-noble-scag-skills",
+          "category": "skills",
+          "label": "Noble d'Eauprofonde : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "history",
+            "persuasion"
+          ]
+        },
+        {
+          "key": "scag-2014-background-waterdhavian-noble-scag-tools-choice",
+          "category": "tools-choice",
+          "label": "Noble d'Eauprofonde : outil au choix",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "dice-set",
+            "dragonchess-set",
+            "playing-card-set",
+            "three-dragon-ante-set",
+            "bagpipes",
+            "drum",
+            "dulcimer",
+            "flute",
+            "horn",
+            "lute",
+            "lyre",
+            "pan-flute",
+            "shawm",
+            "viol"
+          ]
+        }
+      ],
+      "languageRules": [
+        {
+          "key": "scag-2014-background-waterdhavian-noble-scag-languages-choice",
+          "category": "languages-choice",
+          "label": "Noble d'Eauprofonde : langues au choix",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "common",
+            "dwarvish",
+            "elvish",
+            "giant",
+            "gnomish",
+            "goblin",
+            "halfling",
+            "orc",
+            "abyssal",
+            "celestial",
+            "draconic",
+            "deep-speech",
+            "infernal",
+            "primordial",
+            "sylvan",
+            "undercommon"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "haunted-one-cos",
+      "name": "Hanté",
+      "englishName": "Haunted One",
+      "edition": "2014",
+      "source": "CoS",
+      "sourceBook": "Curse of Strahd",
+      "description": "Source : Curse of Strahd (règles 2014). Heart of Darkness : les gens du peuple reconnaissent ses épreuves et lui apportent leur aide. Repris dans Van Richten's Guide to Ravenloft ; une seule référence est conservée. Équipement de départ (descriptif uniquement) : sac de chasseur de monstres, vêtements courants, babiole macabre, 1 pa.",
+      "deferred": [
+        "Équipement et capacité narrative conservés dans la description, sans attribution automatique."
+      ],
+      "rules": [
+        {
+          "key": "cos-2014-background-haunted-one-cos-skills-choice",
+          "category": "skills-choice",
+          "label": "Hanté : compétences au choix",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 2,
+          "options": [
+            "arcana",
+            "investigation",
+            "religion",
+            "survival"
+          ]
+        }
+      ],
+      "languageRules": [
+        {
+          "key": "cos-2014-background-haunted-one-cos-languages-choice",
+          "category": "languages-choice",
+          "label": "Hanté : langues au choix",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "common",
+            "dwarvish",
+            "elvish",
+            "giant",
+            "gnomish",
+            "goblin",
+            "halfling",
+            "orc",
+            "abyssal",
+            "celestial",
+            "draconic",
+            "deep-speech",
+            "infernal",
+            "primordial",
+            "sylvan",
+            "undercommon"
+          ]
+        },
+        {
+          "key": "cos-2014-background-haunted-one-cos-languages-exotic-choice",
+          "category": "languages-exotic-choice",
+          "label": "Hanté : langue exotique au choix",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "abyssal",
+            "celestial",
+            "draconic",
+            "deep-speech",
+            "infernal",
+            "primordial",
+            "sylvan",
+            "undercommon"
+          ]
+        }
+      ],
+      "reprints": [
+        "Van Richten's Guide to Ravenloft"
+      ]
+    },
+    {
+      "slug": "investigator-vrgr",
+      "name": "Enquêteur",
+      "englishName": "Investigator",
+      "edition": "2014",
+      "source": "VRGR",
+      "sourceBook": "Van Richten's Guide to Ravenloft",
+      "description": "Source : Van Richten's Guide to Ravenloft (règles 2014). Official Inquiry : obtenir des accès et témoignages dans le cadre de ses enquêtes. Équipement de départ (descriptif uniquement) : loupe, indice ou babiole lié à une affaire passée, vêtements courants, 10 po.",
+      "deferred": [
+        "Équipement et capacité narrative conservés dans la description, sans attribution automatique."
+      ],
+      "rules": [
+        {
+          "key": "vrgr-2014-background-investigator-vrgr-skills-choice",
+          "category": "skills-choice",
+          "label": "Enquêteur : compétences au choix",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 2,
+          "options": [
+            "insight",
+            "investigation",
+            "perception"
+          ]
+        },
+        {
+          "key": "vrgr-2014-background-investigator-vrgr-tools-automatic",
+          "category": "tools-automatic",
+          "label": "Enquêteur : outils",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "disguise-kit",
+            "thieves-tools"
+          ]
+        }
+      ],
+      "languageRules": []
+    },
+    {
+      "slug": "feylost-wbtw",
+      "name": "Égaré féerique",
+      "englishName": "Feylost",
+      "edition": "2014",
+      "source": "WBtW",
+      "sourceBook": "The Wild Beyond the Witchlight",
+      "description": "Source : The Wild Beyond the Witchlight (règles 2014). Feywild Connection : liens avec la Féerie et aide de ses habitants bienveillants ; marques et visiteurs féeriques restent narratifs. Équipement de départ (descriptif uniquement) : instrument maîtrisé, vêtements de voyage, trois babioles féeriques, bourse de 8 po.",
+      "deferred": [
+        "Équipement et capacité narrative conservés dans la description, sans attribution automatique."
+      ],
+      "rules": [
+        {
+          "key": "wbtw-2014-background-feylost-wbtw-skills",
+          "category": "skills",
+          "label": "Égaré féerique : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "deception",
+            "survival"
+          ]
+        },
+        {
+          "key": "wbtw-2014-background-feylost-wbtw-tools-choice",
+          "category": "tools-choice",
+          "label": "Égaré féerique : outil au choix",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "bagpipes",
+            "drum",
+            "dulcimer",
+            "flute",
+            "horn",
+            "lute",
+            "lyre",
+            "pan-flute",
+            "shawm",
+            "viol"
+          ]
+        }
+      ],
+      "languageRules": [
+        {
+          "key": "wbtw-2014-background-feylost-wbtw-languages-choice",
+          "category": "languages-choice",
+          "label": "Égaré féerique : langues au choix",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "elvish",
+            "gnomish",
+            "goblin",
+            "sylvan"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "witchlight-hand-wbtw",
+      "name": "Employé du carnaval",
+      "englishName": "Witchlight Hand",
+      "edition": "2014",
+      "source": "WBtW",
+      "sourceBook": "The Wild Beyond the Witchlight",
+      "description": "Source : The Wild Beyond the Witchlight (règles 2014). Carnival Fixture : accueil au carnaval, repas, couchage modeste et attractions selon les conditions du lieu. Équipement de départ (descriptif uniquement) : accessoires de déguisement ou instrument, jeu de cartes, uniforme ou costume de carnaval, babiole féerique, bourse de 8 po.",
+      "deferred": [
+        "Équipement et capacité narrative conservés dans la description, sans attribution automatique."
+      ],
+      "rules": [
+        {
+          "key": "wbtw-2014-background-witchlight-hand-wbtw-skills",
+          "category": "skills",
+          "label": "Employé du carnaval : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "performance",
+            "sleight-of-hand"
+          ]
+        },
+        {
+          "key": "wbtw-2014-background-witchlight-hand-wbtw-tools-choice",
+          "category": "tools-choice",
+          "label": "Employé du carnaval : outil au choix",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "disguise-kit",
+            "bagpipes",
+            "drum",
+            "dulcimer",
+            "flute",
+            "horn",
+            "lute",
+            "lyre",
+            "pan-flute",
+            "shawm",
+            "viol"
+          ]
+        }
+      ],
+      "languageRules": [
+        {
+          "key": "wbtw-2014-background-witchlight-hand-wbtw-languages-choice",
+          "category": "languages-choice",
+          "label": "Employé du carnaval : langues au choix",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "common",
+            "dwarvish",
+            "elvish",
+            "giant",
+            "gnomish",
+            "goblin",
+            "halfling",
+            "orc",
+            "abyssal",
+            "celestial",
+            "draconic",
+            "deep-speech",
+            "infernal",
+            "primordial",
+            "sylvan",
+            "undercommon"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "giant-foundling-bgg",
+      "name": "Gigantin",
+      "englishName": "Giant Foundling",
+      "edition": "2014",
+      "source": "BGG",
+      "sourceBook": "Bigby Presents: Glory of the Giants",
+      "description": "Source : Bigby Presents: Glory of the Giants (règles 2014). Élevé parmi les géants. Équipement de départ (descriptif uniquement) : sac à dos, vêtements de voyage, petite pierre ou branche souvenir, bourse de 10 po. Limites : Frappe des géants (Strike of the Giants) est prévu par cet historique mais NON attribué : le choix du type de géant et ses effets ne sont pas structurés. Intervention du MJ requise, aucun don incomplet ajouté.",
+      "deferred": [
+        "Équipement et capacité narrative conservés dans la description, sans attribution automatique.",
+        "Frappe des géants (Strike of the Giants) est prévu par cet historique mais NON attribué : le choix du type de géant et ses effets ne sont pas structurés. Intervention du MJ requise, aucun don incomplet ajouté."
+      ],
+      "rules": [
+        {
+          "key": "bgg-2014-background-giant-foundling-bgg-skills",
+          "category": "skills",
+          "label": "Gigantin : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "intimidation",
+            "survival"
+          ]
+        }
+      ],
+      "languageRules": [
+        {
+          "key": "bgg-2014-background-giant-foundling-bgg-languages-automatic",
+          "category": "languages-automatic",
+          "label": "Gigantin : langues",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "giant"
+          ]
+        },
+        {
+          "key": "bgg-2014-background-giant-foundling-bgg-languages-choice",
+          "category": "languages-choice",
+          "label": "Gigantin : langues au choix",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "common",
+            "dwarvish",
+            "elvish",
+            "gnomish",
+            "goblin",
+            "halfling",
+            "orc",
+            "abyssal",
+            "celestial",
+            "draconic",
+            "deep-speech",
+            "infernal",
+            "primordial",
+            "sylvan",
+            "undercommon"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "rune-carver-bgg",
+      "name": "Ciseleur de runes",
+      "englishName": "Rune Carver",
+      "edition": "2014",
+      "source": "BGG",
+      "sourceBook": "Bigby Presents: Glory of the Giants",
+      "description": "Source : Bigby Presents: Glory of the Giants (règles 2014). Étude et gravure des runes des géants. Équipement de départ (descriptif uniquement) : outils artisanaux, petit couteau, pierre à aiguiser, vêtements courants, bourse de 10 po. Limites : Le don Rune Shaper prévu par cet historique et ses choix de runes/sorts ne sont pas attribués automatiquement. Intervention du MJ requise.",
+      "deferred": [
+        "Équipement et capacité narrative conservés dans la description, sans attribution automatique.",
+        "Le don Rune Shaper prévu par cet historique et ses choix de runes/sorts ne sont pas attribués automatiquement. Intervention du MJ requise."
+      ],
+      "rules": [
+        {
+          "key": "bgg-2014-background-rune-carver-bgg-skills",
+          "category": "skills",
+          "label": "Ciseleur de runes : compétences",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "history",
+            "perception"
+          ]
+        },
+        {
+          "key": "bgg-2014-background-rune-carver-bgg-tools-choice",
+          "category": "tools-choice",
+          "label": "Ciseleur de runes : outil au choix",
+          "acquisitionMode": "ANY",
+          "unlockLevel": 1,
+          "choiceCount": 1,
+          "options": [
+            "alchemists-supplies",
+            "brewers-supplies",
+            "calligraphers-supplies",
+            "carpenters-tools",
+            "cartographers-tools",
+            "cobblers-tools",
+            "cooks-utensils",
+            "glassblowers-tools",
+            "jewelers-tools",
+            "leatherworkers-tools",
+            "masons-tools",
+            "painters-supplies",
+            "potters-tools",
+            "smiths-tools",
+            "tinkers-tools",
+            "weavers-tools",
+            "woodcarvers-tools"
+          ]
+        }
+      ],
+      "languageRules": [
+        {
+          "key": "bgg-2014-background-rune-carver-bgg-languages-automatic",
+          "category": "languages-automatic",
+          "label": "Ciseleur de runes : langues",
+          "unlockLevel": 1,
+          "choiceCount": 0,
+          "options": [
+            "giant"
+          ]
+        }
+      ]
+    }
+  ],
+  "sourceReferences": {
+    "SCAG": "https://www.dndbeyond.com/sources/dnd/scag/backgrounds",
+    "CoS": "https://www.dndbeyond.com/backgrounds/34-haunted-one",
+    "VRGR": "https://www.dndbeyond.com/sources/dnd/vrgtr/character-creation",
+    "WBtW": "https://www.dndbeyond.com/posts/1077-new-backgrounds-creating-characters-from-the",
+    "BGG": "https://www.dndbeyond.com/posts/1531-first-look-giant-foundling-background-and-strike"
+  }
+}

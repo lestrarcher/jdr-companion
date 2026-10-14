@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Entity\{CharacterBackground, ProficiencyDefinition, ProficiencyGrantRule};
+use App\Entity\{CharacterBackground, LanguageDefinition, LanguageGrantRule, ProficiencyDefinition, ProficiencyGrantRule};
 use App\Service\Catalogue\BackgroundImportPlanner;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -13,7 +13,7 @@ use Symfony\Component\Console\Input\{InputArgument, InputInterface, InputOption}
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-#[AsCommand(name: 'app:dnd:import-backgrounds', description: 'Importe les historiques du PHB 2014 et leurs maîtrises.')]
+#[AsCommand(name: 'app:dnd:import-backgrounds', description: 'Importe les historiques D&D 2014, leurs maîtrises et leurs langues.')]
 final class ImportBackgroundsCommand extends Command
 {
     public function __construct(private readonly EntityManagerInterface $entityManager, private readonly BackgroundImportPlanner $planner, private readonly string $projectDir)
@@ -51,7 +51,12 @@ final class ImportBackgroundsCommand extends Command
                 if ($this->entityManager->getConnection()->createSchemaManager()->tablesExist(['character_proficiency_substitution'])) {
                     $used = array_values(array_unique([...$used, ...array_map('intval', $this->entityManager->getConnection()->fetchFirstColumn('SELECT DISTINCT grant_rule_id FROM character_proficiency_substitution'))]));
                 }
-                $plan = $this->planner->plan($catalogue, $backgrounds, $definitions, $rules, $used, (bool) $input->getOption('update-existing'));
+                $languages = $languageRules = [];
+                if (array_filter($catalogue['backgrounds'] ?? [], static fn ($entry) => is_array($entry) && !empty($entry['languageRules']))) {
+                    foreach ($this->entityManager->getRepository(LanguageDefinition::class)->findAll() as $language) $languages[$language->getSlug()] = $language;
+                    $languageRules = $this->entityManager->getRepository(LanguageGrantRule::class)->findAll();
+                }
+                $plan = $this->planner->plan($catalogue, $backgrounds, $definitions, $rules, $used, (bool) $input->getOption('update-existing'), $languages, $languageRules);
                 foreach ($catalogue['backgrounds'] as $entry) {
                     foreach ($entry['deferred'] as $reason) $io->note($entry['slug'].' : non pris en charge — '.$reason);
                 }
@@ -65,6 +70,7 @@ final class ImportBackgroundsCommand extends Command
                         if ($item['action'] === 'create') $this->entityManager->persist($item['candidate']);
                         if ($item['action'] === 'update') {
                             if ($kind === 'backgrounds') $this->planner->applyBackgroundUpdate($item['existing'], $item['candidate']);
+                            elseif ($kind === 'languageRules') $item['existing']->setLabel($item['candidate']->getLabel());
                             else $this->planner->applyRuleUpdate($item['existing'], $item['candidate']);
                         }
                     }
@@ -76,8 +82,12 @@ final class ImportBackgroundsCommand extends Command
                 $run();
                 $io->note('Dry-run : aucune écriture en base.');
             } else {
-                $this->entityManager->wrapInTransaction(function () use ($run, $db): void {
+                $this->entityManager->wrapInTransaction(function () use ($run, $db, $catalogue): void {
                     $db->executeStatement('LOCK TABLE character_background, proficiency_grant_rule, proficiency_grant_rule_option, character_proficiency_choice IN SHARE ROW EXCLUSIVE MODE');
+                    // Lock only when this catalogue needs the language subsystem (legacy PHB imports remain compatible).
+                    if (array_filter($catalogue['backgrounds'] ?? [], static fn ($entry) => is_array($entry) && !empty($entry['languageRules']))) {
+                        $db->executeStatement('LOCK TABLE language_grant_rule IN SHARE ROW EXCLUSIVE MODE');
+                    }
                     $run();
                 });
             }
