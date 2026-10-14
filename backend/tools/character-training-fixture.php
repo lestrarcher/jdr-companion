@@ -20,7 +20,7 @@ function trainingFixture(): array
         $id($d, $i + 1); $definitions[$row['slug']] = $d;
     }
     $classes = [];
-    foreach (['barbarian','bard','cleric','druid','sorcerer','fighter','wizard','monk','warlock','paladin','ranger','rogue'] as $i => $slug) {
+    foreach (['barbarian','bard','cleric','druid','sorcerer','fighter','wizard','monk','warlock','paladin','ranger','rogue','artificer'] as $i => $slug) {
         $classes[$slug] = new CharacterClass($slug, $slug, 8, in_array($slug, ['cleric','sorcerer','warlock'], true) ? 1 : 3);
         $id($classes[$slug], $i + 1);
     }

@@ -50,7 +50,8 @@ final class ClassProficiencyImportPlanner
             $slug = $entry['classSlug'];
             $mode = ProficiencyAcquisitionMode::tryFrom($entry['acquisitionMode']);
             $category = $entry['category'];
-            if (!in_array($slug, self::CLASSES, true) || !isset(self::TYPES[$category])
+            $typeCategory = $category === 'tools-choice' ? 'tools' : $category;
+            if (!in_array($slug, [...self::CLASSES, 'artificer'], true) || !isset(self::TYPES[$typeCategory])
                 || !in_array($mode, [ProficiencyAcquisitionMode::StartingClass, ProficiencyAcquisitionMode::Multiclass], true)
                 || ($entry['unlockLevel'] ?? null) !== 1
                 || !is_int($entry['choiceCount'] ?? null) || $entry['choiceCount'] < 0
@@ -58,7 +59,7 @@ final class ClassProficiencyImportPlanner
                 || mb_strlen($entry['label']) > 120) {
                 throw new \DomainException('Structure de règle invalide : '.$entry['key']);
             }
-            $key = 'phb-2014-'.$slug.'-'.($mode === ProficiencyAcquisitionMode::StartingClass ? 'starting' : 'multiclass').'-'.$category;
+            $key = ($slug === 'artificer' ? 'tce-2014-' : 'phb-2014-').$slug.'-'.($mode === ProficiencyAcquisitionMode::StartingClass ? 'starting' : 'multiclass').'-'.$category;
             if ($entry['key'] !== $key || isset($seen[$key])) {
                 throw new \DomainException('Clé invalide ou dupliquée : '.$entry['key']);
             }
@@ -81,7 +82,7 @@ final class ClassProficiencyImportPlanner
                 }
                 $definition = $definitions[$option] ?? null;
                 if (!$definition instanceof ProficiencyDefinition || $definition->getOrigin() !== ReferenceOrigin::Official || $definition->getOwner() !== null
-                    || !in_array($definition->getType()->value, self::TYPES[$category], true)) {
+                    || !in_array($definition->getType()->value, self::TYPES[$typeCategory], true)) {
                     throw new \DomainException('Maîtrise officielle absente, protégée ou de type incorrect : '.$option);
                 }
                 $options[$option] = true;
@@ -111,7 +112,7 @@ final class ClassProficiencyImportPlanner
             $plan[] = ['action' => $existing === null ? 'create' : (!$different ? 'unchanged' : ($update ? 'update' : 'keep')),
                 'candidate' => $candidate, 'existing' => $existing];
         }
-        if (count($covered) !== count(self::CLASSES)) {
+        if (array_diff(self::CLASSES, array_keys($covered)) !== []) {
             throw new \DomainException('Le catalogue doit couvrir les douze classes initiales du PHB 2014.');
         }
 

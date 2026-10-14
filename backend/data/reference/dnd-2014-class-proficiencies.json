@@ -2,9 +2,18 @@
   "edition": "2014",
   "sources": [
     "https://www.dndbeyond.com/sources/dnd/basic-rules-2014/classes",
-    "https://www.dndbeyond.com/sources/dnd/basic-rules-2014/customization-options"
+    "https://www.dndbeyond.com/sources/dnd/basic-rules-2014/customization-options",
+    "Tasha's Cauldron of Everything (2020), Artificer: Proficiencies and Multiclassing"
   ],
   "rules": [
+{"key":"tce-2014-artificer-starting-saves","classSlug":"artificer","acquisitionMode":"STARTING_CLASS","category":"saves","label":"Artificier — Sauvegardes (initial)","unlockLevel":1,"choiceCount":0,"options":["saving-throw-constitution","saving-throw-intelligence"]},
+ {"key":"tce-2014-artificer-starting-armor","classSlug":"artificer","acquisitionMode":"STARTING_CLASS","category":"armor","label":"Artificier — Armures (initial)","unlockLevel":1,"choiceCount":0,"options":["light-armor","medium-armor","shields"]},
+ {"key":"tce-2014-artificer-starting-weapons","classSlug":"artificer","acquisitionMode":"STARTING_CLASS","category":"weapons","label":"Artificier — Armes (initial)","unlockLevel":1,"choiceCount":0,"options":["simple-weapons"]},
+ {"key":"tce-2014-artificer-starting-tools","classSlug":"artificer","acquisitionMode":"STARTING_CLASS","category":"tools","label":"Artificier — Outils (initial)","unlockLevel":1,"choiceCount":0,"options":["thieves-tools","tinkers-tools"]},
+ {"key":"tce-2014-artificer-starting-tools-choice","classSlug":"artificer","acquisitionMode":"STARTING_CLASS","category":"tools-choice","label":"Artificier — Outils au choix (initial)","unlockLevel":1,"choiceCount":1,"options":["alchemists-supplies","brewers-supplies","calligraphers-supplies","painters-supplies","jewelers-tools","tinkers-tools","cartographers-tools","carpenters-tools","cobblers-tools","smiths-tools","masons-tools","woodcarvers-tools","potters-tools","glassblowers-tools","leatherworkers-tools","weavers-tools","cooks-utensils"]},
+ {"key":"tce-2014-artificer-starting-skills","classSlug":"artificer","acquisitionMode":"STARTING_CLASS","category":"skills","label":"Artificier — Compétences (initial)","unlockLevel":1,"choiceCount":2,"options":["arcana","history","investigation","medicine","nature","perception","sleight-of-hand"]},
+ {"key":"tce-2014-artificer-multiclass-armor","classSlug":"artificer","acquisitionMode":"MULTICLASS","category":"armor","label":"Artificier — Armures (multiclassage)","unlockLevel":1,"choiceCount":0,"options":["light-armor","medium-armor","shields"]},
+ {"key":"tce-2014-artificer-multiclass-tools","classSlug":"artificer","acquisitionMode":"MULTICLASS","category":"tools","label":"Artificier — Outils (multiclassage)","unlockLevel":1,"choiceCount":0,"options":["thieves-tools","tinkers-tools"]},
     {
       "key": "phb-2014-barbarian-starting-saves",
       "classSlug": "barbarian",

@@ -14,7 +14,7 @@ require __DIR__.'/../vendor/autoload.php';
 $catalogue = json_decode(file_get_contents(__DIR__.'/../data/reference/dnd-2014-class-proficiencies.json'), true, 512, JSON_THROW_ON_ERROR);
 $reference = json_decode(file_get_contents(__DIR__.'/../data/reference/dnd-2014-proficiencies.json'), true, 512, JSON_THROW_ON_ERROR);
 $classes = $definitions = [];
-foreach (['barbarian', 'bard', 'cleric', 'druid', 'sorcerer', 'fighter', 'wizard', 'monk', 'warlock', 'paladin', 'ranger', 'rogue'] as $slug) {
+foreach (['barbarian', 'bard', 'cleric', 'druid', 'sorcerer', 'fighter', 'wizard', 'monk', 'warlock', 'paladin', 'ranger', 'rogue', 'artificer'] as $slug) {
     $classes[$slug] = new CharacterClass($slug, $slug, 8, 3);
 }
 foreach ($reference['proficiencies'] as $entry) {
@@ -33,9 +33,9 @@ $reject = static function (callable $call, string $message) use ($check): void {
 $planner = new ClassProficiencyImportPlanner();
 $plan = $planner->plan($catalogue, $classes, $definitions, []);
 $rules = array_column($plan, 'candidate');
-$check(count($plan) === 69 && array_unique(array_column($plan, 'action')) === ['create'], 'First plan creates 69 rules.');
+$check(count($plan) === 77 && array_unique(array_column($plan, 'action')) === ['create'], 'First plan creates 77 rules.');
 $second = $planner->plan($catalogue, $classes, $definitions, $rules);
-$check(count($second) === 69 && array_unique(array_column($second, 'action')) === ['unchanged'], 'Reimport plan is idempotent.');
+$check(count($second) === 77 && array_unique(array_column($second, 'action')) === ['unchanged'], 'Reimport plan is idempotent.');
 $byKey = [];
 foreach ($rules as $index => $rule) {
     $byKey[$rule->getImportKey()] = $rule;

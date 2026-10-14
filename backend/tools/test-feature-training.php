@@ -72,6 +72,39 @@ try {
         new App\Service\CharacterMulticlassEligibilityService($ability), $ability, $training, $presenter);
     $builder = new App\Service\CharacterBuilderService($em, new App\Repository\CharacterRepository($registry), $levelUp, $training);
     $scores = array_fill_keys(array_map(static fn ($a) => $a->value, App\Enum\Ability::cases()), 14);
+    $artificerChoices = ['proficiencyChoices' => [
+        ['ruleId' => $rule('tce-2014-artificer-starting-skills'), 'proficiencyIds' => [$def('arcana'), $def('perception')]],
+        ['ruleId' => $rule('tce-2014-artificer-starting-tools-choice'), 'proficiencyIds' => [$def('smiths-tools')]],
+    ]];
+    $artificerPayload = $artificerChoices + ['languageChoices' => [
+        ['sourceKey' => 'race:human-phb', 'languageSlugs' => ['elvish']],
+        ['sourceKey' => 'phb-2014-background-acolyte-languages', 'languageSlugs' => ['dwarvish', 'gnomish']],
+    ]];
+    $artificer = $builder->create($campaign, 'artificer-test', 'Artificer', 'Player', 'player', $races['human-phb'], $scores, [], [], $classes['artificer'], null, $backgrounds['acolyte-phb'], $artificerPayload);
+    $expectedArtificer = ['saving-throw-constitution','saving-throw-intelligence','light-armor','medium-armor','shields','simple-weapons','thieves-tools','tinkers-tools','smiths-tools','arcana','perception','insight','religion'];
+    $actualArtificer = array_column($presenter->resolved($artificer)['proficiencies'], 'slug');
+    sort($actualArtificer); sort($expectedArtificer);
+    $check($actualArtificer === $expectedArtificer, 'Artificer Acolyte: all automatic and selected categories serialized');
+    $check($artificer->getProficiencyChoices()->count() === 3, 'Only two skills and one artisan tool persisted, no automatic choices');
+    $languageRows = array_map(fn ($choice) => $choice->getId(), $artificer->getLanguageChoices()->toArray());
+    foreach ($artificer->getProficiencyChoices()->toArray() as $choice) {
+        $artificer->getProficiencyChoices()->removeElement($choice); $em->remove($choice);
+    }
+    $em->flush(); $em->refresh($artificer);
+    $missing = array_filter($presenter->options($artificer)['choices'], fn ($choice) => $choice['kind'] === 'proficiency' && $choice['status'] === 'missing');
+    $check(count($missing) === 2, 'Legacy artificer offers two missing groups without arbitrary selection');
+    $training->applyChoices($artificer, $artificerChoices); $em->flush();
+    $languageRowsAfter = array_map(fn ($choice) => $choice->getId(), $artificer->getLanguageChoices()->toArray());
+    sort($languageRows); sort($languageRowsAfter);
+    $check($languageRows === $languageRowsAfter, 'Partial catch-up preserves existing language choices');
+    $em->refresh($artificer);
+    $check(count($presenter->resolved($artificer)['proficiencies']) === 13, 'Artificer proficiencies survive ORM reload');
+    $secondary = new Character($campaign, 'secondary-artificer', 'Secondary', 'player');
+    $secondary->addClassLevel(new CharacterClassLevel($secondary, $classes['wizard'], 1));
+    $secondary->addClassLevel(new CharacterClassLevel($secondary, $classes['artificer'], 2));
+    $secondarySlugs = array_column($presenter->resolved($secondary)['proficiencies'], 'slug');
+    foreach (['light-armor','medium-armor','shields','thieves-tools','tinkers-tools'] as $slug) $check(in_array($slug, $secondarySlugs, true), 'Artificer multiclass grants '.$slug);
+    foreach (['saving-throw-constitution','simple-weapons','smiths-tools','perception'] as $slug) $check(!in_array($slug, $secondarySlugs, true), 'Artificer multiclass excludes starting '.$slug);
     $wizardPayload = ['proficiencyChoices' => [['ruleId' => $rule('phb-2014-wizard-starting-skills'), 'proficiencyIds' => [$def('arcana'),$def('history')]]],
         'languageChoices' => [['sourceKey' => 'race:human-phb', 'languageSlugs' => ['elvish']]]];
     $wizard = $builder->create($campaign, 'blade-test', 'Blade', 'Player', 'player', $races['human-phb'], $scores, [], [], $classes['wizard'], null, null, $wizardPayload);

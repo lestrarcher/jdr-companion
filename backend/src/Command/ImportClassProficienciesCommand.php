@@ -15,7 +15,7 @@ use Symfony\Component\Console\Input\{InputArgument, InputInterface, InputOption}
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-#[AsCommand(name: 'app:dnd:import-class-proficiencies', description: 'Importe les règles de maîtrises des douze classes PHB 2014.')]
+#[AsCommand(name: 'app:dnd:import-class-proficiencies', description: 'Importe les maîtrises PHB 2014 et de l’artificier de Tasha.')]
 final class ImportClassProficienciesCommand extends Command
 {
     public function __construct(private readonly EntityManagerInterface $entityManager, private readonly ClassProficiencyImportPlanner $planner, private readonly string $projectDir)
