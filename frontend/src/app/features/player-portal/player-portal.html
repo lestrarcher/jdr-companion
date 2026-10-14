@@ -1,4 +1,8 @@
 <main class="player-portal">
+  <ng-template #tinkeringEditor>
+    <app-magical-tinkering-notes [embedded]="true" [notes]="tinkeringNotes()" [token]="accessToken" [revision]="serverRevision"
+      [editable]="sessionStatus() === 'live'" [busy]="saveStatus() === 'saving'" (refreshed)="refreshTinkering()" />
+  </ng-template>
   @if (loading()) {
     <section class="portal-message">
       <span class="eyebrow">{{ campaign()?.name ?? 'JDR Companion' }}</span>
@@ -154,7 +158,12 @@
 
                 <div class="tracker-layout">
                   <app-character-vitals [character]="currentCharacter" />
-                  <app-character-resources [resources]="sortedResources()" />
+                  <app-character-resources [readonly]="sessionStatus() !== 'live'" [resources]="sortedResources()" [hasSupplement]="hasTinkering()" [tinkeringNotes]="tinkeringEditor">
+                    @if (hasTinkering() && !tinkeringResources().length) {
+                      <app-magical-tinkering-notes [notes]="tinkeringNotes()" [token]="accessToken" [revision]="serverRevision"
+                        [editable]="sessionStatus() === 'live'" [busy]="saveStatus() === 'saving'" (refreshed)="refreshTinkering()" />
+                    }
+                  </app-character-resources>
                 </div>
 
                 @if (flexibleCastingAction(); as action) {

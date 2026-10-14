@@ -115,10 +115,10 @@ final readonly class CharacterProfileSerializer
                 $this->actionResolver->resolve($character),
             )),
             'resources' => $resources,
-            'definition' => PortentResourceConfiguration::apply(
+            'definition' => MagicalTinkeringResourceConfiguration::apply(PortentResourceConfiguration::apply(
                 $character->getDefinition(),
                 array_column($resources, 'maximum', 'slug'),
-            ),
+            ), array_column($resources, 'maximum', 'slug')),
         ];
     }
 

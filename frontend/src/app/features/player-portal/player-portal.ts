@@ -19,6 +19,7 @@ import { RestRequestApiResponse, RestRequestApiService } from '@core/services/re
 import { CampaignConfig } from '@core/models/campaign.model';
 import { CampaignConfigurationRegistryService } from '@core/services/campaign-configuration-registry.service';
 import { CharacterProgressions, ProgressionChange, ProgressionResourceChange } from './components/character-progressions/character-progressions';
+import { MagicalTinkeringNotes } from './components/magical-tinkering-notes/magical-tinkering-notes';
 import { CharacterResources } from './components/character-resources/character-resources';
 import { CharacterStoredValues } from './components/character-stored-values/character-stored-values';
 import { CharacterVitals } from './components/character-vitals/character-vitals';
@@ -52,6 +53,7 @@ type PlayerPortalTab =
 @Component({
   selector: 'app-player-portal',
   imports: [
+    MagicalTinkeringNotes,
     CharacterProgressions,
     CharacterResources,
     CharacterStoredValues,
@@ -181,7 +183,11 @@ export class PlayerPortal {
   }>();
   private readonly remoteSynchronizationEnabled = signal(false);
   private lastQueuedRevision = 0;
-  private serverRevision = 0;
+  protected serverRevision = 0;
+  protected readonly tinkeringNotes = signal('');
+  protected readonly tinkeringResources = computed(() => this.sortedResources().filter(resource => resource.id === 'magical-tinkering'));
+  protected readonly hasTinkering = computed(() => this.features().some(feature => feature.slug === 'magical-tinkering'));
+  protected refreshTinkering(): void { this.loadCharacter(false); }
   private loadGeneration = 0;
 
   constructor() {
@@ -412,6 +418,7 @@ export class PlayerPortal {
             );
 
 
+          this.tinkeringNotes.set(response.state.magicalTinkeringNotes ?? '');
           this.campaign.set(campaign);
           this.character.set(loadedCharacter);
           this.abilities.set(response.character.abilities);
@@ -547,6 +554,7 @@ export class PlayerPortal {
     ).subscribe(response => {
       if (!response || response.revision === this.serverRevision) return;
 
+      this.tinkeringNotes.set(response.state.magicalTinkeringNotes ?? '');
       this.serverRevision = response.revision;
           this.inspiration.set(response.state.inspiration === true);
 

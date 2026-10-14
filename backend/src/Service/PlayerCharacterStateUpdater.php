@@ -14,14 +14,24 @@ final readonly class PlayerCharacterStateUpdater
     public function __construct(
         private CharacterSessionStateSynchronizer $synchronizer,
         private CharacterHitPointStateService $hitPointStateService,
+        private ?CharacterFeatureResolver $featureResolver = null,
     ) {
     }
 
     public function merge(CharacterSessionState $session, array $patch): array
     {
-        $this->keys($patch, ['hitPoints', 'hitDice', 'resources', 'progressions', 'inspiration']);
+        $this->keys($patch, ['hitPoints', 'hitDice', 'resources', 'progressions', 'inspiration', 'magicalTinkeringNotes']);
         $character = $session->getCharacter();
         $state = $session->getState();
+        if (array_key_exists('magicalTinkeringNotes', $patch)) {
+            $allowed = false;
+            foreach ($this->featureResolver?->resolve($character, $this->synchronizer->extractProgressionValues($state)) ?? [] as $rule) {
+                if ($rule->getFeatureDefinition()->getSlug() === 'magical-tinkering') $allowed = true;
+            }
+            if (!$allowed) $this->forbidden('Bricolage magique indisponible pour ce personnage.');
+            if (!is_string($patch['magicalTinkeringNotes']) || mb_strlen($patch['magicalTinkeringNotes']) > 10000) $this->invalid('Notes de bricolages invalides (10 000 caractères maximum).');
+            $state['magicalTinkeringNotes'] = $patch['magicalTinkeringNotes'];
+        }
         $before = $this->synchronizer->snapshot($character, $this->synchronizer->extractProgressionValues($state), $state);
 
         if (array_key_exists('progressions', $patch)) {
@@ -82,7 +92,7 @@ final readonly class PlayerCharacterStateUpdater
         }
 
         $configuration = [];
-        $definition = PortentResourceConfiguration::apply($character->getDefinition(), $after['resources']);
+        $definition = MagicalTinkeringResourceConfiguration::apply(PortentResourceConfiguration::apply($character->getDefinition(), $after['resources']), $after['resources']);
         foreach ($definition['resources'] ?? [] as $resource) {
             $configuration[$resource['id']] = $resource;
         }

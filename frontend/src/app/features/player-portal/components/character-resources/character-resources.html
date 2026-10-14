@@ -5,6 +5,7 @@
   </div>
 
   <div class="resources-list">
+    <ng-content />
     @for (resource of standardResources(); track resource.id) {
       <article class="resource-card">
         <div class="resource-row">
@@ -26,7 +27,7 @@
                 'Utiliser une charge de ' + resource.name
               "
               (click)="changeResource(resource, -1)"
-              [disabled]="resource.currentValue <= 0"
+              [disabled]="readonly() || resource.currentValue <= 0"
             >
               −
             </button>
@@ -48,7 +49,7 @@
                 "
                 (click)="changeResource(resource, 1)"
                 [disabled]="
-                  resource.currentValue >=
+                  readonly() || resource.currentValue >=
                   resource.maximumValue
                 "
               >
@@ -58,12 +59,16 @@
           </div>
         </div>
 
+        @if (resource.id === 'magical-tinkering') {
+          <ng-container [ngTemplateOutlet]="tinkeringNotes()" />
+        }
         @if (resource.notesEditable) {
           <label class="resource-notes">
             <span>Notes</span>
 
             <textarea
               rows="2"
+              [readOnly]="readonly()"
               placeholder="Préciser les éléments concernés…"
               [ngModel]="resource.notes ?? ''"
               (ngModelChange)="
@@ -77,9 +82,11 @@
         }
       </article>
     } @empty {
+      @if (!hasSupplement()) {
       <p class="empty-resources">
         Aucune ressource disponible actuellement.
       </p>
+      }
     }
   </div>
 </section>

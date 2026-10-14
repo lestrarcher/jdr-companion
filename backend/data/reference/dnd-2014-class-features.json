@@ -13977,7 +13977,7 @@
                          "name":  "Bricolage magique",
                          "description":  "Imprègne un petit objet d’un effet magique mineur, comme une lumière, un son ou un message.",
                          "activationType":  "action",
-                         "resourceSlug":  null,
+                         "resourceSlug":  "magical-tinkering",
                          "visible":  true,
                          "custom":  false,
                          "sourceUrl":  "https://github.com/5etools-mirror-3/5etools-src/blob/main/data/class/class-artificer.json",
@@ -24319,6 +24319,7 @@
                          }
                      ],
     "resources":  [
+        {"slug":"magical-tinkering","legacySlugs":[],"name":"Bricolages magiques","description":"Compteur disponible géré manuellement, sans recharge au repos.","rechargeType":"none","maximumType":"ability-modifier","baseMaximum":0,"multiplier":1,"minimumMaximum":1,"scalingAbility":"intelligence","custom":false,"reviewStatus":"approved","reviewNotes":["Suivi manuel validé pour cette application ; maximum INT minimum 1."]},
                       {
                           "slug":  "accursed-specter-use",
                           "legacySlugs":  [

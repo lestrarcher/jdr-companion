@@ -127,7 +127,7 @@ try {
     $character->addMagicItem($owned);
     $em->persist($item); $em->persist($owned); $em->flush();
     $access = new App\Service\PlayerCharacterAccess(new CharacterSessionStateRepository($registry));
-    $updater = new App\Service\PlayerCharacterStateUpdater($s['sync'], $s['hpState']);
+    $updater = new App\Service\PlayerCharacterStateUpdater($s['sync'], $s['hpState'], $s['features']);
     $inspiration = new App\Service\CharacterInspirationService($em, new CharacterSessionStateRepository($registry));
     $profile = new App\Service\CharacterProfileSerializer($s['ability'], $s['features'], $s['resources'], $s['hp'], $s['slots'], new App\Service\CharacterActionResolver(new App\Repository\CharacterActionClassRuleRepository($registry)), trainingPresenterForRegistry($registry));
     $serializer = new App\Service\CharacterSessionStateSerializer($profile, $s['hpState'], new App\Repository\CharacterActiveEffectRepository($registry), $s['slotState']);
@@ -252,6 +252,56 @@ try {
     // Portent uses the same isolated database, API controller and security validator.
     require __DIR__ . '/test-portent-scenarios.php';
     require __DIR__ . '/test-inspiration-scenarios.php';
+    // Included scenarios use their own session variables; restore the token's context.
+    $session = $access->requireParticipating($token);
+    $character = $session->getCharacter(); $game = $session->getGameSession();
+    $request = static fn (array $body) => Symfony\Component\HttpFoundation\Request::create('/', 'PATCH', [], [], [], ['CONTENT_TYPE' => 'application/json'], json_encode($body + ['revision' => $session->getRevision()], JSON_THROW_ON_ERROR));
+    $check($status(fn () => $updater->merge($session, ['magicalTinkeringNotes' => 'Test'])) === 403, 'Tinkering notes require the resolved feature');
+    $tinkering = new CharacterFeatureDefinition('magical-tinkering', 'Bricolage magique');
+    $tinkeringRule = CharacterFeatureRule::forClass($tinkering, $wizard, 1);
+    $tinkeringResource = new TrackableResourceDefinition('magical-tinkering', 'Bricolages magiques', ResourceRechargeType::None, ResourceMaximumType::AbilityModifier, 0);
+    $tinkeringResource->setScalingAbility(Ability::Intelligence)->setMinimumMaximum(1);
+    $tinkering->setResourceDefinition($tinkeringResource);
+    $em->persist($tinkeringResource);
+    $em->persist($tinkering); $em->persist($tinkeringRule); $em->flush();
+    $session->setState($updater->merge($session, ['magicalTinkeringNotes' => 'Lampe rouge']));
+    $em->flush(); $em->refresh($session);
+    $check($session->getState()['magicalTinkeringNotes'] === 'Lampe rouge', 'Tinkering notes survive persistence and reload');
+    $check($updater->merge($session, [])['magicalTinkeringNotes'] === 'Lampe rouge', 'Other saves preserve notes');
+    $check($status(fn () => $updater->merge($session, ['magicalTinkeringNotes' => []])) === 422, 'Invalid tinkering notes rejected');
+    $check($status(fn () => $controller->updatePublic($token, $request(['state' => ['magicalTinkeringNotes' => 'Clochette']]), $access, $em, $updater, $inspiration)) === 200, 'LIVE saves tinkering notes through revisioned endpoint');
+    $intelligence = $character->getAbilityScore(Ability::Intelligence);
+    if ($intelligence === null) {
+        $intelligence = new App\Entity\CharacterAbilityScore($character, Ability::Intelligence, 10);
+        $character->getAbilityScores()->add($intelligence); $em->persist($intelligence);
+    }
+    foreach ([8, 10, 16, 18] as $score) {
+        $intelligence->setBaseValue($score);
+        $check($s['resources']->resolve($character)['magical-tinkering']->getMaximum() === max(1, $s['ability']->calculate($character, Ability::Intelligence)->modifier()), 'Tinkering maximum follows INT with minimum one');
+    }
+    $em->flush();
+    foreach ([0, 1] as $value) {
+        $result = $controller->updatePublic($token, $request(['state' => ['resources' => [['id' => 'magical-tinkering', 'currentValue' => $value]]]]), $access, $em, $updater, $inspiration);
+        $check($result->getStatusCode() === 200, 'LIVE tinkering decrement/increment: '.$result->getContent());
+    }
+    $em->refresh($session);
+    $check(array_column($session->getState()['resources'], 'currentValue', 'id')['magical-tinkering'] === 1, 'Tinkering counter survives reload');
+    foreach ([App\Entity\RestRequest::TYPE_SHORT_REST, App\Entity\RestRequest::TYPE_LONG_REST] as $type) {
+        $rest->apply($session, $type); $em->flush();
+        $check(array_column($session->getState()['resources'], 'currentValue', 'id')['magical-tinkering'] === 1 && $session->getState()['magicalTinkeringNotes'] === 'Clochette', 'Rest preserves tinkering count and notes');
+    }
+    $intelligence->setBaseValue(8);
+    $sample = $session->getState();
+    foreach ($sample['resources'] as &$entry) if ($entry['id'] === 'magical-tinkering') { $entry['currentValue'] = 3; $entry['notes'] = 'Historical resource note'; }
+    unset($entry);
+    $sample = $s['sync']->synchronize($character, $sample);
+    $entry = array_column($sample['resources'], null, 'id')['magical-tinkering'];
+    $check($entry['currentValue'] === 1 && $entry['notes'] === 'Historical resource note', 'Decreasing maximum uses common clamp and preserves resource notes');
+    $game->setStatus(GameSession::STATUS_CLOSED); $em->flush();
+    $check($status(fn () => $controller->updatePublic($token, $request(['state' => ['resources' => [['id' => 'magical-tinkering', 'currentValue' => 0]]]]), $access, $em, $updater, $inspiration)) === 409, 'CLOSED rejects tinkering counter');
+    $check($status(fn () => $controller->updatePublic($token, $request(['state' => ['magicalTinkeringNotes' => 'Forbidden']]), $access, $em, $updater, $inspiration)) === 409, 'CLOSED rejects tinkering changes');
+    $publicNotes = json_decode($controller->showPublic($token, $access)->getContent(), true);
+    $check($publicNotes['state']['magicalTinkeringNotes'] === 'Clochette', 'CLOSED still exposes stored notes');
     echo "OK: $checks player security and Portent assertions; temporary tables rolled back.\n";
 } finally {
     while ($db->isTransactionActive()) $db->rollBack();

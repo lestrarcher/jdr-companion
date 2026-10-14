@@ -6,6 +6,7 @@ export interface CharacterActionsState {
 }
 
 export interface CharacterSessionStatePayload {
+  magicalTinkeringNotes?: string;
   inspiration?: boolean;
   hitPoints: {
     current: number;
