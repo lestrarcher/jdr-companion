@@ -108,6 +108,8 @@
             [campaignId]="campaignId()"
             [sessionId]="sessionId()"
             [changingCharacterId]="changingCharacterId()"
+            [changingInspirationId]="changingInspirationId()"
+            (inspirationRequested)="toggleInspiration($event)"
             [changingLevelUpPermissionId]="changingLevelUpPermissionId()"
             [changingMaximumHitPointsId]="changingMaximumHitPointsId()"
             (statisticsRequested)="openStatistics($event)"

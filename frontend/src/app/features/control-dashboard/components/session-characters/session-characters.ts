@@ -1,5 +1,6 @@
 import {
   Component,
+  DestroyRef,
   OnInit,
   computed,
   inject,
@@ -7,7 +8,8 @@ import {
   output,
   signal,
 } from '@angular/core';
-import { forkJoin } from 'rxjs';
+import { forkJoin, timer } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs/operators';
 
 import {
@@ -71,6 +73,8 @@ export interface RestRequestResolution {
   styleUrl: './session-characters.scss',
 })
 export class SessionCharacters implements OnInit {
+  private readonly destroyRef = inject(DestroyRef);
+  protected readonly changingInspirationId = signal<number | null>(null);
   private readonly progressionReferenceApi = inject(DndReferenceApiService);
   private readonly characterApi = inject(CharacterApiService);
   private readonly characterSessionStateApi = inject(
@@ -225,6 +229,9 @@ export class SessionCharacters implements OnInit {
 
   ngOnInit(): void {
     this.loadCharacters();
+    timer(5000, 5000).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      if (!this.loading()) this.refreshCharacters(true);
+    });
   }
 
   protected resolveRestRequest(
@@ -429,24 +436,48 @@ export class SessionCharacters implements OnInit {
       });
   }
 
-  protected refreshCharacters(): void {
+  protected toggleInspiration(character: SessionCharacterView): void {
+    const state = character.sessionState;
+    if (!state || this.changingInspirationId() !== null) return;
+    this.clearCharacterFeedback();
+    this.changingInspirationId.set(character.character.id);
+    this.characterSessionStateApi.setInspiration(
+      this.sessionId(), character.character.id, state.state.inspiration !== true, state.revision,
+    ).pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.changingInspirationId.set(null)))
+      .subscribe({
+        next: updated => {
+          this.upsertState(updated);
+          this.characterActionFeedback.set(updated.state.inspiration ? 'Inspiration accordée.' : 'Inspiration retirée.');
+        },
+        error: error => {
+          this.characterActionError.set(error?.status === 409
+            ? 'Modification concurrente : actualisation en cours, vérifiez puis recommencez.'
+            : this.apiError(error, 'Impossible de modifier l’inspiration.'));
+          if (error?.status === 409) this.refreshCharacters(true);
+        },
+      });
+  }
+
+  protected refreshCharacters(background = false): void {
     if (this.refreshingCharacters()) {
       return;
     }
 
     this.refreshingCharacters.set(true);
-    this.clearCharacterFeedback();
+    if (!background) this.clearCharacterFeedback();
 
     this.characterSessionStateApi
       .list(this.sessionId())
       .pipe(
+        takeUntilDestroyed(this.destroyRef),
         finalize(() =>
           this.refreshingCharacters.set(false),
         ),
       )
       .subscribe({
-        next: states =>
-          this.sessionStates.set(states),
+        next: states => {
+          for (const state of states) this.upsertState(state);
+        },
 
         error: error => {
           this.characterActionError.set(
@@ -766,7 +797,7 @@ export class SessionCharacters implements OnInit {
       }
 
       return states.map(candidate =>
-        candidate.id === state.id
+        candidate.id === state.id && state.revision >= candidate.revision
           ? state
           : candidate,
       );

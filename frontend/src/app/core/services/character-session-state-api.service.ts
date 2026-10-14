@@ -83,6 +83,12 @@ interface CharacterSessionStateListResponse {
   providedIn: 'root',
 })
 export class CharacterSessionStateApiService {
+  setInspiration(sessionId: number, characterId: number, inspiration: boolean, revision: number): Observable<CharacterSessionStateApiResponse> {
+    return this.http.patch<CharacterSessionStateApiResponse>(
+      `${this.apiUrl}/sessions/${sessionId}/characters/${characterId}/inspiration`,
+      { inspiration, revision },
+    );
+  }
   private readonly http = inject(HttpClient);
   private readonly apiUrl = '/api';
 

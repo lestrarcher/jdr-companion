@@ -80,6 +80,12 @@ $check($gmCall(['inspiration' => false, 'revision' => $stateA->getRevision()])->
 $gameA->setStatus(App\Entity\GameSession::STATUS_CLOSED); $em->flush();
 $check($httpStatus(fn () => $playerCall(['inspiration' => false])) === 409, 'Closed session cannot spend');
 $check($gmCall(['inspiration' => true, 'revision' => $stateA->getRevision()])->getStatusCode() === 200, 'GM may grant outside a live session');
+$check($gmCall(['inspiration' => false, 'revision' => $stateA->getRevision()])->getStatusCode() === 200 && !$hero->hasInspiration(), 'GM may withdraw in CLOSED');
+$gameA->setStatus(App\Entity\GameSession::STATUS_DRAFT); $em->flush();
+$check($gmCall(['inspiration' => true, 'revision' => $stateA->getRevision()])->getStatusCode() === 200 && $hero->hasInspiration(), 'GM may grant in DRAFT');
+$check($httpStatus(fn () => $playerCall(['inspiration' => false])) === 409 && $hero->hasInspiration(), 'DRAFT refuses spend without consuming inspiration');
+$publicProfile = $controller->showPublic($stateA->getAccessToken(), $access);
+$check(json_decode($publicProfile->getContent(), true)['state']['inspiration'] === true, 'Player may read inspiration in DRAFT');
 $stateA->setParticipating(false); $em->flush();
 $check($httpStatus(fn () => $playerCall(['inspiration' => false])) === 404, 'Inactive player link cannot spend');
 $check($gmCall(['inspiration' => false, 'revision' => $stateA->getRevision()])->getStatusCode() === 404, 'Inactive session assignment cannot be edited');

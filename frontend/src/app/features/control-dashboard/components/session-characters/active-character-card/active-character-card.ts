@@ -17,6 +17,8 @@ export class ActiveCharacterCard {
   readonly sessionId = input.required<number>();
 
   readonly changingCharacterId = input<number | null>(null);
+  readonly changingInspirationId = input<number | null>(null);
+  readonly inspirationRequested = output<SessionCharacterView>();
   readonly changingLevelUpPermissionId = input<number | null>(null);
   readonly changingMaximumHitPointsId = input<number | null>(null);
 
