@@ -6,6 +6,7 @@ import {
   input,
   output,
   signal,
+  computed,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs';
@@ -32,6 +33,9 @@ export class MediaManager implements OnInit {
   readonly mediaCleared = output<void>();
 
   protected readonly media = signal<CampaignMedia[]>([]);
+  protected readonly visibleCount = signal(12);
+  protected readonly visibleMedia = computed(() => this.media().slice(0, this.visibleCount()));
+  protected showMore(): void { this.visibleCount.update(count => count + 12); }
   protected readonly selectedFile = signal<File | null>(null);
   protected readonly title = signal('');
   protected readonly loading = signal(true);

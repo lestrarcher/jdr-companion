@@ -76,7 +76,7 @@
     </p>
   } @else {
     <div class="media-grid">
-      @for (item of media(); track item.id) {
+      @for (item of visibleMedia(); track item.id) {
         <div class="media-entry">
           <button
             type="button"
@@ -109,5 +109,8 @@
         </div>
       }
     </div>
+    @if (visibleCount() < media().length) {
+      <button type="button" class="clear-button" (click)="showMore()">Afficher 12 médias supplémentaires</button>
+    }
   }
 </section>
