@@ -1,0 +1,8 @@
+.background-list { display: grid; gap: 1rem; margin-top: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+article { padding: 1rem; border: 1px solid #c7a55b55; background: #11131e; }
+.description { white-space: pre-wrap; }
+.origin { display: inline-block; padding: .2rem .4rem; border: 1px solid #c7a55b; font-size: .7rem; color: #ddc28e; }
+.origin.custom { border-color: #98b5db; color: #bcd1ef; }
+button { margin: .3rem .3rem .3rem 0; }
+select[multiple] { min-height: 10rem; }
+.resource-editor { margin-top: 1rem; }

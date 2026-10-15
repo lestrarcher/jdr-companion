@@ -28,6 +28,31 @@ class CharacterBackground
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $description = null;
 
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $equipment = null;
+
+    #[ORM\Column(length: 120, nullable: true)]
+    private ?string $featureName = null;
+
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $featureDescription = null;
+
+    /** @var list<string> */
+    #[ORM\Column(type: 'json', options: ['default' => '[]'])]
+    private array $personalityTraits = [];
+
+    /** @var list<string> */
+    #[ORM\Column(type: 'json', options: ['default' => '[]'])]
+    private array $ideals = [];
+
+    /** @var list<string> */
+    #[ORM\Column(type: 'json', options: ['default' => '[]'])]
+    private array $bonds = [];
+
+    /** @var list<string> */
+    #[ORM\Column(type: 'json', options: ['default' => '[]'])]
+    private array $flaws = [];
+
     #[ORM\Column(length: 8, enumType: ReferenceOrigin::class, options: ['default' => 'OFFICIAL'])]
     private ReferenceOrigin $origin = ReferenceOrigin::Official;
 
@@ -58,6 +83,13 @@ class CharacterBackground
     public function getSlug(): string { return $this->slug; }
     public function getName(): string { return $this->name; }
     public function getDescription(): ?string { return $this->description; }
+    public function getEquipment(): ?string { return $this->equipment; }
+    public function getFeatureName(): ?string { return $this->featureName; }
+    public function getFeatureDescription(): ?string { return $this->featureDescription; }
+    public function getPersonalityTraits(): array { return $this->personalityTraits; }
+    public function getIdeals(): array { return $this->ideals; }
+    public function getBonds(): array { return $this->bonds; }
+    public function getFlaws(): array { return $this->flaws; }
     public function getOrigin(): ReferenceOrigin { return $this->origin; }
     public function getOwner(): ?User { return $this->owner; }
 

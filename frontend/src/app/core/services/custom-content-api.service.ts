@@ -1,12 +1,29 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { map } from 'rxjs';
+import { BackgroundOptions, BackgroundPayload, CustomBackground } from '@core/models/custom-background.model';
 import { CreateCustomResourcePayload, CustomFeature, CustomFeatureRule, CustomResource, CustomResourceRule, UpdateCustomResourcePayload } from '@core/models/custom-content.model';
 
 @Injectable({ providedIn: 'root' })
 export class CustomContentApiService {
   private readonly http = inject(HttpClient);
   private readonly base = '/api/reference/custom';
+
+  backgrounds() {
+    return this.http.get<{ backgrounds: CustomBackground[] }>(`${this.base}/backgrounds`, { withCredentials: true }).pipe(map(r => r.backgrounds));
+  }
+  backgroundOptions() {
+    return this.http.get<BackgroundOptions>(`${this.base}/backgrounds/options`, { withCredentials: true });
+  }
+  saveBackground(id: number | null, payload: Partial<BackgroundPayload>) {
+    const request = id === null
+      ? this.http.post<{ background: CustomBackground }>(`${this.base}/backgrounds`, payload, { withCredentials: true })
+      : this.http.patch<{ background: CustomBackground }>(`${this.base}/backgrounds/${id}`, payload, { withCredentials: true });
+    return request.pipe(map(r => r.background));
+  }
+  deleteBackground(id: number) {
+    return this.http.delete<void>(`${this.base}/backgrounds/${id}`, { withCredentials: true });
+  }
 
   features() {
     return this.http.get<{ features: CustomFeature[] }>(`${this.base}/features`, { withCredentials: true })

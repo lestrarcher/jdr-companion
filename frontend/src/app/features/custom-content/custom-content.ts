@@ -5,15 +5,16 @@ import { finalize, map, Observable, Subscription } from 'rxjs';
 import { CustomResource, CustomScalingAbility } from '@core/models/custom-content.model';
 import { CustomContentApiService } from '@core/services/custom-content-api.service';
 import { ResourceEditor } from './resource-editor/resource-editor';
+import { BackgroundEditor } from './background-editor/background-editor';
 
-type Category = 'features' | 'resources' | 'feature-rules' | 'resource-rules';
+type Category = 'features' | 'resources' | 'feature-rules' | 'resource-rules' | 'backgrounds';
 interface CatalogueItem { id: number; title: string; description?: string | null; details: string[]; resource?: CustomResource }
 interface CollectionState { status: 'idle' | 'loading' | 'ready' | 'error'; items: CatalogueItem[] }
 const emptyCollection = (): CollectionState => ({ status: 'idle', items: [] });
 
 @Component({
   selector: 'app-custom-content',
-  imports: [ResourceEditor],
+  imports: [ResourceEditor, BackgroundEditor],
   templateUrl: './custom-content.html',
   styleUrl: './custom-content.scss',
 })
@@ -22,15 +23,18 @@ export class CustomContent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
   private readonly resourceEditor = viewChild(ResourceEditor);
+  private readonly backgroundEditor = viewChild(BackgroundEditor);
+  protected readonly backgroundBusy = signal(false);
   private readonly createButton = viewChild<ElementRef<HTMLButtonElement>>('createResource');
   private editorTrigger: HTMLElement | null = null;
   private readonly pendingCollections: Partial<Record<Category, Subscription>> = {};
   protected readonly editor = signal<{ resource: CustomResource | null } | null>(null);
   protected readonly deletingId = signal<number | null>(null);
-  protected readonly busy = computed(() => this.deletingId() !== null || !!this.resourceEditor()?.saving());
+  protected readonly busy = computed(() => this.backgroundBusy() || this.deletingId() !== null || !!this.resourceEditor()?.saving());
   protected readonly feedback = signal<string | null>(null);
   protected readonly mutationError = signal<string | null>(null);
   protected readonly categories: { id: Category; label: string; empty: string }[] = [
+    { id: 'backgrounds', label: 'Historiques', empty: 'Aucun historique disponible.' },
     { id: 'features', label: 'Capacités', empty: 'Aucune capacité personnalisée.' },
     { id: 'resources', label: 'Ressources', empty: 'Aucune ressource personnalisée.' },
     { id: 'feature-rules', label: 'Attributions de capacités', empty: 'Aucune attribution de capacité personnalisée.' },
@@ -38,6 +42,7 @@ export class CustomContent {
   ];
   protected readonly active = signal<Category>('features');
   private readonly collections = signal<Record<Category, CollectionState>>({
+    backgrounds: { status: 'ready', items: [] },
     features: emptyCollection(), resources: emptyCollection(),
     'feature-rules': emptyCollection(), 'resource-rules': emptyCollection(),
   });
@@ -49,6 +54,7 @@ export class CustomContent {
   protected select(category: Category): void {
     if (category === this.active() || this.busy()) return;
     if (this.resourceEditor() && !this.resourceEditor()!.canDiscard()) return;
+    if (this.backgroundEditor() && !this.backgroundEditor()!.canDiscard()) return;
     this.editor.set(null);
     this.feedback.set(null); this.mutationError.set(null);
     this.active.set(category);
@@ -145,6 +151,7 @@ export class CustomContent {
 
   private request(category: Category): Observable<CatalogueItem[]> {
     switch (category) {
+      case 'backgrounds': return this.api.backgrounds().pipe(map(() => []));
       case 'features': return this.api.features().pipe(map(items => items.map(item => ({
         id: item.id, title: item.name, description: item.description,
         details: item.resourceDefinition ? [`Ressource liée : ${item.resourceDefinition.name}`] : [],

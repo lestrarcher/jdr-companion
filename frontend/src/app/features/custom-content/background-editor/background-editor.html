@@ -1,0 +1,67 @@
+@if (error()) { <p role="alert" class="field-error">{{ error() }}</p> }
+@if (feedback()) { <p role="status">{{ feedback() }}</p> }
+@if (loading()) { <p role="status">Chargement des historiques…</p> }
+@else {
+  <button type="button" (click)="load()" [disabled]="busy() || opened()">Actualiser</button>
+  <button #createButton type="button" (click)="open(null, $event)" [disabled]="busy() || opened()">Créer un historique</button>
+  @if (opened()) {
+    <form class="resource-editor" #form="ngForm" (ngSubmit)="form.valid && save()">
+      <h3>{{ selected()?.origin === 'OFFICIAL' ? 'Consulter' : selected() ? 'Modifier' : 'Créer' }} un historique</h3>
+      @if (selected()?.mechanicsLocked && selected()?.origin === 'CUSTOM') {
+        <p>Historique utilisé ou protégé : le slug et les règles sont verrouillés. Les textes restent modifiables.</p>
+      }
+      <fieldset [disabled]="busy() || selected()?.origin === 'OFFICIAL'">
+        <legend>Informations générales</legend>
+        <label>Nom<input #nameInput name="name" required maxlength="120" [ngModel]="draft.name" (ngModelChange)="nameChanged($event)"></label>
+        <label>Slug<input name="slug" required maxlength="80" pattern="[a-z0-9]+(-[a-z0-9]+)*" [disabled]="!!selected()?.mechanicsLocked" [ngModel]="draft.slug" (ngModelChange)="slugChanged($event)"></label>
+        <label>Description<textarea name="description" [(ngModel)]="draft.description" rows="4"></textarea></label>
+        <label>Équipement de départ<textarea name="equipment" [(ngModel)]="draft.equipment" rows="3"></textarea></label>
+        <label>Nom de l’aptitude<input name="featureName" maxlength="120" [(ngModel)]="draft.featureName"></label>
+        <label>Description de l’aptitude<textarea name="featureDescription" [(ngModel)]="draft.featureDescription" rows="4"></textarea></label>
+        @for (category of narratives; track category.key) {
+          <fieldset><legend>{{ category.label }}</legend>
+            @for (text of draft[category.key]; track $index; let i = $index) {
+              <label>Proposition {{ i + 1 }}<textarea [name]="category.key + i" [attr.name]="category.key + i" [(ngModel)]="draft[category.key][i]" required maxlength="5000"></textarea></label>
+              <button type="button" (click)="draft[category.key].splice(i, 1)">Retirer la proposition {{ i + 1 }}</button>
+            }
+            <button type="button" (click)="draft[category.key].push('')">Ajouter une proposition</button>
+          </fieldset>
+        }
+      </fieldset>
+      @for (group of groups; track group.key) {
+        <fieldset [disabled]="busy() || !!selected()?.mechanicsLocked || selected()?.origin === 'OFFICIAL'">
+          <legend>{{ group.label }}</legend>
+          <p>Un groupe contient des compétences, des outils ou des langues. Avec 0 choix, toutes les options sélectionnées sont accordées automatiquement.</p>
+          @for (rule of draft[group.key]; track $index; let i = $index) {
+            <fieldset><legend>Groupe {{ i + 1 }}</legend>
+              <label>Libellé<input [name]="group.key + i + 'label'" [attr.name]="group.key + i + 'label'" [(ngModel)]="rule.label" required maxlength="120"></label>
+              <label>Nombre de choix<input type="number" [name]="group.key + i + 'count'" [attr.name]="group.key + i + 'count'" [(ngModel)]="rule.choiceCount" required min="0" [max]="rule.optionIds.length" step="1"></label>
+              <label>Options (sélection multiple)<select multiple size="8" [name]="group.key + i + 'options'" [attr.name]="group.key + i + 'options'" [(ngModel)]="rule.optionIds" required>
+                @for (option of ruleOptions(group.key, rule); track option.id) { <option [ngValue]="option.id">{{ option.name }}</option> }
+              </select></label>
+              <button type="button" (click)="draft[group.key].splice(i, 1)">Retirer ce groupe</button>
+            </fieldset>
+          }
+          <button type="button" (click)="addRule(group.key)">Ajouter un groupe</button>
+        </fieldset>
+      }
+      <div class="editor-actions">
+        @if (selected()?.origin !== 'OFFICIAL') { <button type="submit" [disabled]="busy() || form.invalid">{{ busy() ? 'Enregistrement…' : 'Enregistrer' }}</button> }
+        <button type="button" (click)="close()" [disabled]="busy()">Fermer</button>
+      </div>
+    </form>
+  }
+  <div class="background-list">
+    @for (item of items(); track item.id) {
+      <article>
+        <h3>{{ item.name }} <span class="origin" [class.custom]="item.origin === 'CUSTOM'">{{ item.origin }}</span></h3>
+        <p class="description">{{ item.description }}</p>
+        <button type="button" (click)="open(item, $event)" [disabled]="busy() || opened()">{{ item.origin === 'OFFICIAL' ? 'Consulter' : 'Modifier' }}</button>
+        @if (item.origin === 'CUSTOM') {
+          <button type="button" (click)="remove(item)" [disabled]="busy() || opened() || item.mechanicsLocked">Supprimer</button>
+          @if (item.mechanicsLocked) { <p>Utilisé ou protégé : suppression indisponible.</p> }
+        }
+      </article>
+    } @empty { <p>Aucun historique disponible.</p> }
+  </div>
+}

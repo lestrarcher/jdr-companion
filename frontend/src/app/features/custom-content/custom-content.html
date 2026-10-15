@@ -17,6 +17,9 @@
 
   <section id="custom-collection" aria-labelledby="collection-title" [attr.aria-busy]="current().status === 'loading'">
     <h2 id="collection-title">{{ category().label }}</h2>
+    @if (active() === 'backgrounds') {
+      <app-background-editor (busyChange)="backgroundBusy.set($event)" />
+    } @else {
     @if (active() === 'resources') {
       @if (feedback()) { <p role="status">{{ feedback() }}</p> }
       @if (mutationError()) { <p class="error-message" role="alert">{{ mutationError() }}</p> }
@@ -52,6 +55,7 @@
           <p class="collection-state" role="status">{{ category().empty }}</p>
         }
       </div>
+    }
     }
   </section>
 </main>

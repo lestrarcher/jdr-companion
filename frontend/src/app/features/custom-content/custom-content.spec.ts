@@ -44,13 +44,13 @@ describe('Personal custom catalogue', () => {
   }
   function initialEmpty() { start(); flush('features', { features: [] }); }
 
-  it('loads only the initial category, shows loading before empty, and exposes four real buttons', () => {
+  it('loads only the initial category, shows loading before empty, and exposes five real buttons', () => {
     start();
     expect(root().textContent).toContain('Chargement');
     expect(root().textContent).not.toContain('Aucune');
     expect(root().querySelector('section')?.getAttribute('aria-busy')).toBe('true');
     expect(Array.from(root().querySelectorAll('.categories button')).map(button => button.textContent?.trim()))
-      .toEqual(['Capacités', 'Ressources', 'Attributions de capacités', 'Règles de ressources']);
+      .toEqual(['Historiques', 'Capacités', 'Ressources', 'Attributions de capacités', 'Règles de ressources']);
     expect(root().querySelector('[aria-pressed="true"]')?.textContent).toContain('Capacités');
     http.expectNone('/api/reference/custom/resources');
     flush('features', { features: [] });
@@ -158,7 +158,7 @@ describe('Personal custom catalogue', () => {
   it('offers consultation only, with no editor or mutation actions', () => {
     initialEmpty();
     expect(root().querySelectorAll('form, input, textarea, dialog')).toHaveLength(0);
-    expect(root().querySelectorAll('button')).toHaveLength(4);
+    expect(root().querySelectorAll('button')).toHaveLength(5);
     expect(root().textContent).not.toMatch(/Créer|Modifier|Supprimer/);
   });
 
