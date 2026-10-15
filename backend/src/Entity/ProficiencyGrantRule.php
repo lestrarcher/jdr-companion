@@ -124,6 +124,15 @@ class ProficiencyGrantRule
         $this->options = new ArrayCollection();
     }
 
+    public static function forOwner(User $owner, string $label): self
+    {
+        $rule = new self($label);
+        $rule->origin = ReferenceOrigin::Custom;
+        $rule->owner = $owner;
+
+        return $rule;
+    }
+
     public function getId(): ?int
     {
         return $this->id;
