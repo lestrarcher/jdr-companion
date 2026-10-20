@@ -47,6 +47,9 @@
             Chargement de la fiche…
           </div>
         } @else if (profile(); as character) {
+          <a [routerLink]="['/campaigns', campaignId, 'characters', character.id, 'spellbook']">Gérer les copies de grimoire</a>
+          <a [routerLink]="['/campaigns', campaignId, 'characters', character.id, 'spell-revision']">Corriger les acquisitions de sorts</a>
+          <a [routerLink]="['/campaigns', campaignId, 'characters', character.id, 'spell-substitutions']">Gérer les substitutions de sorts</a>
           <app-character-profile
             [character]="character"
             [canLevelUp]="levelUpOptions()?.canLevelUp ?? false"

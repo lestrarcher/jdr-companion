@@ -10,6 +10,7 @@ use App\Enum\ReferenceOrigin;
 use App\Entity\ProficiencyDefinition;
 use App\Entity\ProficiencyGrantRule;
 use App\Entity\CharacterBackground;
+use App\Entity\SpellDefinition;
 use App\Entity\{LanguageDefinition, LanguageGrantRule, ExpertiseGrantRule};
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
@@ -33,7 +34,7 @@ final class ReferenceVisibility
     /** Unpaginated choice lists. Dependencies are checked before anything is serialized. */
     public static function choices(EntityManagerInterface $em, string $type, ?User $owner, array $criteria = []): array
     {
-        if (!in_array($type, [CharacterClass::class, CharacterSubclass::class, CharacterRace::class, Feat::class, ProgressionDefinition::class, CharacterBackground::class, LanguageDefinition::class, ProficiencyDefinition::class], true)) {
+        if (!in_array($type, [CharacterClass::class, CharacterSubclass::class, CharacterRace::class, Feat::class, ProgressionDefinition::class, CharacterBackground::class, SpellDefinition::class, LanguageDefinition::class, ProficiencyDefinition::class], true)) {
             throw new \LogicException('Unsupported reference catalogue.');
         }
         $query = self::scope($em->createQueryBuilder()->select('r')->from($type, 'r'), 'r', $owner)
@@ -45,7 +46,7 @@ final class ReferenceVisibility
         return array_values(array_filter($query->getQuery()->getResult(), static fn ($reference) => self::allows($reference, $owner)));
     }
 
-    public static function allows(CharacterClass|CharacterSubclass|CharacterRace|Feat|ProgressionDefinition|RaceAbilityModifier|CharacterFeatureDefinition|TrackableResourceDefinition|CharacterActionDefinition|CharacterFeatureRule|TrackableResourceRule|CharacterActionClassRule|ProficiencyDefinition|ProficiencyGrantRule|CharacterBackground|LanguageDefinition|LanguageGrantRule|ExpertiseGrantRule $reference, ?User $owner, array $visited = []): bool
+    public static function allows(CharacterClass|CharacterSubclass|CharacterRace|Feat|ProgressionDefinition|RaceAbilityModifier|CharacterFeatureDefinition|TrackableResourceDefinition|CharacterActionDefinition|CharacterFeatureRule|TrackableResourceRule|CharacterActionClassRule|ProficiencyDefinition|ProficiencyGrantRule|CharacterBackground|SpellDefinition|LanguageDefinition|LanguageGrantRule|ExpertiseGrantRule $reference, ?User $owner, array $visited = []): bool
     {
         if ($reference instanceof RaceAbilityModifier) return self::allows($reference->getRace(), $owner, $visited);
         $key = spl_object_id($reference);
@@ -85,7 +86,7 @@ final class ReferenceVisibility
         return true;
     }
 
-    public static function requireVisible(CharacterClass|CharacterSubclass|CharacterRace|Feat|ProgressionDefinition|RaceAbilityModifier|CharacterBackground $reference, User $owner): void
+    public static function requireVisible(CharacterClass|CharacterSubclass|CharacterRace|Feat|ProgressionDefinition|RaceAbilityModifier|CharacterBackground|SpellDefinition $reference, User $owner): void
     {
         if (!self::allows($reference, $owner)) throw new \InvalidArgumentException('La référence sélectionnée est indisponible.');
     }

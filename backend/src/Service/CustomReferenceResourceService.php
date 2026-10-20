@@ -8,6 +8,7 @@ use App\Entity\User;
 use App\Enum\{Ability, ResourceMaximumType, ResourceRechargeType};
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
+use Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException;
 use Symfony\Component\HttpKernel\Exception\{BadRequestHttpException, ConflictHttpException, NotFoundHttpException};
 
 /** Personal resource definitions only; no assignment or runtime mutation. */
@@ -22,6 +23,55 @@ final class CustomReferenceResourceService
     private const MECHANICS = ['rechargeType', 'maximumType', 'baseMaximum', 'multiplier', 'minimumMaximum', 'scalingAbility'];
 
     public function __construct(private readonly Connection $db) {}
+
+    public function editorList(User $actor, bool $official): array
+    {
+        if ($official) $this->requireAdmin($actor);
+        $rows=$this->db->fetchAllAssociative("SELECT * FROM trackable_resource_definition WHERE (origin='OFFICIAL' AND owner_id IS NULL)".($official?'':" OR (origin='CUSTOM' AND owner_id=:owner)").' ORDER BY name,id',$official?[]:['owner'=>$actor->getId()]);
+        return ['resources'=>array_map(fn($row)=>$this->editorView($row,$official),$rows),
+            'rechargeTypes'=>array_map(static fn($e)=>['value'=>$e->value,'label'=>match($e) { ResourceRechargeType::None=>'Aucune',ResourceRechargeType::ShortRest=>'Repos court',ResourceRechargeType::LongRest=>'Repos long' }],ResourceRechargeType::cases()),
+            'maximumTypes'=>array_map(static fn($e)=>['value'=>$e->value,'label'=>match($e) { ResourceMaximumType::Fixed=>'Fixe',ResourceMaximumType::ProficiencyBonus=>'Bonus de maîtrise',ResourceMaximumType::AbilityModifier=>'Modificateur de caractéristique' }],ResourceMaximumType::cases()),
+            'abilities'=>array_map(static fn($a)=>['value'=>$a->value,'label'=>$a->label(),'abbreviation'=>$a->abbreviation()],Ability::cases())];
+    }
+
+    private function requireAdmin(User $actor): void
+    {
+        if (!in_array(SpellCatalogue::ADMIN_ROLE,$actor->getRoles(),true)) throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException('Administration officielle requise.');
+    }
+
+    private function editorView(array $row,bool $official): array
+    {
+        return $this->serialize($row)+['origin'=>$row['origin'],'custom'=>$row['origin']==='CUSTOM','editable'=>$official?$row['origin']==='OFFICIAL':$row['origin']==='CUSTOM'];
+    }
+
+    public function saveEditor(?int $id,array $payload,User $actor,bool $official): array
+    {
+        if ($official) $this->requireAdmin($actor);
+        return $this->db->transactional(function() use($id,$payload,$actor,$official) {
+            $this->lockUsage();
+            $row=$id===null?null:$this->db->fetchAssociative('SELECT * FROM trackable_resource_definition WHERE id=?',[$id]);
+            if ($id!==null) {
+                if (!$row || ($row['origin']==='CUSTOM' && (int)$row['owner_id']!==$actor->getId()) || ($official && $row['origin']!=='OFFICIAL')) throw new NotFoundHttpException('Ressource indisponible.');
+                if (!$official && $row['origin']!=='CUSTOM') throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException('Ressource officielle en lecture seule.');
+            }
+            $slug=$payload['slug']??null;
+            if ($id===null) {
+                if (!is_string($slug) || !preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/D',$slug) || strlen($slug)>100) throw new BadRequestHttpException('Slug invalide.');
+                unset($payload['slug']);
+            }
+            $current=$row?$this->serialize($row):['name'=>'','description'=>null,'rechargeType'=>'none','maximumType'=>'fixed','baseMaximum'=>0,'multiplier'=>1,'minimumMaximum'=>0,'scalingAbility'=>null];
+            $data=$this->validate($payload,$current);
+            if ($row) foreach(self::MECHANICS as $field) if ($data[$field]!==$current[$field] && $this->isUsed($row,$actor)) throw new ConflictHttpException('Les mécaniques de cette ressource utilisée sont verrouillées.');
+            try {
+                if ($row) $this->db->update('trackable_resource_definition',$this->columns($data)+['updated_at'=>$this->now()],['id'=>$id]);
+                else {
+                    $this->db->insert('trackable_resource_definition',$this->columns($data)+['slug'=>$slug,'origin'=>$official?'OFFICIAL':'CUSTOM','owner_id'=>$official?null:$actor->getId(),'custom'=>$official?'false':'true','created_at'=>$this->now(),'updated_at'=>$this->now()]);
+                    $id=(int)$this->db->lastInsertId();
+                }
+            } catch (UniqueConstraintViolationException $e) { throw new ConflictHttpException('Identité déjà utilisée.',$e); }
+            return $this->editorView($this->db->fetchAssociative('SELECT * FROM trackable_resource_definition WHERE id=?',[$id]),$official);
+        });
+    }
 
     public function list(User $owner): array
     {
@@ -88,15 +138,19 @@ final class CustomReferenceResourceService
 
     public function delete(int $id, User $owner): void
     {
-        $this->db->transactional(function () use ($id, $owner): void {
-            $this->owned($id, $owner);
-            $this->lockUsage();
-            $row = $this->owned($id, $owner);
-            if ($this->isUsed($row, $owner)) {
-                throw new ConflictHttpException('Cette ressource est utilisée et ne peut pas être supprimée.');
-            }
-            $this->db->delete('trackable_resource_definition', ['id' => $id]);
-        });
+        try {
+            $this->db->transactional(function () use ($id, $owner): void {
+                $this->owned($id, $owner);
+                $this->lockUsage();
+                $row = $this->owned($id, $owner);
+                if ($this->isUsed($row, $owner)) {
+                    throw new ConflictHttpException('Cette ressource est utilisée et ne peut pas être supprimée.');
+                }
+                $this->db->delete('trackable_resource_definition', ['id' => $id]);
+            });
+        } catch (ForeignKeyConstraintViolationException $error) {
+            throw new ConflictHttpException('Cette ressource est référencée et ne peut pas être supprimée.', $error);
+        }
     }
 
     private function owned(int $id, User $owner): array

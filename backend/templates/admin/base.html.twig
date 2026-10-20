@@ -15,6 +15,7 @@
         <a href="{{ path('admin_dashboard') }}">Tableau de bord</a>
         <a href="{{ path('admin_reference') }}">Référentiel</a>
         <a class="subnav" href="{{ path('admin_features') }}">Capacités</a>
+        {% if is_granted('ROLE_REFERENCE_ADMIN') %}<a class="subnav" href="{{ path('admin_spell_list') }}">Sorts officiels</a><a class="subnav" href="{{ path('admin_spell_policies') }}">Politiques de magie</a>{% endif %}
         {% for category, label in {'classes': 'Classes', 'subclasses': 'Sous-classes', 'races': 'Races', 'feats': 'Dons', 'resources': 'Ressources', 'progressions': 'Progressions'} %}
             <a class="subnav" href="{{ path('admin_catalogue_list', {category: category}) }}">{{ label }}</a>
         {% endfor %}

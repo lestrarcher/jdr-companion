@@ -1,0 +1,74 @@
+<a [routerLink]="['/campaigns', campaignId, 'characters']">Retour aux personnages</a>
+<h1>Grimoire — {{ name() }}</h1>
+<p>Le MJ valide l’accès à la source, le temps passé et le coût. Aucun débit automatique du portefeuille.</p>
+@if (error()) { <p role="alert">{{ error() }}</p> }
+@if (success()) { <p role="status">{{ success() }}</p> }
+@if (busy()) { <p role="status">Chargement…</p> }
+<fieldset [disabled]="busy()">
+  <legend>Classe d’acquisition</legend>
+  <label>Politique
+    <select [(ngModel)]="policyId" (ngModelChange)="selectPolicy()">
+      <option [ngValue]="0">Sélectionner une classe</option>
+      @for (policy of policies(); track policy.className) {
+        @if (policy.status === 'policy-configured') {
+          <option [ngValue]="policy.policyIds[0]">{{ policy.className }}</option>
+        }
+      }
+    </select>
+  </label>
+  @for (policy of policies(); track policy.className) {
+    @if (policy.status !== 'policy-configured') { <p>{{ policy.className }} : politique à configurer ou à clarifier.</p> }
+  }
+  @if (style() && style() !== 'spellbook') { <p>Cette classe n’utilise pas de grimoire pour ses acquisitions.</p> }
+  @if (style() === 'spellbook') {
+    <label>Sort à copier
+      <select [(ngModel)]="spellId" (ngModelChange)="selectSpell()">
+        <option [ngValue]="0">Sélectionner un sort</option>
+        @for (spell of spells(); track spell.id) { <option [ngValue]="spell.id">{{ spell.name }} — niveau {{ spell.level }}</option> }
+      </select>
+    </label>
+    @if (spells().length === 0) { <p>Aucun nouveau sort éligible dans le catalogue.</p> }
+  }
+</fieldset>
+@if (copies().length) {
+  <h2>Copies enregistrées</h2>
+  @for (copy of copies(); track copy.id) {
+    @if (copy.copy_details; as details) {
+      <article>
+        <h3>{{ copy.spell_name }}</h3>
+        <p>{{ copy.decided_at }} — {{ details.source }}</p>
+        <p>Coût validé : {{ details.costCp / 100 }} po ; durée validée : {{ details.minutes }} minutes.</p>
+        @if (details.adjustment !== 'none') { <p>{{ details.adjustment === 'gm' ? 'Dérogation MJ' : 'Règle appliquée' }} : {{ details.reason }}</p> }
+      </article>
+    }
+  }
+}
+@if (quote(); as estimate) {
+  <form (ngSubmit)="submit()">
+    <fieldset [disabled]="busy()">
+      <legend>Confirmation de la copie</legend>
+      <p>Tarif théorique D&amp;D 2014 : {{ estimate.baseCostCp / 100 }} po, {{ estimate.baseMinutes }} minutes.</p>
+      <label>Source accessible (livre, parchemin…), et contrôles validés
+        <textarea name="source" [(ngModel)]="source" (ngModelChange)="confirmed = false" required maxlength="2000"></textarea>
+      </label>
+      <label>Ajustement
+        <select name="adjustment" [(ngModel)]="adjustment" (ngModelChange)="adjustmentChanged()">
+          <option value="none">Tarif normal</option><option value="rule">Réduction prévue par une règle</option><option value="gm">Dérogation du MJ</option>
+        </select>
+      </label>
+      @if (adjustment !== 'none') {
+        <label>Règle appliquée ou motif de dérogation
+          <textarea name="reason" [(ngModel)]="reason" (ngModelChange)="confirmed = false" required maxlength="10000"></textarea>
+        </label>
+      }
+      <label>Coût retenu en pièces de cuivre
+        <input name="cost" type="number" min="0" step="1" required [readonly]="adjustment === 'none'" [(ngModel)]="costCp" (ngModelChange)="confirmed = false">
+      </label>
+      <label>Durée retenue en minutes
+        <input name="minutes" type="number" min="0" step="1" required [readonly]="adjustment === 'none'" [(ngModel)]="minutes" (ngModelChange)="confirmed = false">
+      </label>
+      <label><input name="confirmed" type="checkbox" [(ngModel)]="confirmed" required> Je confirme l’accès à la source, les conditions de copie, le temps et le coût retenus.</label>
+      <button type="submit" [disabled]="!confirmed">Enregistrer la copie</button>
+    </fieldset>
+  </form>
+}

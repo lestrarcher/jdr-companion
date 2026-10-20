@@ -1,0 +1,90 @@
+<section class="reference-manager">
+  <aside class="reference-manager__sidebar">
+    <header class="sidebar-header">
+      <div><span class="eyebrow">Bibliothèque</span><h2>Références</h2></div>
+      <button type="button" class="icon-button" title="Créer une référence personnalisée" aria-label="Créer une référence personnalisée" [disabled]="busy()" (click)="open(null)">+</button>
+    </header>
+
+    <div class="filters">
+      <label class="field">Rechercher par nom ou slug
+        <input type="search" placeholder="Rechercher une référence…" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+      </label>
+    </div>
+
+    <div class="list-heading"><span>{{ filtered().length }} référence(s)</span></div>
+    <div class="reference-list">
+      @for (item of filtered(); track item.id) {
+        <article class="reference-card" [class.reference-card--selected]="selectedId() === item.id && editing()">
+          <button type="button" class="reference-card__select" [disabled]="busy()" (click)="open(item)">
+            <span class="reference-card__meta">Référence personnelle</span>
+            <strong class="reference-card__name">{{ item.name }}</strong>
+            <span class="reference-card__slug">{{ item.slug }}</span>
+          </button>
+        </article>
+      } @empty {
+        <p class="empty-state">Aucune référence ne correspond à la recherche.</p>
+      }
+    </div>
+  </aside>
+
+  <div class="reference-manager__content">
+    @if (error()) { <p class="message message--error" role="alert">{{ error() }}</p> }
+    @if (success()) { <p class="message message--success" role="status">{{ success() }}</p> }
+
+    @if (editing()) {
+      <header class="content-header">
+        <div>
+          <span class="eyebrow">{{ selectedId() === null ? 'Création' : 'Modification' }}</span>
+          <h2>{{ selectedId() === null ? 'Nouvelle référence personnalisée' : 'Modifier la référence' }}</h2>
+          <p>Renseignez les propriétés de cette référence.</p>
+        </div>
+        <span class="custom-badge">Personnel</span>
+      </header>
+
+      <p class="form-note">Les propriétés avancées non prises en charge par le backend actuel ne sont pas encore modifiables.</p>
+      <form class="reference-form" (ngSubmit)="save()">
+        <fieldset [disabled]="busy()">
+          <div class="form-grid">
+            @for (field of fields(); track field.key) {
+              @if (selectedId() === null || !field.createOnly) {
+                @if (field.kind === 'boolean') {
+                  <label class="checkbox-field field--wide">
+                    <input type="checkbox" [name]="field.key" [ngModel]="!!fieldValue(field.key)" (ngModelChange)="setField(field.key, $event)" />
+                    <span>{{ field.label }}</span>
+                  </label>
+                } @else {
+                  <label class="field" [class.field--wide]="field.kind === 'json'">
+                    {{ field.label }}
+                    @switch (field.kind) {
+                      @case ('json') {
+                        <textarea rows="4" [name]="field.key" [ngModel]="fieldValue(field.key)" (ngModelChange)="setField(field.key, $event)"></textarea>
+                      }
+                      @case ('number') {
+                        <input type="number" [name]="field.key" [required]="!!field.required" [min]="field.min ?? null" [max]="field.max ?? null" [ngModel]="fieldValue(field.key)" (ngModelChange)="setField(field.key, $event)" />
+                      }
+                      @default {
+                        <input type="text" [name]="field.key" [required]="!!field.required" [ngModel]="fieldValue(field.key)" (ngModelChange)="setField(field.key, $event)" />
+                      }
+                    }
+                  </label>
+                }
+              }
+            }
+          </div>
+        </fieldset>
+        <div class="form-actions">
+          <button class="secondary-button" type="button" [disabled]="busy()" (click)="close()">Fermer</button>
+          <button class="primary-button" type="submit" [disabled]="busy()">{{ busy() ? 'Enregistrement…' : 'Enregistrer' }}</button>
+        </div>
+      </form>
+    } @else {
+      <div class="editor-placeholder">
+        <span class="eyebrow">Éditeur de références</span>
+        <h2>Sélectionnez une référence</h2>
+        <p>Choisissez une référence dans le catalogue pour la consulter ou la modifier, ou créez un nouvel élément personnalisé.</p>
+        <button type="button" class="primary-button" [disabled]="busy()" (click)="open(null)">Créer une référence personnalisée</button>
+      </div>
+    }
+    <p class="form-note footer-note">La suppression reste indisponible tant que les dépendances n'ont pas été auditées.</p>
+  </div>
+</section>

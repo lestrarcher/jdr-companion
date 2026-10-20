@@ -17,6 +17,63 @@ final class CustomReferenceFeatureService
 
     public function __construct(private readonly Connection $db) {}
 
+    public function editorList(User $actor,bool $official): array
+    {
+        if ($official) $this->requireAdmin($actor);
+        $rows=$this->db->fetchAllAssociative("SELECT f.*,r.id linked_id,r.name linked_name,r.slug linked_slug,r.origin linked_origin FROM character_feature_definition f LEFT JOIN trackable_resource_definition r ON r.id=f.resource_definition_id WHERE ((f.origin='OFFICIAL' AND f.owner_id IS NULL)".($official?'':" OR (f.origin='CUSTOM' AND f.owner_id=:owner)").") AND (f.resource_definition_id IS NULL OR (r.origin='OFFICIAL' AND r.owner_id IS NULL) OR (f.origin='CUSTOM' AND r.origin='CUSTOM' AND r.owner_id=f.owner_id)) ORDER BY f.name,f.id",$official?[]:['owner'=>$actor->getId()]);
+        $resources=(new CustomReferenceResourceService($this->db))->editorList($actor,$official)['resources'];
+        $indexed=[]; foreach($resources as $r) $indexed[$r['id']]=$r;
+        return ['features'=>array_map(function($r) use($official,$indexed) { $view=$this->editorView($r,$official); $view['resourceDefinition']=$r['linked_id']===null?null:($indexed[$r['linked_id']]??null); return $view; },$rows), 'resources'=>$resources,
+            'activationTypes'=>array_map(static fn($a)=>['value'=>$a->value,'label'=>$a->label()],FeatureActivationType::cases())];
+    }
+
+    private function requireAdmin(User $actor): void
+    {
+        if (!in_array(SpellCatalogue::ADMIN_ROLE,$actor->getRoles(),true)) throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException('Administration officielle requise.');
+    }
+
+    private function editorView(array $row,bool $official): array
+    {
+        return $this->serialize($row)+['origin'=>$row['origin'],'custom'=>$row['origin']==='CUSTOM','editable'=>$official?$row['origin']==='OFFICIAL':$row['origin']==='CUSTOM','activationType'=>$row['activation_type'],'activationLabel'=>FeatureActivationType::from($row['activation_type'])->label(),'visible'=>(bool)$row['visible']];
+    }
+
+    public function saveEditor(?int $id,array $payload,User $actor,bool $official): array
+    {
+        if ($official) $this->requireAdmin($actor);
+        return $this->db->transactional(function() use($id,$payload,$actor,$official) {
+            $this->lockUsage();
+            $row=$id===null?null:$this->db->fetchAssociative('SELECT * FROM character_feature_definition WHERE id=?',[$id]);
+            if ($id!==null) {
+                if (!$row || ($row['origin']==='CUSTOM' && (int)$row['owner_id']!==$actor->getId()) || ($official && $row['origin']!=='OFFICIAL')) throw new NotFoundHttpException('Capacité indisponible.');
+                if (!$official && $row['origin']!=='CUSTOM') throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException('Capacité officielle en lecture seule.');
+            }
+            $slug=$payload['slug']??null;
+            if ($id===null) {
+                if (!is_string($slug) || !preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/D',$slug) || strlen($slug)>100) throw new BadRequestHttpException('Slug invalide.');
+                unset($payload['slug']);
+            }
+            $activation=array_key_exists('activationType',$payload)?$payload['activationType']:($row['activation_type']??'passive');
+            $visible=array_key_exists('visible',$payload)?$payload['visible']:($row?(bool)$row['visible']:true);
+            if (!is_string($activation) || FeatureActivationType::tryFrom($activation)===null || !is_bool($visible)) throw new BadRequestHttpException('Activation ou visibilité invalide.');
+            unset($payload['activationType'],$payload['visible']);
+            $current=['name'=>$row['name']??'','description'=>$row['description']??null,'resourceDefinitionId'=>isset($row['resource_definition_id'])?(int)$row['resource_definition_id']:null];
+            $data=$this->validate($payload,$current);
+            $this->validateResource($data['resourceDefinitionId'],$actor);
+            if ($official && $data['resourceDefinitionId']!==null && !$this->db->fetchOne("SELECT 1 FROM trackable_resource_definition WHERE id=? AND origin='OFFICIAL' AND owner_id IS NULL",[$data['resourceDefinitionId']])) throw new BadRequestHttpException('Une capacité officielle exige une ressource officielle.');
+            if ($row && ($activation!==$row['activation_type'] || $visible!==(bool)$row['visible'] || $data['resourceDefinitionId']!==$current['resourceDefinitionId']) && $this->isUsed($id)) throw new ConflictHttpException('Mécaniques utilisées et verrouillées.');
+            $columns=['name'=>$data['name'],'description'=>$data['description'],'resource_definition_id'=>$data['resourceDefinitionId'],'activation_type'=>$activation,'visible'=>$visible?'true':'false','updated_at'=>$this->now()];
+            try {
+                if ($row) $this->db->update('character_feature_definition',$columns,['id'=>$id]);
+                else {
+                    $this->db->insert('character_feature_definition',$columns+['slug'=>$slug,'origin'=>$official?'OFFICIAL':'CUSTOM','owner_id'=>$official?null:$actor->getId(),'custom'=>$official?'false':'true','created_at'=>$this->now()]);
+                    $id=(int)$this->db->lastInsertId();
+                }
+            } catch (UniqueConstraintViolationException $e) { throw new ConflictHttpException('Identité déjà utilisée.',$e); }
+            foreach($this->editorList($actor,$official)['features'] as $feature) if ($feature['id']===$id) return $feature;
+            throw new NotFoundHttpException('Capacité indisponible.');
+        });
+    }
+
     public function list(User $owner): array
     {
         return array_map($this->serialize(...), $this->db->fetchAllAssociative(

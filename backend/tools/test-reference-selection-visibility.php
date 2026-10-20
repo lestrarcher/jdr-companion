@@ -40,6 +40,7 @@ try {
         $db->executeStatement(preg_replace(['/^CREATE TABLE /', '/^CREATE SEQUENCE /'], ['CREATE TEMP TABLE ', 'CREATE TEMP SEQUENCE '], $sql));
     }
     foreach ($metadata as $meta) $check($db->fetchOne('SELECT relpersistence FROM pg_class WHERE oid = to_regclass(?)', [$meta->getTableName()]) === 't', 'Isolated table '.$meta->getTableName());
+    $em->persist(new App\Entity\LanguageDefinition('fixture-language', 'Fixture language'));
     $users = []; $campaigns = []; $definitions = []; $characters = []; $tokens = [];
     foreach (['a','b'] as $key) {
         $users[$key] = (new User())->setEmail($key.'@visibility.invalid')->setPassword('unused');
@@ -49,7 +50,8 @@ try {
     $em->flush();
     foreach (['o','a','b'] as $key) {
         $class = new CharacterClass('class-'.$key, 'Class '.$key, 8, $key === 'o' ? 1 : 20);
-        $race = (new CharacterRace('race-'.$key, 'Race '.$key))->setCustom(true)->setFeatChoiceCount(1);
+        $race = (new CharacterRace('race-'.$key, 'Race '.$key))->setCustom(true)->setFeatChoiceCount(1)
+            ->setLanguages(['fixture-language'])->setLanguageChoiceCount(0);
         $definitions[$key] = ['classes' => $class, 'races' => $race,
             'feats' => new Feat('feat-'.$key, 'Feat '.$key), 'progressions' => new ProgressionDefinition('progress-'.$key, 'Progress '.$key)];
         foreach ($definitions[$key] as $entity) $em->persist($entity);

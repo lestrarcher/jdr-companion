@@ -22,6 +22,81 @@ final class CustomReferenceResourceRuleService
 
     public function __construct(private readonly Connection $db) {}
 
+    public function editorList(User $actor,bool $official,?int $targetId=null): array
+    {
+        if ($official) $this->editorAdmin($actor);
+        $rows=$this->db->fetchAllAssociative("SELECT * FROM trackable_resource_rule WHERE (origin='OFFICIAL' AND owner_id IS NULL)".($official?'':" OR (origin='CUSTOM' AND owner_id=:owner)").' ORDER BY id',$official?[]:['owner'=>$actor->getId()]);
+        $result=[];
+        foreach($rows as $row) {
+            if ($targetId!==null && (int)$row['resource_definition_id']!==$targetId) continue;
+            if ($this->serialize($row)!==null) $result[]=$this->editorView($row,$official);
+        }
+        return ['rules'=>$result];
+    }
+
+    private function editorAdmin(User $actor): void
+    {
+        if (!in_array(SpellCatalogue::ADMIN_ROLE,$actor->getRoles(),true)) throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException('Administration officielle requise.');
+    }
+
+    private function editorView(array $row,bool $official): array
+    {
+        $data=$this->data($row); $view=$this->serialize($row);
+        $out=['id'=>(int)$row['id'],'origin'=>$row['origin'],'editable'=>$official?$row['origin']==='OFFICIAL':$row['origin']==='CUSTOM',
+            'sourceType'=>$data['sourceType'],'sourceId'=>$data['sourceId'],'sourceName'=>$view['source']['name'],
+            'unlockLevel'=>$data['unlockLevel'],'maximumBonus'=>$data['maximumBonus'],'maximumOverride'=>$row['maximum_override']===null?null:(int)$row['maximum_override']];
+
+        return $out;
+    }
+
+    public function saveEditor(?int $id,array $payload,User $actor,bool $official,bool $delete=false): ?array
+    {
+        if ($official) $this->editorAdmin($actor);
+        return $this->write(function() use($id,$payload,$actor,$official,$delete) {
+            $this->lockUsage();
+            $row=$id===null?null:$this->db->fetchAssociative('SELECT * FROM trackable_resource_rule WHERE id=? FOR UPDATE',[$id]);
+            if ($id!==null) {
+                if (!$row || ($row['origin']==='CUSTOM' && (int)$row['owner_id']!==$actor->getId()) || ($official && $row['origin']!=='OFFICIAL') || $this->serialize($row)===null) throw new NotFoundHttpException('Attribution indisponible.');
+                if (!$official && $row['origin']!=='CUSTOM') throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException('Attribution officielle en lecture seule.');
+            }
+            if ($delete) {
+                if (!$row) throw new NotFoundHttpException();
+                if ($this->editorUsed($row)) throw new ConflictHttpException('Attribution utilisée.');
+                $this->db->delete('trackable_resource_rule',['id'=>$id]); return null;
+            }
+            $extra=array_key_exists('maximumOverride',$payload)?$payload['maximumOverride']:($row?($row['maximum_override']===null?null:(int)$row['maximum_override']):null);
+            if ($extra!==null && !$this->integer($extra,0,2147483647)) throw new BadRequestHttpException('Paramètre maximumOverride invalide.');
+            unset($payload['maximumOverride']);
+            $data=$this->validate($payload,$row?$this->data($row):null,$actor);
+            if ($row) foreach(['resourceDefinitionId','sourceType','sourceId'] as $key) if ($data[$key]!==$this->data($row)[$key]) throw new ConflictHttpException('Identité de relation immuable.');
+            if ($official && ($this->reference('trackable_resource_definition',$data['resourceDefinitionId'],null)===null || $this->reference(self::SOURCES[$data['sourceType']][0],$data['sourceId'],null)===null)) throw new BadRequestHttpException('Une attribution officielle exige des dépendances officielles.');
+            $columns=$this->columns($data)+['maximum_override'=>$extra];
+            if ($row) {
+                if (($data!==$this->data($row) || $extra!==($row['maximum_override']===null?null:(int)$row['maximum_override'])) && $this->editorUsed($row)) throw new ConflictHttpException('Attribution utilisée.');
+                $this->db->update('trackable_resource_rule',$columns,['id'=>$id]);
+            } else {
+                $this->db->insert('trackable_resource_rule',$columns+['origin'=>$official?'OFFICIAL':'CUSTOM','owner_id'=>$official?null:$actor->getId(),'maximum_override'=>$extra]);
+                $id=(int)$this->db->lastInsertId();
+            }
+            return $this->editorView($this->db->fetchAssociative('SELECT * FROM trackable_resource_rule WHERE id=?',[$id]),$official);
+        });
+    }
+
+    private function editorUsed(array $row): bool
+    {
+        if ($row['origin']==='CUSTOM') return $this->countCharacters($row)>0;
+        $data=$this->data($row);
+        $condition=match($data['sourceType']) {
+            'class'=>'EXISTS (SELECT 1 FROM character_class_level l WHERE l.character_id=c.id AND l.character_class_id=:source)',
+            'subclass'=>'EXISTS (SELECT 1 FROM character_class_level l WHERE l.character_id=c.id AND l.subclass_id=:source)',
+            'race'=>'c.race_id IN (WITH RECURSIVE races AS (SELECT id FROM character_race WHERE id=:source UNION SELECT r.id FROM character_race r JOIN races p ON r.parent_race_id=p.id) SELECT id FROM races)',
+            'feat'=>'EXISTS (SELECT 1 FROM character_feat f WHERE f.character_id=c.id AND f.feat_id=:source)',
+
+        };
+        return (bool)$this->db->fetchOne('SELECT 1 FROM "character" c WHERE '.$condition.' LIMIT 1',['source'=>$data['sourceId']]);
+    }
+
+
     public function list(User $owner): array
     {
         $rules = [];

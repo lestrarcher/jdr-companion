@@ -1,0 +1,27 @@
+{% extends 'admin/base.html.twig' %}
+{% block title %}Attributions — {{ spell.name }}{% endblock %}
+{% block body %}
+<a href="{{ path('admin_spell_edit', context|merge({id: spell.id})) }}">Retour au sort</a>
+<h1>Attributions de sous-classes — {{ spell.name }}</h1>
+<p>Configuration OFFICIAL. Le niveau d’activation est celui de la classe de la sous-classe source. Aucune acquisition ou préparation de personnage n’est modifiée.</p>
+{% if error %}<p role="alert">{{ error }}</p>{% endif %}
+{% for row in [values]|merge(grants|filter(g => g.id != values.id)) %}
+<section class="panel"><h2>{{ row.id ? 'Modifier l’attribution #' ~ row.id : 'Nouvelle attribution' }}</h2>
+<form method="post">
+<input type="hidden" name="_token" value="{{ csrf_token('spell_grants_' ~ spell.id) }}"><input type="hidden" name="id" value="{{ row.id }}">
+{% if row.id %}<p>Source : {{ row.subclassName|default('Identité conservée') }} — OFFICIAL</p>{% else %}
+<label>Sous-classe source<select name="subclassId" required><option value="">Choisir</option>{% for item in options.subclasses %}<option value="{{ item.id }}" {{ row.subclassId == item.id ? 'selected' : '' }}>{{ item.name }} — {{ item.className }}</option>{% endfor %}</select></label>{% endif %}
+<label>Mode<select name="mode">{% for mode in options.modes %}<option value="{{ mode.value }}" {{ row.mode == mode.value ? 'selected' : '' }}>{{ mode.label }}</option>{% endfor %}</select></label>
+<label>Impact sur le quota applicable<select name="quotaImpact">{% for key,label in {'unspecified':'Non renseigné', 'free':'Gratuit', 'counts-toward-quota':'Compte dans le quota'} %}<option value="{{ key }}" {{ row.quotaImpact|default('unspecified') == key ? 'selected' : '' }}>{{ label }}</option>{% endfor %}</select></label>
+<p>Le mode et la politique de la source déterminent le quota concerné.</p>
+<label>Niveau dans la classe source<input type="number" name="unlockLevel" min="1" max="20" value="{{ row.unlockLevel }}" required></label>
+<label>Classe de lancement (requise hors accès particulier)<select name="castingClassId"><option value="">Aucune</option>{% for item in options.classes %}<option value="{{ item.id }}" {{ row.castingClassId == item.id ? 'selected' : '' }}>{{ item.name }}</option>{% endfor %}</select></label>
+<fieldset><legend>Accès particulier au lancement uniquement</legend><p>Pour les autres modes, laisser ces champs vides. Une ressource configurée n’est pas consommée par cet écran.</p>
+<label>Emplacements<select name="slotUsage"><option value="">Non applicable</option>{% for key,label in {'required':'Requis', 'not-required':'Non requis', 'either':'Avec ou sans emplacement'} %}<option value="{{ key }}" {{ row.slotUsage == key ? 'selected' : '' }}>{{ label }}</option>{% endfor %}</select></label>
+<label>Restrictions<textarea name="restrictions" maxlength="10000">{{ row.restrictions }}</textarea></label>
+<label>Ressource<select name="resourceId"><option value="">Aucune</option>{% for item in options.resources %}<option value="{{ item.id }}" {{ row.resourceId == item.id ? 'selected' : '' }}>{{ item.name }}</option>{% endfor %}</select></label>
+<label>Coût de ressource<input type="number" name="resourceCost" min="1" max="2147483647" value="{{ row.resourceCost }}"></label></fieldset>
+<button name="_action" value="save">Enregistrer</button></form>
+{% if row.id %}<details><summary>Supprimer cette attribution</summary><form method="post"><input type="hidden" name="_token" value="{{ csrf_token('spell_grants_' ~ spell.id) }}"><input type="hidden" name="id" value="{{ row.id }}"><button name="_action" value="delete">Confirmer la suppression</button></form></details>{% endif %}
+</section>{% endfor %}
+{% endblock %}

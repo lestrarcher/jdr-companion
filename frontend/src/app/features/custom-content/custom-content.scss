@@ -5,9 +5,9 @@
   background: radial-gradient(circle at top, #25243a 0, #11121d 42%, #090a10 100%);
 }
 .catalogue-page {
-  width: min(1100px, calc(100% - 2rem));
+  width: min(1600px, calc(100% - 3rem));
   margin: 0 auto;
-  padding: 3rem 0;
+  padding: 2rem 0 3rem;
   overflow-wrap: anywhere;
 }
 .page-header {
@@ -56,3 +56,41 @@ button:disabled { opacity: 0.55; cursor: default; }
   .categories { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   button { min-width: 0; padding: 0.65rem 0.5rem; }
 }
+
+/* Gestionnaire de ressources : catalogue à gauche, éditeur à droite. */
+.manager-layout { display:grid; grid-template-columns:minmax(275px, .8fr) minmax(0, 2.2fr); min-height:640px; border:1px solid rgba(199,165,91,.3); background:rgba(8,9,15,.78); }
+.manager-sidebar { min-width:0; border-right:1px solid rgba(199,165,91,.23); background:rgba(10,11,19,.8); }
+.manager-sidebar__header { display:flex; justify-content:space-between; align-items:center; gap:.6rem; padding:1.1rem; border-bottom:1px solid rgba(199,165,91,.2); }
+.manager-sidebar__header h3 { margin:.2rem 0 0; }
+.manager-eyebrow { color:#c7a55b; font-size:.7rem; letter-spacing:.14em; text-transform:uppercase; }
+.manager-list { max-height:75vh; overflow:auto; padding:.55rem; }
+.manager-list-item { margin:.35rem 0; border:1px solid rgba(199,165,91,.18); background:#121420; }
+.manager-list-item.is-selected { border-color:#c7a55b; }
+.manager-list-item__select { display:grid; text-align:left; gap:.4rem; width:100%; border:0; background:transparent; padding:.9rem; }
+.manager-list-item__select strong { color:#f4efe5; }
+.manager-list-item__select .description { font-size:.87rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.manager-list-item__select .detail { font-size:.78rem; }
+.manager-list-item__delete { margin:0 .9rem .75rem; min-height:2rem; padding:.25rem .55rem; font-size:.8rem; }
+.manager-content { min-width:0; padding:1.15rem; background:linear-gradient(180deg,rgba(199,165,91,.045),transparent 13rem); }
+.manager-placeholder { display:grid; align-content:center; justify-items:center; min-height:480px; text-align:center; color:#bfb7ad; }
+.manager-placeholder h3 { margin:.4rem 0; color:#f4efe5; }
+@media(max-width:850px) { .manager-layout { grid-template-columns:1fr; } .manager-sidebar { border-right:0; border-bottom:1px solid rgba(199,165,91,.25); } .manager-list { max-height:310px; } .manager-placeholder { min-height:180px; } }
+
+
+/* Lot 2 : catalogue de consultation (capacités et règles). */
+.manager-filters { padding: .85rem 1rem; border-bottom: 1px solid rgba(199,165,91,.2); }
+.manager-filters label { display:block; margin-bottom:.45rem; color:#ddc28e; font-size:.82rem; }
+.manager-filters input { width:100%; min-width:0; min-height:2.5rem; padding:.55rem .7rem; background:#090a10; border:1px solid rgba(199,165,91,.4); color:#f4efe5; font:inherit; }
+.manager-filters input:focus-visible { outline:2px solid #e0c471; outline-offset:2px; }
+.manager-count { min-width:2rem; padding:.3rem .5rem; text-align:center; color:#ddc28e; border:1px solid rgba(199,165,91,.3); border-radius:2rem; font-size:.8rem; }
+.manager-layout--readonly .manager-list-item__select { cursor:pointer; }
+.manager-layout--readonly .manager-list-item__select[aria-pressed='true'] { background:rgba(199,165,91,.09); }
+.manager-detail { max-width:920px; }
+.manager-detail__header { padding:.5rem 0 1.25rem; border-bottom:1px solid rgba(199,165,91,.24); }
+.manager-detail__header h3 { margin:.5rem 0; font-size:clamp(1.35rem,2.5vw,2rem); overflow-wrap:anywhere; }
+.manager-readonly { display:inline-block; padding:.3rem .65rem; border:1px solid rgba(199,165,91,.35); color:#ddc28e; font-size:.78rem; }
+.manager-detail__section { padding:1rem 0; border-bottom:1px solid rgba(199,165,91,.16); }
+.manager-detail__section h4 { color:#ddc28e; margin:0 0 .7rem; }
+.manager-detail__section .description { line-height:1.65; }
+.manager-detail__property { padding:.7rem .9rem; margin:.4rem 0; border:1px solid rgba(199,165,91,.16); background:#121420; color:#e8dfcf; }
+.manager-detail__note { color:rgba(244,239,229,.58); font-size:.83rem; margin-top:1.5rem; }

@@ -40,10 +40,25 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       {
-        path: 'custom-content',
-        loadComponent: () =>
-          import('./features/custom-content/custom-content').then(component => component.CustomContent),
+        path: 'dnd/spell-policies',
+        loadComponent: () => import('./features/spell-policies/spell-policies').then(component => component.SpellPolicies),
+        canDeactivate: [preparationGuard],
       },
+      {
+        path: 'custom-content',
+        redirectTo: 'dnd/reference', pathMatch: 'full',
+      },
+      {
+        path: 'dnd/reference',
+        loadComponent: () =>
+          import('./features/dnd-reference/feature-manager/feature-manager')
+            .then(component => component.FeatureManager),
+      },
+        {
+          path: 'dnd/reference/official',
+          data: { referenceScope: 'official' },
+          loadComponent: () => import('./features/dnd-reference/feature-manager/feature-manager').then(component => component.FeatureManager),
+        },
       {
         path: 'campaigns',
         loadComponent: () =>
@@ -57,6 +72,21 @@ export const routes: Routes = [
           import('./features/campaign-characters/campaign-characters').then(
             component => component.CampaignCharacters,
           ),
+      },
+      {
+        path: 'campaigns/:campaignId/characters/:characterId/spell-substitutions',
+        canDeactivate: [preparationGuard],
+        loadComponent: () => import('./features/character-spellbook/spell-substitutions').then(component => component.SpellSubstitutions),
+      },
+      {
+        path: 'campaigns/:campaignId/characters/:characterId/spell-revision',
+        canDeactivate: [preparationGuard],
+        loadComponent: () => import('./features/character-spellbook/spell-revision').then(component => component.SpellRevision),
+      },
+      {
+        path: 'campaigns/:campaignId/characters/:characterId/spellbook',
+        canDeactivate: [preparationGuard],
+        loadComponent: () => import('./features/character-spellbook/character-spellbook').then(component => component.CharacterSpellbook),
       },
       {
         path: 'campaigns/:campaignId/characters/new',

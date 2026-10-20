@@ -1,0 +1,64 @@
+<section>
+  <a [routerLink]="['/campaigns', campaignId, 'characters']">Retour aux personnages</a>
+  <h1>Substitutions de sorts — {{ options()?.characterName }}</h1>
+  <p>Les décisions sont conservées dans l’historique. Une correction, révocation ou transition prend effet maintenant, sans réécrire le passé.</p>
+  @if (error()) { <p role="alert">{{ error() }}</p> }
+  @if (success()) { <p role="status">{{ success() }}</p> }
+  <button type="button" [disabled]="busy()" (click)="load()">Recharger les choix</button>
+  @if (options(); as data) {
+    @if (!data.grants.length) { <p>Aucune attribution substituable active et configurée pour ce personnage.</p> }
+    <form (ngSubmit)="save()">
+      <fieldset [disabled]="busy()">
+        <label for="grant">Attribution source</label>
+        <select id="grant" name="grant" [(ngModel)]="grantId" (ngModelChange)="selectGrant()">
+          <option [ngValue]="0">Choisir une attribution</option>
+          @for (item of data.grants; track item.grantId) { <option [ngValue]="item.grantId">{{ item.sourceName }} — {{ item.originalSpell.name }}</option> }
+        </select>
+        @if (grant; as source) {
+          <p>Classe d’acquisition : {{ source.className }}. Sort courant : {{ source.currentSpell.name }}.</p>
+          <label for="kind">Décision</label>
+          <select id="kind" name="kind" [(ngModel)]="kind" (ngModelChange)="selectKind()">
+            <option value="substitution">Substitution prévue par la règle</option>
+            @if (source.expectedPrevious !== null) {
+              <option value="correction">Correction MJ du choix courant</option>
+              <option value="revocation">Révocation — rétablir le sort initial</option>
+              <option value="transition">Transition vers une nouvelle version de règle</option>
+            }
+          </select>
+          <label for="version">Version de règle</label>
+          <select id="version" name="version" [(ngModel)]="ruleId" [disabled]="kind !== 'transition'" (ngModelChange)="confirmed = false">
+            @for (item of source.versions; track item.id) { <option [ngValue]="item.id" [disabled]="kind === 'transition' && item.version <= activeVersion">Version {{ item.version }}{{ item.id === source.activeRuleId ? ' — applicable' : '' }}</option> }
+          </select>
+          @if (version; as rule) {
+            <p>{{ rule.provenance }}</p>
+            @if (kind === 'substitution') {
+              <label for="level">Opportunité dans la classe source</label>
+              <select id="level" name="level" [(ngModel)]="levelId" (ngModelChange)="confirmed = false">
+                <option [ngValue]="0">Choisir un niveau</option>
+                @for (item of rule.levels; track item.id) { <option [ngValue]="item.id" [disabled]="item.remaining === 0">Niveau {{ item.level }} — {{ item.remaining }} choix restant(s)</option> }
+              </select>
+            }
+            @if (kind === 'substitution' || kind === 'correction') {
+              <label for="spell">Sort compatible</label>
+              <select id="spell" name="spell" [(ngModel)]="spellId" (ngModelChange)="confirmed = false">
+                <option [ngValue]="0">Choisir un sort</option>
+                @for (item of rule.available; track item.id) { <option [ngValue]="item.id" [disabled]="item.id === source.currentSpell.id">{{ item.name }}</option> }
+              </select>
+            }
+            @if (kind === 'revocation') { <p>Le sort {{ source.originalSpell.name }} sera rétabli.</p> }
+            @if (kind === 'transition') { <p>Le sort {{ source.currentSpell.name }} est conservé et doit être compatible avec la nouvelle version.</p> }
+            <label for="reason">Motif de la décision</label>
+            <textarea id="reason" name="reason" [(ngModel)]="reason" maxlength="10000" required (ngModelChange)="confirmed = false"></textarea>
+            <label><input type="checkbox" name="confirmed" [(ngModel)]="confirmed"> Je confirme explicitement cette décision et son effet.</label>
+            <button type="submit" [disabled]="!confirmed || !reason.trim() || !spellId || !levelId || (kind === 'transition' && ruleId === source.activeRuleId)">Enregistrer la décision</button>
+          }
+        }
+      </fieldset>
+    </form>
+    <h2>Historique immuable</h2>
+    @for (item of data.history; track item.id) {
+      <article><p>#{{ item.id }} — {{ decisionLabel(item.decision_kind) }} — attribution {{ item.grant_id }} — {{ item.spell_name }} — version {{ item.version }}</p>
+      <p>{{ item.decided_at }} — effet au niveau total {{ item.effective_position }}</p><p>{{ item.reason }}</p></article>
+    } @empty { <p>Aucune décision enregistrée.</p> }
+  }
+</section>

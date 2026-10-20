@@ -1,0 +1,72 @@
+<div class="manager-layout" [class.manager-layout--attributions]="kind() === 'feature-rules'">
+  <aside class="manager-sidebar">
+    <div class="manager-head"><h3>{{ kind() === 'features' ? 'Capacités' : kind() === 'feature-rules' ? 'Attributions' : 'Règles de ressources' }}</h3><button type="button" (click)="open(null)" [disabled]="busy()">+ Créer</button></div>
+    <label>Rechercher une attribution <input type="search" placeholder="Capacité ou source…" [ngModel]="search()" (ngModelChange)="search.set($event)" /></label>
+    @if (kind() === 'feature-rules') {
+      <div class="list-filters">
+        <label>Type de source
+          <select [ngModel]="sourceFilter()" (ngModelChange)="sourceFilter.set($event)">
+            <option value="all">Toutes les sources</option>
+            <option value="class">Classes</option><option value="subclass">Sous-classes</option>
+            <option value="race">Races</option><option value="feat">Dons</option>
+            <option value="progression">Progressions</option>
+          </select>
+        </label>
+        <label>Niveau / seuil
+          <select [ngModel]="levelFilter()" (ngModelChange)="levelFilter.set($event)">
+            <option value="all">Tous les niveaux</option>
+            @for (level of [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]; track level) {
+              <option [value]="level">{{ level }}</option>
+            }
+          </select>
+        </label>
+      </div>
+      <p class="list-counter">{{ filtered().length }} attribution(s)</p>
+    }
+    <div class="items">
+      @for (e of filtered(); track e.id) {
+        <div class="item" [class.active]="selectedId() === e.id && editing()">
+          <button type="button" class="select-item" (click)="open(e)" [disabled]="busy()"><strong>{{ label(e) }}</strong></button>
+          <button type="button" class="danger" (click)="remove(e)" [disabled]="busy()">Supprimer</button>
+        </div>
+      } @empty { <p>Aucun élément.</p> }
+    </div>
+  </aside>
+  <section class="manager-content">
+    @if (error()) { <p role="alert" class="error">{{ error() }}</p> }
+    @if (feedback()) { <p role="status">{{ feedback() }}</p> }
+    @if (editing()) {
+      <form (ngSubmit)="save()">
+        <span class="eyebrow">Attribution / édition</span><h3>{{ selectedId() === null ? 'Créer' : 'Modifier' }} {{ kind() === 'features' ? 'une capacité' : kind() === 'feature-rules' ? 'une attribution de capacité' : 'une règle de ressource' }}</h3>
+        <fieldset [disabled]="busy()">
+          @if (kind() === 'features') {
+            <label>Nom <input name="name" required maxlength="150" [ngModel]="name()" (ngModelChange)="name.set($event)" /></label>
+            <label>Description <textarea name="description" rows="6" [ngModel]="description()" (ngModelChange)="description.set($event)"></textarea></label>
+            <label>Ressource associée <select name="resource" [ngModel]="resourceId()" (ngModelChange)="resourceId.set($event)"><option [ngValue]="null">Aucune</option>@for (r of resources(); track r.id) { <option [ngValue]="r.id">{{ r.name }}</option> }</select></label>
+            <p class="hint">Les ressources officielles non présentes dans cette liste ne sont pas encore proposées.</p>
+          } @else {
+            <label>{{ kind() === 'feature-rules' ? 'Capacité' : 'Ressource' }}
+              <select name="definition" required [ngModel]="definitionId()" (ngModelChange)="definitionId.set($event)"><option [ngValue]="null">Choisir…</option>
+                @if (kind() === 'feature-rules') { @for (f of features(); track f.id) { <option [ngValue]="f.id">{{ f.name }}</option> } }
+                @else { @for (r of resources(); track r.id) { <option [ngValue]="r.id">{{ r.name }}</option> } }
+              </select>
+            </label>
+            <label>Type de source <select name="sourceType" [ngModel]="sourceType()" (ngModelChange)="sourceType.set($event)">
+              <option value="class">Classe</option><option value="subclass">Sous-classe</option><option value="race">Race</option><option value="feat">Don</option>
+              @if (kind() === 'feature-rules') { <option value="progression">Progression</option> }
+            </select></label>
+            <label>Identifiant de la source <input name="sourceId" type="number" required min="1" step="1" [ngModel]="sourceId()" (ngModelChange)="sourceId.set($event)" /></label>
+            <p class="hint">Sélection des sources par identifiant provisoire : seules les sources officielles ou personnelles autorisées sont acceptées par le backend. Un sélecteur par nom sera ajouté après raccordement du catalogue.</p>
+            @if (kind() === 'feature-rules' && sourceType() === 'progression') {
+              <label>Seuil de progression <input name="threshold" type="number" min="0" step="1" [ngModel]="threshold()" (ngModelChange)="threshold.set($event)" /></label>
+            } @else {
+              <label>Niveau de déblocage <input name="level" type="number" min="1" max="20" step="1" [ngModel]="unlockLevel()" (ngModelChange)="unlockLevel.set($event)" /></label>
+            }
+            @if (kind() === 'resource-rules') { <label>Bonus au maximum <input name="bonus" type="number" min="0" step="1" [ngModel]="bonus()" (ngModelChange)="bonus.set($event)" /></label> }
+          }
+        </fieldset>
+        <div class="actions"><button type="submit" [disabled]="busy() || !valid()">{{ busy() ? 'Enregistrement…' : 'Enregistrer' }}</button><button type="button" (click)="close()" [disabled]="busy()">Fermer</button></div>
+      </form>
+    } @else { <div class="placeholder"><h3>Sélectionner un élément</h3><p>Choisis un élément à gauche pour le modifier, ou crée-en un nouveau.</p></div> }
+  </section>
+</div>

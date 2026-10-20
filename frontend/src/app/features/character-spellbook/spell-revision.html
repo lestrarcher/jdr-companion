@@ -1,0 +1,29 @@
+<a [routerLink]="['/campaigns',campaignId,'characters']">Retour aux personnages</a>
+<h1>Corriger les acquisitions</h1>
+<p>Cette opération valide un état courant. Elle ne reconstitue pas les contraintes historiques de chaque niveau. Les décisions antérieures restent conservées.</p>
+@if (error()) { <p role="alert">{{ error() }}</p> }
+@if (success()) { <p role="status">{{ success() }}</p> }
+@if (busy()) { <p role="status">Chargement…</p> }
+<fieldset [disabled]="busy()">
+  <legend>Classe concernée</legend>
+  <label>Classe <select [(ngModel)]="policyId" (ngModelChange)="load()"><option [ngValue]="0">Sélectionner</option>
+    @for (policy of policies(); track policy.className) { @if (policy.policyIds.length === 1) { <option [ngValue]="policy.policyIds[0]">{{ policy.className }}</option> } }
+  </select></label>
+</fieldset>
+@if (options(); as data) {
+  <fieldset [disabled]="busy()">
+    <legend>Nouvelle sélection complète</legend>
+    <label>Politique cible <select [(ngModel)]="targetPolicyId" (ngModelChange)="changed()">@for (target of data.targets; track target.id) { <option [ngValue]="target.id">{{ target.label }}</option> }</select></label>
+    <ul>@for (spell of selected(); track spell.id) { <li>{{ spell.name }} <button type="button" (click)="remove(spell.id)">Retirer {{ spell.name }}</button></li> }</ul>
+    <form (ngSubmit)="search()"><label>Rechercher dans le catalogue <input name="query" [(ngModel)]="query" maxlength="200"></label><button>Rechercher</button></form>
+    <p>Les résultats du catalogue ne garantissent pas l’éligibilité. Les règles sont vérifiées lors de l’enregistrement.</p>
+    <ul>@for (spell of results(); track spell.id) { <li>{{ spell.name }} — niveau {{ spell.level }} <button type="button" (click)="add(spell)">Ajouter {{ spell.name }}</button></li> }</ul>
+    <label><input type="checkbox" [(ngModel)]="overrideRules" (ngModelChange)="changed()"> Dérogation MJ : autoriser une exception d’éligibilité ou de quota.</label>
+    <p>Les contrôles de propriété, visibilité, doublons et intégrité restent obligatoires.</p>
+    <label>Motif obligatoire <textarea [(ngModel)]="reason" (ngModelChange)="changed()" maxlength="10000" required></textarea></label>
+    <label><input type="checkbox" [(ngModel)]="confirmed"> Je confirme cette sélection complète et le remplacement des décisions courantes de cette classe.</label>
+    <button type="button" (click)="save()" [disabled]="!confirmed || !reason.trim()">Enregistrer la révision</button>
+  </fieldset>
+  <h2>Journal des révisions</h2>
+  @for (entry of data.history; track entry.id) { <p>{{ entry.decided_at }} — {{ entry.override_rules ? 'Dérogation MJ' : 'Correction stricte' }} : {{ entry.reason }} ({{ entry.retired_count }} décisions archivées, {{ entry.created_count }} nouvelles).</p> }
+}

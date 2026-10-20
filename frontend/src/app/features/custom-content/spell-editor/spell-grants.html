@@ -1,0 +1,38 @@
+<section aria-label="Attributions de sous-classes">
+  <h3>Attributions particulières de sous-classes</h3>
+  <p>Les règles personnelles appartiennent à vos sous-classes CUSTOM, y compris lorsqu’elles accordent un sort OFFICIAL. Elles ne modifient ni le sort global ni les personnages.</p>
+  <button type="button" (click)="load()" [disabled]="busy() || disabled() || loading()">{{ opened() ? 'Actualiser les attributions' : 'Afficher les attributions' }}</button>
+  @if (loading()) { <p role="status">Chargement…</p> }
+  @if (error()) { <p role="alert">{{ error() }}</p> }
+  @if (opened() && !loading()) {
+    @for (row of rows(); track row.id) {
+      <article><h4>{{ row.subclassName }} · {{ row.origin === 'CUSTOM' ? 'Personnel' : 'Officiel' }}</h4><p>{{ label(row.mode) }} · niveau {{ row.unlockLevel }} en {{ row.activationClassName }}</p>
+      <p>Classe de lancement : {{ row.castingClassName ?? 'Aucune' }} · Emplacements : {{ slotLabel(row.slotUsage) }}</p>
+      @if (row.restrictions) { <p>{{ row.restrictions }}</p> }
+      @if (row.resourceId) { <p>{{ row.resourceName }} · coût {{ row.resourceCost }}</p> }
+      @if (row.editable) { <button type="button" (click)="edit(row)" [disabled]="busy() || disabled()">Modifier</button><button type="button" (click)="remove(row)" [disabled]="busy() || disabled()">Supprimer</button> }
+      </article>
+    } @empty { <p>Aucune attribution visible.</p> }
+    <button type="button" (click)="edit(null)" [disabled]="busy() || disabled() || !options().subclasses.length">Ajouter une attribution personnelle</button>
+    @if (!options().subclasses.length) { <p>Aucune sous-classe CUSTOM disponible pour votre compte.</p> }
+  }
+  @if (editing()) {
+    <form #grantForm="ngForm" (ngSubmit)="save()"><fieldset [disabled]="busy() || disabled()">
+      @if (selected()) { <p>Source : {{ selected()!.subclassName }} (identité conservée)</p> } @else {
+        <label>Sous-classe source<app-reference-picker name="subclassId" label="Sous-classe source" [options]="subclassChoices()" [(ngModel)]="draft.subclassId" [nullable]="false" [disabled]="busy() || disabled()" /></label>
+      }
+      <label>Mode<select name="mode" [(ngModel)]="draft.mode" (ngModelChange)="changeMode()">@for (m of options().modes; track m.value) { <option [value]="m.value">{{ m.label }}</option> }</select></label>
+      <label>Impact sur le quota applicable<select name="quotaImpact" [(ngModel)]="draft.quotaImpact"><option value="unspecified">Non renseigné</option><option value="free">Gratuit</option><option value="counts-toward-quota">Compte dans le quota</option></select></label>
+      <p>Le mode et la politique de la source déterminent le quota concerné. Ce champ ne crée aucun choix de personnage.</p>
+      <label>Niveau dans la classe de la sous-classe source<input type="number" name="unlockLevel" [(ngModel)]="draft.unlockLevel" min="1" max="20" required></label>
+      <label>Classe de lancement<app-reference-picker name="castingClassId" label="Classe de lancement" [options]="options().classes" [(ngModel)]="draft.castingClassId" [nullable]="draft.mode === 'grant-cast'" [disabled]="busy() || disabled()" /></label>
+      @if (draft.mode === 'grant-cast') {
+        <label>Emplacements<select name="slotUsage" [(ngModel)]="draft.slotUsage" required><option [ngValue]="null">Choisir</option><option value="required">Requis</option><option value="not-required">Non requis</option><option value="either">Avec ou sans emplacement</option></select></label>
+        <label>Restrictions<textarea name="restrictions" [(ngModel)]="draft.restrictions" maxlength="10000"></textarea></label>
+        <label>Ressource<app-reference-picker name="resourceId" label="Ressource" [options]="options().resources" [(ngModel)]="draft.resourceId" [nullable]="true" [disabled]="busy() || disabled()" /></label>
+        <label>Coût<input type="number" name="resourceCost" [(ngModel)]="draft.resourceCost" min="1" max="2147483647" [required]="draft.resourceId !== null"></label>
+      }
+      <button type="submit" [disabled]="grantForm.invalid">Enregistrer l’attribution</button><button type="button" (click)="cancel()">Annuler</button>
+    </fieldset></form>
+  }
+</section>

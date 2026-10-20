@@ -47,6 +47,18 @@ class CharacterRace
         return $this->owner;
     }
 
+    /** Mark a newly created reference as owned by this MJ. Never transfer ownership. */
+    public function markAsPersonalReference(User $owner): static
+    {
+        if ($this->id !== null || $this->origin !== ReferenceOrigin::Official || $this->owner !== null) {
+            throw new \LogicException('Only new references can be marked as personal.');
+        }
+        $this->origin = ReferenceOrigin::Custom;
+        $this->owner = $owner;
+        $this->setCustom(true);
+        return $this;
+    }
+
     // No independent setters: custom creation is deliberately not exposed yet.
     #[ORM\PrePersist]
     #[ORM\PreUpdate]

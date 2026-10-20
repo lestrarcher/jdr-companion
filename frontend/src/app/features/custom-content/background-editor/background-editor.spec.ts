@@ -15,7 +15,7 @@ describe('Background editor integrated in custom content', () => {
   const root = (): HTMLElement => fixture.nativeElement;
   async function settle() { fixture.detectChanges(); await fixture.whenStable(); fixture.detectChanges(); }
   async function click(text: string, scope: ParentNode = root()) {
-    const button = Array.from(scope.querySelectorAll<HTMLButtonElement>('button')).find(b => b.textContent?.trim() === text);
+    const button = scope === root() && ['Consulter', 'Modifier'].includes(text) ? scope.querySelector<HTMLButtonElement>('.background-select') ?? undefined : Array.from(scope.querySelectorAll<HTMLButtonElement>('button')).find(b => b.textContent?.trim() === text);
     expect(button).toBeDefined(); button!.click(); await settle();
   }
   async function set(name: string, value: string) {
@@ -34,7 +34,7 @@ describe('Background editor integrated in custom content', () => {
     TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(CustomContent); fixture.detectChanges();
-    http.expectOne('/api/reference/custom/features').flush({ features: [] }); await settle();
+    const initialFeatures = http.match('/api/reference/custom/features'); expect(initialFeatures).toHaveLength(3); initialFeatures.forEach(request => request.flush({ features: [] })); http.expectOne('/api/reference/custom/resources').flush({ resources: [] }); await settle();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
   afterEach(() => { http.verify(); vi.restoreAllMocks(); });
@@ -48,7 +48,7 @@ describe('Background editor integrated in custom content', () => {
     expect(root().textContent).not.toContain('Supprimer');
   });
   it('generates an editable slug, saves and refreshes the collection', async () => {
-    await load([]); await click('Créer un historique');
+    await load([]); await click('+ Créer');
     await set('name', 'Égaré des Brumes');
     expect((root().querySelector('[name="slug"]') as HTMLInputElement).value).toBe('egare-des-brumes');
     await set('slug', 'mon-historique'); await set('name', 'Autre nom');

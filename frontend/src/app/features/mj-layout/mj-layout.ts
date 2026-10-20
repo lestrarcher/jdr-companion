@@ -67,8 +67,8 @@ export class MjLayout {
 
     if (!campaignId) {
       this.navigationLoading.set(false);
-      this.breadcrumbs.set([{ label: snapshot.routeConfig?.path === 'custom-content'
-        ? 'Contenu personnalisé' : 'Campagnes' }]);
+      this.breadcrumbs.set([{ label: snapshot.routeConfig?.path?.startsWith('dnd/reference') || snapshot.routeConfig?.path === 'custom-content'
+        ? 'Référentiel D&D' : 'Campagnes' }]);
       return;
     }
 

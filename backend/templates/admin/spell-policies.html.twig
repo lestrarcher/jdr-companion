@@ -1,0 +1,33 @@
+{% extends 'admin/base.html.twig' %}
+{% block title %}Politiques de magie officielles{% endblock %}
+{% block body %}
+<h1>Politiques de magie officielles</h1>
+<p>Une modification crée une nouvelle version. Les acquisitions et les décisions existantes conservent leur version et leur historique.</p>
+<form method="get" class="panel">
+  <h2>Préparer une politique sans l’enregistrer</h2>
+  <label>Classe source<select name="sourceId" required>{% for ref in options.classes %}<option value="{{ ref.id }}">{{ ref.name }}</option>{% endfor %}</select></label>
+  <label>Préréglage<select name="preset"><option value="artificer">Artificier</option><option value="warlock">Occultiste et Arcanums</option><option value="druid">Druide</option><option value="sorcerer">Ensorceleur</option></select></label>
+  <label><input type="checkbox" name="tasha" value="1">Activer explicitement le remplacement facultatif Tasha (hors Artificier)</label>
+  <button type="submit">Préparer le brouillon</button>
+</form>
+{% if options.migrationRequired %}<p role="status">L’édition 13C attend l’application autorisée de sa migration.</p>{% endif %}
+{% if error %}<p role="alert">{{ error }}</p>{% endif %}
+{% if not options.migrationRequired %}
+<section class="panel" id="spell-policy-guide" data-options="{{ options|json_encode|e('html_attr') }}"></section>
+<script src="/assets/admin/spell-policy-guide.js" defer></script>
+{% endif %}
+<form method="post" class="panel">
+  <input type="hidden" name="_token" value="{{ csrf_token('spell_policies') }}">
+  <label>Définition<select name="kind"><option value="policy" {{ kind == 'policy' ? 'selected' }}>Politique et choix</option><option value="substitution" {{ kind == 'substitution' ? 'selected' }}>Règle de substitution individuelle</option></select></label>
+  <label>Configuration avancée (JSON)<textarea name="document" rows="24" required>{{ document }}</textarea></label>
+  <p>Les tables comportent vingt niveaux. Les références sont vérifiées côté serveur. Copier une définition ci-dessous, augmenter sa version et modifier les paramètres nécessaires.</p>
+  <button type="submit" {{ options.migrationRequired ? 'disabled' }}>Créer cette version officielle</button>
+</form>
+<section class="panel"><h2>Références disponibles</h2>
+{% for category in ['classes','subclasses','grants'] %}<h3>{{ category == 'classes' ? 'Classes' : (category == 'subclasses' ? 'Sous-classes' : 'Attributions') }}</h3><ul>{% for ref in options[category] %}<li>{{ ref.id }} — {{ ref.name }}</li>{% else %}<li>Aucune référence.</li>{% endfor %}</ul>{% endfor %}
+</section>
+<section class="panel"><h2>Versions existantes</h2>
+{% for policy in options.policies %}<details><summary>{{ policy.sourceName }} — version {{ policy.version }}</summary><pre>{{ policy.document|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre></details>{% else %}<p>Aucune politique configurée. Le contrat des champs et un exemple sont documentés dans la roadmap 13C.</p>{% endfor %}
+{% for rule in options.substitutions %}<details><summary>Substitution {{ rule.id }} — version {{ rule.version }}</summary><pre>{{ rule.document|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre></details>{% endfor %}
+</section>
+{% endblock %}

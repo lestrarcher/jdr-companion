@@ -19,3 +19,6 @@ button:disabled, fieldset:disabled { opacity: 0.65; }
 button:disabled { cursor: wait; }
 input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px solid #e0c471; outline-offset: 3px; }
 @media (max-width: 650px) { .mechanics-grid { grid-template-columns: 1fr; } .resource-editor, fieldset { padding: 0.8rem; } }
+
+:host { margin-bottom:0; }
+.resource-editor { border:0; background:transparent; padding:0; }

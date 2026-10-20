@@ -17,18 +17,26 @@
 
   <section id="custom-collection" aria-labelledby="collection-title" [attr.aria-busy]="current().status === 'loading'">
     <h2 id="collection-title">{{ category().label }}</h2>
-    @if (active() === 'backgrounds') {
+    @if (active() === 'classes') {
+      <app-catalogue-manager category="classes" (busyChange)="catalogueBusy.set($event)" />
+    } @else if (active() === 'subclasses') {
+      <app-catalogue-manager category="subclasses" (busyChange)="catalogueBusy.set($event)" />
+    } @else if (active() === 'races') {
+      <app-catalogue-manager category="races" (busyChange)="catalogueBusy.set($event)" />
+    } @else if (active() === 'feats') {
+      <app-catalogue-manager category="feats" (busyChange)="catalogueBusy.set($event)" />
+    } @else if (active() === 'progressions') {
+      <app-catalogue-manager category="progressions" (busyChange)="catalogueBusy.set($event)" />
+    } @else if (active() === 'spells') {
+      <app-spell-editor (busyChange)="spellBusy.set($event)" />
+    } @else if (active() === 'backgrounds') {
       <app-background-editor (busyChange)="backgroundBusy.set($event)" />
+    } @else if (active() === 'features' || active() === 'feature-rules' || active() === 'resource-rules') {
+      <app-definition-manager [kind]="$any(active())" (busyChange)="definitionBusy.set($event)" />
     } @else {
     @if (active() === 'resources') {
       @if (feedback()) { <p role="status">{{ feedback() }}</p> }
       @if (mutationError()) { <p class="error-message" role="alert">{{ mutationError() }}</p> }
-      @if (current().status === 'ready') {
-        <button #createResource type="button" class="create-resource" [disabled]="busy() || !!editor()" (click)="openEditor(null, $event)">Créer une ressource</button>
-      }
-      @if (editor(); as editing) {
-        <app-resource-editor [resource]="editing.resource" (saved)="resourceSaved($event)" (closed)="closeEditor()" />
-      }
     }
     @if (current().status === 'loading' || current().status === 'idle') {
       <p class="collection-state" role="status">Chargement de la collection…</p>
@@ -38,23 +46,93 @@
         <button type="button" (click)="retry()">Réessayer</button>
       </div>
     } @else {
-      <div class="catalogue-grid">
-        @for (item of current().items; track item.id) {
-          <article class="catalogue-card">
-            <h3>{{ item.title }}</h3>
-            @if (item.description) { <p class="description">{{ item.description }}</p> }
-            @for (detail of item.details; track $index) { <p class="detail">{{ detail }}</p> }
-            @if (active() === 'resources' && item.resource; as resource) {
-              <div class="resource-actions">
-                <button type="button" [disabled]="busy() || !!editor()" (click)="openEditor(resource, $event)" [attr.aria-label]="'Modifier ' + item.title">Modifier</button>
-                <button type="button" [disabled]="busy() || !!editor()" (click)="deleteResource(resource, $event)" [attr.aria-label]="'Supprimer ' + item.title">{{ deletingId() === item.id ? 'Suppression…' : 'Supprimer' }}</button>
+      @if (active() === 'resources') {
+        <div class="manager-layout">
+          <aside class="manager-sidebar" aria-label="Liste des ressources">
+            <div class="manager-sidebar__header">
+              <div><span class="manager-eyebrow">Catalogue</span><h3>Ressources</h3></div>
+              <button #createResource type="button" [disabled]="busy() || !!editor()" (click)="openEditor(null, $event)">+ Créer</button>
+            </div>
+            <div class="manager-list">
+              @for (item of current().items; track item.id) {
+                <article class="manager-list-item" [class.is-selected]="editor()?.resource?.id === item.id">
+                  <button type="button" class="manager-list-item__select" [disabled]="busy() || !!editor()" (click)="openEditor(item.resource!, $event)" [attr.aria-label]="'Modifier ' + item.title">
+                    <strong>{{ item.title }}</strong>
+                    @if (item.description) { <span class="description">{{ item.description }}</span> }
+                    @for (detail of item.details; track $index) { <span class="detail">{{ detail }}</span> }
+                  </button>
+                  @if (item.resource; as resource) {
+                    <button class="manager-list-item__delete" type="button" [disabled]="busy() || !!editor()" (click)="deleteResource(resource, $event)" [attr.aria-label]="'Supprimer ' + item.title">{{ deletingId() === item.id ? 'Suppression…' : 'Supprimer' }}</button>
+                  }
+                </article>
+              } @empty { <p class="collection-state">{{ category().empty }}</p> }
+            </div>
+          </aside>
+          <div class="manager-content">
+            @if (editor(); as editing) {
+              <app-resource-editor [resource]="editing.resource" (saved)="resourceSaved($event)" (closed)="closeEditor()" />
+            } @else {
+              <div class="manager-placeholder"><span class="manager-eyebrow">Éditeur</span><h3>Sélectionner une ressource</h3><p>Choisis une ressource dans la liste pour la modifier, ou crée-en une nouvelle.</p></div>
+            }
+          </div>
+        </div>
+      } @else {
+        <div class="manager-layout manager-layout--readonly">
+          <aside class="manager-sidebar" [attr.aria-label]="'Liste : ' + category().label">
+            <div class="manager-sidebar__header">
+              <div><span class="manager-eyebrow">Bibliothèque</span><h3>{{ category().label }}</h3></div>
+              <span class="manager-count">{{ current().items.length }}</span>
+            </div>
+            <div class="manager-filters">
+              <label for="catalogue-filter">Rechercher</label>
+              <input id="catalogue-filter" type="search" [value]="catalogueSearch()" (input)="catalogueSearch.set($any($event.target).value)" placeholder="Nom, description, détail…" />
+            </div>
+            <div class="manager-list" role="list">
+              @for (item of filteredCatalogueItems(); track item.id) {
+                <div class="manager-list-item" role="listitem" [class.is-selected]="selectedCatalogueItem()?.id === item.id">
+                  <button type="button" class="manager-list-item__select" [attr.aria-pressed]="selectedCatalogueItem()?.id === item.id" (click)="selectCatalogueItem(item.id)">
+                    <strong>{{ item.title }}</strong>
+                    @if (item.description) { <span class="description">{{ item.description }}</span> }
+                    @for (detail of item.details; track $index) { <span class="detail">{{ detail }}</span> }
+                  </button>
+                </div>
+              } @empty {
+                <p class="collection-state" role="status">{{ current().items.length ? 'Aucun résultat pour cette recherche.' : category().empty }}</p>
+              }
+            </div>
+          </aside>
+          <section class="manager-content" aria-label="Détail de l’élément sélectionné">
+            @if (selectedCatalogueItem(); as item) {
+              <div class="manager-detail">
+                <header class="manager-detail__header">
+                  <span class="manager-eyebrow">Consultation · {{ category().label }}</span>
+                  <h3>{{ item.title }}</h3>
+                  <span class="manager-readonly">Lecture seule</span>
+                </header>
+                @if (item.description) {
+                  <section class="manager-detail__section">
+                    <h4>Description</h4>
+                    <p class="description">{{ item.description }}</p>
+                  </section>
+                }
+                @if (item.details.length) {
+                  <section class="manager-detail__section">
+                    <h4>@if (active() === 'feature-rules') { Déblocage } @else if (active() === 'resource-rules') { Règle de ressource } @else { Propriétés }</h4>
+                    @for (detail of item.details; track $index) { <p class="manager-detail__property">{{ detail }}</p> }
+                  </section>
+                }
+                <p class="manager-detail__note">Les opérations de création et de modification seront réactivées après vérification des API actuelles.</p>
+              </div>
+            } @else {
+              <div class="manager-placeholder">
+                <span class="manager-eyebrow">Consultation</span>
+                <h3>Sélectionner un élément</h3>
+                <p>Choisis un élément dans la liste pour afficher ses informations.</p>
               </div>
             }
-          </article>
-        } @empty {
-          <p class="collection-state" role="status">{{ category().empty }}</p>
-        }
-      </div>
+          </section>
+        </div>
+      }
     }
     }
   </section>
