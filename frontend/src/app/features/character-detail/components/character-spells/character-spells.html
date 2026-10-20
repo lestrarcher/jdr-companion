@@ -1,0 +1,6 @@
+<nav class="spell-actions" aria-label="Gestion des sorts">
+  <h2>Gestion des sorts</h2>
+  <a [routerLink]="['/campaigns', campaignId(), 'characters', character().id, 'spellbook']">Gérer les copies de grimoire</a>
+  <a [routerLink]="['/campaigns', campaignId(), 'characters', character().id, 'spell-revision']">Corriger les acquisitions de sorts</a>
+  <a [routerLink]="['/campaigns', campaignId(), 'characters', character().id, 'spell-substitutions']">Gérer les substitutions de sorts</a>
+</nav>

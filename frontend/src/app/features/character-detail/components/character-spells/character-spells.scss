@@ -1,0 +1,10 @@
+:host { display: block; }
+.spell-actions {
+  display: flex; flex-wrap: wrap; gap: .75rem 1.5rem;
+  padding: 1rem; margin-bottom: 1.5rem;
+  border: 1px solid rgba(216, 180, 93, .25);
+  background: rgba(26, 26, 38, .97);
+  h2 { flex-basis: 100%; font-size: 1rem; margin: 0; color: #d8b45d; }
+  a { color: #d8b45d; text-underline-offset: .2em; }
+  a:focus-visible { outline: 2px solid #d8b45d; outline-offset: 4px; }
+}

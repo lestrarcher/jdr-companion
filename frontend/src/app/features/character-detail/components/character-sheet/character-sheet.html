@@ -1,0 +1,197 @@
+@let currentCharacter = character();
+
+<header class="profile-header">
+  <h2 class="management-title">Gérer le personnage</h2>
+  <div class="profile-actions">
+    @if (isStructured(currentCharacter) && !editorOpened()) {
+      <button type="button" class="secondary-button" (click)="trainingRequested.emit()">
+        Compléter les maîtrises
+      </button>
+    }
+    <button
+      type="button"
+      class="secondary-button"
+      [disabled]="loading()"
+      (click)="refreshRequested.emit()"
+    >
+      Actualiser
+    </button>
+
+    @if (isStructured(currentCharacter) && !editorOpened()) {
+      <button type="button" class="secondary-button" (click)="hitPointHistoryRequested.emit()">
+        {{ currentCharacter.hitPoints.complete ? 'Modifier les PV' : 'Compléter les PV' }}
+      </button>
+    }
+
+    @if (isStructured(currentCharacter) && !editorOpened()) {
+      <button type="button" class="secondary-button" (click)="progressionsRequested.emit()">
+        Progressions
+      </button>
+    }
+
+    @if (isStructured(currentCharacter) && canLevelUp() && !editorOpened()) {
+      <button type="button" class="primary-button" (click)="levelUpRequested.emit()">
+        Monter de niveau
+      </button>
+    }
+  </div>
+</header>
+
+@if (!isStructured(currentCharacter)) {
+  <section class="legacy-warning">
+    <strong>Configuration historique</strong>
+    <p>
+      Ce personnage utilise encore sa définition JSON. Sa progression normalisée et ses capacités
+      automatiques ne sont pas disponibles.
+    </p>
+  </section>
+}
+
+<ng-content />
+
+<section class="profile-section" aria-labelledby="profile-summary-title">
+  <header class="section-header"><h3 id="profile-summary-title">Synthèse</h3></header>
+  <div class="identity-summary">
+    <div>
+      <span>Race</span>
+      <strong>{{ currentCharacter.race?.name ?? 'Non renseignée' }}</strong>
+    </div>
+
+    <div>
+      <span>Niveau global</span>
+      <strong>{{ currentCharacter.totalLevel }}</strong>
+    </div>
+
+    <div>
+      <span>Bonus de maîtrise</span>
+      <strong>+{{ currentCharacter.proficiencyBonus }}</strong>
+    </div>
+
+    <div
+      class="hit-point-summary"
+      [class.hit-point-summary--incomplete]="!currentCharacter.hitPoints.complete"
+    >
+      <span>Points de vie maximums</span>
+
+      @if (currentCharacter.hitPoints.maximumValue !== null) {
+        <strong>{{ currentCharacter.hitPoints.maximumValue }} PV</strong>
+        <small>
+          {{ currentCharacter.hitPoints.baseValue }} de base +
+          {{ currentCharacter.hitPoints.constitutionBonus }} de Constitution
+        </small>
+      } @else {
+        <strong>À compléter</strong>
+        <small>
+          Niveaux manquants :
+          {{ currentCharacter.hitPoints.missingLevelPositions.join(', ') }}
+        </small>
+      }
+    </div>
+  </div>
+</section>
+
+<div class="profile-columns">
+  <section class="profile-section">
+    <header class="section-header">
+      <div>
+        <span class="eyebrow">Progression</span>
+        <h3>Classes et sous-classes</h3>
+      </div>
+    </header>
+
+    <div class="summary-list">
+      @for (classEntry of currentCharacter.classSummary; track classEntry.classId) {
+        <article class="summary-card">
+          <div class="summary-content">
+            <strong>{{ classEntry.className }}</strong>
+
+            @if (classEntry.subclassName) {
+              <span>{{ classEntry.subclassName }}</span>
+            }
+          </div>
+
+          <div class="summary-badges">
+            <span>d{{ classEntry.hitDie }}</span>
+            <b>Niveau {{ classEntry.level }}</b>
+          </div>
+        </article>
+      } @empty {
+        <p class="section-empty">
+          Aucune classe structurée. {{ progressionLabel(currentCharacter) }}
+        </p>
+      }
+    </div>
+  </section>
+
+  <section class="profile-section">
+    <header class="section-header">
+      <div>
+        <span class="eyebrow">Personnalisation</span>
+        <h3>Dons</h3>
+      </div>
+    </header>
+
+    <div class="summary-list">
+      @for (feat of currentCharacter.feats; track feat.id) {
+        <article class="summary-card">
+          <div class="summary-content">
+            <strong>{{ feat.name }}</strong>
+
+            @if (abilityLabel(currentCharacter, feat.chosenAbility); as chosenAbility) {
+              <span>+{{ feat.abilityIncrease }} {{ chosenAbility }}</span>
+            }
+          </div>
+
+          @if (feat.acquiredAtLevel) {
+            <div class="summary-badges">
+              <b>Niveau {{ feat.acquiredAtLevel }}</b>
+            </div>
+          }
+        </article>
+      } @empty {
+        <p class="section-empty">Aucun don.</p>
+      }
+    </div>
+  </section>
+</div>
+
+<div class="profile-progressions">
+  <section class="profile-section">
+    <header class="section-header"><h3>Progressions personnelles</h3></header>
+    <div class="summary-list">
+      @for (progression of currentCharacter.progressions; track progression.id) {
+        <details class="feature-card">
+          <summary>
+            <strong>{{ progression.name }}</strong>
+          </summary>
+          @if (progression.description) {
+            <p>{{ progression.description }}</p>
+          }
+          <p>
+            Minimum : {{ progression.minimumValue }} · Maximum :
+            {{ progression.maximumValue ?? 'Non limité' }}
+          </p>
+          <ul class="stage-list">
+            @for (stage of progression.stages; track stage.id) {
+              <li>
+                {{ stage.label }} : {{ stage.minimumValue }} à
+                {{ stage.maximumValue ?? 'sans limite' }}
+              </li>
+            }
+          </ul>
+        </details>
+      } @empty {
+        <p class="section-empty">Aucune progression attribuée.</p>
+      }
+    </div>
+  </section>
+</div>
+
+<section class="profile-section" aria-label="Caractéristiques et compétences">
+  <app-character-statistics
+    [abilities]="currentCharacter.abilities"
+    [training]="currentCharacter.training ?? null"
+    [proficiencyBonus]="currentCharacter.proficiencyBonus"
+    mode="detail"
+  />
+</section>

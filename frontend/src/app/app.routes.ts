@@ -96,6 +96,13 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'campaigns/:campaignId/characters/:characterId',
+        loadComponent: () =>
+          import('./features/character-detail/character-detail').then(
+            component => component.CharacterDetail,
+          ),
+      },
+      {
         path: 'campaigns/:campaignId',
         loadComponent: () =>
           import('./features/campaign-detail/campaign-detail').then(

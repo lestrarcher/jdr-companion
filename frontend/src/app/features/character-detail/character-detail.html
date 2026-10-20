@@ -1,0 +1,134 @@
+<main class="character-detail-page">
+  <a class="back-link" [routerLink]="['/campaigns', campaignId, 'characters']">← Retour aux personnages</a>
+
+      <section class="profile-panel">
+        @if (profileLoading()) {
+          <div class="profile-state">
+            Chargement de la fiche…
+          </div>
+        } @else if (profile(); as character) {
+          <header class="character-heading">
+            <div>
+              <p class="identity-meta">
+                @if (character.type === 'player') { <span>PJ</span> }
+                @else if (character.type === 'npc') { <span>PNJ</span> }
+                @if (character.playerName) { <span>Joué par {{ character.playerName }}</span> }
+              </p>
+              <h1>{{ character.name }}</h1>
+              <p class="identity-meta">
+                @if (character.race) { <span>{{ character.race.name }}</span> }
+                @if (classSummary()) { <span>{{ classSummary() }}</span> }
+                <span>Niveau {{ character.totalLevel }}</span>
+              </p>
+            </div>
+            <button type="button" class="secondary-button" (click)="refreshProfile()" [disabled]="profileLoading()">Actualiser</button>
+          </header>
+          <nav class="character-tabs" role="tablist" aria-label="Sections du personnage">
+            @for (tab of tabs; track tab.id; let index = $index) {
+              <button type="button" role="tab" [id]="'tab-' + tab.id"
+                [attr.aria-controls]="'panel-' + tab.id"
+                [attr.aria-selected]="activeTab() === tab.id"
+                [attr.tabindex]="activeTab() === tab.id ? 0 : -1"
+                (click)="activeTab.set(tab.id)" (keydown)="tabKeydown($event, index)">
+                {{ tab.label }}
+              </button>
+            }
+          </nav>
+          <section id="panel-sheet" role="tabpanel" aria-labelledby="tab-sheet" tabindex="0" [hidden]="activeTab() !== 'sheet'">
+            <app-character-sheet
+              [character]="character"
+              [canLevelUp]="levelUpOptions()?.canLevelUp ?? false"
+              [loading]="profileLoading()"
+              [editorOpened]="activeEditor() !== null"
+              (refreshRequested)="refreshProfile()"
+              (levelUpRequested)="openEditor('level-up')"
+              (hitPointHistoryRequested)="openEditor('hit-points')"
+              (progressionsRequested)="openEditor('progressions')"
+              (trainingRequested)="openEditor('training')"
+            >
+            @if (success()) {
+              <p class="message message--success">
+                {{ success() }}
+              </p>
+            }
+
+            @if (profileError()) {
+              <p class="message message--error">
+                {{ profileError() }}
+              </p>
+            }
+
+            @if (activeEditor() === 'training') {
+              <app-character-training [characterId]="character.id" (completed)="closeEditor(); refreshProfile()" (cancelled)="closeEditor()" />
+            }
+            @if (activeEditor() === 'level-up') {
+              @if (levelUpOptions(); as options) {
+                <app-character-level-up
+                  [character]="character"
+                  [options]="options"
+                  [abilities]="options.abilities"
+                  [feats]="options.feats"
+                  [submitting]="levelUpSubmitting()"
+                  [trainingPreview]="loadTraining"
+                  (submitted)="submitLevelUp($event)"
+                  (cancelled)="closeEditor()"
+                />
+              }
+            }
+
+            @if (activeEditor() === 'hit-points') {
+              <app-character-hit-point-history
+                [campaignId]="campaignId"
+                [character]="character"
+                (completed)="hitPointHistoryCompleted($event)"
+                (cancelled)="closeEditor()"
+              />
+            }
+
+            @if (activeEditor() === 'progressions') {
+              <app-character-progressions
+                [assigned]="character.progressions"
+                [available]="progressions()"
+                [submitting]="progressionSubmitting()"
+                (progressionAdded)="addProgression($event)"
+                (progressionRemoved)="removeProgression($event)"
+                (cancelled)="closeEditor()"
+              />
+            }
+
+            </app-character-sheet>
+          </section>
+          <section id="panel-equipment" role="tabpanel" aria-labelledby="tab-equipment" tabindex="0" [hidden]="activeTab() !== 'equipment'">
+            <app-character-equipment [character]="character" />
+          </section>
+          <section id="panel-spells" role="tabpanel" aria-labelledby="tab-spells" tabindex="0" [hidden]="activeTab() !== 'spells'">
+            <app-character-spells [character]="character" [campaignId]="campaignId" />
+          </section>
+          <section id="panel-history" role="tabpanel" aria-labelledby="tab-history" tabindex="0" [hidden]="activeTab() !== 'history'">
+            <app-character-history [character]="character" />
+          </section>
+          <section id="panel-resources" role="tabpanel" aria-labelledby="tab-resources" tabindex="0" [hidden]="activeTab() !== 'resources'">
+            <app-character-abilities-resources [character]="character" />
+          </section>
+
+        } @else if (profileError()) {
+          <div class="profile-state profile-state--error">
+            <p>{{ profileError() }}</p>
+
+            <button
+              type="button"
+              class="secondary-button"
+              (click)="refreshProfile()"
+            >
+              Réessayer
+            </button>
+          </div>
+        } @else {
+          <div class="profile-state">
+            <span class="empty-symbol">◇</span>
+            <h2>Fiche indisponible</h2>
+            <p>Reviens à la liste pour choisir un personnage.</p>
+          </div>
+        }
+      </section>
+</main>
