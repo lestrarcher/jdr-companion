@@ -116,6 +116,11 @@ try {
     $check(isset($singleRows[$key($extension)]) && !isset($singleRows[$key($known)]), 'Class level one includes extension but not level-two knowledge');
     $check(isset($multiRows[$key($known)]) && !isset($multiRows[$key($prepared)]), 'Total level six cannot unlock a source-class level-three grant');
     $check(isset($threeRows[$key($prepared)]) && $threeRows[$key($prepared)]->mode === 'grant-always-prepared', 'Exact level threshold activates prepared grant');
+    $historicalRows = $byKey($resolver->resolve($atThree, [], 1));
+    $check(!isset($historicalRows[$key($known)]) && !isset($historicalRows[$key($prepared)]), 'Historical resolution does not activate future subclass grants');
+    $historicalMulti = $byKey($resolver->resolve($multi, [], 2));
+    $check(count(array_filter($historicalMulti, static fn ($r) => $r->mode === 'class-list' && $r->source['classId'] === $b->getId())) === 0 && $historicalMulti[$key($known)]->castingClass['characterLevel'] === 0, 'Historical casting class has no levels acquired later');
+    $check($resolver->resolve($multi, [], 0) === [], 'Before the first level no class or subclass access is invented');
     $check($multiRows[$key($known)]->castingClass['id'] === $b->getId() && $multiRows[$key($known)]->castingClass['characterLevel'] === 4 && $multiRows[$key($known)]->source['classLevel'] === 2, 'Casting class independent of activation class');
     $check($singleRows[$key($differentClass)]->castingClass['characterLevel'] === 0 && $singleRows[$key($differentClass)]->canCast === null, 'Missing casting class recorded without inventing class acquisition or castability');
     $sameSpell = array_values(array_filter($multiRows, static fn ($r) => $r->spell['id'] === $spell['id']));
@@ -159,6 +164,7 @@ try {
     $secondLevel = $multi->getClassLevels()->get(1);
     $secondLevel->setSubclass($unusedSub);
     $check(count(array_filter($resolver->resolve($multi), static fn ($r) => $r->source['type'] === 'subclass-grant')) === 0, 'Ambiguous subclass choices never choose an arbitrary grant source');
+    $check(isset($byKey($resolver->resolve($multi, [], 1))[$key($extension)]), 'A later conflicting subclass choice does not rewrite an earlier unambiguous source');
     $secondLevel->setSubclass(null);
     (new ReflectionProperty($secondLevel, 'subclass'))->setValue($secondLevel, $otherSub);
     $check(count(array_filter($resolver->resolve($multi), static fn ($r) => $r->source['type'] === 'subclass-grant')) === 0, 'Invisible subclass does not expose source grants');

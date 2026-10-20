@@ -50,7 +50,7 @@ final class Dnd2014SpellPolicies
             'bard-2014' => 'Utiliser Dnd2014AdvancedSpellPolicies::bard avec les références explicites.',
             'eldritch-knight-2014' => 'Utiliser Dnd2014AdvancedSpellPolicies::thirdCaster avec la liste explicite.',
             'arcane-trickster-2014' => 'Utiliser Dnd2014AdvancedSpellPolicies::thirdCaster avec la liste et le sort imposé explicites.',
-            'artificer-2014' => 'Source complète des règles applicables à vérifier avant encodage.',
+            'artificer-2014' => 'Utiliser Dnd2014AdvancedSpellPolicies::artificer avec la classe explicitement référencée.',
         ];
     }
 }

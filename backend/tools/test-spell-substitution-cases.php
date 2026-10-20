@@ -74,12 +74,17 @@ $check($wizardPreset['rules'][1]['parameters']->values['result']==='spellbook','
 $artificerPreset=App\Service\Dnd2014AdvancedSpellPolicies::artificer($bookClass);
 $check($artificerPreset['policy']->levels[0]['maxSpellLevel']===1 && $artificerPreset['policy']->levels[16]['maxSpellLevel']===5,'Artificer spell eligibility table');
 $check($artificerPreset['rules'][0]['parameters']->values['replacements'][1]===1,'Artificer cantrip replacement after first level');
+$check(array_column($artificerPreset['policy']->levels,'cantrips')===[2,2,2,2,2,2,2,2,2,3,3,3,3,4,4,4,4,4,4,4],'Artificer cantrip gains occur at levels ten and fourteen');
+$check(array_column($artificerPreset['policy']->levels,'preparationBase')===array_map(static fn($n)=>intdiv($n,2),range(1,20)),'Artificer preparation base uses its own class level rounded down');
 $warlockPreset=App\Service\Dnd2014AdvancedSpellPolicies::warlock($bookClass);
 $optionalWarlock=App\Service\Dnd2014AdvancedSpellPolicies::warlock($bookClass,true);
+$check(max(array_column($warlockPreset['policy']->levels,'maxSpellLevel'))===5,'Ordinary Pact Magic eligibility never uses Arcanum levels');
+$check(array_keys(array_filter($optionalWarlock['rules'][0]['parameters']->values['replacements']))===[3,7,11,15,18],'Optional Pact Magic cantrip replacement only at class ASI levels');
 foreach (array_slice($warlockPreset['rules'],2) as $i=>$r) {
     $v=$r['parameters']->values;
     $check($v['result']==='cast' && $v['quota']==='free' && array_sum($v['opportunities'])===1,'Arcanum has a distinct non-known opportunity');
     $check(array_sum($v['replacements'])===0 && $optionalWarlock['rules'][$i+2]['parameters']->values['optionalReplacement'],'Tasha replacement is explicit and absent by default');
+    $check($optionalWarlock['rules'][$i+2]['parameters']->values['replacementBudget']===$optionalWarlock['rules'][0]['parameters']->values['replacementBudget'],'Optional Arcanum and Pact Magic cantrip use the same choice budget');
 }
 $castClass=new App\Entity\CharacterClass('cast-fixture','Synthetic cast choices',8,2); $em->persist($castClass); $em->flush();
 $castPreset=App\Service\Dnd2014AdvancedSpellPolicies::warlock($castClass,true);
@@ -103,6 +108,8 @@ $replacementId=$service->acquire($castCharacter,$castPolicy->getId(),[$castRepla
 $check(str_contains($db->fetchOne('SELECT decision_note FROM character_spell_acquisition WHERE id=?',[$replacementId]),'Option facultative'),'Optional replacement confirmation is recorded');
 $minorReplacement=$advancedChoice($castSpells[3]['id'],$castLevels[11],$castRules['cantrips'],$minorId)+['optionConfirmed'=>true];
 $refuse(fn()=>$service->acquire($castCharacter,$castPolicy->getId(),[$minorReplacement],'level-history','Shared option budget',$owner),409);
+$wrongRoute=$advancedChoice($castSpells[3]['id'],$castLevels[11],$castRules['cantrips'],$replacementId)+['optionConfirmed'=>true];
+$refuse(fn()=>$service->acquire($castCharacter,$castPolicy->getId(),[$wrongRoute],'level-history','Arcanum cannot become a Pact Magic cantrip',$owner),400);
 $page=$http($admin,'GET','/admin/reference/spell-policies');
 if (!preg_match('/name="_token" value="([^"]+)"/',$page->getContent(),$tokenMatch)) throw new RuntimeException('Policy CSRF input absent');
 $adminDocument=$administration->options($admin,true)['example'];

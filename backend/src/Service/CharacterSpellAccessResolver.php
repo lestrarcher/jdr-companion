@@ -25,18 +25,20 @@ final readonly class CharacterSpellAccessResolver
     {
         $owner = $character->getCampaign()->getOwner();
         $visibleClasses = array_column($this->catalogue->classOptions($owner), null, 'id');
+        $history = array_values(array_filter($character->getClassLevels()->toArray(),
+            static fn ($level) => $throughPosition === null || $level->getPosition() <= $throughPosition));
         $classes = []; $subclasses = [];
-        foreach ($character->getClassLevels() as $level) {
+        foreach ($history as $level) {
             $class = $level->getCharacterClass();
             $id = $class->getId();
             if ($id === null || isset($classes[$id]) || !isset($visibleClasses[$id]) || !ReferenceVisibility::allows($class, $owner)) continue;
-            $classes[$id] = ['id' => $id, 'name' => $visibleClasses[$id]['name'], 'characterLevel' => $character->getLevelInClass($class)];
+            $classes[$id] = ['id' => $id, 'name' => $visibleClasses[$id]['name'], 'characterLevel' => count(array_filter($history, static fn ($row) => $row->getCharacterClass() === $class))];
             // Ambiguous legacy selections must not silently choose one subclass's grants.
             $choices = [];
-            foreach ($character->getClassLevels() as $classLevel) {
-                if ($classLevel->getCharacterClass() === $class && $classLevel->getSubclass() !== null) $choices[spl_object_id($classLevel->getSubclass())] = true;
+            foreach ($history as $classLevel) {
+                if ($classLevel->getCharacterClass() === $class && $classLevel->getSubclass() !== null) $choices[spl_object_id($classLevel->getSubclass())] = $classLevel->getSubclass();
             }
-            $subclass = $character->getSubclassFor($class);
+            $subclass = count($choices) === 1 ? reset($choices) : null;
             if (count($choices) !== 1 || $subclass === null || $subclass->getId() === null
                 || $subclass->getCharacterClass() !== $class || !ReferenceVisibility::allows($subclass, $owner)) continue;
             $subclasses[$subclass->getId()] = $id;

@@ -1367,8 +1367,10 @@ push, déploiement ou intervention en production.
 
 ### 13C — Reprise, substitutions et administration (20 octobre 2026)
 
-**Statut : socle de substitutions et administration avancée testé ; 13C non
-clôturé pour la couverture complète des particularités et les parcours guidés.**
+**Statut : 13C terminé dans le périmètre explicitement clarifié par le MJ :
+règles propres aux sorts et effets des classes/sous-classes configurées.**
+La section de clôture en fin de document fait foi ; les bilans intermédiaires
+ci-dessous conservent l'historique des limites et travaux successifs.
 Les travaux antérieurs sont conservés. Aucun changement au builder, au level-up,
 à la préparation quotidienne ou au lancement en session.
 
@@ -1654,3 +1656,117 @@ listes et règles) et les contraintes sont présents. `doctrine:schema:validate`
 **mapping et synchronisation OK**. Aucun import, autre migration, réinitialisation,
 commit, push ou déploiement. Cette application ne change pas les limites
 fonctionnelles du 13C documentées plus haut.
+#### Complément métier après `ecacfeb` — 20 octobre 2026
+
+**13C non clos : ce complément corrige et vérifie une partie du métier, mais ne
+livre pas le moteur de choix d'invocations demandé. Ces lacunes restent au 13C ;
+elles ne sont pas transférées aux jalons 13D/13E.**
+
+Correction livrée dans `CharacterSpellAccessResolver` : `throughPosition` filtre
+maintenant les niveaux, les classes et le choix de sous-classe, et pas seulement
+le journal des substitutions. Une attribution débloquée ultérieurement ou une
+classe de lancement acquise plus tard n'apparaît plus rétroactivement. Un choix
+ultérieur de sous-classe contradictoire n'invalide pas une vue antérieure non
+ambiguë. Aucun changement de données ni de politique déjà enregistrée.
+
+Contrôles ajoutés : table complète des mineurs de l'Artificier (gains 10/14), base
+de préparation par niveau de classe, plafond ordinaire de Magie de pacte à 5,
+remplacements facultatifs aux niveaux ASI, partage du budget de remplacement
+mineur/Arcanum et refus de convertir un Arcanum en mineur en forgeant sa règle.
+Le message de redirection du préréglage Artificier vers le générateur avancé est
+corrigé ; aucune association automatique à une classe réelle.
+
+Résultats de cette reprise : **438 assertions acquisitions** avec `--concurrency`
+(schéma isolé nettoyé, cinq courses existantes), **109 assertions accès** (tables
+et séquences temporaires annulées), `lint:container`, `doctrine:schema:validate`
+et `git diff --check` **OK**. Les tests de budget démontrent le comportement du
+moteur, pas la couverture complète de toutes les alternatives Tasha. Aucune
+interface modifiée, donc aucun nouveau build Angular nécessaire.
+
+Points métier restant effectivement à implémenter :
+
+- Choix individuel versionné des invocations et du pacte, budgets propres,
+  prérequis de classe/pacte/capacité et remplacement. Le modèle actuel des
+  attributions pointe exclusivement vers une sous-classe : l'utiliser pour une
+  invocation choisie serait incorrect. Le moteur des capacités existant ne fournit
+  pas à lui seul ce journal de décisions.
+- Sources de sorts issues des invocations : à volonté, avec slot de pacte et
+  limite par repos, cibles/composantes particulières et rituel seulement. Le
+  [chapitre officiel Occultiste 2014](https://www.dndbeyond.com/classes/7-warlock)
+  distingue ces voies. Le Livre des secrets anciens exige en outre des choix et
+  inscriptions rituels propres au Livre des ombres ; il ne doit pas être assimilé
+  au grimoire de Magicien ni débiter le quota de sorts connus.
+- Alternatives Tasha non liées à un sort : changement de pacte et de Métamagie
+  doivent participer au budget commun approprié. Les tests actuels couvrent
+  uniquement les alternatives déjà représentées comme acquisitions de sorts.
+- Configuration complète des cercles/spécialistes et recettes de sous-classes :
+  les générateurs déclaratifs existants et leurs tests ne valent pas sélection
+  individuelle ni attribution de toutes ces capacités aux personnages.
+
+La lecture secondaire de la [règle de polyvalence occulte](https://dnd5e.wikidot.com/warlock)
+corrobore les alternatives partageant un choix ; elle n'est pas présentée comme
+un texte primaire vérifié. Les pages PDF D&D Beyond indexées n'ont pas fourni un
+texte intégral exploitable lors de cette vérification. Le point de vérification
+primaire Tasha reste donc explicitement ouvert.
+
+Fichiers de ce complément : `CharacterSpellAccessResolver.php`,
+`Dnd2014SpellPolicies.php`, `test-character-spell-access.php`,
+`test-spell-substitution-cases.php` et cette roadmap. Aucune migration créée ou
+appliquée. Les fichiers de données non suivis sont conservés. Aucun import,
+commit, push, déploiement, changement du builder ou du level-up.
+#### Clôture du 13C dans le périmètre clarifié — 20 octobre 2026
+
+**13C terminé dans le périmètre explicitement défini par le MJ.** Cette décision
+remplace les statuts intermédiaires « non clos » conservés plus haut. Elle ne
+signifie ni couverture d'un futur moteur de capacités, ni préchargement d'un
+catalogue officiel complet. Les fonctionnalités antérieures sont conservées.
+
+| Livré et vérifié | Portée exacte |
+|---|---|
+| Politiques et acquisitions | Versions explicites, budgets distincts, niveau réel de classe, listes/écoles et exceptions de choix ; propriétaire du quota indépendant de la liste empruntée et de la classe de lancement. |
+| Modes connus, grimoire et préparés | Acquisitions/reconstruction/reprise et copies selon leur contrat ; accès de liste et toujours-préparés calculés séparément. Aucun apprentissage massif d'une liste préparée. La préparation quotidienne et son état ne font pas partie de ce jalon. |
+| Effets de sous-classes | Attributions configurées avec seuils, provenance, quota explicite et visibilité ; substitutions individuelles, correction, révocation et transition append-only. Les vues historiques n'anticipent plus les niveaux ultérieurs. |
+| Occultiste | Éligibilité ordinaire de Magie de pacte limitée à 1–5, séparée des Arcanums 6–9 ; opportunités propres, résultat `cast` hors quota connu, remplacement sous la même règle d'origine. Aucun nouveau pool d'emplacements ou compteur créé. |
+| Artificier | Table préparée INT, niveaux de sorts propres, mineurs aux niveaux 1/10/14 et remplacement à partir du niveau 2 ; base de préparation par demi-niveau de classe. |
+| Druide et Ensorceleur | Politiques ordinaires, recette du mineur supplémentaire du Cercle de la Terre, attributions fixes configurables et recettes de substitutions psioniques/horlogères avec écoles et listes explicites. Aucun rapprochement par nom ou slug. |
+| Règles de sorts Tasha déjà implémentées | Activation explicite dans la version de politique, confirmation de chaque remplacement facultatif ; fréquence aux niveaux ASI, budget partagé des alternatives de sorts concernées et respect de la provenance du mineur. Aucun droit rétroactif accordé aux personnages. |
+| Administration | Formulaires guidés et JSON avancé conservés ; OFFICIAL administrateur, CUSTOM propriétaire ; décisions sur personnage réservées à son MJ. |
+
+Le report porte **uniquement sur les choix de capacités non représentés** :
+manifestations/invocations occultes, pactes, métamagies, styles de combat et autres
+sélections alternatives. Leurs prérequis, choix/remplacements et historique seront
+portés par le futur moteur transversal. Aucun de ces choix n'est inventé depuis
+la seule classe ou une description. Les apprentissages, remplacements de sorts,
+Arcanums et substitutions autonomes restent livrés au 13C ; ils ne sont pas reportés.
+
+Raccordements futurs à respecter :
+
+1. Le moteur de capacités fournira une sélection effective, son identifiant et sa
+   version figée, sa source, sa classe d'acquisition et sa position historique.
+   Ne pas détourner `SpellSubclassGrant` pour faire passer une invocation pour une
+   sous-classe ; étendre les sources avec de vraies références lorsque nécessaire.
+2. Le moteur de sorts conservera une voie par provenance : connu, toujours préparé,
+   extension de liste ou accès particulier. Une voie de capacité ne devra pas créer
+   implicitement une acquisition ordinaire, ni consommer le quota d'une autre classe.
+3. Les alternatives capacité/sort d'un même choix facultatif devront partager un
+   budget transactionnel unique. Le futur changement de pacte ou de Métamagie devra
+   consulter les décisions de remplacement de sorts déjà enregistrées, et inversement.
+   Le moteur actuel ne prétend pas contrôler une sélection de capacité inexistante.
+4. Révocation et transition devront préserver l'historique, vérifier les dépendances
+   et les permissions, et ne retirer que la voie issue de la capacité concernée.
+   Une autre acquisition du même sort devra rester indépendante. Aucun reset de
+   session, ressource ou progression ; pas de recherche implicite d'une session.
+
+Dernières vérifications ciblées : `test-character-spell-acquisitions.php
+--concurrency` **438 assertions OK**, `test-character-spell-access.php`
+**109 assertions OK**, `doctrine:schema:validate` **mapping et schéma OK**,
+`git diff --check` **OK**. Fixtures synthétiques uniquement, schéma de concurrence
+isolé nettoyé ; les refus HTTP affichés sont attendus. Les résultats Angular
+antérieurs ne sont pas présentés comme relancés : aucun changement d'interface.
+
+Cette clôture ne nécessite aucune nouvelle correction de code ni migration.
+`Version20261020130000` reste appliquée et validée en développement. Seule la
+roadmap est modifiée pour cette clarification ; les modifications précédentes
+restent intactes. Les configurations de catalogue absentes restent à renseigner
+explicitement dans les éditeurs : aucun import ou seed n'est inclus. Aucune
+ouverture des jalons 13D/13E, aucun commit, push ou déploiement.
