@@ -17,7 +17,11 @@ final class Spell2014Catalogue
         'nécromancie' => 'necromancy', 'necromancy' => 'necromancy', 'transmutation' => 'transmutation',
     ];
 
-    public function prepare(array $data, array $review): array
+    public function prepare(
+        array $data,
+        array $review,
+        array $enrichment
+    ): array
     {
         $prepared = []; $errors = []; $excluded = []; $keys = []; $slugs = []; $blockers = [];
         if (($review['rightsStatus'] ?? null) !== 'verified' || empty($review['rightsEvidence']) || empty($review['attribution'])) $blockers[] = 'Droits de réutilisation du corpus non établis (résumés et traductions compris).';
@@ -40,11 +44,31 @@ final class Spell2014Catalogue
                 $keys[$key] = true; $slugs[$slug] = true;
                 $schoolKey = self::SCHOOL_MAP[mb_strtolower(trim((string) ($s['school'] ?? '')))] ?? null;
                 if ($schoolKey === null) throw new \InvalidArgumentException('École inconnue : ' . ($s['school'] ?? 'NULL'));
-                // Never fall back to scraped full text, including higher-level text.
-                $description = trim((string) ($s['description_short_fr'] ?? ''));
-                if ($description === '') throw new \InvalidArgumentException('Description importable manquante.');
-                if (!empty($s['description']) || !empty($s['higher_level'])) throw new \InvalidArgumentException('Texte intégral non autorisé dans ce pipeline.');
-                if (!is_int($s['level'] ?? null) || !is_bool($s['concentration'] ?? null) || !is_bool($s['ritual'] ?? null)) throw new \InvalidArgumentException('Niveau ou indicateurs non typés.');
+if (!empty($s['description']) || !empty($s['higher_level'])) {
+    throw new \InvalidArgumentException(
+        'Texte intégral inattendu dans le catalogue principal.'
+    );
+}
+
+$enriched = $enrichment[$key] ?? null;
+
+if (!is_array($enriched)
+    || ($enriched['status'] ?? null) !== 'ok'
+    || !is_string($enriched['description_html'] ?? null)
+    || !is_string($enriched['url'] ?? null)
+    || rawurldecode($enriched['url']) !== rawurldecode((string) ($s['aidedd_url'] ?? ''))
+) {
+    throw new \InvalidArgumentException(
+        'Enrichissement absent ou incohérent.'
+    );
+}
+
+$extracted = (new SpellDescriptionExtractor())->extract(
+    $enriched['description_html']
+);
+
+$description = $extracted['description'];
+$higherLevels = $extracted['higherLevels'];                if (!is_int($s['level'] ?? null) || !is_bool($s['concentration'] ?? null) || !is_bool($s['ritual'] ?? null)) throw new \InvalidArgumentException('Niveau ou indicateurs non typés.');
                 $sourceCode = Spell2014ImportPlan::SOURCE_CODES[$s['source_book'] ?? ''] ?? throw new \InvalidArgumentException('Source inconnue.');
                 $components = $s['components'] ?? [];
                 if (!is_array($components) || !array_is_list($components) || !$components || count($components) !== count(array_unique($components))) throw new \InvalidArgumentException('Composantes invalides.');
@@ -87,6 +111,7 @@ final class Spell2014Catalogue
                     (string) (($s['range_detail'] ?? null) ?: ($s['range'] ?? '')),
                     (string) ($s['duration'] ?? ''), $description
                 );
+                $spell->setHigherLevels($higherLevels);
                 $spell->setOriginalName(isset($s['name_en']) ? (string) $s['name_en'] : null);
                 $spell->setComponents(in_array('V', $components, true), in_array('S', $components, true), $hasMaterial, $materialDetail, $cost, $consumed);
                 $spell->setConcentration(($s['concentration'] ?? false) === true);

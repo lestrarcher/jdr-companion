@@ -68,8 +68,34 @@ public function __construct(
             return Command::FAILURE;
         }
 
-        ['prepared' => $prepared, 'errors' => $errors, 'excluded' => $excluded, 'blockers' => $blockers] =
-            (new Spell2014Catalogue())->prepare($data, $review);
+        $enrichmentPath = $this->projectDir
+    . '/data/aidedd_enrichissement_progression.json';
+
+if (!is_file($enrichmentPath)) {
+    $output->writeln('<error>Fichier d’enrichissement introuvable.</error>');
+    return Command::FAILURE;
+}
+
+try {
+    $enrichment = json_decode(
+        (string) file_get_contents($enrichmentPath),
+        true,
+        512,
+        JSON_THROW_ON_ERROR
+    );
+
+    if (!is_array($enrichment) || count($enrichment) !== 490) {
+        throw new \JsonException('Corpus enrichi incomplet.');
+    }
+} catch (\JsonException $e) {
+    $output->writeln(
+        '<error>Enrichissement invalide : ' . $e->getMessage() . '</error>'
+    );
+    return Command::FAILURE;
+}
+
+['prepared' => $prepared, 'errors' => $errors, 'excluded' => $excluded, 'blockers' => $blockers] =
+    (new Spell2014Catalogue())->prepare($data, $review, $enrichment);
         if (count($prepared) + count($errors) !== 487 || count($excluded) !== 3) $errors[] = 'Périmètre attendu : 487 candidats et les trois exclusions.';
         $output->writeln(sprintf('Total : %d | Préparés : %d | Exclus : %d | Erreurs : %d', count($data['spells']), count($prepared), count($excluded), count($errors)));
         $output->writeln(sprintf('Composantes : %d avec M | %d coûts scalaires en pc | %d consommations habituelles à l’incantation (partielles incluses)',

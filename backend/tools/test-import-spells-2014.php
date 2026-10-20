@@ -22,8 +22,16 @@ $check = static function (bool $ok, string $message) use (&$checks): void {
 };
 $data = json_decode(file_get_contents(__DIR__.'/../data/jdr_companion_490_sorts_2014_durees.json'), true, 512, JSON_THROW_ON_ERROR);
 $review = json_decode(file_get_contents(__DIR__.'/../data/spells-2014-material-review.json'), true, 512, JSON_THROW_ON_ERROR);
+$enrichment = json_decode(
+    file_get_contents(__DIR__.'/../data/aidedd_enrichissement_progression.json'),
+    true,
+    512,
+    JSON_THROW_ON_ERROR
+);
+
+$extractor = new \App\Service\Catalogue\SpellDescriptionExtractor();
 $mapper = new Spell2014Catalogue();
-$result = $mapper->prepare($data, $review);
+$result = $mapper->prepare($data, $review, $enrichment);
 $check(count($result['prepared']) === 487 && count($result['excluded']) === 3 && $result['errors'] === [], 'Complete corpus valid without excluded spells');
 $check(count($result['blockers']) === 1 && str_contains($result['blockers'][0], 'Droits'), 'Only unresolved rights still block writes');
 $spells = [];
@@ -38,7 +46,15 @@ foreach ($data['spells'] as $input) {
     $check($spell->getSchool()->value === $schools[$input['school']] && $spell->getEdition() === '2014', 'School and edition');
     $check($spell->getDuration() === $input['duration'] && $spell->isConcentration() === $input['concentration'] && $spell->isRitual() === $input['ritual'], 'Duration and flags preserved');
     $check($spell->isMaterial() === in_array('M', $input['components'], true) && $spell->isVerbal() === in_array('V', $input['components'], true) && $spell->isSomatic() === in_array('S', $input['components'], true), 'Exact components');
-    $check($spell->getHigherLevels() === null && $spell->getDescription() === trim($input['description_short_fr']), 'Only supplied short description, never full cached text');
+$expected = $extractor->extract(
+    $enrichment[$input['import_key']]['description_html']
+);
+
+$check(
+    $spell->getDescription() === $expected['description']
+    && $spell->getHigherLevels() === $expected['higherLevels'],
+    'Complete description and higher-level effects preserved'
+);
     $check($spell->getSourceCode() !== null && $spell->getSourceReference() === $input['source_book'], 'Searchable source code and unchanged label');
     if ($spell->isMaterial()) {
         $detail = $input['components_detail'];
@@ -59,26 +75,26 @@ $check(!$bySlug['forcecage']->isMaterialConsumed(), 'Cost does not imply consump
 $check($bySlug['maelstrom']->getSourceUrl() === 'https://www.aidedd.org/dnd/sorts.php?vf=maelstrom', 'Reviewed URL alias without identity change');
 $base = $data['spells'][0];
 foreach ([['ruleset'=>'2024'],['origin'=>'CUSTOM'],['level'=>'1'],['ritual'=>'false'],['school'=>'unknown'],['description_short_fr'=>'','description'=>'Forbidden fallback'],['higher_level'=>'Forbidden full text'],['components'=>['S','S']],['duration'=>'concentration, 1 round'],['source_book'=>'Extra (AideDD)'],['aidedd_url'=>'https://example.invalid/'],['import_key'=>'foreign:identity']] as $patch) {
-    $invalid = $mapper->prepare(['spells'=>[array_replace($base,$patch)]], $review);
+    $invalid = $mapper->prepare(['spells'=>[array_replace($base,$patch)]], $review, $enrichment);
     $check(count($invalid['errors']) === 1 && $invalid['prepared'] === [], 'Malformed row rejected: '.json_encode($patch));
 }
-$check(count($mapper->prepare(['spells'=>[$base,$base]],$review)['errors']) === 1, 'Duplicate input');
+$check(count($mapper->prepare(['spells'=>[$base,$base]],$review,  $enrichment)['errors']) === 1, 'Duplicate input');
 $material = $data['spells'][1];
 $material['components_detail'] .= 'changed';
-$check(count($mapper->prepare(['spells'=>[$material]],$review)['errors']) === 1, 'Changed material text rejected');
+$check(count($mapper->prepare(['spells'=>[$material]],$review,  $enrichment)['errors']) === 1, 'Changed material text rejected');
 $missingReview = $review; unset($missingReview['entries'][$data['spells'][1]['import_key']]);
-$check(count($mapper->prepare(['spells'=>[$data['spells'][1]]],$missingReview)['errors']) === 1, 'Missing review rejected');
+$check(count($mapper->prepare(['spells'=>[$data['spells'][1]]],$missingReview, $enrichment)['errors']) === 1, 'Missing review rejected');
 foreach ([['materialDescriptionNote'=>''], ['materialDescriptionNote'=>false], ['materialDescriptionNote'=>'Condition originale', 'materialConsumed'=>true]] as $patch) {
     $badReview = $review;
     $key = $data['spells'][1]['import_key'];
     $badReview['entries'][$key] = array_replace($badReview['entries'][$key], $patch);
-    $check(count($mapper->prepare(['spells'=>[$data['spells'][1]]], $badReview)['errors']) === 1, 'Invalid special consumption note rejected');
+    $check(count($mapper->prepare(['spells'=>[$data['spells'][1]]], $badReview, $enrichment)['errors']) === 1, 'Invalid special consumption note rejected');
 }
 foreach ([['materialCostCp'=>-1], ['materialCostCp'=>1.5], ['materialConsumed'=>'false'], ['status'=>'inferred']] as $patch) {
     $badReview = $review;
     $key = $data['spells'][1]['import_key'];
     $badReview['entries'][$key] = array_replace($badReview['entries'][$key],$patch);
-    $check(count($mapper->prepare(['spells'=>[$data['spells'][1]]],$badReview)['errors']) === 1, 'Invalid reviewed parameters rejected');
+    $check(count($mapper->prepare(['spells'=>[$data['spells'][1]]],$badReview, $enrichment)['errors']) === 1, 'Invalid reviewed parameters rejected');
 }
 
 $kernel = new App\Kernel('dev', true); $kernel->boot();
@@ -129,7 +145,9 @@ try {
     try { $planner->insertMissing([$make('fixture-rollback','fixture:rollback'),$invalid]); throw new RuntimeException('Invalid SQL accepted'); }
     catch (Doctrine\DBAL\Exception\DriverException) { $check((int)$db->fetchOne('SELECT COUNT(*) FROM spell_definition') === 2, 'SQL failure rolls back the whole batch'); }
     require __DIR__.'/test-spell-import-class-cases.php';
-    $tester = new CommandTester(new ImportSpells2014Command($em, dirname(__DIR__)));
+    $tester = new CommandTester(
+        new ImportSpells2014Command($em, dirname(__DIR__), 'dev')
+    );
     $exit = $tester->execute([]); // Never execute --apply, even in this test.
     $check($exit === 1 && str_contains($tester->getDisplay(),'Préparés : 487 | Exclus : 3 | Erreurs : 0'), 'Complete command dry run reports validation plus blockers');
     $check(str_contains($tester->getDisplay(),'487 créations | 0 conservés | 0 conflits') && (int)$db->fetchOne('SELECT COUNT(*) FROM spell_definition') === 2, 'Complete dry run inserts no corpus');
