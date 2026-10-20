@@ -1,6 +1,31 @@
-<nav class="spell-actions" aria-label="Gestion des sorts">
-  <h2>Gestion des sorts</h2>
-  <a [routerLink]="['/campaigns', campaignId(), 'characters', character().id, 'spellbook']">Gérer les copies de grimoire</a>
-  <a [routerLink]="['/campaigns', campaignId(), 'characters', character().id, 'spell-revision']">Corriger les acquisitions de sorts</a>
-  <a [routerLink]="['/campaigns', campaignId(), 'characters', character().id, 'spell-substitutions']">Gérer les substitutions de sorts</a>
-</nav>
+<div class="spell-page">
+  <header class="spell-heading"><div><p class="eyebrow">GRIMOIRE & MAGIE</p><h2>Sorts du personnage</h2><p class="muted">Acquisitions et sorts accordés par les classes et sous-classes.</p></div><span class="spell-count">{{ entries().length }} {{ entries().length === 1 ? 'sort' : 'sorts' }}</span></header>
+  @if (policies().length) {
+    <section class="casting-summary" aria-label="Statistiques d’incantation">
+      <h3>Incantation</h3>
+      <div class="casting-stats">
+        <div><span>Caractéristique</span><strong>{{ spellAbilityLabel() }}</strong></div>
+        <div><span>DD de sauvegarde</span><strong>—</strong></div>
+        <div><span>Attaque magique</span><strong>—</strong></div>
+        <div><span>Emplacements</span><strong>—</strong></div>
+      </div>
+      <p class="casting-note">Les valeurs non exposées par l’API seront raccordées au calculateur du backend.</p>
+    </section>
+  }
+  @if (error()) { <p role="alert" class="spell-error">{{ error() }}</p> }
+  @if (loading()) { <p role="status" class="spell-empty">Chargement des sorts…</p> }
+  @else {
+    @if (policies().length && entries().length === 0) { <p class="spell-empty">Aucun sort acquis ou accordé n'est actuellement renseigné pour ce personnage.</p> }
+    @if (!policies().length) { <p class="spell-empty">Aucune politique magique associée au personnage.</p> }
+    @if (entries().length) {
+      <div class="spell-filters" aria-label="Filtrer par niveau"><button type="button" [class.active]="selectedLevel() === null" (click)="selectedLevel.set(null)">Tous</button>@for (level of levels();track level) {<button type="button" [class.active]="selectedLevel() === level" (click)="selectedLevel.set(level)">{{ level === 0 ? 'Tours de magie' : 'Niveau ' + level }}</button>}</div>
+      @for (group of groups(); track group.level) {
+        <section class="spell-group"><div class="group-title"><h3>{{ group.level === 0 ? 'Tours de magie' : 'Sorts de niveau ' + group.level }}</h3><span>{{ group.spells.length }}</span></div>
+          <div class="spell-grid">@for (spell of group.spells; track spell.id + '-' + spell.origin) {
+            <article class="spell-card"><div class="spell-card-top"><h4>{{ spell.name }}</h4><span class="spell-level">{{ spell.level === 0 ? 'Tour' : 'Niv. ' + spell.level }}</span></div><p class="spell-origin">{{ spell.origin }}</p><div class="spell-tags">@if (spell.action) {<span class="spell-tag action-tag">{{ spell.action }}</span>}@if (spell.ritual) {<span class="spell-tag">✦ Rituel</span>}@if (spell.concentration) {<span class="spell-tag">◷ Concentration</span>}</div></article>
+          }</div></section>
+      }
+    }
+  }
+  <nav class="spell-actions" aria-label="Gestion des sorts"><h3>Gestion des sorts</h3><div class="spell-action-links"><a [routerLink]="['/campaigns', campaignId(), 'characters', character().id, 'spellbook']">Copies de grimoire ↗</a><a [routerLink]="['/campaigns', campaignId(), 'characters', character().id, 'spell-revision']">Réviser les acquisitions ↗</a><a [routerLink]="['/campaigns', campaignId(), 'characters', character().id, 'spell-substitutions']">Substitutions ↗</a></div></nav>
+</div>

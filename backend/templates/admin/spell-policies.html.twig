@@ -5,10 +5,38 @@
 <p>Une modification crée une nouvelle version. Les acquisitions et les décisions existantes conservent leur version et leur historique.</p>
 <form method="get" class="panel">
   <h2>Préparer une politique sans l’enregistrer</h2>
-  <label>Classe source<select name="sourceId" required>{% for ref in options.classes %}<option value="{{ ref.id }}">{{ ref.name }}</option>{% endfor %}</select></label>
-  <label>Préréglage<select name="preset"><option value="artificer">Artificier</option><option value="warlock">Occultiste et Arcanums</option><option value="druid">Druide</option><option value="sorcerer">Ensorceleur</option></select></label>
-  <label><input type="checkbox" name="tasha" value="1">Activer explicitement le remplacement facultatif Tasha (hors Artificier)</label>
-  <button type="submit">Préparer le brouillon</button>
+<label>
+  Classe ou sous-classe source
+  <select name="sourceId" required>
+    {% for ref in options.classes %}
+      <option value="{{ ref.id }}" data-source-type="class">
+        {{ ref.name }}
+      </option>
+    {% endfor %}
+    {% for ref in options.subclasses %}
+      <option value="{{ ref.id }}" data-source-type="subclass">
+        {{ ref.name }} (sous-classe)
+      </option>
+    {% endfor %}
+  </select>
+</label>
+
+<label>
+  Préréglage
+  <select name="preset">
+    <option value="artificer">Artificier</option>
+    <option value="warlock">Occultiste et Arcanums</option>
+    <option value="druid">Druide</option>
+    <option value="sorcerer">Ensorceleur</option>
+    <option value="eldritch-knight">Chevalier occulte (2014)</option>
+  </select>
+</label>
+
+<label>
+  <input type="checkbox" name="tasha" value="1">
+  Activer explicitement le remplacement facultatif Tasha
+</label>
+<button type="submit">Préparer le brouillon</button>
 </form>
 {% if options.migrationRequired %}<p role="status">L’édition 13C attend l’application autorisée de sa migration.</p>{% endif %}
 {% if error %}<p role="alert">{{ error }}</p>{% endif %}
