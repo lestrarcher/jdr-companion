@@ -1,0 +1,61 @@
+:host { display:block; color:#eee9df; }
+.revision-page { max-width:70rem; padding:1.5rem; margin:0 auto 3rem; }
+.back-link { display:inline-block; margin-bottom:1.3rem; color:#d9b66d; text-decoration:none; }
+.back-link:hover { text-decoration:underline; }
+.page-heading { border-bottom:1px solid rgba(216,180,93,.25); margin-bottom:1.5rem; padding-bottom:1.1rem; }
+.eyebrow { color:#d8b45d; font-size:.72rem; font-weight:700; letter-spacing:.18em; margin:0 0 .4rem; }
+.page-heading h1 { margin:.2rem 0 .6rem; font-size:1.8rem; }
+.page-heading p:last-child { color:#b5ab9c; line-height:1.6; max-width:65rem; }
+.panel { min-width:0; background:linear-gradient(135deg,rgba(32,30,32,.96),rgba(18,18,24,.97)); border:1px solid rgba(216,180,93,.3); border-radius:8px; padding:1.25rem; margin:1.1rem 0; }
+fieldset.panel legend { padding:0 .6rem; color:#e9c780; font-weight:700; font-size:1.05rem; }
+label { display:block; color:#d4c7b4; font-size:.88rem; font-weight:600; margin:0 0 .45rem; }
+select,input:not([type=checkbox]),textarea { box-sizing:border-box; width:100%; border:1px solid #66553d; background:#111218; color:#f0e8db; border-radius:5px; padding:.7rem .8rem; font:inherit; }
+select:focus-visible,input:focus-visible,textarea:focus-visible,button:focus-visible { outline:2px solid #d8b45d; outline-offset:2px; }
+select.invalid { border-color:#c99a50; }
+button { cursor:pointer; font:inherit; border-radius:5px; padding:.6rem .85rem; }
+button:disabled { opacity:.5; cursor:not-allowed; }
+.button-primary { background:#a88345; border:1px solid #d1b270; color:#16120d; font-weight:700; }
+.button-primary:hover:not(:disabled) { background:#d3b373; }
+.button-subtle { background:#2c251e; border:1px solid #8b7147; color:#e9c780; white-space:nowrap; }
+.button-subtle:hover:not(:disabled) { background:#42321f; }
+.section-heading { display:flex; align-items:center; gap:.7rem; margin:1.6rem 0 .7rem; }
+.section-heading h2,.history h2 { font-size:1.05rem; margin:0; color:#ead4a0; }
+.counter { color:#e8c77f; border:1px solid #66553d; padding:.1rem .5rem; border-radius:12px; font-size:.78rem; }
+.selected-list,.search-results { display:grid; gap:.55rem; }
+.selected-item,.result-item { display:flex; align-items:center; gap:1rem; justify-content:space-between; background:rgba(12,12,18,.62); border:1px solid rgba(216,180,93,.18); border-radius:6px; padding:.8rem; }
+.spell-name { min-width:9rem; flex:1; font-weight:650; }
+.rule-field { flex:2; min-width:12rem; max-width:24rem; }
+.rule-field label { font-size:.74rem; color:#a99c89; }
+.rule-field select { padding:.5rem; }
+.warning { display:block; color:#e8b574; font-size:.83rem; margin:.55rem 0; }
+.search-form { margin-top:1.8rem; }
+.search-row { display:flex; gap:.6rem; }
+.search-row input { flex:1; min-width:0; }
+.hint,.empty { color:#a9a093; font-size:.84rem; line-height:1.5; }
+.search-results { margin-top:.8rem; max-height:18rem; overflow-y:auto; }
+.result-item strong { display:block; }
+.spell-level { display:block; font-size:.78rem; color:#b9a17a; margin-top:.2rem; }
+.decision { border-top:1px solid rgba(216,180,93,.25); padding-top:1.4rem; margin-top:1.5rem; }
+.checkline { display:flex; align-items:flex-start; gap:.65rem; font-weight:400; margin:.6rem 0; }
+.checkline input { margin:.22rem 0 0; accent-color:#c5a15c; }
+.confirm { margin:1.2rem 0; }
+.save { margin-top:.35rem; }
+.notice { padding:.8rem 1rem; border:1px solid #766244; border-radius:5px; background:#24201b; }
+.notice.error { color:#ffaaa2; border-color:#b56a60; }
+.notice.success { color:#b7e3b8; border-color:#638b68; }
+.history h2 { margin-bottom:1rem; }
+.history-item { border-top:1px solid rgba(216,180,93,.2); padding:.9rem 0; }
+.history-item strong { color:#e8c77f; }
+.history-item span { float:right; color:#a99c89; font-size:.8rem; }
+.history-item p { margin:.5rem 0; }
+.history-item small { color:#a99c89; }
+@media(max-width:720px) {
+  .revision-page { padding:.8rem; }
+  .panel { padding:.9rem; }
+  .selected-item { flex-wrap:wrap; }
+  .spell-name { flex-basis:100%; }
+  .rule-field { flex:1; }
+  .search-row { flex-wrap:wrap; }
+  .search-row button { width:100%; }
+  .history-item span { float:none; display:block; margin-top:.3rem; }
+}

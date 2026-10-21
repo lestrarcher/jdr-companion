@@ -52,14 +52,58 @@ final class CharacterSpellAcquisitionController extends AbstractController
     }
 
     #[Route('/{policyId}/revision', name: 'api_character_spell_revision', requirements: ['policyId' => '\d+'], methods: ['POST'])]
-    public function revise(Character $character, int $policyId, Request $request, CharacterSpellAcquisitions $service): JsonResponse
-    {
-        $actor=$this->actor($character);
-        if ($request->getContentTypeFormat()!=='json' || !str_starts_with(ltrim($request->getContent()),'{')) throw new BadRequestHttpException('Objet JSON requis.');
-        $data=$request->toArray();
-        if (array_diff(array_keys($data),['targetPolicyId','spellIds','expectedAcquisitionIds','reason','overrideRules','confirmed'])
-            || !is_int($data['targetPolicyId']??null) || !is_array($data['spellIds']??null) || !is_array($data['expectedAcquisitionIds']??null)
-            || !is_string($data['reason']??null) || !is_bool($data['overrideRules']??null) || !is_bool($data['confirmed']??null)) throw new BadRequestHttpException('Révision invalide.');
-        return $this->json($service->revise($character,$policyId,$data['targetPolicyId'],$data['spellIds'],$data['expectedAcquisitionIds'],$data['reason'],$data['overrideRules'],$data['confirmed'],$actor),201);
+    public function revise(
+        Character $character,
+        int $policyId,
+        Request $request,
+        CharacterSpellAcquisitions $service
+    ): JsonResponse {
+        $actor = $this->actor($character);
+
+        if (
+            $request->getContentTypeFormat() !== 'json'
+            || !str_starts_with(ltrim($request->getContent()), '{')
+        ) {
+            throw new BadRequestHttpException('Objet JSON requis.');
+        }
+
+        $data = $request->toArray();
+
+        if (
+            array_diff(array_keys($data), [
+                'targetPolicyId',
+                'spellIds',
+                'expectedAcquisitionIds',
+                'reason',
+                'overrideRules',
+                'confirmed',
+                'ruleChoices',
+            ])
+            || !is_int($data['targetPolicyId'] ?? null)
+            || !is_array($data['spellIds'] ?? null)
+            || !is_array($data['expectedAcquisitionIds'] ?? null)
+            || !is_string($data['reason'] ?? null)
+            || !is_bool($data['overrideRules'] ?? null)
+            || !is_bool($data['confirmed'] ?? null)
+            || (array_key_exists('ruleChoices', $data) && !is_array($data['ruleChoices']))
+        ) {
+            throw new BadRequestHttpException('Révision invalide.');
+        }
+
+        return $this->json(
+            $service->revise(
+                $character,
+                $policyId,
+                $data['targetPolicyId'],
+                $data['spellIds'],
+                $data['expectedAcquisitionIds'],
+                $data['reason'],
+                $data['overrideRules'],
+                $data['confirmed'],
+                $actor,
+                $data['ruleChoices'] ?? []
+            ),
+            201
+        );
     }
 }

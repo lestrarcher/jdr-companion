@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { AbilityKey, AbilityReference, FeatReference } from './dnd-reference-api.service';
+import type { Spell } from '../models/spell.model';
 
 export type HitPointGainMethod =
   | 'first_level'
@@ -230,6 +231,7 @@ export interface TrainingChoicesPayload {
 }
 
 export interface LevelUpOptions {
+  spellPreview: LevelUpSpellPreview;
   training?: TrainingOptions;
   abilities: AbilityReference[];
   feats: FeatReference[];
@@ -272,7 +274,141 @@ export interface LevelUpHitPointPayload {
   gain?: number;
 }
 
+export interface LevelUpSpellChoice {
+  policyId: number;
+  spellId: number;
+  ruleId: number | null;
+  replacesAcquisitionId?: number;
+  replacementConfirmed?: boolean;
+}
+
+export type LevelUpSpellPreview =
+  | { status: 'selection-required' | 'subclass-required'; policies: [] }
+  | { status: 'policy-to-configure' | 'policy-ambiguous'; classId: number; classLevel: number; policies: [] }
+  | {
+      status: 'quota-configuration-required' | 'quota-exceeded' | 'choices-to-review' | 'choices-to-complete' | 'complete';
+      policies: [LevelUpSpellPolicyPreview];
+    };
+
+export interface LevelUpSpellReplacementPreview {
+  maximum: number;
+  budgetKey: string;
+  confirmationRequired: boolean;
+  acquisitions: Array<{ acquisitionId: number; spellId: number; requiresQualification: boolean }>;
+}
+
+export interface LevelUpSpellOpportunityBase {
+  policyId: number;
+  classId: number;
+  classLevel: number;
+  key: string;
+  remaining: number;
+  replacement: LevelUpSpellReplacementPreview;
+}
+
+export type LevelUpSpellOpportunity =
+  | (LevelUpSpellOpportunityBase & {
+      ruleId: null;
+      quota: 'cantrips' | 'known' | 'spellbook';
+      available: Array<Pick<Spell, 'id' | 'slug' | 'name' | 'level' | 'school' | 'edition' | 'origin'>>;
+      replacementAvailable: Array<Pick<Spell, 'id' | 'slug' | 'name' | 'level' | 'school' | 'edition' | 'origin'>>;
+    })
+  | (LevelUpSpellOpportunityBase & {
+      ruleId: number;
+      quota: 'cantrips' | 'known' | 'spellbook' | 'free';
+      result: 'known' | 'spellbook' | 'cast';
+      castingClassId: number;
+      available: Spell[];
+      replacementAvailable: Spell[];
+    });
+
+export interface LevelUpSpellCopyDetails {
+  baseCostCp: number;
+  baseMinutes: number;
+  costCp: number;
+  minutes: number;
+  source: string;
+  adjustment: 'none' | 'rule' | 'gm';
+  reason: string;
+  confirmed: true;
+}
+
+/** Existing acquisition rows are returned with their SQL field names. */
+export interface LevelUpSpellAcquisitionBase {
+  id: number;
+  character_id: number;
+  spell_id: number;
+  policy_definition_id: number;
+  class_level_id: number;
+  replaces_id: number | null;
+  decided_by_id: number;
+  provenance: 'level-history' | 'manual-reconciliation' | 'spellbook-copy';
+  quota_bucket: 'cantrips' | 'known' | 'spellbook' | 'cast';
+  known: boolean;
+  in_spellbook: boolean;
+  historical_validation: boolean;
+  decision_note: string;
+  decided_at: string;
+  revision_id: number | null;
+  retirement_id: null;
+  spell_level: number;
+}
+
+export type LevelUpSpellAcquisition =
+  | (LevelUpSpellAcquisitionBase & {
+      spell_name: string;
+      override_rules: boolean;
+      copy_details: LevelUpSpellCopyDetails | null;
+    })
+  | (LevelUpSpellAcquisitionBase & {
+      rule_id: number | null;
+      opportunity_level_id: number | null;
+      origin_known: boolean | null;
+      // Unlike simple policies, AdvancedSpellChoices leaves the DBAL JSON string undecoded.
+      copy_details: string | null;
+    });
+
+export interface LevelUpSpellPolicyPreview {
+  policyId: number;
+  version: number;
+  classId: number;
+  className: string;
+  sourceName: string;
+  classLevel: number;
+  classLevelId: null;
+  position: number;
+  learningStyle: 'known' | 'prepared' | 'spellbook';
+  choices: LevelUpSpellOpportunity[];
+  limits: {
+    maxSpellLevel: number;
+    cantrips: number;
+    known: number;
+    bookAdditions: number;
+    replacements: number;
+    preparationBase: number | null;
+  };
+  used: { known: number; cantrips: number; spellbook: number; preparation: number };
+  remaining: { known: number; cantrips: number; spellbook: number };
+  blocked: string[] | Array<{
+    key: string;
+    bucket: 'known' | 'cantrips' | 'preparation' | 'source-policy';
+    reason: 'quota-impact-unspecified' | 'quota-not-defined-for-mode';
+  }>;
+  acquisitions: LevelUpSpellAcquisition[];
+  automatic: Array<{
+    key: string;
+    spellId: number;
+    acquisitionClassId: number;
+    quotaClassId: number;
+    castingClassId: number | null;
+    bucket: 'known' | 'cantrips' | 'preparation' | null;
+    impact: 'free' | 'counts-toward-quota' | 'unspecified';
+  }>;
+  preparation: { base: number | null; automaticCounted: number; dailyChoicesManaged: false };
+}
+
 export interface LevelUpPayload {
+  spellChoices?: LevelUpSpellChoice[];
   classId: number;
   subclassId: number | null;
   advancement: LevelAdvancementPayload | null;

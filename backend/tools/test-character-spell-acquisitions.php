@@ -169,6 +169,23 @@ try {
     $choice = static fn (array $s,int $l,?int $r=null): array => ['spellId'=>$s['id'],'classLevelId'=>$l,'replacesId'=>$r];
     $fingerprints = static function () use ($metadata,$db): array { $result=[]; foreach ($metadata as $m) { $t=$m->getTableName(); if (in_array($t,['character_spell_acquisition','character_spell_revision','spell_subclass_grant'],true)) continue; $q=$db->quoteIdentifier($t); $result[$t]=$db->fetchOne("SELECT md5(COALESCE(string_agg(row_to_json(x)::text, '' ORDER BY row_to_json(x)::text), '')) FROM $q x"); } return $result; };
     $before = $fingerprints();
+    // Read-only statistics: two policies on the same multiclassed character.
+    $intScore = $history->getAbilityScore(Ability::Intelligence);
+    $wisScore = $history->getAbilityScore(Ability::Wisdom);
+    $baseProperty = new ReflectionProperty($intScore, 'baseValue');
+    $oldInt = $intScore->getBaseValue(); $oldWis = $wisScore->getBaseValue();
+    $baseProperty->setValue($intScore, 18); $baseProperty->setValue($wisScore, 12);
+    $intOptions = $service->options($history, $policy->getId(), $owner);
+    $wisOptions = $service->options($history, $prepPolicy->getId(), $owner);
+    $check($intOptions['spellSaveDc'] === 15 && $intOptions['spellAttackBonus'] === 7, 'INT statistics use resolved modifier and total multiclass proficiency');
+    $check($wisOptions['spellSaveDc'] === 12 && $wisOptions['spellAttackBonus'] === 4, 'WIS policy retains its own statistics on the same character');
+    $scores = $history->getAbilityScores();
+    $scoreKey = $scores->indexOf($intScore); $scores->remove($scoreKey);
+    $missingOptions = $service->options($history, $policy->getId(), $owner);
+    $check($missingOptions['spellSaveDc'] === null && $missingOptions['spellAttackBonus'] === null, 'Missing ability explicitly unavailable');
+    $check($scores->count() === 5, 'Statistics do not manufacture a missing ability score');
+    $scores->set($scoreKey, $intScore);
+    $baseProperty->setValue($intScore, $oldInt); $baseProperty->setValue($wisScore, $oldWis);
     $check($service->status($unconfigured,$owner)[0]['status']==='policy-to-configure','Missing explicit policy reported');
     $check($service->options($history,$policy->getId(),$owner)['status']==='choices-to-complete','No invented acquisitions');
     foreach ([$other,$admin] as $actor) $refuse(fn ()=>$service->options($history,$policy->getId(),$actor),404);
@@ -346,6 +363,9 @@ try {
     $refuse(fn ()=>$service->definePolicy($sub,$knownPolicy,$other),404);
     require __DIR__.'/test-advanced-spell-choice-cases.php';
     require __DIR__.'/test-spell-substitution-cases.php';
+    (static function () use ($em,$db,$registry,$service,$access,$catalogue,$metadata,$check,$http,$campaign,$owner,$admin,$other,$advancedClass,$advancedSub,$advancedPolicy,$bookClass,$byKey,$advancedChoice): void {
+        require __DIR__.'/test-level-up-spell-preview-cases.php';
+    })();
     $em->clear();
     $all=$em->getRepository(CharacterSpellAcquisition::class)->findAll();
     foreach ($all as $a) { $check($a->isLearned(),'Learned property nonexclusive'); if ($a->getProvenance()==='manual-reconciliation') $check(!$a->isHistoricallyValidated(),'Historical limitation persisted'); if ($a->getQuotaBucket()==='spellbook') $check($a->isInSpellbook()&&!$a->isKnown(),'Book inscription separate from known'); }

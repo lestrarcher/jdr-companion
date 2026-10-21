@@ -503,6 +503,7 @@ public function terminateActiveEffect(
         CharacterLevelUpOptionsService $optionsService,
         Request $request,
         CharacterLevelUpService $levelUpService,
+        \App\Service\CharacterLevelUpSpellPreview $spellPreview,
     ): JsonResponse {
         $state = $playerAccess->requireParticipating( $accessToken, );
 
@@ -517,6 +518,7 @@ public function terminateActiveEffect(
         try {
             $options = $optionsService->getOptions($state->getCharacter());
             if ($request->query->has('classId')) $options['training'] = $levelUpService->trainingOptionsForSelection($state->getCharacter(), $request->query->all());
+            $options['spellPreview'] = $spellPreview->preview($state->getCharacter(), $request->query->all());
             return $this->json($options);
         } catch (\DomainException $exception) {
             return $this->json(['message' => $exception->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);

@@ -11,7 +11,21 @@ use Symfony\Component\HttpKernel\Exception\{AccessDeniedHttpException, BadReques
 /** Standalone GM domain boundary. No player-token authorization, session writes or implicit choices. */
 final readonly class CharacterSpellAcquisitions
 {
-    public function __construct(private EntityManagerInterface $em, private CharacterSpellAccessResolver $access) {}
+    public function __construct(private EntityManagerInterface $em, private CharacterSpellAccessResolver $access, private CharacterAbilityCalculator $abilityCalculator = new CharacterAbilityCalculator()) {}
+
+    /** Current resolved character values, not a reconstruction of historical ability scores. */
+    private function spellStatistics(Character $character, SpellcastingPolicy $policy): array
+    {
+        foreach ($character->getAbilityScores() as $score) {
+            if ($score->getAbility() !== $policy->ability) continue;
+            $attack = $character->getProficiencyBonus()
+                + $this->abilityCalculator->calculate($character, $policy->ability)->modifier();
+            return ['spellSaveDc' => 8 + $attack, 'spellAttackBonus' => $attack];
+        }
+
+        // Do not call getAbilityScore(): its legacy fallback creates a default score.
+        return ['spellSaveDc' => null, 'spellAttackBonus' => null];
+    }
 
     /** Explicit reference administration, never binds a policy by a class name. */
     public function definePolicy(CharacterClass|CharacterSubclass $source, SpellcastingPolicy $policy, User $actor): SpellcastingPolicyDefinition
@@ -159,7 +173,8 @@ final readonly class CharacterSpellAcquisitions
             if ($index === false) throw new BadRequestHttpException('Niveau étranger à cette classe.');
         }
         $policy = $definition->policy();
-        if ($definition->getFormatVersion()===2) return (new AdvancedSpellChoices($this->em,$this->access))->options($character,$definition,$levels,$index);
+        $statistics = $this->spellStatistics($character, $policy);
+        if ($definition->getFormatVersion()===2) return (new AdvancedSpellChoices($this->em,$this->access))->options($character,$definition,$levels,$index) + $statistics;
         $limits = $policy->atLevel($index + 1);
         $paths = $this->access->resolve($character,[],$levels[$index]->getPosition());
         $available = []; $automatic = []; $blocked = [];
@@ -223,7 +238,7 @@ final readonly class CharacterSpellAcquisitions
             'automatic' => $automatic, 'blocked' => $blocked, 'acquisitions' => $active,
             'preparation' => ['base' => $limits['preparationBase'], 'automaticCounted' => $used['preparation'], 'dailyChoicesManaged' => false],
             'status' => $blocked ? 'quota-configuration-required' : ($overQuota ? 'quota-exceeded' : (array_sum($remaining) > 0 ? 'choices-to-complete' : 'complete')),
-            'limitations' => $policy->limitations, 'canCast' => null];
+            'limitations' => $policy->limitations, 'canCast' => null] + $statistics;
     }
 
     /**

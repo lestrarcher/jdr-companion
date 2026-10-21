@@ -41,6 +41,7 @@ $bl=array_map(static fn($l)=>$l->getId(),$bardChar->getClassLevels()->toArray())
 $service->acquire($bardChar,$lorePolicy->getId(),[$advancedChoice($spells[3]['id'],$bl[5],$br['additional-secrets'])],'level-history','Lore free choice',$owner);
 $service->acquire($bardChar,$lorePolicy->getId(),[$advancedChoice($spells[0]['id'],$bl[9],$br['magical-secrets']),$advancedChoice($spells[4]['id'],$bl[9],$br['magical-secrets'])],'level-history','Two counted secrets',$owner);
 $bo=$service->options($bardChar,$lorePolicy->getId(),$owner);
+$check($bo['spellSaveDc'] === 12 && $bo['spellAttackBonus'] === 4, 'Advanced composed CHA policy exposes current casting statistics');
 $check($bo['used']['known']===2 && $bo['used']['cantrips']===0,'Secret cantrip spends known quota; Lore spends no ordinary quota');
 $refuse(fn()=>$service->acquire($bardChar,$lorePolicy->getId(),[$advancedChoice($spells[5]['id'],$bl[9],$br['magical-secrets'])],'level-history','Third secret',$owner),409);
 $check(array_values(array_filter($bo['choices'],static fn($r)=>$r['key']==='ordinary'))[0]['remaining']===1,'Bard ordinary opportunities independent');
