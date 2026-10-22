@@ -14,7 +14,13 @@ use Symfony\Component\HttpKernel\Exception\{AccessDeniedHttpException, BadReques
 /** Shared by the official admin and the owner's personal API. Versions are append-only. */
 final readonly class SpellPolicyAdministration
 {
-    public function __construct(private EntityManagerInterface $em, private CharacterSpellAcquisitions $acquisitions) {}
+
+    public function __construct(
+        private EntityManagerInterface $em,
+        private CharacterSpellAcquisitions $acquisitions,
+        private SpellPolicyTemplateFactory $templates,
+    ) {}
+
     private function scope(User $actor, bool $official): void
     {
         if ($official && !in_array(SpellCatalogue::ADMIN_ROLE, $actor->getRoles(), true)) throw new AccessDeniedHttpException();
@@ -113,20 +119,59 @@ final readonly class SpellPolicyAdministration
             throw new BadRequestHttpException($e->getMessage(), $e);
         }
     }
+
+    private function officialPreset(
+    CharacterClass|CharacterSubclass $source
+): ?string {
+    if ($source instanceof CharacterSubclass) {
+        return match ($source->getName()) {
+            'Chevalier occulte' => 'eldritch-knight',
+            default => null,
+        };
+    }
+
+    return match ($source->getName()) {
+        'Artificier' => 'artificer',
+        'Magicien' => 'wizard',
+        'Occultiste' => 'warlock',
+        'Druide' => 'druid',
+        'Ensorceleur' => 'sorcerer',
+        default => null,
+    };
+}
     /** Preview only: explicit selection never assigns a policy to existing references. */
 
-public function preview(array $data, User $actor, bool $official = false): array
-{
+
+public function preview(
+    array $data,
+    User $actor,
+    bool $official = false
+): array {
     if (
-        array_diff(array_keys($data), ['sourceId', 'preset', 'tasha'])
+        array_diff(
+            array_keys($data),
+            ['sourceType', 'sourceId', 'preset', 'tasha']
+        )
         || !is_string($data['preset'] ?? null)
         || !is_bool($data['tasha'] ?? false)
     ) {
         throw new BadRequestHttpException('Préréglage invalide.');
     }
 
+    $source = $this->source($data, $actor, $official);
+
+    $presetKey = $data['preset'];
+    $expectedPreset = $this->officialPreset($source);
+
+    if ($presetKey !== $expectedPreset) {
+        throw new BadRequestHttpException(
+            'Ce préréglage ne correspond pas à la référence sélectionnée.'
+        );
+    }
+
     $optional = $data['tasha'] ?? false;
-    $eldritchKnight = $data['preset'] === 'eldritch-knight';
+    $eldritchKnight = $presetKey === 'eldritch-knight';
+
 
     if ($eldritchKnight) {
         if ($optional) {
@@ -184,7 +229,7 @@ public function preview(array $data, User $actor, bool $official = false): array
                 $optional
             ),
 
-            'druid', 'sorcerer' => Dnd2014AdvancedSpellPolicies::ordinary(
+            'druid', 'sorcerer', 'wizard' => Dnd2014AdvancedSpellPolicies::ordinary(
                 $source,
                 Dnd2014SpellPolicies::get($data['preset'] . '-2014'),
                 $optional
@@ -232,6 +277,100 @@ public function preview(array $data, User $actor, bool $official = false): array
         'rules' => $rules,
     ];
 }
+
+
+public function previewTemplate(
+    array $data,
+    User $actor,
+    bool $official = false
+): array {
+    if (
+        array_diff(
+            array_keys($data),
+            [
+                'sourceType',
+                'sourceId',
+                'listClassId',
+                'key',
+                'version',
+                'schools',
+                'unrestrictedLevels',
+            ]
+        )
+        || !is_string($data['key'] ?? null)
+        || !is_int($data['version'] ?? null)
+        || !is_array($data['schools'] ?? null)
+        || !is_array($data['unrestrictedLevels'] ?? null)
+    ) {
+        throw new BadRequestHttpException(
+            'Configuration de modèle invalide.'
+        );
+    }
+
+    $source = $this->source($data, $actor, $official);
+
+    if (!$source instanceof CharacterSubclass) {
+        throw new BadRequestHttpException(
+            'Ce modèle doit être associé à une sous-classe.'
+        );
+    }
+
+    $listClass = $this->reference(
+        CharacterClass::class,
+        $data['listClassId'] ?? null,
+        $actor,
+    );
+
+    try {
+        $generated = $this->templates->restrictedThirdCaster(
+            $listClass,
+            $data['key'],
+            $data['schools'],
+            $data['unrestrictedLevels'],
+            null,
+            $data['version'],
+        );
+    } catch (\InvalidArgumentException $e) {
+        throw new BadRequestHttpException(
+            $e->getMessage(),
+            $e,
+        );
+    }
+
+    $policy = $generated['policy'];
+
+    $rules = [];
+
+    foreach ($generated['rules'] as $rule) {
+        $rules[] = [
+            'key' => $rule['key'],
+            'parameters' => $rule['parameters']->values,
+            'listClassId' => $rule['listClass']?->getId(),
+            'replacementListClassId' =>
+                $rule['replacementListClass']?->getId(),
+            'castingClassId' =>
+                $rule['castingClass']?->getId(),
+            'requiredSpellId' =>
+                $rule['requiredSpell']?->getId(),
+        ];
+    }
+
+    return [
+        'sourceType' => 'subclass',
+        'sourceId' => $source->getId(),
+        'policy' => [
+            'key' => $policy->key,
+            'version' => $policy->version,
+            'ability' => $policy->ability->value,
+            'learningStyle' => $policy->learningStyle,
+            'levels' => $policy->levels,
+            'provenance' => $policy->provenance,
+            'limitations' => $policy->limitations,
+        ],
+        'rules' => $rules,
+    ];
+}
+
 
     public function defineSubstitution(array $data, User $actor, bool $official = false): int
     {
