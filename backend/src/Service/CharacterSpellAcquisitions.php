@@ -155,6 +155,37 @@ final readonly class CharacterSpellAcquisitions
         return array_values($result);
     }
 
+    /** Applicability for the selected level-up class, shared by preview and mutation.
+     * None is explicit reference metadata, not an inference from slots or candidates.
+     * Missing/contradictory reference configuration must never become a bypass.
+     */
+    public function levelUpStatus(Character $character, CharacterClass $class, User $actor): array
+    {
+        $status = array_column($this->status($character, $actor), null, 'classId')[$class->getId()] ?? null;
+        if ($status === null) throw new NotFoundHttpException('Classe indisponible.');
+        $subclasses = [];
+        foreach ($character->getClassLevels() as $level) {
+            if ($level->getCharacterClass()->getId() !== $class->getId() || $level->getSubclass() === null) continue;
+            $sub = $level->getSubclass();
+            if ($sub->getCharacterClass()->getId() !== $class->getId() || !ReferenceVisibility::allows($sub, $actor)) {
+                return array_replace($status, ['status'=>'policy-to-configure', 'policyIds'=>[]]);
+            }
+            $subclasses[$sub->getId()] = $sub;
+        }
+        if (count($subclasses) > 1) return array_replace($status, ['status'=>'policy-ambiguous', 'policyIds'=>[]]);
+        if ($status['status'] !== 'policy-to-configure') return $status;
+        $subclass = $subclasses ? reset($subclasses) : null;
+        if ($class->getSpellcastingProgression() !== \App\Enum\SpellcastingProgressionType::None
+            || ($subclass?->getSpellcastingProgression() !== null && $subclass->getSpellcastingProgression() !== \App\Enum\SpellcastingProgressionType::None)) return $status;
+        $db = $this->em->getConnection();
+        // Do not silently disregard hidden policies, retired decisions or active grants.
+        $configured = $db->fetchOne('SELECT 1 FROM spellcasting_policy_definition WHERE character_class_id=? OR subclass_id=? LIMIT 1', [$class->getId(), $subclass?->getId()]);
+        $history = $db->fetchOne('SELECT 1 FROM character_spell_acquisition a JOIN character_class_level l ON l.id=a.class_level_id WHERE a.character_id=? AND l.character_class_id=? LIMIT 1', [$character->getId(), $class->getId()]);
+        $grants = $db->fetchOne('SELECT 1 FROM spell_subclass_grant WHERE subclass_id=? AND unlock_level<=? LIMIT 1', [$subclass?->getId(), $character->getLevelInClass($class)]);
+        if (!$configured && !$history && !$grants) $status['status'] = 'no-spellcasting';
+        return $status;
+    }
+
     private function rows(Character $character, int $policyId): array
     {
         $rows = $this->em->getConnection()->fetchAllAssociative('SELECT a.*, s.level AS spell_level, s.name AS spell_name, COALESCE(r.override_rules,false) AS override_rules FROM character_spell_acquisition a JOIN spell_definition s ON s.id = a.spell_id LEFT JOIN character_spell_revision r ON r.id=a.revision_id WHERE a.retirement_id IS NULL AND a.character_id = ? AND a.policy_definition_id = ? ORDER BY a.id', [$character->getId(), $policyId]);
@@ -250,6 +281,58 @@ final readonly class CharacterSpellAcquisitions
     {
         if (!in_array($provenance, ['level-history', 'manual-reconciliation'], true)) throw new BadRequestHttpException('Provenance invalide.');
         return $this->record($character, $policyId, $choices, $provenance, $note, $actor);
+    }
+
+    /** Progressive initial choices, with exact per-decision replay under the character lock. */
+    public function initialize(Character $character, array $input, User $actor): array
+    {
+        $this->authorize($character, $actor);
+        if (array_diff(array_keys($input), ['policyId', 'choices', 'reason'])
+            || !is_int($input['policyId'] ?? null) || $input['policyId'] <= 0
+            || !is_string($input['reason'] ?? null) || trim($input['reason']) === '' || mb_strlen($input['reason']) > 10000
+            || !is_array($input['choices'] ?? null) || !array_is_list($input['choices'])
+            || count($input['choices']) < 1 || count($input['choices']) > 100) throw new BadRequestHttpException('Initialisation invalide.');
+        $seen = [];
+        foreach ($input['choices'] as $choice) {
+            if (!is_array($choice) || array_diff(array_keys($choice), ['spellId', 'ruleId'])
+                || !is_int($choice['spellId'] ?? null) || $choice['spellId'] <= 0
+                || !array_key_exists('ruleId', $choice)
+                || ($choice['ruleId'] !== null && (!is_int($choice['ruleId']) || $choice['ruleId'] <= 0))
+                || isset($seen[$choice['spellId']])) throw new BadRequestHttpException('Choix initial invalide ou dupliqué.');
+            $seen[$choice['spellId']] = true;
+        }
+        $db = $this->em->getConnection();
+        return $db->transactional(function () use ($db, $character, $input, $actor): array {
+            $this->em->lock($character, LockMode::PESSIMISTIC_WRITE);
+            $this->em->refresh($character);
+            $this->authorize($character, $actor);
+            $db->executeStatement('LOCK TABLE spellcasting_policy_definition, character_class, character_subclass, character_class_level, spell_definition, spell_class_list_entry, spell_subclass_grant IN SHARE MODE');
+            if ($character->getTotalLevel() !== 1) throw new ConflictHttpException('Cette initialisation concerne uniquement le niveau 1 ; les choix historiques nécessitent une reprise explicite.');
+            [$definition, $levels] = $this->context($character, $input['policyId']);
+            $status = $this->levelUpStatus($character, $definition->getCharacterClass(), $actor);
+            if ($status['status'] !== 'policy-configured' || $status['policyIds'] !== [$input['policyId']]) throw new ConflictHttpException('Politique absente ou ambiguë.');
+            $levelId = $levels[0]->getId();
+            $ids = []; $created = []; $replayed = [];
+            foreach ($input['choices'] as $choice) {
+                if (($definition->getFormatVersion() === 2) !== ($choice['ruleId'] !== null)) throw new BadRequestHttpException('Règle incompatible avec le format de politique.');
+                $rows = $db->fetchAllAssociative('SELECT a.*, c.rule_id FROM character_spell_acquisition a LEFT JOIN character_spell_choice c ON c.acquisition_id=a.id WHERE a.character_id=? AND a.policy_definition_id=? AND a.spell_id=?', [$character->getId(), $input['policyId'], $choice['spellId']]);
+                if ($rows !== []) {
+                    $row = $rows[0];
+                    $successor = $db->fetchOne('SELECT 1 FROM character_spell_acquisition WHERE replaces_id=? LIMIT 1', [$row['id']]);
+                    if (count($rows) !== 1 || $row['retirement_id'] !== null || $row['revision_id'] !== null || $row['replaces_id'] !== null || $successor
+                        || (int) $row['class_level_id'] !== $levelId || (int) $row['decided_by_id'] !== $actor->getId()
+                        || $row['provenance'] !== 'level-history' || $row['decision_note'] !== trim($input['reason'])
+                        || ($row['rule_id'] === null ? null : (int) $row['rule_id']) !== $choice['ruleId']) throw new ConflictHttpException('Acquisition existante différente de la décision demandée.');
+                    $ids[] = $replayed[] = (int) $row['id'];
+                    continue;
+                }
+                $internal = ['spellId'=>$choice['spellId'], 'classLevelId'=>$levelId];
+                if ($choice['ruleId'] !== null) $internal['ruleId'] = $choice['ruleId'];
+                $new = $this->acquire($character, $input['policyId'], [$internal], 'level-history', $input['reason'], $actor);
+                $ids[] = $created[] = $new[0];
+            }
+            return ['acquisitionIds'=>$ids, 'createdAcquisitionIds'=>$created, 'replayedAcquisitionIds'=>$replayed];
+        });
     }
 
     public function copyQuote(Character $character, int $policyId, int $spellId, User $actor): array

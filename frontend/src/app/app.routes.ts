@@ -96,6 +96,10 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'campaigns/:campaignId/characters/:characterId/spell-initialization',
+        loadComponent: () => import('./features/spell-initialization-page/spell-initialization-page').then(component => component.SpellInitializationPage),
+      },
+      {
         path: 'campaigns/:campaignId/characters/:characterId',
         loadComponent: () =>
           import('./features/character-detail/character-detail').then(

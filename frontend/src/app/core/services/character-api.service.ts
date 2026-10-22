@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { AbilityKey, AbilityReference, FeatReference } from './dnd-reference-api.service';
 import type { Spell } from '../models/spell.model';
+import type { SpellInitializationPreview, SpellInitializationPayload, SpellInitializationResult } from '../models/spell-initialization.model';
 
 export type HitPointGainMethod =
   | 'first_level'
@@ -274,6 +275,18 @@ export interface LevelUpHitPointPayload {
   gain?: number;
 }
 
+export interface SpellQualificationResponse {
+  qualification: {
+    acquisitionId: number;
+    policyId: number;
+    ruleId: number;
+    originKnown: boolean;
+    decidedById: number;
+    reason: string;
+    decidedAt: string;
+  };
+}
+
 export interface LevelUpSpellChoice {
   policyId: number;
   spellId: number;
@@ -284,7 +297,7 @@ export interface LevelUpSpellChoice {
 
 export type LevelUpSpellPreview =
   | { status: 'selection-required' | 'subclass-required'; policies: [] }
-  | { status: 'policy-to-configure' | 'policy-ambiguous'; classId: number; classLevel: number; policies: [] }
+  | { status: 'no-spellcasting' | 'policy-to-configure' | 'policy-ambiguous'; classId: number; classLevel: number; policies: [] }
   | {
       status: 'quota-configuration-required' | 'quota-exceeded' | 'choices-to-review' | 'choices-to-complete' | 'complete';
       policies: [LevelUpSpellPolicyPreview];
@@ -294,7 +307,12 @@ export interface LevelUpSpellReplacementPreview {
   maximum: number;
   budgetKey: string;
   confirmationRequired: boolean;
-  acquisitions: Array<{ acquisitionId: number; spellId: number; requiresQualification: boolean }>;
+  acquisitions: Array<{
+    acquisitionId: number;
+    spellId: number;
+    spellName: string;
+    requiresQualification: boolean;
+  }>;
 }
 
 export interface LevelUpSpellOpportunityBase {
@@ -540,10 +558,30 @@ export class CharacterApiService {
   getLevelUpOptions(
     campaignId: number,
     characterId: number,
+    classId?: number,
+    subclassId?: number | null,
   ): Observable<LevelUpOptions> {
+    const params: Record<string, string> = {};
+    if (classId !== undefined) params['classId'] = String(classId);
+    if (subclassId != null) params['subclassId'] = String(subclassId);
     return this.http.get<LevelUpOptions>(
       `${this.apiUrl}/campaigns/${campaignId}/characters/${characterId}/level-up/options`,
+      { params },
     );
+  }
+
+  qualifySpell(characterId: number, policyId: number, acquisitionId: number, payload: { ruleId: number; reason: string }): Observable<SpellQualificationResponse> {
+    return this.http.post<SpellQualificationResponse>(
+      `${this.apiUrl}/characters/${characterId}/spell-acquisitions/${policyId}/${acquisitionId}/qualification`, payload,
+    );
+  }
+
+  getSpellInitialization(characterId: number): Observable<SpellInitializationPreview> {
+    return this.http.get<SpellInitializationPreview>(`${this.apiUrl}/characters/${characterId}/spell-acquisitions/initialization`);
+  }
+
+  initializeSpells(characterId: number, payload: SpellInitializationPayload): Observable<SpellInitializationResult> {
+    return this.http.post<SpellInitializationResult>(`${this.apiUrl}/characters/${characterId}/spell-acquisitions/initialization`, payload);
   }
 
   levelUp(

@@ -1,4 +1,10 @@
 <div class="spell-page">
+  @if (initializationPending()) {
+    <div class="initialization-banner">
+      <div><strong>Votre magie reste à initialiser</strong><p>Il vous reste des sorts à choisir pour ce personnage.</p></div>
+      <a [routerLink]="['/campaigns', campaignId(), 'characters', character().id, 'spell-initialization']">Continuer l’initialisation →</a>
+    </div>
+  }
   <header class="spell-heading"><div><p class="eyebrow">GRIMOIRE & MAGIE</p><h2>Sorts du personnage</h2><p class="muted">Acquisitions et sorts accordés par les classes et sous-classes.</p></div><span class="spell-count">{{ entries().length }} {{ entries().length === 1 ? 'sort' : 'sorts' }}</span></header>
   @if (policies().length || spellSlotMaximums().length) {
     <section class="casting-summary" aria-label="Statistiques d’incantation">

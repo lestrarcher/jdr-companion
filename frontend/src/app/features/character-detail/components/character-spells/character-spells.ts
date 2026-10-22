@@ -3,6 +3,8 @@ import { HttpClient } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { forkJoin, of, catchError, switchMap } from 'rxjs';
 import { CharacterProfile } from '@core/services/character-api.service';
+import { SpellInitializationPreview } from '@core/models/spell-initialization.model';
+import { CharacterApiService } from '@core/services/character-api.service';
 
 type Policy = { className: string; status: string; policyIds: number[] };
 type SpellRow = { id: number; name: string; level: number; school?: string; ritual?: boolean; concentration?: boolean; is_ritual?: boolean; is_concentration?: boolean; casting_time?: string; castingTime?: string; casting_time_text?: string; castingTimeText?: string; casting_time_type?: string; castingTimeType?: string };
@@ -21,6 +23,9 @@ type Entry = { id: number; name: string; level: number; origin: string; ritual: 
   styleUrl: './character-spells.scss',
 })
 export class CharacterSpells {
+  readonly refresh = signal(0);
+  readonly initializationPending = signal(false);
+  private readonly characterApi = inject(CharacterApiService);
   private readonly http = inject(HttpClient);
   readonly character = input.required<CharacterProfile>();
   readonly campaignId = input.required<number>();
@@ -65,6 +70,15 @@ export class CharacterSpells {
   constructor() {
     effect(onCleanup => {
       const id = this.character().id;
+      this.refresh();
+      this.initializationPending.set(false);
+      if (this.character().totalLevel === 1) {
+        const initializationSub = this.characterApi.getSpellInitialization(id).subscribe({
+          next: (preview: SpellInitializationPreview) => this.initializationPending.set(preview.classes.some(c => c.status === 'policy-configured' && !!c.options && !c.options.blocked.length && (c.options.choices?.some(choice => choice.remaining > 0) ?? Object.values(c.options.remaining ?? {}).some(n => Number(n) > 0)))),
+          error: () => this.initializationPending.set(false),
+        });
+        onCleanup(() => initializationSub.unsubscribe());
+      }
       this.selectedSpell.set(null);
       this.loading.set(true); this.error.set(''); this.entries.set([]); this.policies.set([]); this.castingPolicies.set([]);
       const sub = this.http.get<{ policies: Policy[] }>(`/api/characters/${id}/spell-acquisitions`).pipe(

@@ -23,7 +23,13 @@ if (($argv[1] ?? '') === '--worker') {
     $character = $em->find(Character::class,(int)$argv[3]); $actor = $em->find(User::class,(int)$argv[7]);
     echo "ready\n"; flush();
     try {
-        if (($argv[8] ?? '') === 'substitution') {
+        if (($argv[8] ?? '') === 'initialization') {
+            $result = $service->initialize($character, ['policyId'=>(int)$argv[4], 'reason'=>'Initial fixture', 'choices'=>[['spellId'=>(int)$argv[6], 'ruleId'=>null]]], $actor);
+            echo $result['createdAcquisitionIds'] === [] ? "200\n" : "201\n";
+            exit;
+        } elseif (($argv[8] ?? '') === 'qualification') {
+            $service->qualifyChoice($character,(int)$argv[4],(int)$argv[5],'Concurrent qualification',$actor);
+        } elseif (($argv[8] ?? '') === 'substitution') {
             (new App\Service\CharacterSpellSubstitutions($em,$catalogue,new CharacterSpellAccessResolver($catalogue,$grants,$resources)))->substitute($character,(int)$argv[4],(int)$argv[5],(int)$argv[6],(int)$argv[9],'Concurrent substitution',true,$actor);
         } elseif (($argv[8] ?? '') === 'revision') {
             $service->revise($character,(int)$argv[4],(int)$argv[4],[(int)$argv[6]],array_map('intval',explode(',',$argv[5])),'Concurrent correction',false,true,$actor);
@@ -38,7 +44,7 @@ if (($argv[1] ?? '') === '--worker') {
     catch (HttpExceptionInterface $e) { echo $e->getStatusCode()."\n"; }
     exit;
 }
-$concurrent = ($argv[1] ?? '') === '--concurrency';
+$concurrent = in_array($argv[1] ?? '', ['--concurrency', '--initialization-concurrency'], true);
 $isolatedSchema = $concurrent ? 'spell_acq_test_'.bin2hex(random_bytes(8)) : null;
 $check = static function (bool $ok, string $message) use (&$checks): void { if (!$ok) throw new RuntimeException($message); ++$checks; };
 $refuse = static function (callable $fn, int $code) use ($check): void { try { $fn(); } catch (HttpExceptionInterface $e) { $check($e->getStatusCode() === $code, 'Expected '.$code.', got '.$e->getStatusCode().': '.$e->getMessage()); return; } throw new RuntimeException('Expected refusal '.$code); };
@@ -52,6 +58,7 @@ try {
         ? $db->fetchOne('SELECT n.nspname FROM pg_class c JOIN pg_namespace n ON c.relnamespace=n.oid WHERE c.oid=to_regclass(?)',[$meta->getTableName()])===$isolatedSchema
         : $db->fetchOne('SELECT relpersistence FROM pg_class WHERE oid=to_regclass(?)', [$meta->getTableName()]) === 't', 'Isolated '.$meta->getTableName());
     $qualifier = $isolatedSchema ?? 'pg_temp';
+    $db->executeStatement('DROP TABLE '.$qualifier.'.character_spell_qualification');
     foreach (['character_spell_substitution','spell_grant_substitution_list','spell_grant_substitution_rule'] as $table) $db->executeStatement('DROP TABLE '.$qualifier.'.'.$table);
     $db->executeStatement('DROP TABLE '.$qualifier.'.character_spell_choice');
     $db->executeStatement('DROP TABLE '.$qualifier.'.spell_policy_choice_rule');
@@ -80,6 +87,15 @@ try {
     $substitutionMigration->up(new Doctrine\DBAL\Schema\Schema());
     foreach ($substitutionMigration->getSql() as $query) $db->executeStatement($concurrent?$query->getStatement():str_replace('CREATE TABLE ','CREATE TEMP TABLE ',$query->getStatement()));
     $tempSchema = $isolatedSchema ?? $db->fetchOne('SELECT nspname FROM pg_namespace WHERE oid=pg_my_temp_schema()');
+    require __DIR__.'/../migrations/Version20261022120000.php';
+    $qualificationMigration=new DoctrineMigrations\Version20261022120000($db,new Psr\Log\NullLogger());
+    $qualificationMigration->up(new Doctrine\DBAL\Schema\Schema());
+    foreach ($qualificationMigration->getSql() as $query) $db->executeStatement($concurrent?$query->getStatement():str_replace('CREATE TABLE ','CREATE TEMP TABLE ',$query->getStatement()));
+    $meta=$em->getClassMetadata(App\Entity\CharacterSpellQualification::class);
+    $check($db->createSchemaManager()->createComparator()->compareTables(
+        $db->createSchemaManager()->introspectTable($tempSchema.'.'.$meta->getTableName()),
+        $schema->getSchemaFromMetadata([$meta])->getTable($meta->getTableName()),
+    )->isEmpty(),'Qualification migration matches ORM');
     foreach ([SpellcastingPolicyDefinition::class, CharacterSpellAcquisition::class, App\Entity\SpellSubclassGrant::class, App\Entity\CharacterSpellRevision::class, App\Entity\SpellPolicyChoiceRule::class, App\Entity\CharacterSpellChoice::class] as $type) {
         $meta = $em->getClassMetadata($type); $actual = $db->createSchemaManager()->introspectTable($tempSchema.'.'.$meta->getTableName());
         $expected = $schema->getSchemaFromMetadata([$meta])->getTable($meta->getTableName());
@@ -362,15 +378,36 @@ try {
     $refuse(fn ()=>$grants->save($spells[3]['id'],$grant['id'],['quotaImpact'=>'free'],$other),404);
     $refuse(fn ()=>$service->definePolicy($sub,$knownPolicy,$other),404);
     require __DIR__.'/test-advanced-spell-choice-cases.php';
-    require __DIR__.'/test-spell-substitution-cases.php';
+    if (!in_array($argv[1] ?? '', ['--initialization-preview', '--initialization-concurrency'], true)) require __DIR__.'/test-spell-substitution-cases.php';
     (static function () use ($em,$db,$registry,$service,$access,$catalogue,$metadata,$check,$http,$campaign,$owner,$admin,$other,$advancedClass,$advancedSub,$advancedPolicy,$bookClass,$byKey,$advancedChoice): void {
         require __DIR__.'/test-level-up-spell-preview-cases.php';
+        require __DIR__.'/test-spell-initialization-preview-cases.php';
     })();
+    if (in_array($argv[1] ?? '', ['--initialization-preview', '--initialization-concurrency'], true)) {
+        require __DIR__.'/test-spell-initialization-cases.php';
+        echo "OK: $checks assertions (initialization preview and acquisition prerequisites)\n";
+        return;
+    }
+    require __DIR__.'/test-spell-qualification-http-cases.php';
     $em->clear();
     $all=$em->getRepository(CharacterSpellAcquisition::class)->findAll();
     foreach ($all as $a) { $check($a->isLearned(),'Learned property nonexclusive'); if ($a->getProvenance()==='manual-reconciliation') $check(!$a->isHistoricallyValidated(),'Historical limitation persisted'); if ($a->getQuotaBucket()==='spellbook') $check($a->isInSpellbook()&&!$a->isKnown(),'Book inscription separate from known'); }
     if ($concurrent) {
         $db->commit(); // Only the random isolated schema becomes visible to the workers.
+        $db->beginTransaction();
+        $db->fetchOne('SELECT id FROM character WHERE id=? FOR UPDATE',[$qualificationRace->getId()]);
+        $workers=[];
+        for ($i=0;$i<2;++$i) {
+            $pipes=[];
+            $process=proc_open([PHP_BINARY,__FILE__,'--worker',$isolatedSchema,(string)$qualificationRace->getId(),(string)$advancedPolicy->getId(),(string)$qualificationRaceId,'0',(string)$owner->getId(),'qualification'],[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes);
+            if (!is_resource($process)) throw new RuntimeException('Cannot start qualification worker');
+            fclose($pipes[0]); $check(trim(fgets($pipes[1]))==='ready','Qualification worker ready'); $workers[]=[$process,$pipes];
+        }
+        $db->commit(); $statuses=[];
+        foreach ($workers as [$process,$pipes]) { $statuses[]=trim(stream_get_contents($pipes[1])); $errors=stream_get_contents($pipes[2]); fclose($pipes[1]); fclose($pipes[2]); $check(proc_close($process)===0,'Qualification worker completed: '.$errors); }
+        sort($statuses); $check($statuses===['201','409'],'Only one concurrent qualification accepted');
+        $check((int)$db->fetchOne('SELECT COUNT(*) FROM character_spell_qualification WHERE acquisition_id=?',[$qualificationRaceId])===1,'Exactly one qualification journal entry');
+        $check($db->fetchAssociative('SELECT * FROM character_spell_choice WHERE acquisition_id=?',[$qualificationRaceId])===$qualificationRaceBefore,'Concurrent qualification preserves initial decision');
         $db->beginTransaction();
         $db->fetchOne('SELECT id FROM character WHERE id=? FOR UPDATE',[$prepared->getId()]);
         $workers=[];
