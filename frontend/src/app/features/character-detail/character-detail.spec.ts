@@ -9,6 +9,9 @@ import { CampaignCharacters } from '../campaign-characters/campaign-characters';
 import { CharacterApiService } from '@core/services/character-api.service';
 import { DndReferenceApiService } from '@core/services/dnd-reference-api.service';
 import { routes } from '../../app.routes';
+import { CharacterLevelUpPage } from '../character-level-up-page/character-level-up-page';
+import { CharacterHistory } from './components/character-history/character-history';
+import { By } from '@angular/platform-browser';
 
 describe('Character list/detail separation', () => {
   let api: any;
@@ -28,6 +31,7 @@ describe('Character list/detail separation', () => {
       provideRouter([]), {provide:ActivatedRoute,useFactory:()=>({snapshot:{paramMap:convertToParamMap(params)}})},
       {provide:CharacterApiService,useValue:api}, {provide:DndReferenceApiService,useValue:reference},
     ]});
+    TestBed.overrideComponent(CharacterLevelUpPage,{set:{template:''}});
   });
   // Exercise transferred page orchestration independently of the unchanged child editors.
   function detail(): any {
@@ -77,25 +81,35 @@ describe('Character list/detail separation', () => {
     expect(c.profileLoading()).toBe(false); expect(c.profileError()).toBe('Introuvable');
     c.refreshProfile(); expect(c.profile().id).toBe(7); expect(c.profileError()).toBeNull();
   });
-  it('keeps GM level-up payload, profile update and options reload', () => {
+  it('navigates to the GM page, forwards the payload, and reloads the profile on return', () => {
     const c=detail(); const payload={classId:3,hitPoints:5};
-    c.openEditor('level-up'); c.submitLevelUp(payload);
+    const navigate=vi.spyOn(TestBed.inject(Router),'navigate').mockResolvedValue(true);
+    c.openLevelUp();
+    expect(navigate).toHaveBeenCalledWith(['/campaigns',2,'characters',7,'level-up']);
+    const f=TestBed.createComponent(CharacterLevelUpPage); f.detectChanges();
+    const levelPage=f.componentInstance as any; levelPage.submitLevelUp(payload);
     expect(api.levelUp).toHaveBeenCalledWith(2,7,payload);
-    expect(c.profile().totalLevel).toBe(3); expect(c.success()).toBe('Niveau gagné');
-    expect(c.activeEditor()).toBeNull(); expect(c.levelUpSubmitting()).toBe(false);
-    expect(api.getLevelUpOptions).toHaveBeenCalledTimes(2);
+    expect(navigate).toHaveBeenLastCalledWith(['/campaigns',2,'characters',7]);
+    expect(levelPage.submitting()).toBe(false);
+    api.getProfile.mockReturnValue(of({id:7,totalLevel:3})); c.refreshProfile();
+    expect(c.profile().totalLevel).toBe(3); expect(c.activeEditor()).toBeNull();
+    expect(api.getLevelUpOptions).toHaveBeenCalledTimes(3);
   });
   it('retains a failed level-up editor and displays server error', () => {
-    const c=detail(); c.openEditor('level-up');
+    const f=TestBed.createComponent(CharacterLevelUpPage); f.detectChanges();
+    const c=f.componentInstance as any;
+    const navigate=vi.spyOn(TestBed.inject(Router),'navigate').mockResolvedValue(true);
+    const profile=c.profile(); const options=c.options();
     api.levelUp.mockReturnValue(throwError(()=>new HttpErrorResponse({status:409,error:{message:'Conflit'}})));
     c.submitLevelUp({});
-    expect(c.activeEditor()).toBe('level-up');expect(c.profileError()).toBe('Conflit');
-    expect(c.levelUpSubmitting()).toBe(false);expect(c.profile().totalLevel).toBe(2);
+    expect(c.error()).toBe('Conflit'); expect(navigate).not.toHaveBeenCalled();
+    expect(c.submitting()).toBe(false);expect(c.profile()).toBe(profile);expect(c.options()).toBe(options);
   });
   it('keeps HP history updates and training requests', () => {
     const c=detail(); c.hitPointHistoryCompleted({character:{id:7,totalLevel:2},message:'PV corrigés'});
     expect(c.success()).toBe('PV corrigés'); expect(c.profile().id).toBe(7);
-    c.loadTraining(3,4);expect(api.getTrainingOptions).toHaveBeenCalledWith(7,3,4);
+    const levelPage=TestBed.createComponent(CharacterLevelUpPage).componentInstance as any;
+    levelPage.loadTraining(3,4);expect(api.getTrainingOptions).toHaveBeenCalledWith(7,3,4);
   });
   it('refreshes after assigning/removing progressions and preserves success messages', () => {
     const c=detail(); c.addProgression(4);
@@ -167,5 +181,8 @@ describe('Character list/detail separation', () => {
     f.nativeElement.querySelector('#tab-history').click(); await f.whenStable();
     expect(c.activeEditor()).toBe('progressions');
     expect(f.nativeElement.querySelector('app-character-progressions')).toBe(editor);
-    expect(f.nativeElement.querySelector('#panel-history').textContent).toContain('provisoire');
+    const history=f.debugElement.query(By.directive(CharacterHistory));
+    expect(history).not.toBeNull();
+    expect(history.componentInstance.character()).toBe(c.profile());
+    expect(f.nativeElement.querySelector('#panel-history').hidden).toBe(false);
   });});

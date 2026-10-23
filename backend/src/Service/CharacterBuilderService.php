@@ -25,6 +25,7 @@ final readonly class CharacterBuilderService
         private CharacterRepository $characterRepository,
         private CharacterLevelUpService $levelUpService,
         private CharacterTrainingService $trainingService,
+        private CharacterFeatureSpellService $featureSpells,
     ) {
     }
 
@@ -119,6 +120,9 @@ final readonly class CharacterBuilderService
 
             $this->trainingService->apply($character, $training, $campaign->getOwner());
             $this->entityManager->flush();
+            // The character now has its race, racial feats and first class level.
+            // Persist fixed feature-granted spells at creation, not on page load.
+            $this->featureSpells->synchronize($character);
 
             return $character;
         });

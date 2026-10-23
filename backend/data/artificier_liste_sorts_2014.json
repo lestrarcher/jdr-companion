@@ -1,0 +1,817 @@
+{
+  "schema_version": 1,
+  "class_name": "Artificier",
+  "rules_edition": "2014",
+  "scope": "class_spell_list_only",
+  "provenance": "Liste fournie par utilisateur, sans sorts de sous-classes",
+  "notes": [
+    "Niveaux de sorts, non niveaux de personnage.",
+    "Les astérisques indiquent XGtE dans la liste fournie.",
+    "Les mentions de rituel sont informatives et ne remplacent pas les règles de lancement de la classe.",
+    "Les identifiants candidats sont générés à partir des noms, sans vérification automatisée contre le JSON local.",
+    "Ne pas importer automatiquement : validation des identifiants et de la présence des définitions requise."
+  ],
+  "total_entries": 88,
+  "counts_by_spell_level": {
+    "0": 19,
+    "1": 17,
+    "2": 21,
+    "3": 14,
+    "4": 10,
+    "5": 7
+  },
+  "entries": [
+    {
+      "name": "aspersion d’acide",
+      "spell_level": 0,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:aspersion-dacide",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "assistance",
+      "spell_level": 0,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:assistance",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "bouffée de poison",
+      "spell_level": 0,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:bouffee-de-poison",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "coup de tonnerre",
+      "spell_level": 0,
+      "ritual_in_user_list": false,
+      "xanathar_marker": true,
+      "source_marker": "XGtE",
+      "candidate_import_key": "aidedd-2014:coup-de-tonnerre",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "embrasement",
+      "spell_level": 0,
+      "ritual_in_user_list": false,
+      "xanathar_marker": true,
+      "source_marker": "XGtE",
+      "candidate_import_key": "aidedd-2014:embrasement",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "fouet épineux",
+      "spell_level": 0,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:fouet-epineux",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "gelure",
+      "spell_level": 0,
+      "ritual_in_user_list": false,
+      "xanathar_marker": true,
+      "source_marker": "XGtE",
+      "candidate_import_key": "aidedd-2014:gelure",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "lumière",
+      "spell_level": 0,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:lumiere",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "lumières dansantes",
+      "spell_level": 0,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:lumieres-dansantes",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "main de mage",
+      "spell_level": 0,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:main-de-mage",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "message",
+      "spell_level": 0,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:message",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "pierre magique",
+      "spell_level": 0,
+      "ritual_in_user_list": false,
+      "xanathar_marker": true,
+      "source_marker": "XGtE",
+      "candidate_import_key": "aidedd-2014:pierre-magique",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "poigne électrique",
+      "spell_level": 0,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:poigne-electrique",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "prestidigitation",
+      "spell_level": 0,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:prestidigitation",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "rayon de givre",
+      "spell_level": 0,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:rayon-de-givre",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "réparation",
+      "spell_level": 0,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:reparation",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "résistance",
+      "spell_level": 0,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:resistance",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "stabilisation",
+      "spell_level": 0,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:stabilisation",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "trait de feu",
+      "spell_level": 0,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:trait-de-feu",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "absorption des éléments",
+      "spell_level": 1,
+      "ritual_in_user_list": false,
+      "xanathar_marker": true,
+      "source_marker": "XGtE",
+      "candidate_import_key": "aidedd-2014:absorption-des-elements",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "alarme",
+      "spell_level": 1,
+      "ritual_in_user_list": true,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:alarme",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "catapulte",
+      "spell_level": 1,
+      "ritual_in_user_list": false,
+      "xanathar_marker": true,
+      "source_marker": "XGtE",
+      "candidate_import_key": "aidedd-2014:catapulte",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "collet",
+      "spell_level": 1,
+      "ritual_in_user_list": false,
+      "xanathar_marker": true,
+      "source_marker": "XGtE",
+      "candidate_import_key": "aidedd-2014:collet",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "déguisement",
+      "spell_level": 1,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:deguisement",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "détection de la magie",
+      "spell_level": 1,
+      "ritual_in_user_list": true,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:detection-de-la-magie",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "feuille morte",
+      "spell_level": 1,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:feuille-morte",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "graisse",
+      "spell_level": 1,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:graisse",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "grande foulée",
+      "spell_level": 1,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:grande-foulee",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "identification",
+      "spell_level": 1,
+      "ritual_in_user_list": true,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:identification",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "lueurs féeriques",
+      "spell_level": 1,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:lueurs-feeriques",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "purification de nourriture et d’eau",
+      "spell_level": 1,
+      "ritual_in_user_list": true,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:purification-de-nourriture-et-deau",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "repli expéditif",
+      "spell_level": 1,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:repli-expeditif",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "sanctuaire",
+      "spell_level": 1,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:sanctuaire",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "saut",
+      "spell_level": 1,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:saut",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "simulacre de vie",
+      "spell_level": 1,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:simulacre-de-vie",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "soins",
+      "spell_level": 1,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:soins",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "agrandissement/rapetissement",
+      "spell_level": 2,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:agrandissement-rapetissement",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "aide",
+      "spell_level": 2,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:aide",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "amélioration de caractéristique",
+      "spell_level": 2,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:amelioration-de-caracteristique",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "arme magique",
+      "spell_level": 2,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:arme-magique",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "bouche magique",
+      "spell_level": 2,
+      "ritual_in_user_list": true,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:bouche-magique",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "corde enchantée",
+      "spell_level": 2,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:corde-enchantee",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "écrire dans le ciel",
+      "spell_level": 2,
+      "ritual_in_user_list": true,
+      "xanathar_marker": true,
+      "source_marker": "XGtE",
+      "candidate_import_key": "aidedd-2014:ecrire-dans-le-ciel",
+      "matching_status": "missing_from_487_candidate_list"
+    },
+    {
+      "name": "flamme éternelle",
+      "spell_level": 2,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:flamme-eternelle",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "flou",
+      "spell_level": 2,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:flou",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "invisibilité",
+      "spell_level": 2,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:invisibilite",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "lévitation",
+      "spell_level": 2,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:levitation",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "métal brûlant",
+      "spell_level": 2,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:metal-brulant",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "modification d’apparence",
+      "spell_level": 2,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:modification-dapparence",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "pattes d’araignée",
+      "spell_level": 2,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:pattes-daraignee",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "protection contre le poison",
+      "spell_level": 2,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:protection-contre-le-poison",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "pyrotechnie",
+      "spell_level": 2,
+      "ritual_in_user_list": false,
+      "xanathar_marker": true,
+      "source_marker": "XGtE",
+      "candidate_import_key": "aidedd-2014:pyrotechnie",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "restauration partielle",
+      "spell_level": 2,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:restauration-partielle",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "toile d’araignée",
+      "spell_level": 2,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:toile-daraignee",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "verrou magique",
+      "spell_level": 2,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:verrou-magique",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "vision dans le noir",
+      "spell_level": 2,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:vision-dans-le-noir",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "voir l’invisible",
+      "spell_level": 2,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:voir-linvisible",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "arme élémentaire",
+      "spell_level": 3,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:arme-elementaire",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "clignotement",
+      "spell_level": 3,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:clignotement",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "création de nourriture et d’eau",
+      "spell_level": 3,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:creation-de-nourriture-et-deau",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "dissipation de la magie",
+      "spell_level": 3,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:dissipation-de-la-magie",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "flèches enflammées",
+      "spell_level": 3,
+      "ritual_in_user_list": false,
+      "xanathar_marker": true,
+      "source_marker": "XGtE",
+      "candidate_import_key": "aidedd-2014:fleches-enflammees",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "glyphe de protection",
+      "spell_level": 3,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:glyphe-de-protection",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "hâte",
+      "spell_level": 3,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:hate",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "marche sur l’eau",
+      "spell_level": 3,
+      "ritual_in_user_list": true,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:marche-sur-leau",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "protection contre une énergie",
+      "spell_level": 3,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:protection-contre-une-energie",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "respiration aquatique",
+      "spell_level": 3,
+      "ritual_in_user_list": true,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:respiration-aquatique",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "retour à la vie",
+      "spell_level": 3,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:retour-a-la-vie",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "serviteur miniature",
+      "spell_level": 3,
+      "ritual_in_user_list": false,
+      "xanathar_marker": true,
+      "source_marker": "XGtE",
+      "candidate_import_key": "aidedd-2014:serviteur-miniature",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "sieste",
+      "spell_level": 3,
+      "ritual_in_user_list": false,
+      "xanathar_marker": true,
+      "source_marker": "XGtE",
+      "candidate_import_key": "aidedd-2014:sieste",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "vol",
+      "spell_level": 3,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:vol",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "chien de garde de Mordenkainen",
+      "spell_level": 4,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:chien-de-garde-de-mordenkainen",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "coffre secret de Léomund",
+      "spell_level": 4,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:coffre-secret-de-leomund",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "fabrication",
+      "spell_level": 4,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:fabrication",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "façonnage de la pierre",
+      "spell_level": 4,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:faconnage-de-la-pierre",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "fléau élémentaire",
+      "spell_level": 4,
+      "ritual_in_user_list": false,
+      "xanathar_marker": true,
+      "source_marker": "XGtE",
+      "candidate_import_key": "aidedd-2014:fleau-elementaire",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "liberté de mouvement",
+      "spell_level": 4,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:liberte-de-mouvement",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "œil magique",
+      "spell_level": 4,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:il-magique",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "peau de pierre",
+      "spell_level": 4,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:peau-de-pierre",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "sanctuaire privé de Mordenkainen",
+      "spell_level": 4,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:sanctuaire-prive-de-mordenkainen",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "sphère résiliente d’Otiluke",
+      "spell_level": 4,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:sphere-resiliente-dotiluke",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "amélioration de compétences",
+      "spell_level": 5,
+      "ritual_in_user_list": false,
+      "xanathar_marker": true,
+      "source_marker": "XGtE",
+      "candidate_import_key": "aidedd-2014:amelioration-de-competences",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "animation d’objets",
+      "spell_level": 5,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:animation-dobjets",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "création",
+      "spell_level": 5,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:creation",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "main de Bigby",
+      "spell_level": 5,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:main-de-bigby",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "mur de pierre",
+      "spell_level": 5,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:mur-de-pierre",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "restauration supérieure",
+      "spell_level": 5,
+      "ritual_in_user_list": false,
+      "xanathar_marker": false,
+      "source_marker": "unmarked",
+      "candidate_import_key": "aidedd-2014:restauration-superieure",
+      "matching_status": "unverified"
+    },
+    {
+      "name": "transmutation de la pierre",
+      "spell_level": 5,
+      "ritual_in_user_list": false,
+      "xanathar_marker": true,
+      "source_marker": "XGtE",
+      "candidate_import_key": "aidedd-2014:transmutation-de-la-pierre",
+      "matching_status": "unverified"
+    }
+  ]
+}

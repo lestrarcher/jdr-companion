@@ -1,0 +1,141 @@
+<section class="player-spells" [attr.aria-busy]="busy()">
+  <header class="magic-heading">
+    <div><span class="eyebrow">Magie</span><h2>{{ mode() === 'spellbook' ? 'Grimoire' : 'Sorts et incantations' }}</h2></div>
+    @if (mode() === 'portal' && hasSpellbook()) {
+      <a class="spellbook-link" [routerLink]="['spellbook']" aria-label="Ouvrir le grimoire" title="Ouvrir le grimoire">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v15M12 5C8 2 4 3 2 4v15c3-1 6-1 10 1 4-2 7-2 10-1V4c-2-1-6-2-10 1Z" /></svg>
+      </a>
+    }
+    <span class="spell-count">{{ displayed().length }} entrées</span>
+  </header>
+  @if (busy()) { <p class="notice" role="status">Chargement…</p> }
+  @if (error()) {
+    <div class="notice notice--error"><p role="alert">{{ error() }}</p>
+      <button type="button" [disabled]="busy()" (click)="reload()">Recharger les sorts</button>
+    </div>
+  }
+  @if (success()) { <p class="notice" role="status">{{ success() }}</p> }
+  @for (warning of view()?.warnings ?? []; track warning) { <p class="notice">{{ warning }}</p> }
+
+  @if (displayed().length === 0) {
+    <p class="empty-state">{{ mode() === 'spellbook' ? 'Aucun sort inscrit dans le grimoire.' : 'Aucun sort enregistré pour ce personnage.' }}</p>
+  } @else {
+    <div class="quickbar-shell">
+      <p class="eyebrow" id="spell-quickbar-label">Répertoire rapide</p>
+      <div class="quickbar" role="group" aria-labelledby="spell-quickbar-label">
+        @for (spell of displayed(); track spellKey(spell)) {
+          <button type="button" class="quick-spell" [attr.data-school]="spell.school"
+            [class.is-selected]="selectedSpell() && spellKey(selectedSpell()!) === spellKey(spell)"
+            [attr.aria-pressed]="selectedSpell() && spellKey(selectedSpell()!) === spellKey(spell)"
+            [attr.aria-label]="spell.name + ' · ' + spell.source" aria-controls="selected-spell-details"
+            (click)="select(spell)">
+            <span class="spell-icon" aria-hidden="true">{{ schoolIcon(spell.school) }}</span>
+            <span class="spell-level">{{ spell.level === 0 ? '∞' : spell.level ?? '?' }}</span>
+            <span class="quick-name">{{ spell.name }}</span>
+            @if (spell.prepared) { <span class="prepared-dot" aria-label="Préparé"></span> }
+          </button>
+        }
+      </div>
+      <!-- Reserved for future functional metamagic controls; empty projection stays hidden. -->
+      <div class="spell-modifiers"><ng-content select="[spell-modifiers]" /></div>
+    </div>
+
+    @if (selectedSpell(); as spell) {
+      <article id="selected-spell-details" class="spell-details" aria-live="polite">
+        <div class="spell-summary">
+        <header class="detail-heading">
+          <span class="detail-icon" aria-hidden="true">{{ schoolIcon(spell.school) }}</span>
+          <div><span class="eyebrow">{{ schoolLabel(spell.school) }} · {{ spell.level === 0 ? 'Tour de magie' : 'Niveau ' + (spell.level ?? '?') }}</span>
+            <h3>{{ spell.name }}</h3><p>{{ spell.source }}</p>
+          </div>
+        </header>
+        <div class="spell-tags">
+          @if (spell.known) { <span>Connu</span> }
+          @if (spell.prepared) { <span class="prepared-tag">{{ spell.alwaysPrepared ? 'Toujours préparé' : 'Préparé' }}</span> }
+          @if (spell.inSpellbook) { <span>Grimoire</span> }
+          @if (spell.details?.concentration) { <span>Concentration</span> }
+          @if (spell.details?.ritual) { <span>Rituel</span> }
+        </div>
+        <dl class="spell-facts">
+          <div><dt>Incantation</dt><dd>{{ abilityLabel(spell.castingAbility) }}</dd></div>
+          <div><dt>DD de sauvegarde</dt><dd>{{ spell.spellSaveDc ?? '—' }}</dd></div>
+          <div><dt>Attaque magique</dt><dd>{{ bonus(spell.spellAttackBonus) }}</dd></div>
+          @if (spell.details; as details) {
+            <div><dt>Temps</dt><dd>{{ details.castingTime }}</dd></div>
+            <div><dt>Portée</dt><dd>{{ details.range }}</dd></div>
+            <div><dt>Durée</dt><dd>{{ details.duration }}</dd></div>
+          }
+        </dl>
+        </div>
+        @if (spell.details; as details) {
+          <div class="spell-text">
+          <p class="spell-description">{{ details.description }}</p>
+          @if (details.higherLevels) { <h4>À plus haut niveau</h4><p class="spell-description">{{ details.higherLevels }}</p> }
+          <p class="components">Composantes : {{ details.verbal ? 'V ' : '' }}{{ details.somatic ? 'S ' : '' }}{{ details.material ? 'M' : '' }}
+            @if (details.materialDescription) { — {{ details.materialDescription }} }
+          </p>
+          </div>
+        }
+      </article>
+    }
+
+    <div class="spell-sections">
+      @for (section of sections(); track section.key) {
+        <section class="spell-section" [attr.aria-labelledby]="'spells-' + section.key">
+          <h3 [id]="'spells-' + section.key">{{ section.title }} <span>{{ section.spells.length }}</span></h3>
+          @if (section.description) { <p class="section-description">{{ section.description }}</p> }
+          @for (spell of section.spells; track spellKey(spell)) {
+            <button type="button" class="spell-row" aria-controls="selected-spell-details" (click)="select(spell)"
+              [attr.aria-pressed]="selectedSpell() && spellKey(selectedSpell()!) === spellKey(spell)">
+              <span class="row-icon" aria-hidden="true">{{ schoolIcon(spell.school) }}</span>
+              <span class="row-text"><strong>{{ spell.name }}</strong><small>{{ spell.source }} · {{ abilityLabel(spell.castingAbility) }}</small></span>
+              <span class="row-level">{{ spell.level === 0 ? 'Tour' : 'Niv. ' + (spell.level ?? '?') }}
+                @if (spell.prepared) { <small>{{ spell.alwaysPrepared ? 'Permanent' : 'Préparé' }}</small> }
+              </span>
+            </button>
+          } @empty { <p class="section-empty">Aucun sort dans cette section.</p> }
+        </section>
+      }
+    </div>
+  }
+
+  @if (mode() === 'portal') {
+  @if ((view()?.choices?.length ?? 0) > 0) {
+    <section class="choices-section" aria-labelledby="spell-choices-heading">
+      <h3 id="spell-choices-heading">Choix disponibles</h3>
+      <p>Chaque choix est enregistré pour sa propre source. Vérifiez votre sélection avant de confirmer.</p>
+      @for (choice of view()?.choices ?? []; track choice.key) {
+        <fieldset [disabled]="!editable()">
+          <legend>{{ choice.source }} · {{ choice.label }}</legend>
+          <p>{{ choice.remaining }} restant(s) · Incantation : {{ abilityLabel(choice.ability) }}</p>
+          <label [for]="'choice-' + choice.key">Sort à apprendre</label>
+          <div class="choice-controls">
+            <select [id]="'choice-' + choice.key" [(ngModel)]="selections[choice.key]">
+              <option [ngValue]="0">Choisir un sort</option>
+              @for (spell of choice.available; track spell.id) { <option [ngValue]="spell.id">{{ spell.name }} · niv. {{ spell.level }}</option> }
+            </select>
+            <button type="button" [disabled]="!selections[choice.key]" (click)="choose(choice)">Confirmer ce choix définitif</button>
+          </div>
+        </fieldset>
+      }
+    </section>
+  }
+  @for (plan of view()?.preparations ?? []; track plan.policyId) {
+    <fieldset class="preparation-section" [disabled]="!editable() || plan.blocked">
+      <legend>Préparation · {{ plan.source }} · {{ plan.selected.length }}/{{ plan.maximum }}</legend>
+      <p>Incantation : {{ abilityLabel(plan.ability) }}. {{ plan.learningStyle === 'spellbook' ? 'Choisissez parmi les sorts de votre grimoire.' : 'Choisissez parmi les sorts accessibles à votre classe.' }}</p>
+      @if (plan.blocked) { <p>Préparation indisponible : vérifiez la configuration du personnage avec le MJ.</p> }
+      <div class="preparation-grid">
+        @for (spell of plan.available; track spell.id) {
+          <label class="preparation-choice" [class.is-prepared]="plan.selected.includes(spell.id)">
+            <input type="checkbox" [checked]="plan.selected.includes(spell.id)"
+              [disabled]="!plan.selected.includes(spell.id) && plan.selected.length >= plan.maximum"
+              (change)="toggle(plan, spell.id)">
+            <span>{{ spell.name }}<small>Niveau {{ spell.level }}</small></span>
+          </label>
+        } @empty { <p>Aucun sort à préparer.</p> }
+      </div>
+    </fieldset>
+  }
+  }
+</section>

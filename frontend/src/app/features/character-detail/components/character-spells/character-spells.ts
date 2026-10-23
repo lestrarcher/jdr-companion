@@ -6,6 +6,8 @@ import { CharacterProfile } from '@core/services/character-api.service';
 import { SpellInitializationPreview } from '@core/models/spell-initialization.model';
 import { CharacterApiService } from '@core/services/character-api.service';
 
+type FeatureSpellStatus = { known: { grantId: number; spellId: number; spellName: string; featureName: string; castingAbility?: string | null; spellSaveDc?: number | null; spellAttackBonus?: number | null }[]; pending: { grantId: number; featureName: string; spellLevel: number; classId: number | null; schools: string[]; castingAbility?: string | null }[] };
+type FeatureSpellOption = { id: number; name: string; level: number; school?: string };
 type Policy = { className: string; status: string; policyIds: number[] };
 type SpellRow = { id: number; name: string; level: number; school?: string; ritual?: boolean; concentration?: boolean; is_ritual?: boolean; is_concentration?: boolean; casting_time?: string; castingTime?: string; casting_time_text?: string; castingTimeText?: string; casting_time_type?: string; castingTimeType?: string };
 type Acquisition = { id: number; spell_id: number; spell_name: string; spell_level?: number; provenance?: string };
@@ -24,6 +26,38 @@ type Entry = { id: number; name: string; level: number; origin: string; ritual: 
 })
 export class CharacterSpells {
   readonly refresh = signal(0);
+  readonly featureSpells = signal<FeatureSpellStatus>({ known: [], pending: [] });
+  readonly featureOptions = signal<Record<number, FeatureSpellOption[]>>({});
+  readonly selectedFeatureSpells = signal<Record<number, number>>({});
+  readonly featureBusy = signal(false);
+  readonly featureError = signal('');
+  loadFeatureOptions(grantId: number): void {
+    this.featureError.set('');
+    this.http.get<{ spells: FeatureSpellOption[] }>(`/api/characters/${this.character().id}/feature-spells/${grantId}/options`).subscribe({
+      next: result => this.featureOptions.update(options => ({ ...options, [grantId]: result.spells ?? [] })),
+      error: () => this.featureError.set('Impossible de récupérer les sorts autorisés.'),
+    });
+  }
+  selectFeatureSpell(grantId: number, value: string): void {
+    this.selectedFeatureSpells.update(selected => ({ ...selected, [grantId]: Number(value) }));
+  }
+  chooseFeatureSpell(grantId: number): void {
+    const spellId = this.selectedFeatureSpells()[grantId];
+    if (!spellId || this.featureBusy()) return;
+    this.featureBusy.set(true); this.featureError.set('');
+    this.http.post<FeatureSpellStatus>(`/api/characters/${this.character().id}/feature-spells/${grantId}/choose`, { spellId }).subscribe({
+      next: () => { this.featureBusy.set(false); this.refresh.update(value => value + 1); },
+      error: () => { this.featureBusy.set(false); this.featureError.set('Impossible d’enregistrer le choix de sort.'); },
+    });
+  }
+  synchronizeFeatureSpells(): void {
+    if (this.featureBusy()) return;
+    this.featureBusy.set(true); this.featureError.set('');
+    this.http.post<FeatureSpellStatus>(`/api/characters/${this.character().id}/feature-spells/synchronize`, {}).subscribe({
+      next: () => { this.featureBusy.set(false); this.refresh.update(value => value + 1); },
+      error: () => { this.featureBusy.set(false); this.featureError.set('Impossible de synchroniser les sorts des capacités.'); },
+    });
+  }
   readonly initializationPending = signal(false);
   private readonly characterApi = inject(CharacterApiService);
   private readonly http = inject(HttpClient);
@@ -80,7 +114,7 @@ export class CharacterSpells {
         onCleanup(() => initializationSub.unsubscribe());
       }
       this.selectedSpell.set(null);
-      this.loading.set(true); this.error.set(''); this.entries.set([]); this.policies.set([]); this.castingPolicies.set([]);
+      this.loading.set(true); this.error.set(''); this.entries.set([]); this.policies.set([]); this.castingPolicies.set([]); this.featureSpells.set({ known: [], pending: [] }); this.featureOptions.set({});
       const sub = this.http.get<{ policies: Policy[] }>(`/api/characters/${id}/spell-acquisitions`).pipe(
         switchMap(status => {
           this.policies.set(status.policies ?? []);
@@ -91,21 +125,34 @@ export class CharacterSpells {
             catchError(() => of({...p, data:{} as Options}))
           )));
         }),
-        switchMap(options => {
+        switchMap(options => forkJoin({
+          policies: of(options),
+          features: this.http.get<FeatureSpellStatus>(`/api/characters/${id}/feature-spells`).pipe(catchError(() => of({ known: [], pending: [] } as FeatureSpellStatus))),
+        })),
+        switchMap(({ policies: options, features }) => {
+          this.featureSpells.set(features);
           this.castingPolicies.set(options);
-          const raw = options.flatMap(({className,data}) => [
+          const raw = [...options.flatMap(({className,data}) => [
             ...(data.acquisitions ?? []).map(a => ({id:Number(a.spell_id), fallback:a.spell_name, level:Number(a.spell_level ?? 0), origin:className})),
             ...(data.automatic ?? []).map(a => ({id:Number(a.spellId), fallback:'Sort accordé', level:0, origin:`${className} · octroi automatique`}))
-          ]).filter(s => Number.isFinite(s.id) && s.id > 0);
+          ]), ...features.known.map(s => ({ id: Number(s.spellId), fallback: s.spellName, level: 0, origin: s.featureName }))
+          ].filter(s => Number.isFinite(s.id) && s.id > 0);
           if (!raw.length) return of([] as Entry[]);
           const unique = [...new Set(raw.map(s => s.id))];
-          return forkJoin(unique.map(spellId => this.http.get<{spell:SpellDetail}>(`/api/reference/custom/spells/${spellId}`).pipe(
-            catchError(() => of({spell: null as SpellDetail | null}))
-          ))).pipe(switchMap(details => of(raw.map(s => {
-            const spell = details[unique.indexOf(s.id)]?.spell;
-            return {id:s.id, name:spell?.name ?? s.fallback, level:spell?.level ?? s.level, origin:s.origin, detail:spell ?? null,
-              ritual:Boolean(spell?.ritual ?? spell?.is_ritual), concentration:Boolean(spell?.concentration ?? spell?.is_concentration), action:this.castingTime(spell ?? null)};
-          }))));
+          // Fetch spell details in one HTTP request instead of one per spell.
+          return this.http.get<{ spells: Record<string, SpellDetail | null> }>(
+            '/api/reference/custom/spells/batch-details',
+            { params: { ids: unique.join(',') } }
+          ).pipe(
+            switchMap(({ spells }) => of(raw.map(item => {
+              const spell = spells[String(item.id)] ?? null;
+              return { id: item.id, name: spell?.name ?? item.fallback, level: spell?.level ?? item.level,
+                origin: item.origin, detail: spell,
+                ritual: Boolean(spell?.ritual ?? spell?.is_ritual),
+                concentration: Boolean(spell?.concentration ?? spell?.is_concentration),
+                action: this.castingTime(spell) };
+            })))
+          );
         })
       ).subscribe({next:entries => {this.entries.set(entries);this.loading.set(false);},error:() => {this.error.set('Impossible de charger les sorts du personnage.');this.loading.set(false);}});
       onCleanup(() => sub.unsubscribe());

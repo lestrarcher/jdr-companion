@@ -14,6 +14,7 @@ final readonly class CharacterSessionStateSerializer
         private CharacterHitPointStateService $hitPointStateService,
         private CharacterActiveEffectRepository $activeEffectRepository,
         private CharacterSpellSlotStateService $spellSlotStateService,
+        private PlayerSpellDirectory $spellDirectory,
     ) {
     }
 
@@ -71,6 +72,7 @@ final readonly class CharacterSessionStateSerializer
                 'status' => $gameSession->getStatus(),
             ],
             'character' => $profile,
+            'spells' => $this->spellDirectory->forCharacter($character, $sessionState),
             'activeEffects' => array_map(
                 static fn ($effect): array => [
                     'id' => $effect->getId(),

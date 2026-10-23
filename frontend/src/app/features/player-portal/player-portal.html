@@ -243,13 +243,7 @@
               }
 
               @case ('spells') {
-                <section class="spells-placeholder">
-                  <header class="spells-placeholder__header"><span class="eyebrow">Grimoire</span><h2>Sorts et incantations</h2><p>Les sorts connus, préparés et leurs emplacements seront bientôt accessibles ici.</p></header>
-                  <div class="spells-placeholder__layout">
-                    <div class="spells-placeholder__panel"><span class="eyebrow">Magie</span><h3>Répertoire des sorts</h3><div class="spells-placeholder__empty"><span aria-hidden="true">✧</span><strong>Bientôt disponible</strong><p>Vos sorts apparaîtront ici.</p></div></div>
-                    <div class="spells-placeholder__panel"><span class="eyebrow">Ressources magiques</span><h3>Emplacements de sorts</h3><div class="spells-placeholder__empty"><span aria-hidden="true">◇</span><strong>Bientôt disponible</strong><p>Suivi des emplacements et de leur récupération.</p></div></div>
-                  </div>
-                </section>
+                <app-player-spells [spells]="playerSpells()" [accessToken]="accessToken" [revision]="serverRevision" [readonly]="!canEdit()" (changed)="refreshSpells()" />
               }
               @case ('possessions') {
                 <div class="possessions-sections">

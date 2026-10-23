@@ -12,7 +12,7 @@ import { CharacterAbilityScore, CharacterTraining, CharacterActionSummary, Chara
 
 import { CharacterActionsState, CharacterSessionStatePayload, characterProfileToCharacter, toCharacterSessionStatePayload } from '@core/mappers/character-api.mapper';
 import { ActionPreparationModal } from './components/action-preparation-modal/action-preparation-modal';
-import { CharacterSessionStateApiService } from '@core/services/character-session-state-api.service';
+import { CharacterSessionStateApiService, PlayerSpell } from '@core/services/character-session-state-api.service';
 import { RestType } from '@core/models/rest-request.model';
 import { CharacterStateService } from '@core/services/character-state.service';
 import { RestRequestApiResponse, RestRequestApiService } from '@core/services/rest-request-api.service';
@@ -28,6 +28,7 @@ import { AidActionModal, AidActionPayload, AidSpellSlot, AidTarget } from './com
 import { HeroesFeastActionModal, HeroesFeastActionPayload } from './components/heroes-feast-action-modal/heroes-feast-action-modal';
 import { FlexibleCastingActionModal, FlexibleCastingPayload } from './components/flexible-casting-action-modal/flexible-casting-action-modal';
 import { CharacterStatistics } from './components/character-statistics/character-statistics';
+import { PlayerSpells } from './components/player-spells/player-spells';
 import { CharacterFeatures } from './components/character-features/character-features';
 import { ArcaneRecoveryActionModal, ArcaneRecoveryPayload } from './components/arcane-recovery-action-modal/arcane-recovery-action-modal';
 
@@ -68,6 +69,7 @@ type PlayerPortalTab =
     FlexibleCastingActionModal,
     CharacterFeatures,
     CharacterStatistics,
+    PlayerSpells,
     ArcaneRecoveryActionModal,
   ],
   templateUrl: './player-portal.html',
@@ -91,6 +93,7 @@ export class PlayerPortal {
   protected readonly characterState = this.characterStateService.character;
   protected readonly campaign = signal<CampaignConfig | null>(null);
   protected readonly character = signal<Character | null>(null);
+  protected readonly playerSpells = signal<PlayerSpell[]>([]);
   protected readonly sessionStatus = signal<SessionStatus | null>(null);
   protected readonly canEdit = computed(() => this.sessionStatus() === 'live');
   protected readonly levelUpAllowed = signal(false);
@@ -100,7 +103,8 @@ export class PlayerPortal {
   protected readonly saveError = signal<string | null>(null);
   protected readonly inspiration = signal(false);
   protected readonly inspirationSaving = signal(false);
-  protected readonly activeTab = signal<PlayerPortalTab>(typeof window !== 'undefined' && window.matchMedia('(min-width: 900px)').matches ? 'overview' : 'status');
+  protected readonly activeTab = signal<PlayerPortalTab>(this.route.snapshot.queryParamMap?.get('tab') === 'spells'
+    ? 'spells' : typeof window !== 'undefined' && window.matchMedia('(min-width: 900px)').matches ? 'overview' : 'status');
 
   // Features and actions
   protected readonly abilities = signal<CharacterAbilityScore[]>([]);
@@ -190,6 +194,7 @@ export class PlayerPortal {
   protected readonly tinkeringResources = computed(() => this.sortedResources().filter(resource => resource.id === 'magical-tinkering'));
   protected readonly hasTinkering = computed(() => this.features().some(feature => feature.slug === 'magical-tinkering'));
   protected refreshTinkering(): void { this.loadCharacter(false); }
+  protected refreshSpells(): void { this.loadCharacter(false); }
   private loadGeneration = 0;
   private refreshPending = false;
 
@@ -438,6 +443,7 @@ export class PlayerPortal {
 
           this.campaign.set(campaign);
           this.character.set(loadedCharacter);
+          this.playerSpells.set(response.spells ?? []);
           this.abilities.set(response.character.abilities);
           this.training.set(response.character.training ?? null);
           this.proficiencyBonus.set(response.character.proficiencyBonus);
@@ -586,12 +592,14 @@ export class PlayerPortal {
       // Session status is independent of the character state's revision.
       this.setSessionStatus(response.session.status);
       this.levelUpAllowed.set(response.levelUpAllowed);
+      this.playerSpells.set(response.spells ?? []);
       if (!statusChanged && response.revision === this.serverRevision) return;
       this.tinkeringNotes.set(response.state.magicalTinkeringNotes ?? '');
 
       this.serverRevision = response.revision;
       this.inspiration.set(response.state.inspiration === true);
 
+      this.playerSpells.set(response.spells ?? []);
       const character = characterProfileToCharacter(response.character, response.state);
 
       this.characterStateService.applyServerState(character);
@@ -798,7 +806,8 @@ protected openAction(
       next: response => {
         this.serverRevision = response.revision;
           this.inspiration.set(response.state.inspiration === true);
-        const character = characterProfileToCharacter(response.character, response.state);
+        this.playerSpells.set(response.spells ?? []);
+      const character = characterProfileToCharacter(response.character, response.state);
         this.characterStateService.applyServerState(character);
         this.character.set(character);
         this.training.set(response.character.training ?? null);
@@ -834,7 +843,8 @@ protected openAction(
       next: response => {
         this.serverRevision = response.revision;
           this.inspiration.set(response.state.inspiration === true);
-        const character = characterProfileToCharacter(response.character, response.state);
+        this.playerSpells.set(response.spells ?? []);
+      const character = characterProfileToCharacter(response.character, response.state);
         this.characterStateService.applyServerState(character);
         this.character.set(character);
         this.training.set(response.character.training ?? null);
@@ -943,7 +953,8 @@ protected openAction(
           this.serverRevision = response.revision;
           this.inspiration.set(response.state.inspiration === true);
 
-          const character = characterProfileToCharacter(response.character, response.state);
+          this.playerSpells.set(response.spells ?? []);
+      const character = characterProfileToCharacter(response.character, response.state);
           this.characterStateService.applyServerState(character);
 
           this.actions.set(response.character.actions ?? []);

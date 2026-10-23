@@ -27,6 +27,10 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'campaigns/:campaignId/sessions/:sessionId/player/:accessToken/spellbook',
+    loadComponent: () => import('./features/player-spellbook/player-spellbook').then(component => component.PlayerSpellbook),
+  },
+  {
     path: 'campaigns/:campaignId/sessions/:sessionId/player/:accessToken',
     loadComponent: () =>
       import('./features/player-portal/player-portal').then(
@@ -98,6 +102,10 @@ export const routes: Routes = [
       {
         path: 'campaigns/:campaignId/characters/:characterId/spell-initialization',
         loadComponent: () => import('./features/spell-initialization-page/spell-initialization-page').then(component => component.SpellInitializationPage),
+      },
+      {
+        path: 'campaigns/:campaignId/characters/:characterId/level-up',
+        loadComponent: () => import('./features/character-level-up-page/character-level-up-page').then(component => component.CharacterLevelUpPage),
       },
       {
         path: 'campaigns/:campaignId/characters/:characterId',

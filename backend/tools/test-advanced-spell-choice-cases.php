@@ -67,10 +67,33 @@ $replaceManual=fn()=>$service->acquire($reconciled,$advancedPolicy->getId(),[$ad
 $refuse($replaceManual,409);
 $refuse(fn()=>$service->qualifyChoice($reconciled,$advancedPolicy->getId(),$manualAdvanced,'',$owner),400);
 $refuse(fn()=>$service->qualifyChoice($reconciled,$advancedPolicy->getId(),$manualAdvanced,'Forged owner',$other),404);
+$initialChoice=$db->fetchAssociative('SELECT * FROM character_spell_choice WHERE acquisition_id=?',[$manualAdvanced]);
+$initialAcquisition=$db->fetchAssociative('SELECT * FROM character_spell_acquisition WHERE id=?',[$manualAdvanced]);
+$journalBefore=(int)$db->fetchOne('SELECT COUNT(*) FROM character_spell_qualification');
 $service->qualifyChoice($reconciled,$advancedPolicy->getId(),$manualAdvanced,'MJ confirms unrestricted acquisition route',$owner);
+$check($db->fetchAssociative('SELECT * FROM character_spell_choice WHERE acquisition_id=?',[$manualAdvanced])===$initialChoice,'Qualification preserves every initial choice field');
+$check($db->fetchAssociative('SELECT * FROM character_spell_acquisition WHERE id=?',[$manualAdvanced])===$initialAcquisition,'Qualification preserves provenance and historical validation');
+$journal=$db->fetchAssociative('SELECT * FROM character_spell_qualification WHERE acquisition_id=?',[$manualAdvanced]);
+$check((int)$journal['rule_id']===$byKey['unrestricted'] && (int)$journal['decided_by_id']===$owner->getId() && $journal['reason']==='MJ confirms unrestricted acquisition route' && $journal['decided_at']!==null,'Journal records rule, author, reason and date');
+$qualifiedOptions=$service->options($reconciled,$advancedPolicy->getId(),$owner);
+$qualifiedRow=array_column($qualifiedOptions['acquisitions'],null,'id')[$manualAdvanced];
+$check(filter_var($qualifiedRow['origin_known'],FILTER_VALIDATE_BOOL),'Options expose effective qualified origin');
+$check(!(new App\Service\AdvancedSpellChoices($em,$access))->requiresQualification($qualifiedRow,$em->find(App\Entity\SpellPolicyChoiceRule::class,$byKey['unrestricted']),(new App\Service\AdvancedSpellChoices($em,$access))->rules($advancedPolicy)),'Shared qualification predicate accepts journal confirmation');
 $refuse(fn()=>$service->qualifyChoice($reconciled,$advancedPolicy->getId(),$manualAdvanced,'Repeated qualification',$owner),409);
+$check((int)$db->fetchOne('SELECT COUNT(*) FROM character_spell_qualification')===$journalBefore+1,'Repeated qualification adds no journal entry');
 $qualifiedReplacement=$replaceManual()[0];
+$refuse(fn()=>$service->qualifyChoice($reconciled,$advancedPolicy->getId(),$manualAdvanced,'Inactive acquisition',$owner),404);
 $check($db->fetchOne('SELECT opportunity_level_id FROM character_spell_choice WHERE acquisition_id=?',[$qualifiedReplacement])===null,'Qualification never invents a historical level');
+$check((int)$db->fetchOne('SELECT rule_id FROM character_spell_choice WHERE acquisition_id=?',[$qualifiedReplacement])===$byKey['unrestricted'],'Replacement keeps confirmed rule');
+$qualificationRace=$makeAdvancedCharacter('qualification-race',$advancedClass,3,$advancedSub); $em->flush();
+$qualificationRaceId=$service->acquire($qualificationRace,$advancedPolicy->getId(),[$advancedChoice($spells[3]['id'],$qualificationRace->getClassLevels()->last()->getId(),$byKey['unrestricted'])],'manual-reconciliation','Concurrent historical fixture',$owner)[0];
+$qualificationRaceBefore=$db->fetchAssociative('SELECT * FROM character_spell_choice WHERE acquisition_id=?',[$qualificationRaceId]);
+$db->beginTransaction();
+$service->qualifyChoice($qualificationRace,$advancedPolicy->getId(),$qualificationRaceId,'Rolled back qualification',$owner);
+$check((int)$db->fetchOne('SELECT COUNT(*) FROM character_spell_qualification WHERE acquisition_id=?',[$qualificationRaceId])===1,'Qualification participates in enclosing transaction');
+$db->rollBack();
+$check(!(bool)$db->fetchOne('SELECT 1 FROM character_spell_qualification WHERE acquisition_id=?',[$qualificationRaceId]),'Rollback removes qualification');
+$check($db->fetchAssociative('SELECT * FROM character_spell_choice WHERE acquisition_id=?',[$qualificationRaceId])===$qualificationRaceBefore,'Rollback preserves initial choice');
 
 // Arcane trickster uses an explicit required cantrip FK, not a spell name.
 $trickClass=new CharacterClass('trick-fixture','Synthetic trickster',8,2); $em->persist($trickClass);
@@ -133,6 +156,9 @@ $independentLevel=new CharacterClassLevel($advancedChar,$bookClass,13); $advance
 $service->acquire($advancedChar,$bookPolicy->getId(),[['spellId'=>$spells[5]['id'],'classLevelId'=>$independentLevel->getId()]],'manual-reconciliation','Same spell through a different acquisition class',$owner);
 $check($service->options($advancedChar,$advancedPolicy->getId(),$owner)['used']['known']===1 && $service->options($advancedChar,$bookPolicy->getId(),$owner)['used']['spellbook']===1,'Advanced multiclass choices retain independent quotas for the same spell');
 foreach ([
+    ['INSERT INTO character_spell_qualification SELECT * FROM character_spell_qualification WHERE acquisition_id=?',[$manualAdvanced]],
+    ["UPDATE character_spell_qualification SET reason=' ' WHERE acquisition_id=?",[$manualAdvanced]],
+    ['UPDATE character_spell_qualification SET rule_id=-1 WHERE acquisition_id=?',[$manualAdvanced]],
     ['DELETE FROM spell_policy_choice_rule WHERE id=?',[$byKey['unrestricted']]],
     ["UPDATE spell_policy_choice_rule SET parameters='[]' WHERE id=?",[$byKey['restricted']]],
     ['UPDATE spellcasting_policy_definition SET base_policy_id=id WHERE id=?',[$lorePolicy->getId()]],

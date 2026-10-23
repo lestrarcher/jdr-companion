@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Dto\EffectiveAbilityScore;
+use App\Dto\LevelAdvancementSelection;
 use App\Entity\Character;
 use App\Entity\MagicItemAbilityEffect;
 use App\Enum\Ability;
@@ -15,6 +16,19 @@ final class CharacterAbilityCalculator
 {
     private const ABSOLUTE_MINIMUM = 1;
     private const ABSOLUTE_MAXIMUM = 30;
+
+    /** Statistics for a spell's own casting ability, independent of class policy. */
+    public function spellStatistics(Character $character, Ability $ability): array
+    {
+        // Avoid getAbilityScore() when missing: its legacy fallback creates a score.
+        foreach ($character->getAbilityScores() as $score) {
+            if ($score->getAbility() !== $ability) continue;
+            $attack = $character->getProficiencyBonus()
+                + $this->calculate($character, $ability)->modifier();
+            return ['spellSaveDc' => 8 + $attack, 'spellAttackBonus' => $attack];
+        }
+        return ['spellSaveDc' => null, 'spellAttackBonus' => null];
+    }
 
     /**
      * @return array<string, EffectiveAbilityScore>
@@ -30,13 +44,13 @@ final class CharacterAbilityCalculator
         return $results;
     }
 
-    public function calculate(Character $character, Ability $ability): EffectiveAbilityScore
+    public function calculate(Character $character, Ability $ability, ?LevelAdvancementSelection $advancement = null): EffectiveAbilityScore
     {
         $abilityScore = $character->getAbilityScore($ability);
 
         $baseValue = $abilityScore->getBaseValue();
 
-        $effectiveValue = $this->calculatePermanentValue($character, $ability);
+        $effectiveValue = $this->calculatePermanentValue($character, $ability, $advancement);
         $minimumValue = null;
 
         foreach ($character->getMagicItems() as $ownedItem) {
@@ -95,7 +109,7 @@ final class CharacterAbilityCalculator
     }
 
     /** Permanent score before conditional equipment effects, used to validate ASIs. */
-    public function calculatePermanentValue(Character $character, Ability $ability): int
+    public function calculatePermanentValue(Character $character, Ability $ability, ?LevelAdvancementSelection $advancement = null): int
     {
         $baseValue = $character->getAbilityScore($ability)->getBaseValue();
         $effectiveValue = $baseValue;
@@ -133,7 +147,14 @@ final class CharacterAbilityCalculator
             $effectiveValue += $characterFeat->getAbilityIncrease();
         }
 
+        // Project a level-up without attaching a feat or adjustment to the character.
+        if ($advancement?->getFeatAbility() === $ability) {
+            $effectiveValue += $advancement->getFeat()?->getChosenAbilityIncrease() ?? 0;
+        }
         $effectiveValue = $this->applyPermanentAdjustments($character, $ability, $effectiveValue);
+        foreach ($advancement?->getAbilityIncreases() ?? [] as $increase) {
+            if ($increase['ability'] === $ability) $effectiveValue += $increase['value'];
+        }
 
         return $effectiveValue;
     }

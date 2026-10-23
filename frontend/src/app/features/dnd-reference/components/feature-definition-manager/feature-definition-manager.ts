@@ -1,6 +1,6 @@
 import { ReferencePicker } from '../reference-picker/reference-picker';
 import { REFERENCE_VIEW_ORIGIN, REFERENCE_READ_ONLY, matchesReferenceOrigin } from '@core/services/reference-editor-context';
-import { ReferenceFeatureEditorApiService } from '@core/services/reference-feature-editor-api.service';
+import { ReferenceFeatureEditorApiService, FeatureSpellGrant, FeatureSpellGrantPayload } from '@core/services/reference-feature-editor-api.service';
 import { ReferenceCatalogueEditorApiService } from '@core/services/reference-catalogue-editor-api.service';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -52,6 +52,60 @@ export class FeatureDefinitionManager {
   protected readonly error = signal<string | null>(null);
   protected readonly success = signal<string | null>(null);
 
+  protected readonly grantClasses = signal<{ id: number; name: string }[]>([]);
+  protected readonly grantSpells = signal<{ id: number; name: string; level: number }[]>([]);
+  protected grantCastingAbility = '';
+  protected readonly abilityLabels: Record<string,string> = { INT:'Intelligence', WIS:'Sagesse', CHA:'Charisme', STR:'Force', DEX:'Dextérité', CON:'Constitution', CHOICE:'Au choix du personnage' };
+  protected readonly spellGrants = signal<FeatureSpellGrant[]>([]);
+  protected readonly spellGrantLoading = signal(false);
+  protected readonly spellGrantEditing = signal(false);
+  protected readonly spellGrantError = signal<string | null>(null);
+  protected grantMode: 'fixed' | 'choice' = 'fixed';
+  protected grantSpellId: number | null = null;
+  protected grantSpellLevel = 0;
+  protected grantClassId: number | null = null;
+  protected grantSchool = '';
+  protected grantUnlockLevel = 1;
+
+  protected loadSpellGrants(featureId: number): void {
+    this.spellGrantLoading.set(true);
+    this.spellGrantError.set(null);
+    this.api.getFeatureSpellGrantOptions(featureId).subscribe({
+      next: options => { if (this.selectedFeatureId() === featureId) { this.grantClasses.set(options.classes); this.grantSpells.set(options.spells); } },
+      error: () => this.spellGrantError.set('Impossible de charger les listes de sorts et de classes.'),
+    });
+    this.api.getFeatureSpellGrants(featureId).subscribe({
+      next: response => { if (this.selectedFeatureId() === featureId) this.spellGrants.set(response.grants); this.spellGrantLoading.set(false); },
+      error: () => { this.spellGrantError.set('Impossible de charger les sorts octroyés.'); this.spellGrantLoading.set(false); },
+    });
+  }
+
+  protected addSpellGrant(): void {
+    const featureId = this.selectedFeatureId();
+    if (featureId === null || this.readOnly() || this.spellGrantLoading()) return;
+    const payload: FeatureSpellGrantPayload = this.grantMode === 'fixed'
+      ? { mode: 'fixed', spellId: Number(this.grantSpellId), unlockLevel: Number(this.grantUnlockLevel), castingAbility: this.grantCastingAbility || null }
+      : { mode: 'choice', spellLevel: Number(this.grantSpellLevel), classId: this.grantClassId ? Number(this.grantClassId) : null, schools: this.grantSchool ? [this.grantSchool] : [], unlockLevel: Number(this.grantUnlockLevel), castingAbility: this.grantCastingAbility || null };
+    if (!Number.isInteger(payload.unlockLevel) || payload.unlockLevel < 1 || payload.unlockLevel > 20 || (payload.mode === 'fixed' && (!payload.spellId || payload.spellId < 1))) {
+      this.spellGrantError.set('Vérifie le sort et le niveau de déblocage.'); return;
+    }
+    this.spellGrantLoading.set(true); this.spellGrantError.set(null);
+    this.api.addFeatureSpellGrant(featureId, payload).subscribe({
+      next: response => { this.spellGrants.set(response.grants); this.spellGrantEditing.set(false); this.spellGrantLoading.set(false); },
+      error: error => { this.spellGrantError.set(error.error?.detail ?? 'Impossible d’ajouter ce sort.'); this.spellGrantLoading.set(false); },
+    });
+  }
+
+  protected removeSpellGrant(grantId: number): void {
+    const featureId = this.selectedFeatureId();
+    if (featureId === null || this.readOnly() || this.spellGrantLoading() || !window.confirm('Retirer ce sort de la capacité ?')) return;
+    this.spellGrantLoading.set(true); this.spellGrantError.set(null);
+    this.api.deleteFeatureSpellGrant(featureId, grantId).subscribe({
+      next: response => { this.spellGrants.set(response.grants); this.spellGrantLoading.set(false); },
+      error: () => { this.spellGrantError.set('Impossible de retirer ce sort.'); this.spellGrantLoading.set(false); },
+    });
+  }
+
   protected form: FeatureForm = this.emptyForm();
 
   protected readonly selectedFeature = computed(() => {
@@ -83,6 +137,7 @@ export class FeatureDefinitionManager {
 
   protected selectFeature(feature: CharacterFeatureDefinition): void {
     this.selectedFeatureId.set(feature.id);
+    this.spellGrants.set([]); this.spellGrantEditing.set(false); this.loadSpellGrants(feature.id);
     this.form = {
       slug: feature.slug,
       name: feature.name,
@@ -106,6 +161,7 @@ export class FeatureDefinitionManager {
   }
   protected startCreation(): void {
     this.selectedFeatureId.set(null);
+    this.spellGrants.set([]); this.spellGrantEditing.set(false);
     this.form = this.emptyForm();
     this.clearMessages();
   }

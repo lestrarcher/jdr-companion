@@ -140,6 +140,7 @@ final class CharacterLevelUpController extends AbstractController
                 hitPointGain:
                     $selection['hitPointGain'],
                 training: $selection['training'],
+                spellChoices: $selection['spellChoices'],
             );
         } catch (\LogicException|\DomainException $exception) {
             return $this->validationError(

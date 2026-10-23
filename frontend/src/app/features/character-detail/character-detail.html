@@ -41,7 +41,7 @@
               [loading]="profileLoading()"
               [editorOpened]="activeEditor() !== null"
               (refreshRequested)="refreshProfile()"
-              (levelUpRequested)="openEditor('level-up')"
+              (levelUpRequested)="openLevelUp()"
               (hitPointHistoryRequested)="openEditor('hit-points')"
               (progressionsRequested)="openEditor('progressions')"
               (trainingRequested)="openEditor('training')"
@@ -61,21 +61,6 @@
             @if (activeEditor() === 'training') {
               <app-character-training [characterId]="character.id" (completed)="closeEditor(); refreshProfile()" (cancelled)="closeEditor()" />
             }
-            @if (activeEditor() === 'level-up') {
-              @if (levelUpOptions(); as options) {
-                <app-character-level-up
-                  [character]="character"
-                  [options]="options"
-                  [abilities]="options.abilities"
-                  [feats]="options.feats"
-                  [submitting]="levelUpSubmitting()"
-                  [trainingPreview]="loadTraining"
-                  (submitted)="submitLevelUp($event)"
-                  (cancelled)="closeEditor()"
-                />
-              }
-            }
-
             @if (activeEditor() === 'hit-points') {
               <app-character-hit-point-history
                 [campaignId]="campaignId"

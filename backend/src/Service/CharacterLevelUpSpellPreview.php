@@ -41,7 +41,7 @@ final readonly class CharacterLevelUpSpellPreview
         $character->addClassLevel($level);
         try {
             $owner = $character->getCampaign()->getOwner();
-            $status = array_column($this->acquisitions->status($character, $owner), null, 'classId')[$classId];
+            $status = $this->acquisitions->levelUpStatus($character, $class, $owner);
             if ($status['status'] !== 'policy-configured') return ['status'=>$status['status'], 'classId'=>$classId, 'classLevel'=>$option['nextLevel'], 'policies'=>[]];
             $policy = $this->em->find(SpellcastingPolicyDefinition::class, $status['policyIds'][0]);
             $data = $this->acquisitions->options($character, $policy->getId(), $owner);
@@ -51,18 +51,19 @@ final readonly class CharacterLevelUpSpellPreview
             $candidates = static fn(array $spells): array => array_values(array_filter($spells, static fn($s)=>!in_array((int)$s['id'], $activeIds, true) && !in_array((int)$s['id'], $automaticIds, true)));
             $choices = [];
             if ($policy->getFormatVersion() === 2) {
-                $rules = (new AdvancedSpellChoices($this->em, $this->access))->rules($policy);
+                $advanced = new AdvancedSpellChoices($this->em, $this->access);
+                $rules = $advanced->rules($policy);
                 foreach ($data['choices'] as $choice) {
                     $p = $rules[$choice['ruleId']]->parameters()->values;
                     $replacements = [];
                     foreach ($data['acquisitions'] as $row) {
                         if ((int)$row['rule_id'] !== $choice['ruleId'] || (int)$row['spell_level'] < $p['replacementMinimumSpellLevel']) continue;
-                        $semantics = [];
-                        foreach ($rules as $r) {
-                            $v = $r->parameters()->values;
-                            if ($v['result'] === $p['result'] && array_sum($v['replacements']) > 0) $semantics[] = json_encode([$v['quota'], $v['replacementSchools'], $r->getReplacementListClass()?->getId() ?? $r->getListClass()?->getId(), $v['replacementBudget'], $v['replacements']]);
-                        }
-                        $replacements[] = ['acquisitionId'=>(int)$row['id'], 'spellId'=>(int)$row['spell_id'], 'requiresQualification'=>!filter_var($row['origin_known'], FILTER_VALIDATE_BOOL) && count(array_unique($semantics)) > 1];
+                        $replacements[] = [
+                            'acquisitionId' => (int) $row['id'],
+                            'spellId' => (int) $row['spell_id'],
+                            'spellName' => $row['spell_name'] ?? null,
+                            'requiresQualification' => $advanced->requiresQualification($row, $rules[$choice['ruleId']], $rules),
+                        ];
                     }
                     $choices[] = $choice + ['replacement'=>['maximum'=>$p['replacements'][$n-1], 'budgetKey'=>$p['replacementBudget'], 'confirmationRequired'=>$p['optionalReplacement'], 'acquisitions'=>$replacements]];
                 }
@@ -73,7 +74,10 @@ final readonly class CharacterLevelUpSpellPreview
                     $eligible = array_values(array_filter($data['available'], static fn($s)=>($s['level'] === 0) === ($bucket === 'cantrips')));
                     $choices[] = ['ruleId'=>null, 'key'=>$bucket, 'quota'=>$bucket, 'remaining'=>max(0,$policy->policy()->additionsAtLevel($n,$bucket)), 'available'=>$eligible, 'replacementAvailable'=>$bucket === 'known' ? $eligible : [],
                         'replacement'=>['maximum'=>$bucket === 'known' ? $data['limits']['replacements'] : 0, 'budgetKey'=>$bucket, 'confirmationRequired'=>false,
-                            'acquisitions'=>array_values(array_map(static fn($r)=>['acquisitionId'=>(int)$r['id'], 'spellId'=>(int)$r['spell_id'], 'requiresQualification'=>false], array_filter($data['acquisitions'], static fn($r)=>$bucket === 'known' && $r['quota_bucket'] === 'known' && (int)$r['spell_level'] > 0)))]];
+                            'acquisitions'=>array_values(array_map(static fn($r)=>['acquisitionId' => (int) $r['id'],
+'spellId' => (int) $r['spell_id'],
+'spellName' => $r['spell_name'],
+'requiresQualification' => false], array_filter($data['acquisitions'], static fn($r)=>$bucket === 'known' && $r['quota_bucket'] === 'known' && (int)$r['spell_level'] > 0)))]];
                 }
             }
             foreach ($choices as &$choice) {

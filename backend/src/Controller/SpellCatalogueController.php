@@ -34,6 +34,31 @@ final class SpellCatalogueController extends AbstractController
     #[Route('', name: 'list', methods: ['GET'])]
     public function list(Request $request): JsonResponse { return $this->respond(fn () => $this->catalogue->search($request->query->all(), $this->owner())); }
 
+    #[Route('/batch-details', name: 'batch_details', methods: ['GET'])]
+    public function batchDetails(Request $request): JsonResponse
+    {
+        return $this->respond(function () use ($request): array {
+            $raw = (string) $request->query->get('ids', '');
+            if ($raw === '' || !preg_match('/^\d+(,\d+)*$/', $raw)) {
+                throw new BadRequestHttpException('Liste d’identifiants invalide.');
+            }
+            $ids = array_values(array_unique(array_map('intval', explode(',', $raw))));
+            if (count($ids) > 100 || in_array(0, $ids, true)) {
+                throw new BadRequestHttpException('Entre 1 et 100 identifiants positifs sont attendus.');
+            }
+            $owner = $this->owner();
+            $spells = [];
+            foreach ($ids as $id) {
+                try {
+                    $spells[(string) $id] = $this->catalogue->get($id, $owner);
+                } catch (\Symfony\Component\HttpKernel\Exception\NotFoundHttpException) {
+                    $spells[(string) $id] = null;
+                }
+            }
+            return ['spells' => $spells];
+        });
+    }
+
     #[Route('/{id}', name: 'get', requirements: ['id' => '\d+'], methods: ['GET'])]
     public function get(int $id): JsonResponse { return $this->respond(fn () => ['spell' => $this->catalogue->get($id, $this->owner())]); }
 

@@ -236,6 +236,79 @@
         <p class="message message--success">{{ success() }}</p>
       }
 
+      @if (selectedFeatureId() !== null) {
+        <section class="feature-spell-grants" aria-label="Sorts octroyés">
+          <div class="feature-spell-grants__header"><h3>Sorts octroyés par la capacité</h3><p>Ajoutez une attribution par sort : pour deux tours de magie au choix et un sort de niveau 1, créez trois lignes « Sort au choix ». Chaque choix est indépendant et les utilisations restent gérées par les ressources.</p></div>
+          @if (spellGrantError()) { <p class="message message--error" role="alert">{{ spellGrantError() }}</p> }
+          @if (spellGrantLoading()) { <p class="hint">Chargement…</p> }
+          @for (grant of spellGrants(); track grant.id) {
+            <div class="feature-spell-grant-row">
+              <div class="feature-spell-grant-row__content">
+                <strong>{{ grant.mode === 'fixed' ? (grant.spellName || 'Sort #' + grant.spellId) : 'Sort au choix' }}</strong>
+                <span>Déblocage : niveau {{ grant.unlockLevel }}
+                  @if (grant.mode === 'choice') { · Sort de niveau {{ grant.spellLevel }} · {{ grant.className || 'Toutes les classes' }} · {{ grant.schools.length ? grant.schools.join(', ') : 'Toutes les écoles' }} }
+                  @if (grant.castingAbility) { · {{ abilityLabels[grant.castingAbility] || grant.castingAbility }} }
+                </span>
+              </div>
+              @if (!readOnly()) { <button type="button" class="grant-button grant-button--danger" [disabled]="spellGrantLoading()" (click)="removeSpellGrant(grant.id)">Retirer</button> }
+            </div>
+          }
+          @if (!readOnly()) {
+            <button type="button" class="grant-button grant-button--secondary" [disabled]="spellGrantLoading()" (click)="spellGrantEditing.set(!spellGrantEditing())">
+              {{ spellGrantEditing() ? 'Annuler' : '+ Ajouter un sort' }}
+            </button>
+            @if (spellGrantEditing()) {
+              <div class="feature-spell-grant-form">
+                <label>Attribution
+                  <select name="grantMode" [(ngModel)]="grantMode"><option value="fixed">Sort défini</option><option value="choice">Sort au choix</option></select>
+                </label>
+                @if (grantMode === 'fixed') {
+                  <label>Sort octroyé
+                    <select name="grantSpellId" [(ngModel)]="grantSpellId">
+                      <option [ngValue]="null">Sélectionner un sort…</option>
+                      @for (spell of grantSpells(); track spell.id) { <option [ngValue]="spell.id">{{ spell.name }} (niveau {{ spell.level }})</option> }
+                    </select>
+                  </label>
+                } @else {
+                  <label>Niveau du sort (0 = mineur)
+                    <input type="number" name="grantSpellLevel" min="0" max="9" step="1" [(ngModel)]="grantSpellLevel" />
+                  </label>
+                  <label>Liste de sorts (facultative)
+                    <select name="grantClassId" [(ngModel)]="grantClassId">
+                      <option [ngValue]="null">Toutes les classes</option>
+                      @for (klass of grantClasses(); track klass.id) { <option [ngValue]="klass.id">{{ klass.name }}</option> }
+                    </select>
+                  </label>
+                  <label>École (facultative)
+                    <select name="grantSchool" [(ngModel)]="grantSchool">
+                      <option value="">Toutes les écoles</option>
+                      <option value="abjuration">Abjuration</option><option value="conjuration">Invocation</option>
+                      <option value="divination">Divination</option><option value="enchantment">Enchantement</option>
+                      <option value="evocation">Évocation</option><option value="illusion">Illusion</option>
+                      <option value="necromancy">Nécromancie</option><option value="transmutation">Transmutation</option>
+                    </select>
+                  </label>
+                }
+                <label>Caractéristique d'incantation
+                  <select name="grantCastingAbility" [(ngModel)]="grantCastingAbility">
+                    <option value="">Non précisée</option>
+                    <option value="INT">Intelligence</option><option value="WIS">Sagesse</option>
+                    <option value="CHA">Charisme</option><option value="STR">Force</option>
+                    <option value="DEX">Dextérité</option><option value="CON">Constitution</option>
+                    <option value="CHOICE">Au choix du personnage</option>
+                  </select>
+                </label>
+                <label>Déblocage au niveau
+                  <input type="number" name="grantUnlockLevel" min="1" max="20" step="1" [(ngModel)]="grantUnlockLevel" />
+                </label>
+                <button type="button" class="grant-button grant-button--primary" [disabled]="spellGrantLoading()" (click)="addSpellGrant()">Enregistrer le sort</button>
+              </div>
+            }
+          }
+        </section>
+      } @else {
+        <p class="hint">Enregistre d’abord la capacité pour pouvoir lui attribuer des sorts.</p>
+      }
       <footer class="form-actions">
         @if (selectedFeature()?.custom && !readOnly()) { <button type="button" class="secondary-button" [disabled]="submitting()" (click)="deletePersonal()">Supprimer ma création</button> }
         <button

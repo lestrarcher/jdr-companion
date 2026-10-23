@@ -1,21 +1,18 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize, forkJoin } from 'rxjs';
 import {
   CharacterApiService,
   CharacterProfile as CharacterProfileModel,
   LevelUpOptions,
-  LevelUpResponse,
   UpdateHitPointHistoryResponse,
-  LevelUpPayload,
 } from '@core/services/character-api.service';
 import {
   DndReferenceApiService,
   ProgressionReference,
 } from '@core/services/dnd-reference-api.service';
 import { CharacterHitPointHistory } from '../campaign-characters/components/character-hit-point-history/character-hit-point-history';
-import { CharacterLevelUp } from '../campaign-characters/components/character-level-up/character-level-up';
 import { CharacterProgressions } from '../campaign-characters/components/character-progressions/character-progressions';
 import { CharacterTraining } from '../campaign-characters/components/character-training/character-training';
 import { CharacterSheet } from './components/character-sheet/character-sheet';
@@ -26,7 +23,6 @@ import { CharacterSpells } from './components/character-spells/character-spells'
 
 type CharacterEditor =
   | 'training'
-  | 'level-up'
   | 'hit-points'
   | 'progressions'
   | null;
@@ -36,7 +32,6 @@ type CharacterEditor =
   standalone: true,
   imports: [
     RouterLink,
-    CharacterLevelUp,
     CharacterHitPointHistory,
     CharacterProgressions,
     CharacterTraining,
@@ -85,21 +80,13 @@ export class CharacterDetail {
     button.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[target]?.focus();
   }
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly characterApi = inject(CharacterApiService);
   private readonly referenceApi = inject(DndReferenceApiService);
 
   protected readonly campaignId = Number(
     this.route.snapshot.paramMap.get('campaignId'),
   );
-  protected readonly loadTraining = (classId: number, subclassId: number | null) => {
-    const characterId = this.characterId;
-    if (characterId === null) {
-      throw new Error('Aucun personnage sélectionné.');
-    }
-    return this.characterApi.getTrainingOptions(characterId, classId, subclassId);
-  };
-
-  protected readonly levelUpSubmitting = signal(false);
   protected readonly progressionSubmitting = signal(false);
   protected readonly profile = signal<CharacterProfileModel | null>(null);
   protected readonly levelUpOptions = signal<LevelUpOptions | null>(null);
@@ -119,39 +106,8 @@ export class CharacterDetail {
     }
     this.loadCharacterDetails(this.characterId);
   }
-  protected submitLevelUp(
-    payload: LevelUpPayload,
-  ): void {
-    const characterId =
-      this.characterId;
-
-    if (characterId === null) {
-      return;
-    }
-
-    this.levelUpSubmitting.set(true);
-
-    this.profileError.set(null);
-
-    this.characterApi
-      .levelUp(
-        this.campaignId,
-        characterId,
-        payload,
-      )
-      .pipe(
-        finalize(() =>
-          this.levelUpSubmitting.set(false),
-        ),
-      )
-      .subscribe({
-        next: response =>
-          this.levelUpCompleted(response),
-        error: error =>
-          this.profileError.set(
-            this.errorMessage(error),
-          ),
-      });
+  protected openLevelUp(): void {
+    void this.router.navigate(['/campaigns', this.campaignId, 'characters', this.characterId, 'level-up']);
   }
 
   protected refreshProfile(): void {
@@ -170,13 +126,6 @@ export class CharacterDetail {
 
   protected closeEditor(): void {
     this.activeEditor.set(null);
-  }
-
-  protected levelUpCompleted(response: LevelUpResponse): void {
-    this.applyUpdatedProfile(response.character);
-    this.success.set(response.message);
-    this.activeEditor.set(null);
-    this.reloadLevelUpOptions(response.character.id);
   }
 
   protected hitPointHistoryCompleted(
@@ -214,16 +163,6 @@ export class CharacterDetail {
           this.profile.set(result.profile);
           this.levelUpOptions.set(result.options);
         },
-        error: error =>
-          this.profileError.set(this.errorMessage(error)),
-      });
-  }
-
-  private reloadLevelUpOptions(characterId: number): void {
-    this.characterApi
-      .getLevelUpOptions(this.campaignId, characterId)
-      .subscribe({
-        next: options => this.levelUpOptions.set(options),
         error: error =>
           this.profileError.set(this.errorMessage(error)),
       });

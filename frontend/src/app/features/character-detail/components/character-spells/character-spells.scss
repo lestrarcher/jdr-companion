@@ -89,3 +89,13 @@
 @media(max-width:480px) { .spell-detail .spell-properties { grid-template-columns:1fr; } }
 
 .initialization-banner{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;padding:1rem;margin:0 0 1.3rem;border:1px solid #a68449;border-radius:8px;background:#272117}.initialization-banner strong{color:#f0d49c}.initialization-banner p{color:#bfb4a2;margin:.35rem 0 0;font-size:.85rem}.initialization-banner a{display:inline-block;padding:.8rem 1rem;border-radius:6px;background:#b58a42;color:#161319;font-weight:700;text-decoration:none;min-height:44px;box-sizing:border-box}@media(max-width:600px){.initialization-banner a{width:100%;text-align:center}}
+
+/* Spell grants from character features */
+.feature-spell-panel { border: 1px solid rgba(198,165,95,.4); border-radius: 12px; padding: 1rem; margin-bottom: 1.2rem; }
+.feature-spell-heading, .feature-spell-choice { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.feature-spell-heading h3, .feature-spell-panel h4 { margin: 0 0 .4rem; }
+.feature-spell-heading p, .feature-spell-choice p, .feature-spell-count { opacity: .8; margin: .2rem 0; }
+.feature-spell-choice { padding: .8rem 0; border-top: 1px solid rgba(198,165,95,.25); }
+.feature-spell-panel button, .feature-spell-panel select { padding: .55rem .8rem; border-radius: 8px; border: 1px solid rgba(198,165,95,.6); background: #27221d; color: #f4e9d6; }
+.feature-spell-panel button { cursor: pointer; }
+.feature-spell-panel button:disabled { opacity: .5; cursor: not-allowed; }

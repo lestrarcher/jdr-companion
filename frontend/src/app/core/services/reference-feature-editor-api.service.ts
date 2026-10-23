@@ -8,6 +8,18 @@ export class ReferenceFeatureEditorApiService {
   private readonly http=inject(HttpClient);
   readonly scope=inject(REFERENCE_EDITOR_SCOPE);
   private url(category: string) { return `/api/reference/${this.scope}/${category}/editor`; }
+  getFeatureSpellGrantOptions(featureId: number) {
+    return this.http.get<{ classes: { id: number; name: string }[]; spells: { id: number; name: string; level: number }[] }>(`/api/reference/${this.scope}/features/${featureId}/spell-grants/options`);
+  }
+  getFeatureSpellGrants(featureId: number) {
+    return this.http.get<{ grants: FeatureSpellGrant[] }>(`/api/reference/${this.scope}/features/${featureId}/spell-grants`);
+  }
+  addFeatureSpellGrant(featureId: number, payload: FeatureSpellGrantPayload) {
+    return this.http.post<{ grants: FeatureSpellGrant[] }>(`/api/reference/${this.scope}/features/${featureId}/spell-grants`, payload);
+  }
+  deleteFeatureSpellGrant(featureId: number, grantId: number) {
+    return this.http.delete<{ grants: FeatureSpellGrant[] }>(`/api/reference/${this.scope}/features/${featureId}/spell-grants/${grantId}`);
+  }
   getFeatures() { return this.http.get<FeatureListResponse>(this.url('features')); }
   deletePersonalFeature(id: number) { return this.http.delete<void>(`/api/reference/custom/features/${id}`); }
   deletePersonalResource(id: number) { return this.http.delete<void>(`/api/reference/custom/resources/${id}`); }
@@ -41,3 +53,19 @@ export class ReferenceFeatureEditorApiService {
   updateResourceRule(id: number,payload: UpdateResourceRulePayload) { return this.http.patch<{rule: TrackableResourceRule}>(`${this.url('resource-rules')}/${id}`,payload); }
   deleteResourceRule(id: number) { return this.http.delete<void>(`${this.url('resource-rules')}/${id}`); }
 }
+
+export interface FeatureSpellGrant {
+  id: number;
+  mode: 'fixed' | 'choice';
+  spellId: number | null;
+  spellName: string | null;
+  spellLevel: number | null;
+  classId: number | null;
+  className: string | null;
+  schools: string[];
+  unlockLevel: number;
+  castingAbility: string | null;
+}
+export type FeatureSpellGrantPayload =
+  | { mode: 'fixed'; spellId: number; unlockLevel: number; castingAbility: string | null }
+  | { mode: 'choice'; spellLevel: number; classId: number | null; schools: string[]; unlockLevel: number; castingAbility: string | null };

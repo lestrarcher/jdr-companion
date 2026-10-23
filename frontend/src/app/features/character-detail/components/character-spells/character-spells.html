@@ -5,7 +5,38 @@
       <a [routerLink]="['/campaigns', campaignId(), 'characters', character().id, 'spell-initialization']">Continuer l’initialisation →</a>
     </div>
   }
-  <header class="spell-heading"><div><p class="eyebrow">GRIMOIRE & MAGIE</p><h2>Sorts du personnage</h2><p class="muted">Acquisitions et sorts accordés par les classes et sous-classes.</p></div><span class="spell-count">{{ entries().length }} {{ entries().length === 1 ? 'sort' : 'sorts' }}</span></header>
+  <section class="feature-spell-panel" aria-label="Sorts accordés par les capacités">
+    <div class="feature-spell-heading"><div><h3>Sorts des capacités</h3><p>Sorts raciaux, dons et autres capacités, indépendants des quotas de classe.</p></div>
+    </div>
+    @if (featureError()) { <p class="spell-error" role="alert">{{ featureError() }}</p> }
+    @if (featureSpells().pending.length) {
+      <h4>Choix à effectuer ({{ featureSpells().pending.length }})</h4>
+      @for (grant of featureSpells().pending; track grant.grantId) {
+        <div class="feature-spell-choice">
+          <div><strong>{{ grant.featureName }}</strong><p>Choix {{ $index + 1 }} sur {{ featureSpells().pending.length }} en attente · Sort de niveau {{ grant.spellLevel }} · {{ abilityLabel(grant.castingAbility) }}</p></div>
+          @if (!featureOptions()[grant.grantId]) {
+            <button type="button" (click)="loadFeatureOptions(grant.grantId)">Choisir un sort</button>
+          } @else {
+            @if (featureOptions()[grant.grantId].length === 0) { <p>Aucun autre sort éligible pour ce choix.</p> }
+            <select aria-label="Sort à apprendre" #spellChoice (change)="selectFeatureSpell(grant.grantId, spellChoice.value)">
+              <option value="">Sélectionner un sort…</option>
+              @for (option of featureOptions()[grant.grantId]; track option.id) { <option [value]="option.id">{{ option.name }}</option> }
+            </select>
+            <button type="button" [disabled]="!selectedFeatureSpells()[grant.grantId] || featureBusy()" (click)="chooseFeatureSpell(grant.grantId)">Confirmer</button>
+          }
+        </div>
+      }
+    }
+    @if (featureSpells().known.length) {
+      <p class="feature-spell-count">{{ featureSpells().known.length }} attribution(s) enregistrée(s), affichée(s) dans la liste ci-dessous.</p>
+      @for (grant of featureSpells().known; track grant.grantId) {
+        <div class="feature-spell-choice"><div><strong>{{ grant.spellName }}</strong>
+          <p>{{ grant.featureName }} · {{ abilityLabel(grant.castingAbility) }} · DD {{ grant.spellSaveDc ?? '—' }} · Attaque {{ signedBonus(grant.spellAttackBonus) }}</p>
+        </div></div>
+      }
+    }
+  </section>
+  <header class="spell-heading"><div><p class="eyebrow">GRIMOIRE & MAGIE</p><h2>Sorts du personnage</h2><p class="muted">Acquisitions de classe et sorts octroyés par les capacités.</p></div><span class="spell-count">{{ entries().length }} {{ entries().length === 1 ? 'sort' : 'sorts' }}</span></header>
   @if (policies().length || spellSlotMaximums().length) {
     <section class="casting-summary" aria-label="Statistiques d’incantation">
       <h3>Incantation</h3>
@@ -42,8 +73,8 @@
   @if (error()) { <p role="alert" class="spell-error">{{ error() }}</p> }
   @if (loading()) { <p role="status" class="spell-empty">Chargement des sorts…</p> }
   @else {
-    @if (policies().length && entries().length === 0) { <p class="spell-empty">Aucun sort acquis ou accordé n'est actuellement renseigné pour ce personnage.</p> }
-    @if (!policies().length) { <p class="spell-empty">Aucune politique magique associée au personnage.</p> }
+    @if ((policies().length || featureSpells().known.length) && entries().length === 0) { <p class="spell-empty">Aucun sort acquis ou accordé n'est actuellement renseigné pour ce personnage.</p> }
+    @if (!policies().length && !featureSpells().known.length && !featureSpells().pending.length) { <p class="spell-empty">Aucun sort ni choix de capacité disponible.</p> }
     @if (entries().length) {
       <div class="spell-layout">
       <div class="spell-list">

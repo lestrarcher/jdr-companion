@@ -30,9 +30,29 @@ final readonly class AdvancedSpellChoices
         return array_column(array_map(static fn($r)=>['id'=>$r->getId(),'rule'=>$r],array_values($rules)),'rule','id');
     }
 
+    /**
+     * Whether an unqualified origin can change the replacement semantics.
+     * This does not validate eligibility, the original rule or the shared budget.
+     * @param array{origin_known: mixed} $acquisition
+     * @param array<int, SpellPolicyChoiceRule> $rules
+     */
+    public function requiresQualification(array $acquisition, SpellPolicyChoiceRule $rule, array $rules): bool
+    {
+        if (filter_var($acquisition['origin_known'], FILTER_VALIDATE_BOOL)) return false;
+        $result = $rule->parameters()->values['result'];
+        $semantics = [];
+        foreach ($rules as $candidate) {
+            $p = $candidate->parameters()->values;
+            if ($p['result'] === $result && array_sum($p['replacements']) > 0) {
+                $semantics[] = json_encode([$p['quota'], $p['replacementSchools'], $candidate->getReplacementListClass()?->getId() ?? $candidate->getListClass()?->getId(), $p['replacementBudget'], $p['replacements']]);
+            }
+        }
+        return count(array_unique($semantics)) > 1;
+    }
+
     private function rows(Character $character, SpellcastingPolicyDefinition $policy): array
     {
-        return $this->em->getConnection()->fetchAllAssociative('SELECT a.*, c.rule_id, c.opportunity_level_id, c.origin_known, s.level AS spell_level FROM character_spell_acquisition a LEFT JOIN character_spell_choice c ON c.acquisition_id=a.id JOIN spell_definition s ON s.id=a.spell_id WHERE a.character_id=? AND a.policy_definition_id=? AND a.retirement_id IS NULL ORDER BY a.id',[$character->getId(),$policy->getId()]);
+        return $this->em->getConnection()->fetchAllAssociative('SELECT a.*, c.rule_id, c.opportunity_level_id, (c.origin_known OR EXISTS (SELECT 1 FROM character_spell_qualification q WHERE q.acquisition_id=a.id AND q.rule_id=c.rule_id)) AS origin_known, s.level AS spell_level, s.name AS spell_name FROM character_spell_acquisition a LEFT JOIN character_spell_choice c ON c.acquisition_id=a.id JOIN spell_definition s ON s.id=a.spell_id WHERE a.character_id=? AND a.policy_definition_id=? AND a.retirement_id IS NULL ORDER BY a.id',[$character->getId(),$policy->getId()]);
     }
 
     private function eligible(SpellPolicyChoiceRule $rule,array $spell,int $level,bool $replacement,User $owner,array $extensions=[]): bool
@@ -160,14 +180,7 @@ final readonly class AdvancedSpellChoices
                 if (!$old || $provenance!=='level-history' || (int)$old['class_level_id']===$choice['classLevelId']) throw new BadRequestHttpException('Remplacement invalide.');
                 if ((int)$old['spell_level']<$p->values['replacementMinimumSpellLevel']) throw new BadRequestHttpException('Ce sort ne peut pas être remplacé par cette règle.');
                 if ($old['rule_id']===null) throw new ConflictHttpException('Provenance à qualifier par le MJ.');
-                if (!filter_var($old['origin_known'],FILTER_VALIDATE_BOOL)) {
-                    $semantics=[];
-                    foreach ($rules as $candidate) {
-                        $cp=$candidate->parameters()->values;
-                        if ($cp['result']===$p->values['result'] && array_sum($cp['replacements'])>0) $semantics[]=json_encode([$cp['quota'],$cp['replacementSchools'],$candidate->getReplacementListClass()?->getId() ?? $candidate->getListClass()?->getId(),$cp['replacementBudget'],$cp['replacements']]);
-                    }
-                    if (count(array_unique($semantics))>1) throw new ConflictHttpException('Ce remplacement nécessite une provenance qualifiée par le MJ.');
-                }
+                if ($this->requiresQualification($old, $rule, $rules)) throw new ConflictHttpException('Ce remplacement nécessite une provenance qualifiée par le MJ.');
                 if ((int)$old['rule_id']!==$rule->getId()) throw new BadRequestHttpException('Le remplacement conserve sa règle d’origine.');
                 $originLevel=$old['opportunity_level_id'];
                 $group=$p->values['replacementBudget'];

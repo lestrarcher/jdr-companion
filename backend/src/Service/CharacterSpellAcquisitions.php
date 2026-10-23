@@ -16,15 +16,7 @@ final readonly class CharacterSpellAcquisitions
     /** Current resolved character values, not a reconstruction of historical ability scores. */
     private function spellStatistics(Character $character, SpellcastingPolicy $policy): array
     {
-        foreach ($character->getAbilityScores() as $score) {
-            if ($score->getAbility() !== $policy->ability) continue;
-            $attack = $character->getProficiencyBonus()
-                + $this->abilityCalculator->calculate($character, $policy->ability)->modifier();
-            return ['spellSaveDc' => 8 + $attack, 'spellAttackBonus' => $attack];
-        }
-
-        // Do not call getAbilityScore(): its legacy fallback creates a default score.
-        return ['spellSaveDc' => null, 'spellAttackBonus' => null];
+        return $this->abilityCalculator->spellStatistics($character, $policy->ability);
     }
 
     /** Explicit reference administration, never binds a policy by a class name. */
@@ -76,19 +68,27 @@ final readonly class CharacterSpellAcquisitions
     }
 
     /** Qualifies a previously declared route, without claiming a reconstructed level history. */
-    public function qualifyChoice(Character $character,int $policyId,int $acquisitionId,string $reason,User $actor): void
+    public function qualifyChoice(Character $character,int $policyId,int $acquisitionId,string $reason,User $actor,?int $expectedRuleId=null): array
     {
         $this->authorize($character,$actor);
         if (trim($reason)==='' || mb_strlen($reason)>10000) throw new BadRequestHttpException('Motif de qualification requis.');
         $db=$this->em->getConnection();
-        $db->transactional(function () use ($db,$character,$policyId,$acquisitionId,$reason,$actor) {
+        return $db->transactional(function () use ($db,$character,$policyId,$acquisitionId,$reason,$actor,$expectedRuleId): array {
             $this->em->lock($character,LockMode::PESSIMISTIC_WRITE); $this->em->refresh($character); $this->authorize($character,$actor);
             [$policy]=$this->context($character,$policyId);
             if ($policy->getFormatVersion()!==2) throw new BadRequestHttpException('Transition explicite requise avant qualification avancée.');
             $row=$db->fetchAssociative('SELECT c.* FROM character_spell_choice c JOIN character_spell_acquisition a ON a.id=c.acquisition_id WHERE a.id=? AND a.character_id=? AND a.policy_definition_id=? AND a.retirement_id IS NULL AND NOT EXISTS (SELECT 1 FROM character_spell_acquisition n WHERE n.replaces_id=a.id) FOR UPDATE OF c',[$acquisitionId,$character->getId(),$policyId]);
             if (!$row) throw new NotFoundHttpException('Choix indisponible.');
-            if (filter_var($row['origin_known'],FILTER_VALIDATE_BOOL)) throw new ConflictHttpException('Choix déjà qualifié.');
-            $db->update('character_spell_choice',['origin_known'=>1,'decided_by_id'=>$actor->getId(),'reason'=>trim($reason),'decided_at'=>date('Y-m-d H:i:s')],['acquisition_id'=>$acquisitionId]);
+            if ($expectedRuleId !== null && (int)$row['rule_id'] !== $expectedRuleId) throw new ConflictHttpException('La règle confirmée ne correspond pas à la voie déclarée. Une révision explicite est requise.');
+            if (filter_var($row['origin_known'],FILTER_VALIDATE_BOOL)
+                || $db->fetchOne('SELECT 1 FROM character_spell_qualification WHERE acquisition_id=?',[$acquisitionId])) throw new ConflictHttpException('Choix déjà qualifié.');
+            $decidedAt=date('Y-m-d H:i:s');
+            $db->insert('character_spell_qualification',[
+                'acquisition_id'=>$acquisitionId,'rule_id'=>$row['rule_id'],
+                'decided_by_id'=>$actor->getId(),'reason'=>trim($reason),'decided_at'=>$decidedAt,
+            ]);
+            return ['acquisitionId'=>$acquisitionId,'policyId'=>$policyId,'ruleId'=>(int)$row['rule_id'],
+                'originKnown'=>true,'decidedById'=>$actor->getId(),'reason'=>trim($reason),'decidedAt'=>$decidedAt];
         });
     }
 

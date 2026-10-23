@@ -100,6 +100,190 @@
         </section>
       }
 
+      @if (spellPreview()) {
+        <section class="training-panel">
+          <header><span class="eyebrow">Magie</span><h4>Sorts du prochain niveau</h4></header>
+          @if (qualificationSuccess()) { <p class="message" role="status">{{ qualificationSuccess() }}</p> }
+          @if (spellsLoading()) {
+            <p>Chargement des sorts autorisés…</p>
+          } @else if (spellsError()) {
+            <p class="message message--error">{{ spellsError() }}</p>
+            <button type="button" (click)="retrySpellPreview()">Recharger la prévisualisation</button>
+          } @else if (spells(); as preview) {
+            @if (preview.status === 'no-spellcasting') {
+              <p>Aucun choix magique applicable à cette classe pour ce niveau.</p>
+            }
+            @if (preview.status === 'policy-to-configure' || preview.status === 'policy-ambiguous'
+              || preview.status === 'quota-configuration-required' || preview.status === 'quota-exceeded') {
+              <p class="message message--error">La configuration des règles magiques doit être vérifiée par le MJ ({{ preview.status }}).</p>
+            }
+            @if (spellPolicy(); as policy) {
+              <p>{{ policy.sourceName }} — niveau {{ policy.classLevel }} · Sorts connus : {{ policy.used.known }} / {{ policy.limits.known }}</p>
+              @if (spellOpportunities().length) {
+                <div class="spell-filters">
+                  <label class="field">
+                    <span>Rechercher</span>
+                    <input type="search" [ngModel]="spellSearch()" (ngModelChange)="spellSearch.set($event)" placeholder="Nom du sort…" />
+                  </label>
+                  <label class="field">
+                    <span>Niveau</span>
+                    <select [ngModel]="spellLevelFilter()" (ngModelChange)="spellLevelFilter.set($event)">
+                      <option [ngValue]="null">Tous</option>
+                      @for (level of spellLevels(); track level) {
+                        <option [ngValue]="level">{{ level === 0 ? 'Tour de magie' : 'Niveau ' + level }}</option>
+                      }
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>École</span>
+                    <select [ngModel]="spellSchoolFilter()" (ngModelChange)="spellSchoolFilter.set($event)">
+                      <option [ngValue]="null">Toutes</option>
+                      @for (school of spellSchools(); track school) {
+                        <option [ngValue]="school">{{ school }}</option>
+                      }
+                    </select>
+                  </label>
+                </div>
+                @for (opportunity of spellOpportunities(); track spellKey(opportunity)) {
+                  @if (opportunity.remaining > 0) {
+                  <fieldset class="spell-choice-group">
+                    <legend>{{ opportunity.quota === 'cantrips' ? 'Tours de magie' : 'Sorts' }} · {{ selectedSpells(opportunity).length }} / {{ opportunity.remaining }} sélectionné(s)</legend>
+                    @if (opportunity.remaining > 0) {
+                      <div class="spell-card-grid">
+                        @for (spell of filteredSpells(opportunity); track spell.id) {
+                          <button type="button" class="spell-mini-card"
+                            [class.spell-mini-card--selected]="selectedSpells(opportunity).includes(spell.id)"
+                            [attr.aria-pressed]="selectedSpells(opportunity).includes(spell.id)"
+                            [attr.title]="spell.name + ' · ' + spell.school + ' · niveau ' + spell.level"
+                            (click)="toggleSpell(opportunity, spell.id)">
+                            <span class="spell-mini-card__icon">
+                              @if (spellImage(spell); as image) {
+                                <img [src]="image" [alt]="spell.name" loading="lazy" />
+                              } @else {
+                                <span aria-hidden="true">{{ spellSymbol(spell.school) }}</span>
+                              }
+                            </span>
+                            <span class="spell-mini-card__name">{{ spell.name }}</span>
+                            <span class="spell-mini-card__meta">{{ spell.level === 0 ? 'Tour' : 'Niv. ' + spell.level }} · {{ spell.school }}</span>
+                            @if (selectedSpells(opportunity).includes(spell.id)) {
+                              <span class="spell-mini-card__check" aria-hidden="true">✓</span>
+                            }
+                          </button>
+                        } @empty {
+                          <p>Aucun sort ne correspond aux filtres.</p>
+                        }
+                      </div>
+                    }
+                  </fieldset>
+                  }
+                }
+              } @else {
+                <p>Aucun nouvel apprentissage à sélectionner pour ce niveau.</p>
+              }
+              @if (replacementBudgets() > 0 && replacementCandidates().length > 0) {
+                <section class="spell-replacement-panel">
+                  <label class="spell-replacement-toggle">
+                    <input type="checkbox" [checked]="replacementEnabled()" (change)="toggleReplacement(!replacementEnabled())" />
+                    <span>Remplacer un sort connu <small>(facultatif · {{ replacementBudgets() }} maximum)</small></span>
+                  </label>
+                  @if (replacementEnabled()) {
+                    <h5>1. Sort à oublier</h5>
+                    <div class="spell-card-grid">
+                      @for (candidate of replacementCandidates(); track candidate.acquisitionId) {
+                        <button type="button" class="spell-mini-card"
+                          [class.spell-mini-card--selected]="forgottenAcquisitionId() === candidate.acquisitionId"
+                          [attr.aria-pressed]="forgottenAcquisitionId() === candidate.acquisitionId"
+                          (click)="selectForgotten(forgottenAcquisitionId() === candidate.acquisitionId ? null : candidate.acquisitionId)">
+                          <span class="spell-mini-card__icon" aria-hidden="true">◇</span>
+                          <span class="spell-mini-card__name">{{ spellLabel(candidate.spellId) }}</span>
+                          <span class="spell-mini-card__meta">Acquisition n°{{ candidate.acquisitionId }}</span>
+                          @if (forgottenAcquisitionId() === candidate.acquisitionId) { <span class="spell-mini-card__check" aria-hidden="true">✓</span> }
+                        </button>
+                      }
+                    </div>
+                    @if (forgottenCandidate(); as candidate) {
+                      <h5>2. Sort de remplacement</h5>
+                      @if (replacementRules().length > 1) {
+                        <label class="field"><span>Règle de remplacement</span>
+                          <select [ngModel]="replacementRuleKey()" (ngModelChange)="selectReplacementRule($event)">
+                            <option [ngValue]="null">Choisir une règle</option>
+                            @for (rule of replacementRules(); track spellKey(rule)) {
+                              <option [ngValue]="spellKey(rule)">{{ rule.key }} (règle {{ rule.ruleId ?? 'simple' }})</option>
+                            }
+                          </select>
+                        </label>
+                      }
+                      @if (activeReplacementRule(); as rule) {
+                        <label class="field"><span>Rechercher un remplaçant</span>
+                          <input type="search" [ngModel]="replacementSearch()" (ngModelChange)="replacementSearch.set($event)" placeholder="Nom du sort…" />
+                        </label>
+                        <div class="spell-card-grid">
+                          @for (spell of replacementOptions(); track spell.id) {
+                            <button type="button" class="spell-mini-card"
+                              [class.spell-mini-card--selected]="replacementSpellId() === spell.id"
+                              [attr.aria-pressed]="replacementSpellId() === spell.id"
+                              (click)="selectReplacementSpell(spell.id)">
+                              <span class="spell-mini-card__icon">
+                                @if (spellImage(spell); as image) { <img [src]="image" [alt]="spell.name" loading="lazy" /> }
+                                @else { <span aria-hidden="true">{{ spellSymbol(spell.school) }}</span> }
+                              </span>
+                              <span class="spell-mini-card__name">{{ spell.name }}</span>
+                              <span class="spell-mini-card__meta">Niv. {{ spell.level }} · {{ spell.school }}</span>
+                              @if (replacementSpellId() === spell.id) { <span class="spell-mini-card__check" aria-hidden="true">✓</span> }
+                            </button>
+                          } @empty { <p>Aucun remplaçant disponible avec ces critères.</p> }
+                        </div>
+                        @if (candidate.requiresQualification) {
+                          <p class="spell-replacement-warning" role="alert">Ce remplacement nécessite une qualification préalable par le MJ et ne peut pas encore être enregistré. Désactive le remplacement facultatif pour confirmer uniquement les apprentissages.</p>
+                          @if (qualifySpell(); as qualify) {
+                            @if (activeReplacementRule(); as origin) {
+                              <div class="qualification-panel">
+                                <p>{{ spellLabel(candidate.spellId) }} — règle d’origine déclarée : <strong>{{ origin.key }}</strong>.</p>
+                                <p>Confirmez cette voie sans attribuer de niveau historique d’apprentissage. Un changement de règle nécessite une révision distincte.</p>
+                                @if (!qualificationOpen()) {
+                                  <button type="button" (click)="qualificationOpen.set(true)" [disabled]="qualificationLoading() || submitting()">Qualifier ce sort</button>
+                                } @else {
+                                  <label class="field"><span>Justification obligatoire</span>
+                                    <textarea [ngModel]="qualificationReason()" (ngModelChange)="qualificationReason.set($event)" [disabled]="qualificationLoading()" maxlength="10000" required></textarea>
+                                  </label>
+                                  <button type="button" (click)="confirmQualification()" [disabled]="qualificationLoading() || submitting() || !qualificationReason().trim()">
+                                    {{ qualificationLoading() ? 'Qualification en cours…' : 'Confirmer la règle déclarée' }}
+                                  </button>
+                                  <button type="button" (click)="qualificationOpen.set(false)" [disabled]="qualificationLoading()">Annuler</button>
+                                }
+                                @if (qualificationError()) { <p class="message message--error" role="alert">{{ qualificationError() }}</p> }
+                              </div>
+                            }
+                          }
+                        }
+                      }
+                      @if (replacementSpellId() !== null) {
+                        <div class="spell-replacement-summary">
+                          <strong>Remplacement envisagé :</strong> {{ spellLabel(candidate.spellId) }} → {{ replacementName() }}
+                        </div>
+                      }
+                    }
+                  }
+                </section>
+              }
+            } @else if (preview.status === 'selection-required' || preview.status === 'subclass-required') {
+              <p>Sélectionne une classe et une sous-classe pour voir les sorts.</p>
+            }
+          }
+          <section aria-label="Récapitulatif des sorts sélectionnés">
+            <h4>Sorts sélectionnés pour ce niveau</h4>
+            <ul>
+              @for (choice of selectedSpellChoices(); track $index) {
+                <li>{{ spellLabel(choice.spellId) }}
+                  @if (choice.replacesAcquisitionId !== undefined && forgottenCandidate(); as forgotten) { — remplace {{ spellLabel(forgotten.spellId) }} }
+                </li>
+              } @empty { <li>Aucun sort sélectionné.</li> }
+            </ul>
+          </section>
+          <small>Les choix sélectionnés seront transmis et vérifiés par le serveur lors de la confirmation du niveau.</small>
+        </section>
+      }
+
       <section class="hit-point-choice">
         <header>
           <div>
@@ -292,7 +476,7 @@
     <button
       type="button"
       class="primary-button"
-      [disabled]="submitting() || !form.classId || (trainingPreview() && (trainingLoading() || !!trainingError() || !training() || !trainingComplete()))"
+      [disabled]="submitting() || !spellChoicesComplete() || !form.classId || (trainingPreview() && (trainingLoading() || !!trainingError() || !training() || !trainingComplete()))"
       (click)="submit()"
     >
       {{ submitting() ? 'Progression en cours…' : 'Confirmer le niveau' }}

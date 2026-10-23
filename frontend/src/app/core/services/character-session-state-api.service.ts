@@ -50,7 +50,31 @@ interface CharacterActionTargetsResponse {
   targets: CharacterActionTarget[];
 }
 
+export interface PlayerSpell {
+  key?: string;
+  policyId?: number | null;
+  alwaysPrepared?: boolean;
+  details?: {
+    description: string; higherLevels: string | null; castingTime: string; range: string; duration: string;
+    verbal: boolean; somatic: boolean; material: boolean; materialDescription: string | null;
+    concentration: boolean; ritual: boolean;
+  };
+  spellId: number;
+  name: string;
+  level: number | null;
+  school: string | null;
+  source: string;
+  sourceType: 'class' | 'subclass' | 'feature';
+  castingAbility: string | null;
+  spellSaveDc: number | null;
+  spellAttackBonus: number | null;
+  known: boolean;
+  inSpellbook: boolean;
+  prepared: boolean | null;
+}
+
 export interface CharacterSessionStateApiResponse {
+  spells: PlayerSpell[];
   id: number;
   revision: number;
 

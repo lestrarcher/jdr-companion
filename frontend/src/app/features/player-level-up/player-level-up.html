@@ -15,10 +15,6 @@
     <p class="state-panel">
       Chargement des possibilités d’évolution…
     </p>
-  } @else if (error()) {
-    <p class="state-panel state-panel--error">
-      {{ error() }}
-    </p>
   } @else if (profile(); as character) {
     @if (options(); as options) {
       <app-character-level-up
@@ -28,9 +24,13 @@
         [feats]="feats()"
         [submitting]="submitting()"
         [trainingPreview]="loadTraining"
+        [spellPreview]="loadSpells"
         (submitted)="submitLevelUp($event)"
         (cancelled)="returnToPortal()"
       />
     }
+  }
+  @if (error()) {
+    <p class="state-panel state-panel--error" role="alert">{{ error() }}</p>
   }
 </main>

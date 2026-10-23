@@ -572,6 +572,7 @@ public function terminateActiveEffect(
                     $selection['hitPointGain'],
                 authorization: $state,
                 training: $selection['training'],
+                spellChoices: $selection['spellChoices'],
             );
         } catch (
             \InvalidArgumentException
