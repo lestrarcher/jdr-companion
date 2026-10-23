@@ -32,8 +32,14 @@ export class PlayerSpells implements OnInit, OnChanges {
     const spells = view && view.revision > this.revision() ? view.spells : this.spells();
     return this.mode() === 'spellbook' ? spells.filter(spell => spell.inSpellbook) : spells;
   });
-  readonly selectedKey = signal<string | null>(null);
-  readonly selectedSpell = computed(() => this.displayed().find(spell => this.spellKey(spell) === this.selectedKey()) ?? this.displayed()[0] ?? null);
+  private readonly selection = signal<PlayerSpell | null>(null);
+  readonly quickSpells = computed(() => this.displayed().filter(spell => spell.level === 0
+    || (spell.level !== null && spell.level >= 1 && (spell.prepared === true || spell.alwaysPrepared === true
+      || (spell.known && !spell.inSpellbook)))));
+  readonly selectedSpell = computed(() => {
+    const selected = this.selection();
+    return selected === null ? null : this.displayed().find(spell => this.spellKey(spell) === this.spellKey(selected)) ?? selected;
+  });
   readonly hasSpellbook = computed(() => this.displayed().some(spell => spell.inSpellbook)
     || this.view()?.preparations.some(plan => plan.learningStyle === 'spellbook') === true);
   readonly sections = computed(() => this.mode() === 'spellbook'
@@ -48,7 +54,15 @@ export class PlayerSpells implements OnInit, OnChanges {
   readonly editable = computed(() => !this.readonly() && this.view()?.editable === true && !this.busy());
   readonly selections: Record<string, number> = {};
   spellKey(spell: PlayerSpell): string { return spell.key ?? `${spell.sourceType}:${spell.source}:${spell.spellId}`; }
-  select(spell: PlayerSpell): void { this.selectedKey.set(this.spellKey(spell)); }
+  select(spell: PlayerSpell): void {
+  const current = this.selection();
+
+  if (current && this.spellKey(current) === this.spellKey(spell)) {
+    this.selection.set(null);
+  } else {
+    this.selection.set(spell);
+  }
+}
   readonly schoolIcon = (school: string | null): string => ({
     abjuration: '⬡', conjuration: '◇', divination: '◉', enchantment: '❋',
     evocation: 'ϟ', illusion: '◈', necromancy: '☽', transmutation: '△',

@@ -23,7 +23,7 @@
     <div class="quickbar-shell">
       <p class="eyebrow" id="spell-quickbar-label">Répertoire rapide</p>
       <div class="quickbar" role="group" aria-labelledby="spell-quickbar-label">
-        @for (spell of displayed(); track spellKey(spell)) {
+        @for (spell of quickSpells(); track spellKey(spell)) {
           <button type="button" class="quick-spell" [attr.data-school]="spell.school"
             [class.is-selected]="selectedSpell() && spellKey(selectedSpell()!) === spellKey(spell)"
             [attr.aria-pressed]="selectedSpell() && spellKey(selectedSpell()!) === spellKey(spell)"
@@ -40,6 +40,7 @@
       <div class="spell-modifiers"><ng-content select="[spell-modifiers]" /></div>
     </div>
 
+  }
     @if (selectedSpell(); as spell) {
       <article id="selected-spell-details" class="spell-details" aria-live="polite">
         <div class="spell-summary">
@@ -79,6 +80,7 @@
       </article>
     }
 
+  @if (displayed().length > 0) {
     <div class="spell-sections">
       @for (section of sections(); track section.key) {
         <section class="spell-section" [attr.aria-labelledby]="'spells-' + section.key">

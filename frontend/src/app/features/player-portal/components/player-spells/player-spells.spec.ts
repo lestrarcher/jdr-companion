@@ -96,9 +96,9 @@ describe('Player spell autonomy', () => {
         verbal:true,somatic:true,material:false,materialDescription:null,concentration:false,ritual:false}});
     const {fixture,http} = await setup(data);
     const buttons = fixture.nativeElement.querySelectorAll('.quick-spell');
-    expect(buttons.length).toBe(2);
-    buttons[1].click(); await fixture.whenStable();
-    expect(buttons[1].getAttribute('aria-pressed')).toBe('true');
+    expect(buttons.length).toBe(1);
+    buttons[0].click(); await fixture.whenStable();
+    expect(buttons[0].getAttribute('aria-pressed')).toBe('true');
     expect(fixture.nativeElement.querySelector('.spell-details').textContent).toContain('Description du sort sélectionné.');
     expect(fixture.nativeElement.querySelector('.spell-modifiers').children.length).toBe(0);
     http.expectNone(request => request.method === 'POST');
@@ -113,9 +113,11 @@ describe('Player spell autonomy', () => {
   });
   it('separates compact casting facts from description and components', async () => {
     const data = view();
+    data.spells[0].prepared = true;
     data.spells[0].details = {description:'Texte détaillé',higherLevels:null,castingTime:'1 réaction',range:'Personnelle',duration:'1 round',
       verbal:true,somatic:true,material:true,materialDescription:'Objet témoin',concentration:false,ritual:false};
     const {fixture} = await setup(data);
+    fixture.nativeElement.querySelector('.quick-spell').click(); await fixture.whenStable();
     const summary = fixture.nativeElement.querySelector('.spell-summary');
     for (const text of ['Bouclier','Abjuration','Niveau 1','Magicien','Intelligence','13','+5','1 réaction','Personnelle','1 round']) expect(summary.textContent).toContain(text);
     expect(summary.textContent).not.toContain('Texte détaillé');
@@ -128,5 +130,50 @@ describe('Player spell autonomy', () => {
     fixture.componentRef.setInput('revision',4); fixture.detectChanges();
     http.expectOne(base).flush({...view(),revision:4}); await fixture.whenStable();
     expect(component.view()?.revision).toBe(4);
+  });
+  it.each(['.quick-spell', '.spell-row'])('opens details only after clicking %s and retains them through unpreparation and refresh', async selector => {
+    const data = view();
+    data.spells[0].prepared = true;
+    data.preparations[0].selected = [1];
+    const {fixture,http,component} = await setup(data);
+    expect(fixture.nativeElement.querySelector('.spell-details')).toBeNull();
+    fixture.nativeElement.querySelector(selector).click(); await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('.spell-details').textContent).toContain('Bouclier');
+    component.toggle(data.preparations[0],1);
+    http.expectOne(base+'/prepare').flush({...view(),revision:4}); await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('.quick-spell')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.spell-details').textContent).toContain('Bouclier');
+    expect(component.selectedSpell()?.prepared).toBe(false);
+    component.reload();
+    expect(fixture.nativeElement.querySelector('.spell-details').textContent).toContain('Bouclier');
+    http.expectOne(base).flush({...view(),revision:5,spells:[]}); await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('.spell-details').textContent).toContain('Bouclier');
+    expect(component.selectedSpell()?.spellId).toBe(1);
+  });
+  it('limits the quickbar to accessible cantrips and spells available without further preparation', async () => {
+    const data = view();
+    const book = data.spells[0];
+    data.spells = [book,
+      {...book,key:'cantrip',spellId:2,name:'Tour de magie',level:0,known:true,inSpellbook:false,prepared:null},
+      {...book,key:'prepared',spellId:3,name:'Sort préparé',prepared:true},
+      {...book,key:'always',spellId:4,name:'Toujours préparé',sourceType:'subclass',inSpellbook:false,prepared:true,alwaysPrepared:true},
+      {...book,key:'feat',spellId:5,name:'Sort de don',sourceType:'feature',known:true,inSpellbook:false,prepared:null},
+      {...book,key:'known',spellId:6,name:'Sort connu',known:true,inSpellbook:false,prepared:null},
+      {...book,key:'unavailable',spellId:7,name:'Sort non disponible',inSpellbook:false},
+    ];
+    const {fixture,component,http} = await setup(data);
+    const names = () => Array.from(fixture.nativeElement.querySelectorAll('.quick-name') as NodeListOf<HTMLElement>).map(node => node.textContent!.trim());
+    expect(names()).toEqual(['Tour de magie','Sort préparé','Toujours préparé','Sort de don','Sort connu']);
+    expect(component.displayed()).toEqual(data.spells);
+    expect(component.sections().find(section => section.key === 'known')!.spells).toHaveLength(3);
+    component.toggle(data.preparations[0],1);
+    const prepared = {...data,revision:4,spells:data.spells.map(spell => spell.key === book.key ? {...spell,prepared:true} : spell)};
+    http.expectOne(base+'/prepare').flush(prepared); await fixture.whenStable();
+    expect(names()).toContain('Bouclier');
+    component.toggle({...data.preparations[0],selected:[1]},1);
+    http.expectOne(base+'/prepare').flush({...data,revision:5}); await fixture.whenStable();
+    expect(names()).not.toContain('Bouclier');
+    fixture.componentRef.setInput('mode','spellbook'); await fixture.whenStable();
+    expect(component.sections().flatMap(section => section.spells).map(spell => spell.name)).toEqual(['Bouclier','Sort préparé']);
   });
 });
