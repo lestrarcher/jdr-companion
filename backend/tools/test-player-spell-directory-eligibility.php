@@ -90,8 +90,18 @@ try {
     $resources = new CharacterResourceResolver(new TrackableResourceRuleRepository($registry),$ability,$features);
     $access = new CharacterSpellAccessResolver($catalogue,$grants,$resources);
     $acquisitions = new CharacterSpellAcquisitions($em,$access,$ability);
+    $definitions = new class($registry) extends App\Repository\TrackableResourceDefinitionRepository {
+        public int $reads = 0;
+        public function findVisibleBySlugs(array $slugs, User $owner): array {
+            ++$this->reads;
+            return parent::findVisibleBySlugs($slugs, $owner);
+        }
+    };
+    $slotCalculator = new App\Service\CharacterSpellSlotCalculator();
+    $contextBuilder = new App\Service\CharacterSpellAvailabilityContext($slotCalculator,
+        new App\Service\CharacterSpellSlotStateService($slotCalculator),$resources,$definitions);
     $directory = new PlayerSpellDirectory($db,$em,new CharacterFeatureSpellService($db,$features,$ability),$ability,
-        $access,$acquisitions,new CharacterSpellPreparation($acquisitions,$ability),$catalogue);
+        $access,$acquisitions,new CharacterSpellPreparation($acquisitions,$ability),$catalogue,$contextBuilder);
     $state=['preparedSpells'=>[$policies['cleric']->getId()=>[$spell['id']]],'spellPreparationAllowed'=>false,
         'progressions'=>[['id'=>'directory-progress','currentValue'=>3]],
         'resources'=>[['id'=>'spell-slot-1','currentValue'=>0],['id'=>'directory-charge','currentValue'=>0]]];
@@ -103,6 +113,7 @@ try {
     };
     $before=$snapshot();
     $entries=$directory->forCharacter($character,$state);
+    $check($definitions->reads===1,'Context built once for all directory sources');
     $check(count($entries)===8,'Seven ritual sources plus one learned cantrip');
     $check(!in_array($cantrips['unknown']['id'],array_column($entries,'spellId'),true),'Unlearned catalogue cantrip is absent from directory');
     $paths=array_column($access->resolve($character,['directory-progress'=>3]),null,'key');
@@ -110,6 +121,10 @@ try {
         $check(array_keys($entry['castingEligibility'])===['canCastNormally','canCastAsRitual','reason','ritualReason','requiresGrantReview'],'Eligibility API shape');
         foreach (['key','policyId','alwaysPrepared','spellId','name','level','school','source','sourceType','castingAbility','spellSaveDc','spellAttackBonus','known','inSpellbook','prepared','details'] as $field) $check(array_key_exists($field,$entry),'Existing contract: '.$field);
         $decision=$entry['castingEligibility'];
+        $availability=$entry['castingAvailability'];
+        $check(array_keys($availability)===['sourceKey','policyId','status','reason','methods'],'Availability contract');
+        $check($availability['sourceKey']===$entry['key'] && $availability['policyId']===$entry['policyId'],'Availability preserves source identity');
+        $check($availability['status']===($entry['sourceType']==='class'?'available':'unknown'),'Cantrip/ritual available, unresolved grants unknown');
         $isCantrip=$entry['spellId']===$cantrips['known']['id'];
         foreach (['spellId'=>$isCantrip?$cantrips['known']['id']:$spell['id'],'name'=>$isCantrip?'known cantrip':'Shared ritual',
             'level'=>$isCantrip?0:1,'school'=>'divination','spellSaveDc'=>$entry['sourceType']==='subclass'?null:10,
@@ -191,6 +206,48 @@ try {
         $check($context===$originalContext,'Progression read preserves complete supplied state');
     }
     $check($snapshot()===$beforeProgressionReads,'Progression reads never acquire, retire, prepare or consume');
+    // A non-ritual spell exposes actual pool availability without a ritual fallback.
+    $ordinary=$catalogue->create(['slug'=>'directory-ordinary','name'=>'Ordinary spell','level'=>1,'school'=>'divination',
+        'castingTime'=>'1 action','range'=>'Self','duration'=>'1 minute','description'=>'Fixture','ritual'=>false,
+        'classIds'=>[$classes['bard']->getId()]],$owner,true);
+    $em->persist(new CharacterSpellAcquisition($character,$em->find(SpellDefinition::class,$ordinary['id']),
+        $policies['bard'],$levels['bard'],$owner,'manual-reconciliation','known','Fixture'));
+    $warlock=new CharacterClass('warlock','Warlock',8,1,SpellcastingProgressionType::Pact);
+    $pact=new TrackableResourceDefinition('warlock-pact-slots','Pact',ResourceRechargeType::ShortRest);
+    $warlockLevel=new CharacterClassLevel($character,$warlock,4);
+    $character->addClassLevel($warlockLevel);
+    foreach ([$warlock,$warlockLevel,$pact,App\Entity\TrackableResourceRule::forClass($pact,$warlock,1,1)] as $entity) $em->persist($entity);
+    $em->flush();
+    $beforeAvailabilityReads=$snapshot();
+    $baselineLegacy=null;
+    foreach ([[0,0,'unavailable'],[1,0,'available'],[0,1,'available'],[null,0,'unknown'],['1',0,'unknown']] as [$standard,$pactRemaining,$expected]) {
+        $context=$stateBefore;
+        $context['resources']=[['id'=>'spell-slot-2','currentValue'=>0],['id'=>'warlock-pact-slots','currentValue'=>$pactRemaining]];
+        if ($standard!==null) $context['resources'][]=['id'=>'spell-slot-1','currentValue'=>$standard];
+        $original=$context; $reads=$definitions->reads;
+        $rows=$directory->forCharacter($character,$context);
+        $check($definitions->reads===$reads+1,'One context build per changed session snapshot');
+        $check($context===$original,'Availability read preserves supplied session state');
+        $legacy=array_map(static fn($row)=>array_diff_key($row,['castingAvailability'=>true]),$rows);
+        $baselineLegacy??=$legacy;
+        $check($legacy===$baselineLegacy,'All legacy values/types including eligibility and grant metadata unchanged across resource changes');
+        $row=array_values(array_filter($rows,static fn($row)=>$row['spellId']===$ordinary['id']))[0];
+        $check($row['castingAvailability']['status']===$expected,'Availability follows session counters: '.$expected);
+        if ($expected==='available') {
+            $usable=array_values(array_filter($row['castingAvailability']['methods'],static fn($method)=>$method['status']==='available'));
+            $check(count($usable)===1 && $usable[0]['kind']===($pactRemaining?'pact-slot':'standard-slot'),'Standard and pact methods remain distinct');
+        }
+        foreach ($rows as $row) if (($row['mode']??null)==='grant-cast') {
+            $check($row['castingAvailability']['status']==='unknown' && $row['castingEligibility']['requiresGrantReview']===true,'Full pools cannot authorize grant-cast');
+        }
+    }
+    $session=new App\Entity\CharacterSessionState(new App\Entity\GameSession($campaign,'availability-view','Availability view'),$character,$stateBefore);
+    $management=new App\Service\PlayerSpellManagement($em,$acquisitions,new CharacterFeatureSpellService($db,$features,$ability),
+        new CharacterSpellPreparation($acquisitions,$ability),$directory);
+    $revision=$session->getRevision(); $originalState=$session->getState();
+    $view=$management->view($session);
+    $check($view['revision']===$revision && $session->getRevision()===$revision && $session->getState()===$originalState,'Public view preserves revision and state');
+    $check($snapshot()===$beforeAvailabilityReads,'Availability projection never writes or consumes');
     echo "PASS: $checks directory eligibility assertions; temporary schema rolled back.\n";
 } finally {
     while ($db->isTransactionActive()) $db->rollBack();

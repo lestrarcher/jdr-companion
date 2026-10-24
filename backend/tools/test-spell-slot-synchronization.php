@@ -182,7 +182,8 @@ try {
     $spellAccess = new \App\Service\CharacterSpellAccessResolver($catalogue, new \App\Service\SpellSubclassGrants($db, $catalogue), $resources);
     $acquisitions = new \App\Service\CharacterSpellAcquisitions($em, $spellAccess, $ability);
     $directory = new \App\Service\PlayerSpellDirectory($db, $em, new \App\Service\CharacterFeatureSpellService($db, $features, $ability), $ability,
-        $spellAccess, $acquisitions, new \App\Service\CharacterSpellPreparation($acquisitions, $ability), $catalogue);
+        $spellAccess, $acquisitions, new \App\Service\CharacterSpellPreparation($acquisitions, $ability), $catalogue,
+        new \App\Service\CharacterSpellAvailabilityContext(new CharacterSpellSlotCalculator(), $slots, $resources, new TrackableResourceDefinitionRepository($registry)));
     $serializer = new CharacterSessionStateSerializer($profileSerializer, new CharacterHitPointStateService($hp), new CharacterActiveEffectRepository($registry), $slots, $directory);
     $naturalProfile = $profileSerializer->serialize($character);
     $naturalResources = array_column($naturalProfile['resources'], null, 'slug');

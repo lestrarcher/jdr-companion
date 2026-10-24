@@ -21,12 +21,15 @@ final readonly class PlayerSpellDirectory
         private CharacterSpellAcquisitions $acquisitions,
         private CharacterSpellPreparation $preparation,
         private SpellCatalogue $catalogue,
+        private CharacterSpellAvailabilityContext $availabilityContext,
         private CharacterSpellCastEligibility $eligibility = new CharacterSpellCastEligibility(),
+        private CharacterSpellCastAvailability $availability = new CharacterSpellCastAvailability(),
     ) {}
 
     public function forCharacter(Character $character, array $state = []): array
     {
         $result = [];
+        $castingContext = $this->availabilityContext->build($character, $state);
         $id = $character->getId();
         $rows = $this->db->fetchAllAssociative(
             'SELECT a.id, a.spell_id, a.policy_definition_id, a.quota_bucket, a.known, a.in_spellbook,
@@ -123,6 +126,7 @@ final readonly class PlayerSpellDirectory
             $entry['castingEligibility'] = $this->eligibility->evaluate(
                 $entry, $policy?->policy()->learningStyle, $policy?->getCharacterClass()->getSlug(),
             );
+            $entry['castingAvailability'] = $this->availability->evaluate($entry, $castingContext);
         }
         unset($entry);
         return array_values(array_filter($result, static fn(array $entry): bool => $entry['details'] !== null));
