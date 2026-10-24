@@ -95,16 +95,6 @@
   }
 
   <footer class="actions">
-    <button type="button" class="action"
-      [attr.aria-pressed]="character().sessionState?.state?.inspiration === true"
-      [disabled]="changingInspirationId() !== null"
-      (click)="inspirationRequested.emit(character())">
-      @if (changingInspirationId() === character().character.id) {
-        Inspiration : modification…
-      } @else {
-        {{ character().sessionState?.state?.inspiration ? 'Inspiration disponible — retirer' : 'Accorder l’inspiration' }}
-      }
-    </button>
     @if (playerPortalUrl(); as portalUrl) {
       <a
         class="action"
@@ -115,6 +105,16 @@
         Ouvrir le portail
       </a>
     }
+    <button type="button" class="action"
+      [attr.aria-pressed]="character().sessionState?.state?.inspiration === true"
+      [disabled]="changingInspirationId() !== null"
+      (click)="inspirationRequested.emit(character())">
+      @if (changingInspirationId() === character().character.id) {
+        Inspiration : modification…
+      } @else {
+        {{ character().sessionState?.state?.inspiration ? 'Inspiration disponible — retirer' : 'Accorder l’inspiration' }}
+      }
+    </button>
 
     <button
       type="button"
