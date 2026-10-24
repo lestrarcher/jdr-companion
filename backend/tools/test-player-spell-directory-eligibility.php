@@ -249,8 +249,15 @@ try {
     $check($view['revision']===$revision && $session->getRevision()===$revision && $session->getState()===$originalState,'Public view preserves revision and state');
     $check($snapshot()===$beforeAvailabilityReads,'Availability projection never writes or consumes');
     require __DIR__.'/test-spell-cast-command-cases.php';
-    echo "PASS: $checks directory eligibility assertions; temporary schema rolled back.\n";
+    if (in_array('--cast-execution', $argv, true)) {
+        // All tables/sequences were verified temporary above. Preserve them across real
+        // commits so the executor can own its transaction; connection close drops them.
+        $db->commit();
+        require __DIR__.'/test-spell-cast-execution-cases.php';
+    }
+    echo "PASS: $checks spell directory/command assertions; temporary schema only.\n";
 } finally {
     while ($db->isTransactionActive()) $db->rollBack();
+    if (in_array('--cast-execution', $argv, true)) $db->close();
     $kernel->shutdown();
 }
