@@ -244,9 +244,34 @@ try {
     $session=new App\Entity\CharacterSessionState(new App\Entity\GameSession($campaign,'availability-view','Availability view'),$character,$stateBefore);
     $management=new App\Service\PlayerSpellManagement($em,$acquisitions,new CharacterFeatureSpellService($db,$features,$ability),
         new CharacterSpellPreparation($acquisitions,$ability),$directory);
-    $revision=$session->getRevision(); $originalState=$session->getState();
-    $view=$management->view($session);
-    $check($view['revision']===$revision && $session->getRevision()===$revision && $session->getState()===$originalState,'Public view preserves revision and state');
+    $originalState=$session->getState();
+
+    $receiptCommand=['revision'=>1,'requestId'=>'7a00a010-0000-4000-8000-000000000001','sourceKey'=>'feature:1','method'=>'ritual','castingLevel'=>1];
+    $receiptCast=['source'=>['key'=>'feature:1','spellId'=>$spell['id'],'policyId'=>null,'sourceType'=>'feature'],
+        'method'=>'ritual','castingLevel'=>1,'poolSlug'=>null,'cost'=>0];
+    $originalState['spellCastReceipts']=[$receiptCommand['requestId']=>App\Service\SpellCastReceipts::create($receiptCommand,$receiptCast)];
+$session->setState($originalState);
+
+$revision = $session->getRevision();
+$originalState = $session->getState();
+
+$view = $management->view($session);
+    $check(!str_contains(json_encode($view),'spellCastReceipts') && !str_contains(json_encode($view),$receiptCommand['requestId']),'Public spells response exposes neither receipts nor request IDs');
+
+$check(
+    $view['revision'] === $revision,
+    'Public view preserves revision'
+);
+
+$check(
+    $session->getRevision() === $revision,
+    'Session preserves revision'
+);
+
+$check(
+    $session->getState() === $originalState,
+    'Session preserves internal state'
+);
     $check($snapshot()===$beforeAvailabilityReads,'Availability projection never writes or consumes');
     require __DIR__.'/test-spell-cast-command-cases.php';
     if (in_array('--cast-execution', $argv, true)) {

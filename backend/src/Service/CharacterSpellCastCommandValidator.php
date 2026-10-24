@@ -20,14 +20,9 @@ final readonly class CharacterSpellCastCommandValidator
     {
         $result = ['valid'=>false, 'status'=>'unavailable', 'reason'=>null, 'source'=>null,
             'method'=>null, 'castingLevel'=>null, 'poolSlug'=>null, 'cost'=>null];
-        $keys = ['revision','requestId','sourceKey','method','castingLevel'];
-        if (array_diff($keys, array_keys($command)) || array_diff(array_keys($command), $keys)
-            || !is_int($command['revision']) || $command['revision'] < 1
-            || !is_string($command['requestId'])
-            || !preg_match('/\A[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\z/i', $command['requestId'])
-            || !is_string($command['sourceKey']) || $command['sourceKey'] === '' || strlen($command['sourceKey']) > 255
-            || !in_array($command['method'], ['standard-slot','pact-slot','cantrip','ritual'], true)
-            || !is_int($command['castingLevel']) || $command['castingLevel'] < 0 || $command['castingLevel'] > 9) {
+        try {
+            $command = SpellCastReceipts::normalizeCommand($command);
+        } catch (\InvalidArgumentException) {
             return array_replace($result, ['reason'=>'invalid_command']);
         }
         $result['method'] = $command['method'];
