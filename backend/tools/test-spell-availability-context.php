@@ -123,6 +123,20 @@ try {
     }
     $result=$build($mono, ['resources'=>[['id'=>'unknown-charge','currentValue'=>1]]]);
     $check($result['resources'][0]['status']==='unknown' && $result['resources'][0]['definitionId']===null, 'Unresolved historical resource');
+    // D2.3-B consumes the actual context contract without rebuilding its pools.
+    $casting = new App\Service\CharacterSpellCastAvailability();
+    $eligibility = new App\Service\CharacterSpellCastEligibility();
+    $spellEntry=['key'=>'acquisition:fixture','policyId'=>1,'sourceType'=>'class','level'=>1,'known'=>true];
+    $spellEntry['castingEligibility']=$eligibility->evaluate($spellEntry,'known','wizard');
+    $actualContext=$build($mixed, ['resources'=>[['id'=>'spell-slot-1','currentValue'=>0],
+        ['id'=>'spell-slot-2','currentValue'=>0],['id'=>'warlock-pact-slots','currentValue'=>1]]]);
+    $unchangedContext=$actualContext;
+    $decision=$casting->evaluate($spellEntry,$actualContext);
+    $usable=array_values(array_filter($decision['methods'],static fn(array $method): bool=>$method['status']==='available'));
+    $check($decision['status']==='available' && count($usable)===1 && $usable[0]['poolSlug']==='warlock-pact-slots'
+        && $usable[0]['castingLevel']===2,'Real context offers pact upcasting while standards are exhausted');
+    $check($actualContext===$unchangedContext,'Evaluation leaves real context unchanged');
+    $check($casting->evaluate($spellEntry,$build($mono, []))['status']==='unknown','Real missing counters stay unknown');
     $check($snapshot()===$before, 'All database tables unchanged');
     $em->getUnitOfWork()->computeChangeSets();
     $check($em->getUnitOfWork()->getScheduledEntityUpdates()===[] && $em->getUnitOfWork()->getScheduledEntityInsertions()===[] && $em->getUnitOfWork()->getScheduledEntityDeletions()===[], 'No pending entity mutations');
