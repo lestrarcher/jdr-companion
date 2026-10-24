@@ -21,6 +21,7 @@ final readonly class PlayerSpellDirectory
         private CharacterSpellAcquisitions $acquisitions,
         private CharacterSpellPreparation $preparation,
         private SpellCatalogue $catalogue,
+        private CharacterSpellCastEligibility $eligibility = new CharacterSpellCastEligibility(),
     ) {}
 
     public function forCharacter(Character $character, array $state = []): array
@@ -55,8 +56,8 @@ final readonly class PlayerSpellDirectory
         }
 
         // Automatic subclass grants are distinct from class acquisition quotas.
-        foreach ($this->access->resolve($character) as $path) {
-            if (!in_array($path->mode, ['grant-known', 'grant-always-prepared'], true)) continue;
+        foreach ($this->access->resolve($character, CharacterSessionStateSynchronizer::extractProgressionValues($state)) as $path) {
+            if (!in_array($path->mode, ['grant-known', 'grant-always-prepared', 'grant-cast'], true)) continue;
             $result[] = [
                 'key'=>$path->key, 'policyId'=>null, 'alwaysPrepared'=>$path->mode === 'grant-always-prepared',
                 'spellId' => (int) $path->spell['id'], 'name' => $path->spell['name'],
@@ -67,6 +68,9 @@ final readonly class PlayerSpellDirectory
                 'known' => $path->mode === 'grant-known',
                 'inSpellbook' => false,
                 'prepared' => $path->mode === 'grant-always-prepared',
+                'mode' => $path->mode, 'slotUsage' => $path->slotUsage,
+                'restrictions' => $path->restrictions, 'resource' => $path->resource,
+                'castingClass' => $path->castingClass, 'quotaImpact' => $path->quotaImpact,
             ];
         }
 
@@ -113,6 +117,12 @@ final readonly class PlayerSpellDirectory
                 ])); } catch (\Symfony\Component\HttpKernel\Exception\NotFoundHttpException) { $details[$spellId] = null; }
             }
             $entry['details'] = $details[$spellId];
+            // Resolve the exact source policy, never a character-wide casting style.
+            $policy = $entry['sourceType'] === 'class' && $entry['policyId'] !== null
+                ? $this->em->find(SpellcastingPolicyDefinition::class, $entry['policyId']) : null;
+            $entry['castingEligibility'] = $this->eligibility->evaluate(
+                $entry, $policy?->policy()->learningStyle, $policy?->getCharacterClass()->getSlug(),
+            );
         }
         unset($entry);
         return array_values(array_filter($result, static fn(array $entry): bool => $entry['details'] !== null));

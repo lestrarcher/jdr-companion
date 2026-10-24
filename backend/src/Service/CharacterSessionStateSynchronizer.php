@@ -94,7 +94,7 @@ final readonly class CharacterSessionStateSynchronizer
      * @param array<string, mixed> $state
      * @return array<string, int>
      */
-    public function extractProgressionValues(array $state): array
+    public static function extractProgressionValues(array $state): array
     {
         $progressions = $state['progressions'] ?? [];
 
