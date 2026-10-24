@@ -49,6 +49,13 @@ body {
   font-family: Georgia, 'Times New Roman', serif;
 }
 
+/* This standalone route scrolls the document; dashboard routes keep their own scroll containers. */
+html:has(app-player-spell-preparation),
+body:has(app-player-spell-preparation) {
+  height: auto;
+  overflow: visible;
+}
+
 * {
   scrollbar-width: thin;
   scrollbar-color:

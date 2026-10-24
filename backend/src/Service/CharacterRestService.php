@@ -80,6 +80,9 @@ final readonly class CharacterRestService
      */
     private function applyLongRest(Character $character,  array $state): array
     {
+        // Reopen spell preparation without replacing the currently active selection.
+        $state['spellPreparationAllowed'] = true;
+
         $state['hitPoints']['current'] = $this->hitPointStateService->effectiveMaximum($character, $state);
 
         $state['hitPoints']['temporary'] = 0;

@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Entity\Character;
 use App\Enum\Ability;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** Preparation is session state, never an acquisition or a spell-slot expenditure. */
@@ -37,13 +38,61 @@ final readonly class CharacterSpellPreparation
 
     public function update(Character $character, int $policyId, array $spellIds, array $state): array
     {
-        if (!array_is_list($spellIds) || count($spellIds) !== count(array_unique($spellIds, SORT_REGULAR))) throw new UnprocessableEntityHttpException('Liste de préparation invalide.');
+        $this->requireOpen($state);
         foreach ($spellIds as $id) if (!is_int($id) || $id < 1) throw new UnprocessableEntityHttpException('Identifiant de sort invalide.');
+        if (!array_is_list($spellIds) || count($spellIds) !== count(array_unique($spellIds, SORT_REGULAR))) throw new UnprocessableEntityHttpException('Liste de préparation invalide.');
         $options = $this->acquisitions->options($character, $policyId, $character->getCampaign()->getOwner());
         $plan = $this->plan($character, $options, $state);
         if ($plan === null || $plan['blocked']) throw new UnprocessableEntityHttpException('Préparation indisponible pour cette politique.');
         if (count($spellIds) > $plan['maximum'] || array_diff($spellIds, array_column($plan['available'], 'id'))) throw new UnprocessableEntityHttpException('Limite de préparation dépassée ou sort non éligible.');
         $state['preparedSpells'][(string)$policyId] = $spellIds;
         return $state;
+    }
+
+    /** Caller holds the character/session locks. Return a new state only after every validation succeeds. */
+    public function confirm(Character $character, array $selections, array $state): array
+    {
+        $this->requireOpen($state);
+        if (!array_is_list($selections)) throw new UnprocessableEntityHttpException('Une liste de sélections est requise.');
+        $submitted = [];
+        foreach ($selections as $selection) {
+            if (!is_array($selection) || count($selection) !== 2
+                || !is_int($selection['policyId'] ?? null) || $selection['policyId'] < 1
+                || !is_array($selection['spellIds'] ?? null) || count($selection['spellIds']) > 100
+                || isset($submitted[$selection['policyId']])) {
+                throw new UnprocessableEntityHttpException('Sélection invalide ou politique dupliquée.');
+            }
+            $submitted[$selection['policyId']] = $selection['spellIds'];
+        }
+
+        // Resolve every class explicitly: the public view may omit misconfigured policies with a warning.
+        $owner = $character->getCampaign()->getOwner();
+        $classes = []; $required = [];
+        foreach ($character->getClassLevels() as $level) {
+            $class = $level->getCharacterClass();
+            if (isset($classes[$class->getId()])) continue;
+            $classes[$class->getId()] = true;
+            $status = $this->acquisitions->levelUpStatus($character, $class, $owner);
+            if ($status['status'] === 'no-spellcasting') continue;
+            if ($status['status'] !== 'policy-configured') throw new ConflictHttpException('Configuration de magie incomplète ou ambiguë.');
+            $policyId = $status['policyIds'][0];
+            $options = $this->acquisitions->options($character, $policyId, $owner);
+            if ($this->plan($character, $options, $state) !== null) $required[] = $policyId;
+        }
+        if (array_diff($required, array_keys($submitted)) || array_diff(array_keys($submitted), $required)) {
+            throw new UnprocessableEntityHttpException('Toutes les politiques de préparation applicables, et elles seules, sont requises.');
+        }
+        foreach ($submitted as $policyId => $spellIds) {
+            $state = $this->update($character, $policyId, $spellIds, $state);
+        }
+        $state['spellPreparationAllowed'] = false;
+        return $state;
+    }
+
+    private function requireOpen(array $state): void
+    {
+        if (($state['spellPreparationAllowed'] ?? true) !== true) {
+            throw new ConflictHttpException('La préparation des sorts est verrouillée jusqu’au prochain repos long.');
+        }
     }
 }

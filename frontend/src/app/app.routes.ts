@@ -31,6 +31,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/player-spellbook/player-spellbook').then(component => component.PlayerSpellbook),
   },
   {
+    path: 'campaigns/:campaignId/sessions/:sessionId/player/:accessToken/prepare-spells',
+    loadComponent: () => import('./features/player-spell-preparation/player-spell-preparation').then(component => component.PlayerSpellPreparationPage),
+    canDeactivate: [preparationGuard],
+  },
+  {
     path: 'campaigns/:campaignId/sessions/:sessionId/player/:accessToken',
     loadComponent: () =>
       import('./features/player-portal/player-portal').then(

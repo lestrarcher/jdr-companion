@@ -5,6 +5,9 @@ declare(strict_types=1);
 // Local integration cases run against TEMP copies, including independent sequences.
 // Original character data and sequences are never written, even on failure.
 use App\Entity\{Character, CharacterSessionState, GameSession};
+use App\Entity\RestRequest;
+use App\Repository\{CharacterActiveEffectRepository, CharacterFeatureRuleRepository, CharacterSessionStateRepository, TrackableResourceDefinitionRepository, TrackableResourceRuleRepository};
+use App\Service\{CharacterAbilityCalculator, CharacterActiveEffectService, CharacterFeatureResolver, CharacterHitPointCalculator, CharacterHitPointStateService, CharacterResourceResolver, CharacterRestService, CharacterSessionStateFactory, CharacterSessionStateSynchronizer, CharacterSpellSlotCalculator, CharacterSpellSlotStateService};
 use Symfony\Component\HttpFoundation\Request;
 
 require __DIR__.'/../vendor/autoload.php';
@@ -98,6 +101,59 @@ try {
     $check((int)$db->fetchOne('SELECT count(*) FROM character_spell_acquisition WHERE character_id=?', [40]) === (int)$quotaBefore + 1, 'Wizard acquisitions remain independent');
     $sylveon = $sessions['Sylveon'];
     $view = $get($sylveon);
+    // HTTP commands may detach entities; mutate the currently managed instance.
+    $sylveon = $em->find(CharacterSessionState::class, $sylveon->getId());
+    $check(!array_key_exists('spellPreparationAllowed', $sylveon->getState()), 'Legacy fixture has no preparation flag');
+    $check($view['spellPreparationAllowed'] === true, 'GET allows first preparation for a legacy session');
+    $registry = $kernel->getContainer()->get('doctrine');
+    $ability = new CharacterAbilityCalculator();
+    $hp = new CharacterHitPointCalculator($ability);
+    $hpState = new CharacterHitPointStateService($hp);
+    $slots = new CharacterSpellSlotCalculator();
+    $effects = new CharacterActiveEffectRepository($registry);
+    $resources = new CharacterResourceResolver(new TrackableResourceRuleRepository($registry), $ability,
+        new CharacterFeatureResolver(new CharacterFeatureRuleRepository($registry)));
+    $sync = new CharacterSessionStateSynchronizer($hp, $hpState, $resources,
+        new CharacterSessionStateRepository($registry), new CharacterSpellSlotStateService($slots));
+    $factory = new CharacterSessionStateFactory($hp, $resources, $slots, $effects);
+    $rest = new CharacterRestService($hp, $hpState, $resources, $sync, $slots,
+        new TrackableResourceDefinitionRepository($registry), $ability, $effects, new CharacterActiveEffectService($hpState), $em);
+    $initial = $factory->create($sylveon->getCharacter());
+    $check($initial['spellPreparationAllowed'] === true, 'New session state explicitly allows preparation');
+    $sylveon->setState($initial);
+    $em->flush();
+    $check($get($sylveon)['spellPreparationAllowed'] === true, 'GET exposes initial permission');
+    // Include multiple policies and an empty selection; rest must preserve the entire map verbatim.
+    $selections = ['101'=>[301, 302], '102'=>[], '103'=>[303]];
+    foreach ([null, false, true] as $allowed) {
+        $sylveon = $em->find(CharacterSessionState::class, $sylveon->getId());
+        $state = $initial;
+        $state['preparedSpells'] = $selections;
+        $state['characterActions'] = ['prepared'=>['independent-action'], 'preparationPending'=>false];
+        if ($allowed === null) unset($state['spellPreparationAllowed']);
+        else $state['spellPreparationAllowed'] = $allowed;
+        $sylveon->setState($state);
+        $rest->apply($sylveon, RestRequest::TYPE_SHORT_REST);
+        $afterShort = $sylveon->getState();
+        $check(array_key_exists('spellPreparationAllowed', $afterShort) === ($allowed !== null)
+            && ($afterShort['spellPreparationAllowed'] ?? null) === $allowed, 'Short rest preserves missing/open/locked permission');
+        $check($afterShort['preparedSpells'] === $selections, 'Short rest preserves every selection');
+        $check($afterShort['characterActions'] === $state['characterActions'], 'Short rest preserves independent actions');
+        $em->flush();
+        $check($get($sylveon)['spellPreparationAllowed'] === ($allowed ?? true), 'GET exposes permission after short rest');
+        $sylveon = $em->find(CharacterSessionState::class, $sylveon->getId());
+        $rest->apply($sylveon, RestRequest::TYPE_LONG_REST);
+        $afterLong = $sylveon->getState();
+        $check($afterLong['spellPreparationAllowed'] === true, 'Long rest opens legacy/open/locked preparation');
+        $check($afterLong['preparedSpells'] === $selections, 'Long rest preserves every selection without confirmation');
+        $check($afterLong['characterActions'] === ['prepared'=>[], 'preparationPending'=>true], 'Existing action preparation cycle remains independent');
+        $em->flush();
+        $check($get($sylveon)['spellPreparationAllowed'] === true, 'GET exposes reopened preparation');
+    }
+    $sylveon = $em->find(CharacterSessionState::class, $sylveon->getId());
+    $sylveon->setState($initial);
+    $em->flush();
+    $view = $get($sylveon);
     $check(count(array_filter($view['spells'], static fn($s) => $s['level'] === 0)) === 4, 'Sylveon has four cantrips');
     $racial = array_values(array_filter($view['spells'], static fn($s) => $s['sourceType'] === 'feature'))[0];
     $check($racial['castingAbility'] === 'intelligence' && is_int($racial['spellSaveDc']), 'Stored INT grant uses the intelligence calculator');
@@ -107,6 +163,16 @@ try {
     $view = $post($sylveon, 'prepare', ['policyId'=>$plan['policyId'],'spellIds'=>[$spellId]]);
     $check(count(array_filter($view['spells'], static fn($s) => $s['prepared'] === true && $s['inSpellbook'] && !$s['alwaysPrepared'])) === 1, 'Prepared and book views overlap without an acquisition');
     $check($view['preparations'][0]['selected'] === [$spellId], 'Preparation returned immediately');
+    $check($view['spellPreparationAllowed'] === true, 'Current prepare POST does not lock preparation');
+    $sylveon = $em->find(CharacterSessionState::class, $sylveon->getId());
+    $state = $sylveon->getState();
+    $state['spellPreparationAllowed'] = false;
+    $sylveon->setState($state);
+    $em->flush();
+    $post($sylveon, 'prepare', ['policyId'=>$plan['policyId'],'spellIds'=>[$spellId]], 409);
+    $sylveon = $em->find(CharacterSessionState::class, $sylveon->getId());
+    $rest->apply($sylveon, RestRequest::TYPE_LONG_REST);
+    $em->flush();
     $post($sylveon, 'prepare', ['policyId'=>$plan['policyId'],'spellIds'=>[$spellId,$spellId]], 422);
     $post($sylveon, 'prepare', ['policyId'=>$plan['policyId'],'spellIds'=>[2147483647]], 422);
     if (count($plan['available']) > $plan['maximum']) $post($sylveon, 'prepare', ['policyId'=>$plan['policyId'],'spellIds'=>array_column($plan['available'],'id')], 422);
@@ -115,6 +181,7 @@ try {
     $post($sylveon, 'learn', ['policyId'=>$plan['policyId'],'ruleId'=>null,'spellId'=>$spellId,'overrideRules'=>true], 400);
     $check($get($sessions['Nikita'])['spells'] === [], 'Nikita empty state');
     $check($request('GET', '/public/characters/'.str_repeat('0',64).'/spells')[0] === 404, 'Invalid token rejected');
+    require __DIR__.'/test-spell-preparation-confirmation-cases.php';
     $db->update('game_session', ['status'=>GameSession::STATUS_CLOSED], ['id'=>$sylveon->getGameSession()->getId()]);
     $em->clear();
     $post($sylveon, 'prepare', ['policyId'=>$plan['policyId'],'spellIds'=>[]], 409);

@@ -48,6 +48,8 @@ final readonly class PlayerSpellManagement
         foreach ($preparations as &$plan) $plan['available'] = array_map(self::candidate(...), $plan['available']);
         unset($plan);
         return ['revision'=>$session->getRevision(), 'editable'=>$session->isParticipating() && $session->getGameSession()->getStatus() === 'live',
+            // Legacy session states allow their first preparation without a data migration.
+            'spellPreparationAllowed'=>$session->getState()['spellPreparationAllowed'] ?? true,
             'spells'=>$this->directory->forCharacter($character, $session->getState()), 'choices'=>$choices, 'preparations'=>$preparations, 'warnings'=>$warnings];
     }
 

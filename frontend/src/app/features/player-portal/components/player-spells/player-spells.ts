@@ -1,11 +1,12 @@
 import { Component, DestroyRef, OnChanges, OnInit, computed, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Location } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Observable, finalize } from 'rxjs';
 import { PlayerSpell } from '@core/services/character-session-state-api.service';
-import { PlayerSpellApiService, PlayerSpellChoice, PlayerSpellPreparation, PlayerSpellView } from '@core/services/player-spell-api.service';
+import { PlayerSpellApiService, PlayerSpellChoice, PlayerSpellView } from '@core/services/player-spell-api.service';
 
 @Component({
   selector: 'app-player-spells',
@@ -19,14 +20,22 @@ export class PlayerSpells implements OnInit, OnChanges {
   readonly accessToken = input('');
   readonly readonly = input(true);
   readonly revision = input(0);
-  readonly mode = input<'portal' | 'spellbook'>('portal');
+  readonly prioritizePreparation = input(false);
+  readonly mode = input<'portal' | 'spellbook' | 'details'>('portal');
+  readonly detailSpell = input<PlayerSpell | null>(null);
   readonly changed = output<void>();
   private readonly api = inject(PlayerSpellApiService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly location = inject(Location);
+  private skipPreparationRedirect = false;
   readonly view = signal<PlayerSpellView | null>(null);
   readonly busy = signal(false);
   readonly error = signal('');
   readonly success = signal('');
+  readonly preparationAvailable = computed(() => this.view()?.spellPreparationAllowed === true
+    && (this.view()?.preparations.length ?? 0) > 0);
   readonly displayed = computed(() => {
     const view = this.view();
     const spells = view && view.revision > this.revision() ? view.spells : this.spells();
@@ -35,9 +44,10 @@ export class PlayerSpells implements OnInit, OnChanges {
   private readonly selection = signal<PlayerSpell | null>(null);
   readonly quickSpells = computed(() => this.displayed().filter(spell => spell.level === 0
     || (spell.level !== null && spell.level >= 1 && (spell.prepared === true || spell.alwaysPrepared === true
-      || (spell.known && !spell.inSpellbook)))));
+      || (spell.known && !spell.inSpellbook))))
+    .sort((a, b) => (a.level ?? Infinity) - (b.level ?? Infinity) || a.name.localeCompare(b.name, 'fr')));
   readonly selectedSpell = computed(() => {
-    const selected = this.selection();
+    const selected = this.mode() === 'details' ? this.detailSpell() : this.selection();
     return selected === null ? null : this.displayed().find(spell => this.spellKey(spell) === this.spellKey(selected)) ?? selected;
   });
   readonly hasSpellbook = computed(() => this.displayed().some(spell => spell.inSpellbook)
@@ -71,25 +81,33 @@ export class PlayerSpells implements OnInit, OnChanges {
     abjuration: 'Abjuration', conjuration: 'Invocation', divination: 'Divination', enchantment: 'Enchantement',
     evocation: 'Évocation', illusion: 'Illusion', necromancy: 'Nécromancie', transmutation: 'Transmutation',
   } as Record<string, string>)[school ?? ''] ?? 'École non renseignée';
-  ngOnInit(): void { if (this.accessToken()) this.reload(); }
+  ngOnInit(): void {
+    if (this.prioritizePreparation()) {
+      const state = this.location.getState() as { skipSpellPreparationRedirect?: boolean };
+      this.skipPreparationRedirect = state?.skipSpellPreparationRedirect === true;
+    }
+    if (this.accessToken()) this.reload();
+  }
   ngOnChanges(): void {
     if (this.accessToken() && this.view() && this.revision() > this.view()!.revision && !this.busy()) this.reload();
   }
   reload(): void {
     this.busy.set(true);
     this.api.get(this.accessToken()).pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.busy.set(false))).subscribe({
-      next: view => this.view.set(view), error: error => this.failed(error),
+      next: view => {
+        this.view.set(view);
+        if (!view.spellPreparationAllowed) this.skipPreparationRedirect = false;
+        if (this.prioritizePreparation() && this.mode() === 'portal' && !this.skipPreparationRedirect
+          && !this.readonly() && view.editable && this.preparationAvailable()) {
+          void this.router.navigate(['prepare-spells'], { relativeTo: this.route, replaceUrl: true });
+        }
+      }, error: error => this.failed(error),
     });
   }
   choose(choice: PlayerSpellChoice): void {
     const spellId = Number(this.selections[choice.key]);
     if (!this.editable() || !spellId || !choice.available.some(spell => spell.id === spellId)) return;
     this.save(this.api.choose(this.accessToken(), this.view()!.revision, choice, spellId), 'Sort appris.');
-  }
-  toggle(plan: PlayerSpellPreparation, spellId: number): void {
-    if (!this.editable() || plan.blocked) return;
-    const selected = plan.selected.includes(spellId) ? plan.selected.filter(id => id !== spellId) : [...plan.selected, spellId];
-    this.save(this.api.prepare(this.accessToken(), this.view()!.revision, plan.policyId, selected), 'Préparation mise à jour.');
   }
   private save(request: Observable<PlayerSpellView>, message: string): void {
     this.busy.set(true); this.error.set(''); this.success.set('');

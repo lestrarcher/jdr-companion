@@ -28,7 +28,7 @@ final class PlayerSpellController extends AbstractController
         return $this->json($this->management->view($this->access->requireParticipating($accessToken)));
     }
 
-    #[Route('/{operation}', name: 'api_public_character_spells_update', requirements: ['operation'=>'learn|choose|prepare'], methods: ['POST'])]
+    #[Route('/{operation}', name: 'api_public_character_spells_update', requirements: ['operation'=>'learn|choose|prepare|confirm-preparation'], methods: ['POST'])]
     public function update(string $accessToken, string $operation, Request $request): JsonResponse
     {
         $session = $this->access->requireParticipating($accessToken);
@@ -36,13 +36,17 @@ final class PlayerSpellController extends AbstractController
         $data = $request->toArray();
         $keys = match ($operation) {
             'learn'=>['revision','policyId','spellId','ruleId'], 'choose'=>['revision','grantId','spellId'], 'prepare'=>['revision','policyId','spellIds'],
+            'confirm-preparation'=>['revision','selections'],
         };
         if (array_diff(array_keys($data), $keys) || array_diff($keys, array_keys($data))) throw new BadRequestHttpException('Champs invalides.');
-        foreach (['revision', $operation === 'choose' ? 'grantId' : 'policyId', ...($operation === 'prepare' ? [] : ['spellId'])] as $key) {
+        $identifiers = $operation === 'confirm-preparation' ? ['revision']
+            : ['revision', $operation === 'choose' ? 'grantId' : 'policyId', ...($operation === 'prepare' ? [] : ['spellId'])];
+        foreach ($identifiers as $key) {
             if (!is_int($data[$key]) || $data[$key] < 1) throw new BadRequestHttpException('Identifiant ou révision invalide.');
         }
         if ($operation === 'learn' && $data['ruleId'] !== null && (!is_int($data['ruleId']) || $data['ruleId'] < 1)) throw new BadRequestHttpException('Règle invalide.');
         if ($operation === 'prepare' && (!is_array($data['spellIds']) || count($data['spellIds']) > 100)) throw new BadRequestHttpException('Liste invalide.');
+        if ($operation === 'confirm-preparation' && (!is_array($data['selections']) || count($data['selections']) > 20)) throw new BadRequestHttpException('Liste de sélections invalide.');
         return $this->em->getConnection()->transactional(function () use ($session, $operation, $data): JsonResponse {
             PlayerCharacterAccess::lockForMutation($this->em, $session);
             if ($session->getRevision() !== $data['revision']) throw new ConflictHttpException('Le personnage a changé. Rechargez ses sorts.');
@@ -51,6 +55,7 @@ final class PlayerSpellController extends AbstractController
             if ($operation === 'choose') $this->features->choose($character, $data['grantId'], $data['spellId'], $character->getCampaign()->getOwner()->getId());
             $state = $session->getState();
             if ($operation === 'prepare') $state = $this->preparation->update($character, $data['policyId'], $data['spellIds'], $state);
+            if ($operation === 'confirm-preparation') $state = $this->preparation->confirm($character, $data['selections'], $state);
             $session->setState($state);
             $this->em->flush();
             return $this->json($this->management->view($session));

@@ -1,4 +1,5 @@
 <section class="player-spells" [attr.aria-busy]="busy()">
+  @if (mode() !== 'details') {
   <header class="magic-heading">
     <div><span class="eyebrow">Magie</span><h2>{{ mode() === 'spellbook' ? 'Grimoire' : 'Sorts et incantations' }}</h2></div>
     @if (mode() === 'portal' && hasSpellbook()) {
@@ -8,6 +9,9 @@
     }
     <span class="spell-count">{{ displayed().length }} entrées</span>
   </header>
+  @if (mode() === 'portal' && preparationAvailable()) {
+    <a class="spellbook-link preparation-link" [routerLink]="['prepare-spells']">Préparer mes sorts</a>
+  }
   @if (busy()) { <p class="notice" role="status">Chargement…</p> }
   @if (error()) {
     <div class="notice notice--error"><p role="alert">{{ error() }}</p>
@@ -40,6 +44,7 @@
       <div class="spell-modifiers"><ng-content select="[spell-modifiers]" /></div>
     </div>
 
+  }
   }
     @if (selectedSpell(); as spell) {
       <article id="selected-spell-details" class="spell-details" aria-live="polite">
@@ -80,7 +85,7 @@
       </article>
     }
 
-  @if (displayed().length > 0) {
+  @if (mode() !== 'details' && displayed().length > 0) {
     <div class="spell-sections">
       @for (section of sections(); track section.key) {
         <section class="spell-section" [attr.aria-labelledby]="'spells-' + section.key">
@@ -121,23 +126,6 @@
         </fieldset>
       }
     </section>
-  }
-  @for (plan of view()?.preparations ?? []; track plan.policyId) {
-    <fieldset class="preparation-section" [disabled]="!editable() || plan.blocked">
-      <legend>Préparation · {{ plan.source }} · {{ plan.selected.length }}/{{ plan.maximum }}</legend>
-      <p>Incantation : {{ abilityLabel(plan.ability) }}. {{ plan.learningStyle === 'spellbook' ? 'Choisissez parmi les sorts de votre grimoire.' : 'Choisissez parmi les sorts accessibles à votre classe.' }}</p>
-      @if (plan.blocked) { <p>Préparation indisponible : vérifiez la configuration du personnage avec le MJ.</p> }
-      <div class="preparation-grid">
-        @for (spell of plan.available; track spell.id) {
-          <label class="preparation-choice" [class.is-prepared]="plan.selected.includes(spell.id)">
-            <input type="checkbox" [checked]="plan.selected.includes(spell.id)"
-              [disabled]="!plan.selected.includes(spell.id) && plan.selected.length >= plan.maximum"
-              (change)="toggle(plan, spell.id)">
-            <span>{{ spell.name }}<small>Niveau {{ spell.level }}</small></span>
-          </label>
-        } @empty { <p>Aucun sort à préparer.</p> }
-      </div>
-    </fieldset>
   }
   }
 </section>

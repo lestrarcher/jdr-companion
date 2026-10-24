@@ -12,6 +12,7 @@ export interface PlayerSpellPreparation {
   maximum: number; selected: number[]; available: SpellCandidate[]; blocked: boolean;
 }
 export interface PlayerSpellView {
+  spellPreparationAllowed: boolean;
   revision: number; editable: boolean; spells: PlayerSpell[]; choices: PlayerSpellChoice[];
   preparations: PlayerSpellPreparation[]; warnings: string[];
 }
@@ -25,7 +26,7 @@ export class PlayerSpellApiService {
       ? this.http.post<PlayerSpellView>(`${this.base(token)}/choose`, { revision, grantId: choice.grantId, spellId })
       : this.http.post<PlayerSpellView>(`${this.base(token)}/learn`, { revision, policyId: choice.policyId, ruleId: choice.ruleId, spellId });
   }
-  prepare(token: string, revision: number, policyId: number, spellIds: number[]) {
-    return this.http.post<PlayerSpellView>(`${this.base(token)}/prepare`, { revision, policyId, spellIds });
+  confirmPreparation(token: string, revision: number, selections: { policyId: number; spellIds: number[] }[]) {
+    return this.http.post<PlayerSpellView>(`${this.base(token)}/confirm-preparation`, { revision, selections });
   }
 }

@@ -54,6 +54,7 @@ final readonly class CharacterSessionStateFactory
             'hitDice' => $this->createHitDice($character),
             'progressions' => $progressions,
             'resources' => $this->createResources($character, $progressionValues),
+            'spellPreparationAllowed' => true,
             'characterActions' => [
                 'prepared' => [],
                 'preparationPending' => true,
