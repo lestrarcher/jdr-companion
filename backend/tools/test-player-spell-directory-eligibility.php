@@ -248,6 +248,7 @@ try {
     $view=$management->view($session);
     $check($view['revision']===$revision && $session->getRevision()===$revision && $session->getState()===$originalState,'Public view preserves revision and state');
     $check($snapshot()===$beforeAvailabilityReads,'Availability projection never writes or consumes');
+    require __DIR__.'/test-spell-cast-command-cases.php';
     echo "PASS: $checks directory eligibility assertions; temporary schema rolled back.\n";
 } finally {
     while ($db->isTransactionActive()) $db->rollBack();
