@@ -27,3 +27,5 @@ Thumbs.db
 jdr-companion-frontend.tar.gz
 
 /backend/public/uploads/
+
+/start-jdr-dev.sh
