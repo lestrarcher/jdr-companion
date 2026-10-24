@@ -237,7 +237,8 @@ final readonly class CharacterProfileSerializer
      *     slug: string,
      *     name: string,
      *     maximum: int,
-     *     rechargeType: string
+     *     rechargeType: string,
+     *     slotLevel?: int|null
      * }>
      */
     private function serializeResources(
@@ -253,6 +254,9 @@ final readonly class CharacterProfileSerializer
                 'maximum' => $resource->getMaximum(),
                 'rechargeType' => $resource->getRechargeType()->value,
             ];
+            if ($resource->getSlug() === 'warlock-pact-slots') {
+                $resources[$resource->getSlug()]['slotLevel'] = $this->spellSlotCalculator->pactSlotLevel($character);
+            }
         }
 
         foreach ($this->spellSlotCalculator->calculate($character) as $level => $maximum) {

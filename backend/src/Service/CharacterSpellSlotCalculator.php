@@ -139,7 +139,25 @@ final readonly class CharacterSpellSlotCalculator
             ++$classes[$classId]['level'];
         }
 
-        return $classes;
+        // Only classes that have unlocked Spellcasting select the multiclass table.
+        // In particular, a paladin/ranger level 1 must not remove another class's
+        // single-class rounding (e.g. ranger 3 / paladin 1 still has three slots).
+        return array_filter($classes, fn (array $class): bool => $this->singleClassCasterLevel(
+            $class['level'], $class['progression'],
+        ) > 0);
+    }
+
+    /** Pact slot level is derived metadata, never another resource counter. */
+    public function pactSlotLevel(Character $character): ?int
+    {
+        foreach ($character->getClassLevels() as $level) {
+            $class = $level->getCharacterClass();
+            if ($class->getSlug() === 'warlock' && $class->getSpellcastingProgression() === SpellcastingProgressionType::Pact) {
+                return min(5, intdiv($character->getLevelInClass($class) + 1, 2));
+            }
+        }
+
+        return null;
     }
 
     private function singleClassCasterLevel(

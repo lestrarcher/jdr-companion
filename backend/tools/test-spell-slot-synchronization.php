@@ -178,7 +178,12 @@ try {
     }
     $reject(['resources' => [['id' => 'spell-slot-5', 'currentValue' => 1]]], 403);
     $profileSerializer = new CharacterProfileSerializer($ability, $features, $resources, $hp, new CharacterSpellSlotCalculator(), new CharacterActionResolver(new CharacterActionClassRuleRepository($registry)), trainingPresenterForRegistry($registry));
-    $serializer = new CharacterSessionStateSerializer($profileSerializer, new CharacterHitPointStateService($hp), new CharacterActiveEffectRepository($registry), $slots);
+    $catalogue = new \App\Service\SpellCatalogue($db);
+    $spellAccess = new \App\Service\CharacterSpellAccessResolver($catalogue, new \App\Service\SpellSubclassGrants($db, $catalogue), $resources);
+    $acquisitions = new \App\Service\CharacterSpellAcquisitions($em, $spellAccess, $ability);
+    $directory = new \App\Service\PlayerSpellDirectory($db, $em, new \App\Service\CharacterFeatureSpellService($db, $features, $ability), $ability,
+        $spellAccess, $acquisitions, new \App\Service\CharacterSpellPreparation($acquisitions, $ability), $catalogue);
+    $serializer = new CharacterSessionStateSerializer($profileSerializer, new CharacterHitPointStateService($hp), new CharacterActiveEffectRepository($registry), $slots, $directory);
     $naturalProfile = $profileSerializer->serialize($character);
     $naturalResources = array_column($naturalProfile['resources'], null, 'slug');
     $check($naturalResources['spell-slot-1']['maximum'] === 4 && !isset($naturalResources['spell-slot-5']), 'Standalone profile exposes natural slots only');
@@ -218,11 +223,14 @@ try {
     $em->flush();
     $hpState = new CharacterHitPointStateService($hp);
     $rest = new CharacterRestService($hp, $hpState, $resources, $sync, new CharacterSpellSlotCalculator(), new TrackableResourceDefinitionRepository($registry), $ability, new CharacterActiveEffectRepository($registry), new CharacterActiveEffectService($hpState), $em);
-    require __DIR__ . '/test-fougue-scenarios.php';
-    require __DIR__ . '/test-lay-on-hands-scenarios.php';
-    require __DIR__ . '/test-cleric-domain-resource-scenarios.php';
-    require __DIR__ . '/test-gem-flight-scenarios.php';
-    require __DIR__ . '/test-ftd-resource-scenarios.php';
+    require __DIR__ . '/test-pact-slot-cases.php';
+    if (!in_array('--slots-only', $argv, true)) {
+        require __DIR__ . '/test-fougue-scenarios.php';
+        require __DIR__ . '/test-lay-on-hands-scenarios.php';
+        require __DIR__ . '/test-cleric-domain-resource-scenarios.php';
+        require __DIR__ . '/test-gem-flight-scenarios.php';
+        require __DIR__ . '/test-ftd-resource-scenarios.php';
+    }
     foreach ([[1, 2], [2, 0], [1, 5]] as [$bonus, $current]) {
         foreach ([1, 0] as $temporaryCurrent) {
             $initial = ['hitPoints' => ['current' => 8], 'progressions' => [['id' => 'story', 'currentValue' => 7]], 'resources' => [
@@ -442,7 +450,7 @@ try {
     $check($response->getStatusCode() === 409, 'Stale revision after locked refresh rejected');
     $stored = json_decode($db->fetchOne('SELECT state FROM character_session_state WHERE id = ?', [$session->getId()]), true, 512, JSON_THROW_ON_ERROR);
     $check($stored === $httpState, 'Revision conflict does not spend points or create slots');
-    echo "OK: $checks assertions; slot lifecycle, Flexible Casting, Fougue and controller scenarios passed.\n";
+    echo "OK: $checks assertions; slot lifecycle, Pact Magic, Flexible Casting and controller scenarios passed.\n";
 } finally {
     while ($db->isTransactionActive()) $db->rollBack();
     $kernel->shutdown();
