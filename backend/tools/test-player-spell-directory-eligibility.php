@@ -170,6 +170,27 @@ try {
     $check($directory->forCharacter($character,$stateBefore)===$entries,'Repeat read is stable and does not mutate preparation');
     $check($snapshot()===$before,'Directory reads leave all stored tables unchanged');
     $check($stateBefore['resources']===$state['resources'],'No slot or grant resource consumption');
+    // An already recorded grant remains stored when its session progression drops.
+    $db->insert('feature_spell_grant',['id'=>2,'feature_id'=>$progressionFeature->getId(),'spell_id'=>$spell['id'],'mode'=>'fixed','unlock_level'=>1,'casting_ability'=>'INT']);
+    $db->insert('character_feature_spell',['id'=>2,'character_id'=>$character->getId(),'grant_id'=>2,'spell_id'=>$spell['id']]);
+    $beforeProgressionReads=$snapshot();
+    foreach ([null,0,2,3,4,2,3] as $value) {
+        $context=$stateBefore;
+        unset($context['progressions']);
+        if ($value!==null) $context['progressions']=[['id'=>'directory-progress','currentValue'=>$value]];
+        $originalContext=$context;
+        $byKey=array_column($directory->forCharacter($character,$context),null,'key');
+        $active=$value!==null && $value>=3;
+        $check(isset($byKey['feature:2'])===$active,'Progression feature spell visible exactly at threshold: '.var_export($value,true));
+        $check(isset($byKey['feature:1']),'Class feature spell unaffected by progression');
+        if ($active) {
+            $entry=$byKey['feature:2'];
+            $check($entry['sourceType']==='feature' && $entry['policyId']===null && $entry['spellId']===$spell['id'],'Progression grant keeps independent source');
+            $check($entry['castingEligibility']===$byKey['feature:1']['castingEligibility'],'Progression grant retains conservative eligibility');
+        }
+        $check($context===$originalContext,'Progression read preserves complete supplied state');
+    }
+    $check($snapshot()===$beforeProgressionReads,'Progression reads never acquire, retire, prepare or consume');
     echo "PASS: $checks directory eligibility assertions; temporary schema rolled back.\n";
 } finally {
     while ($db->isTransactionActive()) $db->rollBack();

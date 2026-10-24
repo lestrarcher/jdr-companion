@@ -74,7 +74,7 @@ final readonly class PlayerSpellDirectory
             ];
         }
 
-        $feature = $this->featureSpells->status($character);
+        $feature = $this->featureSpells->status($character, CharacterSessionStateSynchronizer::extractProgressionValues($state));
         foreach ($feature['known'] as $grant) {
             $ability = CharacterFeatureSpellService::castingAbility($grant['castingAbility']);
             $statistics = $ability === null

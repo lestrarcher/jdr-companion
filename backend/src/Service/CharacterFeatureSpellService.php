@@ -23,11 +23,12 @@ final readonly class CharacterFeatureSpellService
         };
     }
 
-    /** @return array<int, array<string,mixed>> */
-    private function applicable(Character $character): array
+    /** @param array<string,int> $progressionValues
+     *  @return array<int, array<string,mixed>> */
+    private function applicable(Character $character, array $progressionValues = []): array
     {
         $featureIds = [];
-        foreach ($this->features->resolve($character) as $rule) {
+        foreach ($this->features->resolve($character, $progressionValues) as $rule) {
             $id = $rule->getFeatureDefinition()->getId();
             if ($id !== null) $featureIds[] = $id;
         }
@@ -68,9 +69,10 @@ final readonly class CharacterFeatureSpellService
         return $this->status($character);
     }
 
-    public function status(Character $character): array
+    /** @param array<string,int> $progressionValues Explicit session context for read-only resolution. */
+    public function status(Character $character, array $progressionValues = []): array
     {
-        $grants = $this->applicable($character);
+        $grants = $this->applicable($character, $progressionValues);
         $rows = $this->db->fetchAllAssociative('SELECT a.grant_id,a.spell_id,s.name AS spell_name,g.casting_ability,g.feature_id,d.name AS feature_name FROM character_feature_spell a JOIN spell_definition s ON s.id=a.spell_id JOIN feature_spell_grant g ON g.id=a.grant_id JOIN character_feature_definition d ON d.id=g.feature_id WHERE a.character_id=? AND a.active=true ORDER BY d.name,s.name',[$character->getId()]);
         // Only show grants still applicable to the character. Persisted rows are
         // retired by synchronize(); this guard also protects reads before that event.
