@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import type { PlayerSpell } from './character-session-state-api.service';
+import type { SpellCastCommand, SpellCastResponse } from '../models/spell-cast.model';
 
 export interface SpellCandidate { id: number; name: string; level: number; school?: string | null }
 export interface PlayerSpellChoice {
@@ -21,6 +22,12 @@ export class PlayerSpellApiService {
   private readonly http = inject(HttpClient);
   private base(token: string): string { return `/api/public/characters/${encodeURIComponent(token)}/spells`; }
   get(token: string) { return this.http.get<PlayerSpellView>(this.base(token)); }
+  cast(token: string, command: SpellCastCommand) {
+    const { revision, requestId, sourceKey, method, castingLevel } = command;
+    return this.http.post<SpellCastResponse>(`${this.base(token)}/cast`, {
+      revision, requestId, sourceKey, method, castingLevel,
+    });
+  }
   choose(token: string, revision: number, choice: PlayerSpellChoice, spellId: number) {
     return choice.kind === 'feature'
       ? this.http.post<PlayerSpellView>(`${this.base(token)}/choose`, { revision, grantId: choice.grantId, spellId })
