@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnChanges, OnInit, computed, inject, input, output, signal } from '@angular/core';
+import { Component, DestroyRef, HostListener, OnChanges, OnInit, computed, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -7,6 +7,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Observable, finalize } from 'rxjs';
 import { PlayerSpell } from '@core/services/character-session-state-api.service';
 import { PlayerSpellApiService, PlayerSpellChoice, PlayerSpellView } from '@core/services/player-spell-api.service';
+import { createSpellCastCommand, SpellCastCommand, SpellCastResponse } from '@core/models/spell-cast.model';
 
 @Component({
   selector: 'app-player-spells',
@@ -24,6 +25,76 @@ export class PlayerSpells implements OnInit, OnChanges {
   readonly mode = input<'portal' | 'spellbook' | 'details'>('portal');
   readonly detailSpell = input<PlayerSpell | null>(null);
   readonly changed = output<void>();
+  readonly castingBlocked = input(false);
+  readonly castCompleted = output<SpellCastResponse>();
+  readonly casting = output<boolean>();
+  readonly castSaving = signal(false);
+  readonly pendingCast = signal<{ command: SpellCastCommand; name: string; source: string } | null>(null);
+  readonly castError = signal('');
+  readonly castSuccess = signal('');
+  readonly castUncertain = signal(false);
+  readonly castChoice = signal('');
+  canLeavePreparation(): boolean {
+    return !(this.castSaving() || this.castUncertain()) || window.confirm('Le résultat du lancement est incertain. Quitter perdra la commande permettant de vérifier ce lancement. Quitter quand même ?');
+  }
+  @HostListener('window:beforeunload', ['$event'])
+  protectPendingCast(event: BeforeUnloadEvent): void {
+    if (this.castSaving() || this.castUncertain()) { event.preventDefault(); event.returnValue = ''; }
+  }
+  readonly castingSpell = computed(() => this.displayed().find(spell => spell.key && spell.key === this.selectedSpell()?.key));
+  readonly castMethods = computed(() => {
+    const spell = this.castingSpell();
+    const availability = spell?.castingAvailability;
+    return availability?.sourceKey === spell?.key ? (availability?.methods ?? []).filter(method =>
+      method.status === 'available' && method.kind !== 'normal' && method.castingLevel !== null) : [];
+  });
+  readonly chosenCastMethod = computed(() => this.castMethods().find(method => this.castMethodKey(method) === this.castChoice()));
+  readonly canCast = computed(() => this.mode() === 'portal' && !!this.accessToken() && !this.readonly()
+    && !this.castingBlocked() && !this.busy() && !this.castSaving() && !this.pendingCast() && !!this.chosenCastMethod());
+  castMethodKey(method: { kind: string; castingLevel: number | null }): string { return `${method.kind}:${method.castingLevel}`; }
+  castMethodLabel(method: { kind: string; castingLevel: number | null }): string {
+    if (method.kind === 'cantrip') return 'Tour de magie — sans emplacement';
+    if (method.kind === 'ritual') return `Rituel — niveau ${method.castingLevel}, sans emplacement`;
+    return `${method.kind === 'pact-slot' ? 'Magie de pacte' : 'Emplacement standard'} — niveau ${method.castingLevel}`;
+  }
+  confirmCast(): void {
+    const method = this.chosenCastMethod(); const spell = this.castingSpell();
+    if (!this.canCast() || !spell?.key || !method || method.kind === 'normal' || method.castingLevel === null) return;
+    this.pendingCast.set({ command: createSpellCastCommand({ revision: Math.max(this.revision(), this.view()?.revision ?? 0),
+      sourceKey: spell.key, method: method.kind, castingLevel: method.castingLevel }), name: spell.name, source: spell.source });
+    this.sendCast();
+  }
+  retryCast(): void { if (this.castUncertain() && !this.castSaving() && !this.castingBlocked()) this.sendCast(); }
+  dismissCastRefusal(): void {
+    if (this.castSaving() || this.castUncertain()) return;
+    this.pendingCast.set(null); this.castError.set(''); this.castChoice.set('');
+  }
+  refreshAfterCastRefusal(): void {
+    if (this.castSaving() || this.castUncertain()) return;
+    this.dismissCastRefusal(); this.changed.emit();
+  }
+  private sendCast(): void {
+    const pending = this.pendingCast();
+    if (!pending || this.castSaving()) return;
+    this.castSaving.set(true); this.casting.emit(true); this.castError.set(''); this.castSuccess.set('');
+    this.api.cast(this.accessToken(), pending.command).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: response => {
+        this.castCompleted.emit(response);
+        this.view.update(view => view ? { ...view, spells: response.spells, revision: response.revision } : null);
+        this.pendingCast.set(null); this.castChoice.set(''); this.castUncertain.set(false);
+        this.castSuccess.set(`${pending.name} · ${pending.source} : lancement confirmé${response.replayed ? ' (déjà enregistré)' : ''}.`);
+        this.castSaving.set(false); this.casting.emit(false);
+      },
+      error: (error: HttpErrorResponse) => {
+        const refused = [400, 404, 409, 422].includes(error.status);
+        this.castUncertain.set(!refused);
+        this.castError.set(refused
+          ? ({ 400: 'Commande invalide.', 404: 'Accès au personnage indisponible.', 409: 'Conflit : actualisez la fiche avant une nouvelle tentative.', 422: 'Ce moyen de lancement n’est plus disponible.' }[error.status] ?? 'Lancement refusé.')
+          : 'Résultat incertain. Réessayez la même commande pour vérifier le lancement sans le payer deux fois.');
+        this.castSaving.set(false); this.casting.emit(false);
+      },
+    });
+  }
   private readonly api = inject(PlayerSpellApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
@@ -52,6 +123,8 @@ export class PlayerSpells implements OnInit, OnChanges {
   });
   readonly hasSpellbook = computed(() => this.displayed().some(spell => spell.inSpellbook)
     || this.view()?.preparations.some(plan => plan.learningStyle === 'spellbook') === true);
+  readonly unpreparedRituals = computed(() => this.displayed().filter(spell => !spell.known && spell.prepared !== true
+    && spell.castingAvailability?.methods.some(method => method.kind === 'ritual' && method.status === 'available')));
   readonly sections = computed(() => this.mode() === 'spellbook'
     ? [...new Set(this.displayed().map(spell => spell.level))].sort((a, b) => (a ?? 10) - (b ?? 10)).map(level => ({
         key: `level-${level ?? 'unknown'}`, title: level === null ? 'Niveau inconnu' : level === 0 ? 'Tours de magie' : `Niveau ${level}`,
@@ -60,11 +133,13 @@ export class PlayerSpells implements OnInit, OnChanges {
     : [
     { key: 'known', title: 'Sorts connus', description: 'Tours de magie et sorts appris ou octroyés.', spells: this.displayed().filter(spell => spell.known) },
     { key: 'prepared', title: 'Sorts préparés', description: 'Votre sélection actuelle et les sorts toujours préparés.', spells: this.displayed().filter(spell => spell.prepared === true) },
+    ...(this.unpreparedRituals().length ? [{ key: 'rituals', title: 'Rituels disponibles', description: 'Rituels autorisés sans préparation.', spells: this.unpreparedRituals() }] : []),
   ]);
-  readonly editable = computed(() => !this.readonly() && this.view()?.editable === true && !this.busy());
+  readonly editable = computed(() => !this.readonly() && this.view()?.editable === true && !this.busy() && !this.castSaving() && !this.pendingCast());
   readonly selections: Record<string, number> = {};
   spellKey(spell: PlayerSpell): string { return spell.key ?? `${spell.sourceType}:${spell.source}:${spell.spellId}`; }
   select(spell: PlayerSpell): void {
+  this.castChoice.set('');
   const current = this.selection();
 
   if (current && this.spellKey(current) === this.spellKey(spell)) {
@@ -90,6 +165,9 @@ export class PlayerSpells implements OnInit, OnChanges {
   }
   ngOnChanges(): void {
     if (this.accessToken() && this.view() && this.revision() > this.view()!.revision && !this.busy()) this.reload();
+    if (this.prioritizePreparation() && this.mode() === 'portal' && this.view()?.editable && !this.readonly() && this.preparationAvailable() && !this.skipPreparationRedirect && !this.pendingCast()) {
+      void this.router.navigate(['prepare-spells'], { relativeTo: this.route, replaceUrl: true });
+    }
   }
   reload(): void {
     this.busy.set(true);
@@ -98,7 +176,7 @@ export class PlayerSpells implements OnInit, OnChanges {
         this.view.set(view);
         if (!view.spellPreparationAllowed) this.skipPreparationRedirect = false;
         if (this.prioritizePreparation() && this.mode() === 'portal' && !this.skipPreparationRedirect
-          && !this.readonly() && view.editable && this.preparationAvailable()) {
+          && !this.readonly() && view.editable && this.preparationAvailable() && !this.pendingCast()) {
           void this.router.navigate(['prepare-spells'], { relativeTo: this.route, replaceUrl: true });
         }
       }, error: error => this.failed(error),

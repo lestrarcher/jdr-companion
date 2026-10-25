@@ -29,7 +29,7 @@
             <div class="session-indicators">
               <span class="live-badge">
                 <span aria-hidden="true"></span>
-                {{ canEdit() ? 'En cours' : 'Lecture seule' }}
+                {{ spellCasting() ? 'Lancement…' : canEdit() ? 'En cours' : 'Lecture seule' }}
               </span>
 
               <span [hidden]="!canEdit()" class="save-status" [class.save-status-error]="saveStatus() === 'error'" aria-live="polite">
@@ -243,7 +243,7 @@
               }
 
               @case ('spells') {
-                <app-player-spells [spells]="playerSpells()" [accessToken]="accessToken" [revision]="serverRevision" [readonly]="!canEdit()" [prioritizePreparation]="true" (changed)="refreshSpells()" />
+                <!-- Kept mounted below the switch so an uncertain command survives tab changes. -->
               }
               @case ('possessions') {
                 <div class="possessions-sections">
@@ -251,6 +251,14 @@
                   <app-character-magic-items [readonly]="!canEdit()" [accessToken]="accessToken" />
                 </div>
               }
+            }
+            @if (spellsVisited()) {
+              <div [hidden]="activeTab() !== 'spells'">
+                <app-player-spells [spells]="playerSpells()" [accessToken]="accessToken" [revision]="serverRevision"
+                  [readonly]="!canEdit()" [prioritizePreparation]="activeTab() === 'spells'"
+                  [castingBlocked]="saveStatus() === 'saving' || saveStatus() === 'error' || !!pendingRestRequest() || preparationPending()"
+                  (casting)="spellCasting.set($event)" (castCompleted)="adoptSpellCast($event)" (changed)="refreshSpells()" />
+              </div>
             }
           </div>
         </div>

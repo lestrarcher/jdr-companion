@@ -2,6 +2,20 @@ import type { HttpErrorResponse } from '@angular/common/http';
 import type { CharacterSessionStateApiResponse, PlayerSpell } from '../services/character-session-state-api.service';
 
 export type SpellCastMethod = 'standard-slot' | 'pact-slot' | 'cantrip' | 'ritual';
+export interface SpellCastingAvailability {
+  sourceKey: string | null;
+  policyId: number | null;
+  status: 'available' | 'unavailable' | 'unknown';
+  reason: string | null;
+  methods: Array<{
+    kind: SpellCastMethod | 'normal';
+    castingLevel: number | null;
+    poolSlug: string | null;
+    cost: number;
+    status: 'available' | 'unavailable' | 'unknown';
+    reason: string | null;
+  }>;
+}
 
 export interface SpellCastCommand {
   readonly revision: number;

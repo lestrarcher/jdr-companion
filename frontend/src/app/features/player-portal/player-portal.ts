@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -13,6 +13,7 @@ import { CharacterAbilityScore, CharacterTraining, CharacterActionSummary, Chara
 import { CharacterActionsState, CharacterSessionStatePayload, characterProfileToCharacter, toCharacterSessionStatePayload } from '@core/mappers/character-api.mapper';
 import { ActionPreparationModal } from './components/action-preparation-modal/action-preparation-modal';
 import { CharacterSessionStateApiService, PlayerSpell } from '@core/services/character-session-state-api.service';
+import type { SpellCastResponse } from '@core/models/spell-cast.model';
 import { RestType } from '@core/models/rest-request.model';
 import { CharacterStateService } from '@core/services/character-state.service';
 import { RestRequestApiResponse, RestRequestApiService } from '@core/services/rest-request-api.service';
@@ -76,6 +77,8 @@ type PlayerPortalTab =
   styleUrl: './player-portal.scss',
 })
 export class PlayerPortal {
+  private readonly spellPanel = viewChild(PlayerSpells);
+  canLeavePreparation(): boolean { return this.spellPanel()?.canLeavePreparation() ?? true; }
   // Dependencies and route context
   private readonly http = inject(HttpClient);
   private readonly route = inject(ActivatedRoute);
@@ -95,7 +98,8 @@ export class PlayerPortal {
   protected readonly character = signal<Character | null>(null);
   protected readonly playerSpells = signal<PlayerSpell[]>([]);
   protected readonly sessionStatus = signal<SessionStatus | null>(null);
-  protected readonly canEdit = computed(() => this.sessionStatus() === 'live');
+  protected readonly spellCasting = signal(false);
+  protected readonly canEdit = computed(() => this.sessionStatus() === 'live' && !this.spellCasting());
   protected readonly levelUpAllowed = signal(false);
   protected readonly loading = signal(true);
   protected readonly loadError = signal<string | null>(null);
@@ -105,6 +109,7 @@ export class PlayerPortal {
   protected readonly inspirationSaving = signal(false);
   protected readonly activeTab = signal<PlayerPortalTab>(this.route.snapshot.queryParamMap?.get('tab') === 'spells'
     ? 'spells' : typeof window !== 'undefined' && window.matchMedia('(min-width: 900px)').matches ? 'overview' : 'status');
+  protected readonly spellsVisited = signal(this.activeTab() === 'spells');
 
   // Features and actions
   protected readonly abilities = signal<CharacterAbilityScore[]>([]);
@@ -195,6 +200,32 @@ export class PlayerPortal {
   protected readonly hasTinkering = computed(() => this.features().some(feature => feature.slug === 'magical-tinkering'));
   protected refreshTinkering(): void { this.loadCharacter(false); }
   protected refreshSpells(): void { this.loadCharacter(false); }
+  protected adoptSpellCast(response: SpellCastResponse): void {
+    // Invalidate older GETs/queued snapshots. Applying server state never increases
+    // the local edit revision and must not enqueue a PATCH for this consumption.
+    if (response.revision < this.serverRevision) return;
+    this.loadGeneration++;
+    this.remoteSynchronization.next(null);
+    this.serverRevision = response.revision;
+    this.setSessionStatus(response.session.status);
+    const character = characterProfileToCharacter(response.character, response.state);
+    this.characterStateService.applyServerState(character);
+    this.lastQueuedRevision = this.characterStateService.revision();
+    this.character.set(character);
+    this.playerSpells.set(response.spells);
+    this.inspiration.set(response.state.inspiration === true);
+    this.tinkeringNotes.set(response.state.magicalTinkeringNotes ?? '');
+    this.abilities.set(response.character.abilities);
+    this.training.set(response.character.training ?? null);
+    this.proficiencyBonus.set(response.character.proficiencyBonus);
+    this.features.set(response.character.features);
+    this.feats.set(response.character.feats);
+    this.actions.set(response.character.actions ?? []);
+    this.characterActions.set(response.state.characterActions ?? null);
+    this.levelUpAllowed.set(response.levelUpAllowed);
+    this.saveStatus.set('saved');
+    this.saveError.set(null);
+  }
   private loadGeneration = 0;
   private refreshPending = false;
 
@@ -264,6 +295,8 @@ export class PlayerPortal {
   protected selectTab(
     tab: PlayerPortalTab,
   ): void {
+    if (this.spellCasting()) return;
+    if (tab === 'spells') this.spellsVisited.set(true);
     if (this.canEdit() && this.pendingRestRequest()) {
       return;
     }

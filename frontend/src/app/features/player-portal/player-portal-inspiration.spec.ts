@@ -16,7 +16,7 @@ function portal() {
   const response = new Subject<any>();
   const component = Object.create(PlayerPortal.prototype) as any;
   Object.assign(component, {
-    character: signal({}), loading: signal(false), refreshPending: false,
+    character: signal({}), playerSpells: signal([]), loading: signal(false), refreshPending: false,
     remoteSynchronizationEnabled: signal(true),
     saveStatus: signal('saved'), loadGeneration: 1, serverRevision: 4,
     sessionStatus: signal('draft'), levelUpAllowed: signal(false),

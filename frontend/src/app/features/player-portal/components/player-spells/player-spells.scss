@@ -1,4 +1,10 @@
 :host { display: block; min-width: 0; color: var(--text-primary, #ece8df); }
+.cast-controls { margin: .8rem 0 0; display: grid; gap: .5rem; }
+.cast-option { display: flex; align-items: center; gap: .65rem; min-height: 44px; cursor: pointer; font-size: .85rem; }
+.cast-option input { flex: 0 0 auto; width: 1.15rem; height: 1.15rem; accent-color: #dfbf80; }
+.cast-cost { font-size: .85rem; color: #dfbf80; }
+.cast-confirm, .cast-pending button { min-height: 44px; padding: .5rem .8rem; border: 1px solid #a78b59; border-radius: .5rem; background: #32303b; justify-self: start; }
+.cast-pending { display: grid; gap: .6rem; overflow-wrap: anywhere; }
 * { box-sizing: border-box; }
 .player-spells { display: grid; gap: 1.25rem; min-width: 0; }
 h2, h3, h4, p { margin: 0; }

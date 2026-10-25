@@ -41,6 +41,7 @@ export const routes: Routes = [
       import('./features/player-portal/player-portal').then(
         component => component.PlayerPortal,
       ),
+    canDeactivate: [preparationGuard],
   },
   {
     path: '',

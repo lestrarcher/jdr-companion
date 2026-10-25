@@ -19,6 +19,24 @@
     </div>
   }
   @if (success()) { <p class="notice" role="status">{{ success() }}</p> }
+  @if (mode() === 'portal') {
+    @if (castSuccess()) { <p class="notice" role="status">{{ castSuccess() }}</p> }
+    @if (pendingCast(); as pending) {
+      <div class="notice cast-pending" [attr.aria-busy]="castSaving()">
+        <p>{{ pending.name }} · {{ pending.source }} — {{ pending.command.method === 'ritual' ? 'Rituel' : 'Lancement' }}, niveau {{ pending.command.castingLevel }}</p>
+        @if (castSaving()) { <p role="status">Lancement en cours…</p> }
+        @if (castError()) {
+          <p role="alert">{{ castError() }}</p>
+          @if (castUncertain()) {
+            <button type="button" [disabled]="castSaving() || castingBlocked()" (click)="retryCast()">Réessayer la même commande</button>
+          } @else {
+            <button type="button" (click)="dismissCastRefusal()">Fermer ce lancement refusé</button>
+            <button type="button" (click)="refreshAfterCastRefusal()">Actualiser la fiche</button>
+          }
+        }
+      </div>
+    }
+  }
   @for (warning of view()?.warnings ?? []; track warning) { <p class="notice">{{ warning }}</p> }
 
   @if (displayed().length === 0) {
@@ -72,6 +90,22 @@
             <div><dt>Durée</dt><dd>{{ details.duration }}</dd></div>
           }
         </dl>
+        @if (mode() === 'portal' && !readonly()) {
+          <fieldset class="cast-controls" [disabled]="castingBlocked() || castSaving() || !!pendingCast()">
+            <legend>Lancer {{ spell.name }} · {{ spell.source }}</legend>
+            @for (method of castMethods(); track castMethodKey(method)) {
+              <label class="cast-option">
+                <input type="radio" name="spell-cast-method" [value]="castMethodKey(method)"
+                  [checked]="castChoice() === castMethodKey(method)" (change)="castChoice.set(castMethodKey(method))" />
+                {{ castMethodLabel(method) }}
+              </label>
+            } @empty { <p>Aucun moyen de lancement disponible pour cette source.</p> }
+            @if (chosenCastMethod(); as method) {
+              <p class="cast-cost">{{ method.cost === 0 ? 'Aucun emplacement consommé.' : 'Consommer ' + method.cost + ' emplacement de ' + (method.kind === 'pact-slot' ? 'pacte de ' : '') + 'niveau ' + method.castingLevel + '.' }}</p>
+              <button type="button" class="cast-confirm" [disabled]="!canCast()" (click)="confirmCast()">Confirmer le lancement</button>
+            }
+          </fieldset>
+        }
         </div>
         @if (spell.details; as details) {
           <div class="spell-text">

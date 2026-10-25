@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable, map } from 'rxjs';
+import type { SpellCastingAvailability } from '../models/spell-cast.model';
 
 import {
   CharacterSessionStatePayload,
@@ -51,6 +52,7 @@ interface CharacterActionTargetsResponse {
 }
 
 export interface PlayerSpell {
+  castingAvailability?: SpellCastingAvailability;
   key?: string;
   policyId?: number | null;
   alwaysPrepared?: boolean;
