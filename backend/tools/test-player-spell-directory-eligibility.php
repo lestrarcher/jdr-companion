@@ -10,6 +10,10 @@ use App\Repository\{CharacterFeatureRuleRepository, TrackableResourceRuleReposit
 
 require __DIR__.'/../vendor/autoload.php';
 (new Symfony\Component\Dotenv\Dotenv())->bootEnv(__DIR__.'/../.env');
+if (in_array('--cast-http', $argv, true)) {
+    putenv('SHELL_VERBOSITY=-1');
+    $_ENV['SHELL_VERBOSITY'] = $_SERVER['SHELL_VERBOSITY'] = '-1';
+}
 $kernel = new App\Kernel('dev', true); $kernel->boot();
 $registry = $kernel->getContainer()->get('doctrine');
 $em = $registry->getManager(); $db = $em->getConnection(); $checks = 0;
@@ -274,15 +278,19 @@ $check(
 );
     $check($snapshot()===$beforeAvailabilityReads,'Availability projection never writes or consumes');
     require __DIR__.'/test-spell-cast-command-cases.php';
-    if (in_array('--cast-execution', $argv, true)) {
+    if (in_array('--cast-execution', $argv, true) || in_array('--cast-http', $argv, true)) {
         // All tables/sequences were verified temporary above. Preserve them across real
         // commits so the executor can own its transaction; connection close drops them.
         $db->commit();
-        require __DIR__.'/test-spell-cast-execution-cases.php';
+        if (in_array('--cast-http', $argv, true)) {
+            require __DIR__.'/test-spell-cast-http-cases.php';
+        } else {
+            require __DIR__.'/test-spell-cast-execution-cases.php';
+        }
     }
     echo "PASS: $checks spell directory/command assertions; temporary schema only.\n";
 } finally {
     while ($db->isTransactionActive()) $db->rollBack();
-    if (in_array('--cast-execution', $argv, true)) $db->close();
+    if (in_array('--cast-execution', $argv, true) || in_array('--cast-http', $argv, true)) $db->close();
     $kernel->shutdown();
 }

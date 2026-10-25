@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Service\{CharacterFeatureSpellService, CharacterSpellPreparation, PlayerCharacterAccess, PlayerSpellManagement};
+use App\Service\{CharacterSessionStateSerializer, CharacterSpellCastExecutor, SpellCastReceipts};
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\{JsonResponse, Request};
 use Symfony\Component\HttpKernel\Exception\{BadRequestHttpException, ConflictHttpException};
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/public/characters/{accessToken}/spells', requirements: ['accessToken'=>'[a-f0-9]{64}'])]
@@ -26,6 +28,36 @@ final class PlayerSpellController extends AbstractController
     public function show(string $accessToken): JsonResponse
     {
         return $this->json($this->management->view($this->access->requireParticipating($accessToken)));
+    }
+
+    #[Route('/cast', name: 'api_public_character_spells_cast', methods: ['POST'])]
+    public function cast(
+        string $accessToken,
+        Request $request,
+        CharacterSpellCastExecutor $executor,
+        CharacterSessionStateSerializer $serializer,
+    ): JsonResponse {
+        if ($request->getContentTypeFormat() !== 'json' || !str_starts_with(ltrim($request->getContent()), '{')) {
+            return $this->json(['message'=>'Objet JSON requis.'], 400);
+        }
+        try {
+            $command = SpellCastReceipts::normalizeCommand($request->toArray());
+        } catch (\Symfony\Component\HttpFoundation\Exception\JsonException | \InvalidArgumentException) {
+            return $this->json(['message'=>'Commande de lancement invalide.'], 400);
+        }
+        try {
+            $session = $this->access->requireParticipating($accessToken);
+            // The executor owns its transaction and returns only after commit.
+            $result = $executor->execute($session, $command);
+        } catch (HttpExceptionInterface $error) {
+            return $this->json(['message'=>$error->getMessage()], $error->getStatusCode());
+        }
+        // Never return the executor's internal state or its persisted receipts.
+        return $this->json([
+            ...$serializer->serialize($session),
+            'cast'=>$result['cast'],
+            'replayed'=>$result['replayed'],
+        ]);
     }
 
     #[Route('/{operation}', name: 'api_public_character_spells_update', requirements: ['operation'=>'learn|choose|prepare|confirm-preparation'], methods: ['POST'])]
