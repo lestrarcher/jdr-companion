@@ -1,10 +1,11 @@
-import { Component, DestroyRef, HostListener, OnChanges, OnInit, computed, inject, input, output, signal } from '@angular/core';
+import { Component, DestroyRef, HostListener, OnChanges, OnInit, SimpleChanges, computed, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Location } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Observable, finalize } from 'rxjs';
+import { SpellQuickList } from '../spell-quick-list/spell-quick-list';
 import { PlayerSpell } from '@core/services/character-session-state-api.service';
 import { PlayerSpellApiService, PlayerSpellChoice, PlayerSpellView } from '@core/services/player-spell-api.service';
 import { createSpellCastCommand, SpellCastCommand, SpellCastResponse } from '@core/models/spell-cast.model';
@@ -12,7 +13,7 @@ import { createSpellCastCommand, SpellCastCommand, SpellCastResponse } from '@co
 @Component({
   selector: 'app-player-spells',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, SpellQuickList],
   templateUrl: './player-spells.html',
   styleUrl: './player-spells.scss',
 })
@@ -24,6 +25,7 @@ export class PlayerSpells implements OnInit, OnChanges {
   readonly prioritizePreparation = input(false);
   readonly mode = input<'portal' | 'spellbook' | 'details'>('portal');
   readonly detailSpell = input<PlayerSpell | null>(null);
+  readonly quickSelection = input<PlayerSpell | null>(null);
   readonly changed = output<void>();
   readonly castingBlocked = input(false);
   readonly castCompleted = output<SpellCastResponse>();
@@ -113,10 +115,6 @@ export class PlayerSpells implements OnInit, OnChanges {
     return this.mode() === 'spellbook' ? spells.filter(spell => spell.inSpellbook) : spells;
   });
   private readonly selection = signal<PlayerSpell | null>(null);
-  readonly quickSpells = computed(() => this.displayed().filter(spell => spell.level === 0
-    || (spell.level !== null && spell.level >= 1 && (spell.prepared === true || spell.alwaysPrepared === true
-      || (spell.known && !spell.inSpellbook))))
-    .sort((a, b) => (a.level ?? Infinity) - (b.level ?? Infinity) || a.name.localeCompare(b.name, 'fr')));
   readonly selectedSpell = computed(() => {
     const selected = this.mode() === 'details' ? this.detailSpell() : this.selection();
     return selected === null ? null : this.displayed().find(spell => this.spellKey(spell) === this.spellKey(selected)) ?? selected;
@@ -134,6 +132,8 @@ export class PlayerSpells implements OnInit, OnChanges {
     { key: 'known', title: 'Sorts connus', description: 'Tours de magie et sorts appris ou octroyés.', spells: this.displayed().filter(spell => spell.known) },
     { key: 'prepared', title: 'Sorts préparés', description: 'Votre sélection actuelle et les sorts toujours préparés.', spells: this.displayed().filter(spell => spell.prepared === true) },
     ...(this.unpreparedRituals().length ? [{ key: 'rituals', title: 'Rituels disponibles', description: 'Rituels autorisés sans préparation.', spells: this.unpreparedRituals() }] : []),
+    { key: 'other', title: 'Autres sorts du répertoire', description: 'Consulter les autres sources de sorts.',
+      spells: this.displayed().filter(spell => !spell.known && spell.prepared !== true && !this.unpreparedRituals().includes(spell)) },
   ]);
   readonly editable = computed(() => !this.readonly() && this.view()?.editable === true && !this.busy() && !this.castSaving() && !this.pendingCast());
   readonly selections: Record<string, number> = {};
@@ -163,7 +163,10 @@ export class PlayerSpells implements OnInit, OnChanges {
     }
     if (this.accessToken()) this.reload();
   }
-  ngOnChanges(): void {
+  ngOnChanges(changes?: SimpleChanges): void {
+    if (changes?.['quickSelection'] && this.quickSelection()) {
+      this.selection.set(this.quickSelection()); this.castChoice.set('');
+    }
     if (this.accessToken() && this.view() && this.revision() > this.view()!.revision && !this.busy()) this.reload();
     if (this.prioritizePreparation() && this.mode() === 'portal' && this.view()?.editable && !this.readonly() && this.preparationAvailable() && !this.skipPreparationRedirect && !this.pendingCast()) {
       void this.router.navigate(['prepare-spells'], { relativeTo: this.route, replaceUrl: true });

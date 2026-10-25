@@ -44,20 +44,7 @@
   } @else {
     <div class="quickbar-shell">
       <p class="eyebrow" id="spell-quickbar-label">Répertoire rapide</p>
-      <div class="quickbar" role="group" aria-labelledby="spell-quickbar-label">
-        @for (spell of quickSpells(); track spellKey(spell)) {
-          <button type="button" class="quick-spell" [attr.data-school]="spell.school"
-            [class.is-selected]="selectedSpell() && spellKey(selectedSpell()!) === spellKey(spell)"
-            [attr.aria-pressed]="selectedSpell() && spellKey(selectedSpell()!) === spellKey(spell)"
-            [attr.aria-label]="spell.name + ' · ' + spell.source" aria-controls="selected-spell-details"
-            (click)="select(spell)">
-            <span class="spell-icon" aria-hidden="true">{{ schoolIcon(spell.school) }}</span>
-            <span class="spell-level">{{ spell.level === 0 ? '∞' : spell.level ?? '?' }}</span>
-            <span class="quick-name">{{ spell.name }}</span>
-            @if (spell.prepared) { <span class="prepared-dot" aria-label="Préparé"></span> }
-          </button>
-        }
-      </div>
+      <app-spell-quick-list [spells]="displayed()" [selectedKey]="selectedSpell() ? spellKey(selectedSpell()!) : null" (selected)="select($event)" />
       <!-- Reserved for future functional metamagic controls; empty projection stays hidden. -->
       <div class="spell-modifiers"><ng-content select="[spell-modifiers]" /></div>
     </div>

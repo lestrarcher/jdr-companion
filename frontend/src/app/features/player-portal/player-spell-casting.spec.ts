@@ -140,19 +140,24 @@ describe('Portal adoption of cast responses',()=>{
   it('retains pending commands across tabs and adopts a replay without a PATCH or local consumption',async()=>{
     vi.stubGlobal('matchMedia',vi.fn(()=>({matches:false,addEventListener:vi.fn(),removeEventListener:vi.fn()})));
     TestBed.configureTestingModule({providers:[provideHttpClient(),provideHttpClientTesting(),provideRouter([]),
-      {provide:ActivatedRoute,useValue:{snapshot:{paramMap:convertToParamMap({campaignId:'2',sessionId:'3',accessToken:'test'}),queryParamMap:convertToParamMap({tab:'spells'})}}},
+      {provide:ActivatedRoute,useValue:{snapshot:{paramMap:convertToParamMap({campaignId:'2',sessionId:'3',accessToken:'test'}),queryParamMap:convertToParamMap({tab:'status'})}}},
       {provide:CampaignConfigurationRegistryService,useValue:{getConfiguration:()=>({id:'2',name:'Test'})}},
       {provide:RestRequestApiService,useValue:{getLatest:()=>of(null)}}]});
     const entries=[spell()]; const fixture=TestBed.createComponent(PlayerPortal); const p=fixture.componentInstance as any;
     const http=TestBed.inject(HttpTestingController); const state=TestBed.inject(CharacterStateService);
     http.expectOne('/api/public/characters/test').flush(session(entries)); fixture.detectChanges();
+    expect(fixture.debugElement.query(By.directive(PlayerSpells))).toBeNull();
+    const quick=fixture.nativeElement.querySelector('.spell-resource-column .quick-spell') as HTMLButtonElement;
+    expect(quick.disabled).toBe(false); quick.click(); fixture.detectChanges();
+    http.expectNone(r=>r.method==='POST' || r.method==='PATCH');
     http.expectOne(base).flush(view(entries)); await fixture.whenStable();
     const c=fixture.debugElement.query(By.directive(PlayerSpells)).componentInstance as PlayerSpells;
-    c.select(entries[0]); c.castChoice.set('standard-slot:1'); c.confirmCast();
+    expect(c.selectedSpell()?.key).toBe(entries[0].key); c.castChoice.set('standard-slot:1'); c.confirmCast();
     const first=http.expectOne(base+'/cast'); const original=first.request.body;
     expect(state.character()!.resources.find(r=>r.id==='spell-slot-1')!.currentValue).toBe(2);
     first.error(new ProgressEvent('error')); fixture.detectChanges();
-    p.selectTab('features'); fixture.detectChanges(); p.selectTab('spells'); fixture.detectChanges();
+    p.selectTab('status'); fixture.detectChanges();
+    (fixture.nativeElement.querySelector('.spell-resource-column .quick-spell') as HTMLButtonElement).click(); fixture.detectChanges();
     expect(fixture.debugElement.query(By.directive(PlayerSpells)).componentInstance).toBe(c);
     expect(c.pendingCast()?.command).toEqual(original);
     // Later public data may change revision while the original command is retained.
@@ -162,6 +167,9 @@ describe('Portal adoption of cast responses',()=>{
     expect(p.serverRevision).toBe(47);
     expect(state.character()!.resources.find(r=>r.id==='spell-slot-1')!.currentValue).toBe(1);
     expect(p.lastQueuedRevision).toBe(state.revision()); expect(c.castMethods()).toEqual([]);
+    p.selectTab('status'); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.spell-resource-column .quick-spell').disabled).toBe(true);
+    expect(c.pendingCast()).toBeNull();
     await new Promise(resolve=>setTimeout(resolve,450));
     http.expectNone(r=>r.method==='PATCH');
     for(const req of http.match('/api/public/characters/test')) req.flush(result);

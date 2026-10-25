@@ -30,6 +30,7 @@ import { HeroesFeastActionModal, HeroesFeastActionPayload } from './components/h
 import { FlexibleCastingActionModal, FlexibleCastingPayload } from './components/flexible-casting-action-modal/flexible-casting-action-modal';
 import { CharacterStatistics } from './components/character-statistics/character-statistics';
 import { PlayerSpells } from './components/player-spells/player-spells';
+import { SpellQuickList } from './components/spell-quick-list/spell-quick-list';
 import { CharacterFeatures } from './components/character-features/character-features';
 import { ArcaneRecoveryActionModal, ArcaneRecoveryPayload } from './components/arcane-recovery-action-modal/arcane-recovery-action-modal';
 
@@ -71,6 +72,7 @@ type PlayerPortalTab =
     CharacterFeatures,
     CharacterStatistics,
     PlayerSpells,
+    SpellQuickList,
     ArcaneRecoveryActionModal,
   ],
   templateUrl: './player-portal.html',
@@ -110,6 +112,15 @@ export class PlayerPortal {
   protected readonly activeTab = signal<PlayerPortalTab>(this.route.snapshot.queryParamMap?.get('tab') === 'spells'
     ? 'spells' : typeof window !== 'undefined' && window.matchMedia('(min-width: 900px)').matches ? 'overview' : 'status');
   protected readonly spellsVisited = signal(this.activeTab() === 'spells');
+  protected readonly quickSpellSelection = signal<PlayerSpell | null>(null);
+
+  protected openQuickSpell(spell: PlayerSpell): void {
+    if (!this.canEdit() || this.saveStatus() === 'saving' || this.saveStatus() === 'error'
+      || this.pendingRestRequest() || this.preparationPending()) return;
+    // UI-1 reuses the mounted casting panel, including its pending command.
+    this.quickSpellSelection.set({ ...spell });
+    this.selectTab('spells');
+  }
 
   // Features and actions
   protected readonly abilities = signal<CharacterAbilityScore[]>([]);

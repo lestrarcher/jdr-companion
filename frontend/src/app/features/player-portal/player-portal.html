@@ -150,12 +150,17 @@
 
                 <div class="tracker-layout">
                   <app-character-vitals [readonly]="!canEdit()" [character]="currentCharacter" />
-                  <app-character-resources [readonly]="!canEdit()" [resources]="sortedResources()" [hasSupplement]="hasTinkering()" [tinkeringNotes]="tinkeringEditor">
-                    @if (hasTinkering() && !tinkeringResources().length) {
-                      <app-magical-tinkering-notes [notes]="tinkeringNotes()" [token]="accessToken" [revision]="serverRevision"
-                        [editable]="sessionStatus() === 'live'" [busy]="saveStatus() === 'saving'" (refreshed)="refreshTinkering()" />
-                    }
-                  </app-character-resources>
+                  <div class="spell-resource-column">
+                    <app-spell-quick-list [spells]="playerSpells()" mode="play"
+                      [disabled]="!canEdit() || saveStatus() === 'saving' || saveStatus() === 'error' || !!pendingRestRequest() || preparationPending()"
+                      (selected)="openQuickSpell($event)" />
+                    <app-character-resources [readonly]="!canEdit()" [resources]="sortedResources()" [hasSupplement]="hasTinkering()" [tinkeringNotes]="tinkeringEditor">
+                      @if (hasTinkering() && !tinkeringResources().length) {
+                        <app-magical-tinkering-notes [notes]="tinkeringNotes()" [token]="accessToken" [revision]="serverRevision"
+                          [editable]="sessionStatus() === 'live'" [busy]="saveStatus() === 'saving'" (refreshed)="refreshTinkering()" />
+                      }
+                    </app-character-resources>
+                  </div>
                 </div>
 
                 @if (flexibleCastingAction(); as action) {
@@ -255,6 +260,7 @@
             @if (spellsVisited()) {
               <div [hidden]="activeTab() !== 'spells'">
                 <app-player-spells [spells]="playerSpells()" [accessToken]="accessToken" [revision]="serverRevision"
+                  [quickSelection]="quickSpellSelection()"
                   [readonly]="!canEdit()" [prioritizePreparation]="activeTab() === 'spells'"
                   [castingBlocked]="saveStatus() === 'saving' || saveStatus() === 'error' || !!pendingRestRequest() || preparationPending()"
                   (casting)="spellCasting.set($event)" (castCompleted)="adoptSpellCast($event)" (changed)="refreshSpells()" />
