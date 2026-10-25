@@ -35,13 +35,45 @@ $expected=$executionState; $expected['resources'][0]['currentValue']--;
 $check($result['state']['resources']===$expected['resources'],'Standard decrements exactly once, preserving metadata and other resources');
 $check($result['cast']['source']['spellId']===$ordinary['id'] && $result['cast']['poolSlug']==='spell-slot-1' && $result['cast']['cost']===1,'Structured committed result');
 $check($result['revision']===$initialRevision+1 && (int)$stored()['revision']===$result['revision'],'Revision persisted before success');
-$reject(array_replace($command,['revision'=>$initialRevision]),409,'stale_revision');
+$originalCommand=array_replace($command,['revision'=>$initialRevision]);
+$historicalCast=$result['cast'];
+$check($result['replayed']===false,'First acceptance is not a replay');
+$assertReplay=static function (array $cmd, array $cast) use ($executor,$executionSession,$stored,$check): void {
+    $before=$stored();
+    $replay=$executor->execute($executionSession,$cmd);
+    $check($replay['replayed']===true && $replay['cast']===$cast,'Replay returns historical cast');
+    $check($replay['revision']===$executionSession->getRevision() && $replay['state']===$executionSession->getState(),'Replay returns current revision and state');
+    $check($stored()===$before,'Replay preserves counters, receipt, timestamp and revision');
+};
+$assertReplay($originalCommand,$historicalCast); // The consumed pool is already exhausted.
+$assertReplay(array_replace($originalCommand,['requestId'=>strtoupper($originalCommand['requestId'])]),$historicalCast);
+foreach (['castingLevel'=>2,'method'=>'pact-slot','sourceKey'=>$wizardCommand['sourceKey'],'revision'=>$initialRevision+1] as $field=>$value) {
+    $reject(array_replace($originalCommand,[$field=>$value]),409,'request_id_conflict');
+}
+$reject(array_replace($originalCommand,['requestId'=>'7a00a010-0000-4000-8000-000000000002']),409,'stale_revision');
+$changed=$executionSession->getState(); $changed['resources'][3]['currentValue']=6;
+$reset($changed);
+$assertReplay($originalCommand,$historicalCast);
+$secondCommand=array_replace($command,['revision'=>$executionSession->getRevision(),
+    'requestId'=>'7a00a010-0000-4000-8000-000000000002','castingLevel'=>2]);
+$secondResult=$executor->execute($executionSession,$secondCommand);
+$check($secondResult['replayed']===false && count($secondResult['state']['spellCastReceipts'])===2,'A second accepted command preserves the first receipt');
+$assertReplay($originalCommand,$historicalCast);
+$assertReplay($secondCommand,$secondResult['cast']);
+foreach ([null,[$originalCommand['requestId']=>['version'=>1]],[$originalCommand['requestId']=>array_replace($changed['spellCastReceipts'][$originalCommand['requestId']],['version'=>2])]] as $receipts) {
+    $malformed=$executionState; $malformed['spellCastReceipts']=$receipts; $reset($malformed);
+    $reject(array_replace($command,['revision'=>$executionSession->getRevision()]),409,
+        is_array($receipts) && ($receipts[$originalCommand['requestId']]['version']??null)===2
+            ? 'unsupported_spell_cast_receipt_version' : 'malformed_spell_cast_receipts');
+}
 $reset($executionState);
 $result=$execute(array_replace($command,['castingLevel'=>2]));
 $check($result['state']['resources'][1]['currentValue']===0 && $result['state']['resources'][0]['currentValue']===1,'Upcasting uses only chosen level');
 $reset($executionState);
+$pactRevision=$executionSession->getRevision();
 $result=$execute(array_replace($command,['method'=>'pact-slot']));
 $check($result['state']['resources'][2]['currentValue']===0 && $result['state']['resources'][0]['currentValue']===1,'Multiclass bard uses separate pact pool');
+$assertReplay(array_replace($command,['revision'=>$pactRevision,'method'=>'pact-slot']),$result['cast']);
 $reset($executionState);
 $reject(array_replace($command,['revision'=>$executionSession->getRevision(),'method'=>'pact-slot','castingLevel'=>2]),422,'casting_level_mismatch');
 foreach ([null,0,'1',-1] as $remaining) {
@@ -72,11 +104,13 @@ try {
 } finally { $db->rollBack(); }
 $check($stored()===$beforeNested,'Nested transaction refusal leaves session unchanged');
 foreach ([$cantrip,array_replace($wizardCommand,['method'=>'ritual'])] as $freeCommand) {
+    $reset($executionState);
     $before=$executionSession->getState(); $revision=$executionSession->getRevision();
     $result=$execute($freeCommand);
-    $check($result['state']===$before && $result['cast']['cost']===0 && $result['cast']['poolSlug']===null,'Free casting changes no state counters');
+    $withoutReceipts=$result['state']; unset($withoutReceipts['spellCastReceipts']);
+    $check($withoutReceipts===$before && $result['cast']['cost']===0 && $result['cast']['poolSlug']===null,'Free casting changes only receipts, no state counters');
     $check($result['revision']===$revision+1 && (int)$stored()['revision']===$revision+1,'Free acceptance advances durable revision');
-    $reject(array_replace($freeCommand,['revision'=>$revision]),409,'stale_revision');
+    $assertReplay(array_replace($freeCommand,['revision'=>$revision]),$result['cast']);
 }
 // A fresh locked read must discard stale in-memory availability and revision.
 $reset($executionState); $oldRevision=$executionSession->getRevision();
@@ -93,7 +127,7 @@ $db->executeStatement('CREATE CONSTRAINT TRIGGER reject_spell_commit AFTER UPDAT
 $before=$stored();
 try { $execute($command); throw new RuntimeException('Expected commit failure'); }
 catch (Doctrine\DBAL\Exception $error) { $check(str_contains($error->getMessage(),'synthetic cast commit failure'),'Failure actually occurs at commit: '.$error->getMessage()); }
-$check($stored()===$before,'Commit failure rolls back resource, revision and timestamp');
+$check($stored()===$before,'Commit failure rolls back resource, receipt, revision and timestamp');
 $check(!$em->isOpen(),'Failed transaction leaves no reusable mutated entity manager');
 $otherTablesAfter=$snapshot(); unset($otherTablesAfter['character_session_state'], $otherTablesAfter['game_session']);
 $check($otherTablesAfter===$otherTablesBefore,'All tables outside the explicitly changed session fixtures unchanged');

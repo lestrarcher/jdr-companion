@@ -10,7 +10,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
-/** Internal command boundary. No effects, public endpoint or idempotency receipts. */
+/** Internal command boundary. No effects or public endpoint. */
 final readonly class CharacterSpellCastExecutor
 {
     public function __construct(
@@ -20,7 +20,7 @@ final readonly class CharacterSpellCastExecutor
 
     /**
      * Owns the transaction; call with a managed session and no pending unrelated writes.
-     * @return array{cast:array,revision:int,state:array} Returned only after commit.
+     * @return array{cast:array,revision:int,state:array,replayed:bool} Returned only after commit.
      */
     public function execute(CharacterSessionState $session, array $command): array
     {
@@ -33,15 +33,33 @@ final readonly class CharacterSpellCastExecutor
         try {
             $result = (function () use ($session, $command, &$mutated): array {
                 PlayerCharacterAccess::lockForMutation($this->em, $session);
-                $revision = $command['revision'] ?? null;
-                if (!is_int($revision) || $revision < 1) {
-                    throw new UnprocessableEntityHttpException('invalid_command');
+                try {
+                    $command = SpellCastReceipts::normalizeCommand($command);
+                } catch (\InvalidArgumentException $error) {
+                    throw new UnprocessableEntityHttpException('invalid_command', $error);
                 }
+                $state = $session->getState();
+                try {
+                    $receiptStatus = SpellCastReceipts::compare($state, $command);
+                } catch (\UnexpectedValueException $error) {
+                    throw new ConflictHttpException($error->getMessage(), $error);
+                }
+                if ($receiptStatus === 'conflict') {
+                    throw new ConflictHttpException('request_id_conflict');
+                }
+                if ($receiptStatus === 'identical') {
+                    return [
+                        'cast'=>$state[SpellCastReceipts::STATE_KEY][$command['requestId']]['cast'],
+                        'revision'=>$session->getRevision(),
+                        'state'=>$state,
+                        'replayed'=>true,
+                    ];
+                }
+                $revision = $command['revision'];
                 if ($session->getRevision() !== $revision) {
                     throw new ConflictHttpException('stale_revision');
                 }
                 $this->em->lock($session, LockMode::OPTIMISTIC, $revision);
-                $state = $session->getState();
                 $validation = $this->validator->validate($session->getCharacter(), $state, $command);
                 if ($validation['valid'] !== true) {
                     throw new UnprocessableEntityHttpException($validation['reason'] ?? 'cast_not_allowed');
@@ -65,14 +83,17 @@ final readonly class CharacterSpellCastExecutor
                     || $validation['poolSlug'] !== null || $validation['cost'] !== 0) {
                     throw new UnprocessableEntityHttpException('invalid_cast_cost');
                 }
+                $cast = array_intersect_key($validation, array_flip(['source','method','castingLevel','poolSlug','cost']));
+                $state[SpellCastReceipts::STATE_KEY][$command['requestId']] = SpellCastReceipts::create($command, $cast);
                 $mutated = true;
-                // setState touches updatedAt: even a zero-cost acceptance advances ORM revision.
+                // The receipt makes zero-cost acceptance a durable state change too.
                 $session->setState($state);
                 $this->em->flush();
                 return [
-                    'cast'=>array_intersect_key($validation, array_flip(['source','method','castingLevel','poolSlug','cost'])),
+                    'cast'=>$cast,
                     'revision'=>$session->getRevision(),
                     'state'=>$session->getState(),
+                    'replayed'=>false,
                 ];
             })();
             $db->commit();
