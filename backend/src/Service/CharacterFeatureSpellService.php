@@ -13,6 +13,37 @@ final readonly class CharacterFeatureSpellService
 {
     public function __construct(private Connection $db, private CharacterFeatureResolver $features, private CharacterAbilityCalculator $abilityCalculator = new CharacterAbilityCalculator()) {}
 
+    /**
+     * Propagate one persisted fixed grant, never replacing existing acquisitions.
+     * No implicit session: progression-only eligibility requires a separate explicit context.
+     * @param iterable<Character> $characters
+     * @return array{eligible:int, missing:int, created:int}
+     */
+    public function propagateFixedGrant(int $grantId, iterable $characters, bool $dryRun = false): array
+    {
+        $run = function () use ($grantId, $characters, $dryRun): array {
+            $result = ['eligible'=>0, 'missing'=>0, 'created'=>0];
+            if ($this->db->fetchOne('SELECT mode FROM feature_spell_grant WHERE id=?', [$grantId]) !== 'fixed') return $result;
+            $ordered = [];
+            foreach ($characters as $character) $ordered[$character->getId()] = $character;
+            ksort($ordered, SORT_NUMERIC);
+            foreach ($ordered as $id => $character) {
+                if (!$dryRun) $this->db->fetchOne('SELECT id FROM character WHERE id=? FOR UPDATE', [$id]);
+                if (!isset($this->applicable($character)[$grantId])) continue;
+                ++$result['eligible'];
+                // Even an inactive or inconsistent historical row is not ours to change.
+                if ($this->db->fetchOne('SELECT id FROM character_feature_spell WHERE character_id=? AND grant_id=?', [$id, $grantId]) !== false) continue;
+                ++$result['missing'];
+                if (!$dryRun) {
+                    $this->synchronize($character, $grantId);
+                    ++$result['created'];
+                }
+            }
+            return $result;
+        };
+        return $dryRun ? $run() : $this->db->transactional($run);
+    }
+
     /** Reference grants store abbreviations; class policies store enum values. */
     public static function castingAbility(?string $value): ?Ability
     {
@@ -41,14 +72,32 @@ final readonly class CharacterFeatureSpellService
         return array_column($rows, null, 'id');
     }
 
-    /** Call on character changes, or explicitly to reconcile pre-existing characters. */
-    public function synchronize(Character $character): array
+    /**
+     * Call on character changes, or explicitly to reconcile pre-existing characters.
+     * A grant ID restricts reconciliation to that applicable fixed grant only;
+     * choices, other grants and inapplicable historical acquisitions are preserved.
+     */
+    public function synchronize(Character $character, ?int $grantId = null): array
     {
         $id = $character->getId();
-        $grants = $this->applicable($character);
         $this->db->beginTransaction();
         try {
-            $existing = $this->db->fetchAllAssociative('SELECT * FROM character_feature_spell WHERE character_id=? FOR UPDATE', [$id]);
+            // Lock the parent even when no acquisition exists yet, as choose() does.
+            $this->db->fetchOne('SELECT id FROM character WHERE id=? FOR UPDATE', [$id]);
+            $grants = $this->applicable($character);
+            if ($grantId !== null) {
+                // Targeted reconciliation never retires unrelated or session-specific grants.
+                $grant = $grants[$grantId] ?? null;
+                if ($grant === null || $grant['mode'] !== 'fixed') {
+                    $this->db->commit();
+                    return $this->status($character);
+                }
+                $grants = [$grantId => $grant];
+            }
+            $existing = $this->db->fetchAllAssociative(
+                'SELECT * FROM character_feature_spell WHERE character_id=?'.($grantId === null ? '' : ' AND grant_id=?').' FOR UPDATE',
+                $grantId === null ? [$id] : [$id, $grantId],
+            );
             $byGrant = array_column($existing, null, 'grant_id');
             foreach ($existing as $row) {
                 $grant = $grants[$row['grant_id']] ?? null;

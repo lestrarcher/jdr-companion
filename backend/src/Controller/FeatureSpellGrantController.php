@@ -4,6 +4,8 @@ namespace App\Controller;
 
 use App\Entity\User;
 use App\Service\SpellCatalogue;
+use App\Service\CharacterFeatureSpellService;
+use App\Repository\CharacterRepository;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\{Request, JsonResponse};
@@ -47,7 +49,7 @@ final class FeatureSpellGrantController extends AbstractController
     { $this->feature($featureId,$scope); return $this->json(['grants'=>$this->rows($featureId)]); }
 
     #[Route('', methods:['POST'])]
-    public function create(string $scope,int $featureId,Request $request): JsonResponse
+    public function create(string $scope,int $featureId,Request $request, CharacterFeatureSpellService $featureSpells, CharacterRepository $characters): JsonResponse
     {
         $feature=$this->feature($featureId,$scope); $this->editable($feature,$scope);
         try { $v=json_decode($request->getContent(),true,512,JSON_THROW_ON_ERROR); } catch (\JsonException) { throw new BadRequestHttpException('JSON invalide.'); }
@@ -66,7 +68,11 @@ final class FeatureSpellGrantController extends AbstractController
             foreach ($schools as $school) if (!is_string($school) || !in_array($school,array_column(\App\Enum\SpellSchool::cases(),'value'),true)) throw new BadRequestHttpException('École invalide.');
             $schools=$schools===[]?null:json_encode(array_values(array_unique($schools)),JSON_THROW_ON_ERROR);
         }
-        $this->db->insert('feature_spell_grant',['feature_id'=>$featureId,'mode'=>$mode,'spell_id'=>$spellId,'spell_level'=>$spellLevel,'class_id'=>$classId,'schools'=>$schools,'unlock_level'=>$level,'casting_ability'=>$ability]);
+        $this->db->transactional(function () use ($featureId, $mode, $spellId, $spellLevel, $classId, $schools, $level, $ability, $featureSpells, $characters): void {
+            $this->db->insert('feature_spell_grant',['feature_id'=>$featureId,'mode'=>$mode,'spell_id'=>$spellId,'spell_level'=>$spellLevel,'class_id'=>$classId,'schools'=>$schools,'unlock_level'=>$level,'casting_ability'=>$ability]);
+            $grantId = (int)$this->db->lastInsertId();
+            if ($mode === 'fixed') $featureSpells->propagateFixedGrant($grantId, $characters->findBy([], ['id'=>'ASC']));
+        });
         return $this->json(['grants'=>$this->rows($featureId)],201);
     }
     #[Route('/{id}',requirements:['id'=>'\d+'],methods:['DELETE'])]
