@@ -258,13 +258,13 @@
               }
             }
             @if (spellsVisited()) {
-              <div [hidden]="activeTab() !== 'spells'">
-                <app-player-spells [spells]="playerSpells()" [accessToken]="accessToken" [revision]="serverRevision"
-                  [quickSelection]="quickSpellSelection()"
-                  [readonly]="!canEdit()" [prioritizePreparation]="activeTab() === 'spells'"
-                  [castingBlocked]="saveStatus() === 'saving' || saveStatus() === 'error' || !!pendingRestRequest() || preparationPending()"
-                  (casting)="spellCasting.set($event)" (castCompleted)="adoptSpellCast($event)" (changed)="refreshSpells()" />
-              </div>
+              <app-player-spells [spells]="playerSpells()" [accessToken]="accessToken" [revision]="serverRevision"
+                [resources]="characterState()?.resources ?? []"
+                [panelVisible]="activeTab() === 'spells'"
+                [quickSelection]="quickSpellSelection()"
+                [readonly]="!canEdit()" [prioritizePreparation]="activeTab() === 'spells'"
+                [castingBlocked]="saveStatus() === 'saving' || saveStatus() === 'error' || !!pendingRestRequest() || preparationPending()"
+                (casting)="spellCasting.set($event)" (castCompleted)="adoptSpellCast($event)" (changed)="refreshSpells()" />
             }
           </div>
         </div>

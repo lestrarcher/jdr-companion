@@ -25,6 +25,18 @@ export interface SpellCastCommand {
   readonly castingLevel: number;
 }
 
+export type AvailableSpellCastMethod = Omit<SpellCastingAvailability['methods'][number], 'kind' | 'castingLevel'> & {
+  kind: SpellCastMethod;
+  castingLevel: number;
+};
+
+/** Project executable server methods; never infer a method from a resource pool. */
+export function availableSpellCastMethods(spell: PlayerSpell | undefined): AvailableSpellCastMethod[] {
+  if (!spell?.key || spell.castingAvailability?.sourceKey !== spell.key) return [];
+  return spell.castingAvailability.methods.filter((method): method is AvailableSpellCastMethod =>
+    method.status === 'available' && method.kind !== 'normal' && method.castingLevel !== null);
+}
+
 export interface SpellCastResult {
   source: {
     key: NonNullable<PlayerSpell['key']>;

@@ -4,8 +4,11 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PlayerSpells } from './player-spells';
+import { installNativeDialogStub } from '../../../../../testing/native-dialog';
 import type { PlayerSpell } from '@core/services/character-session-state-api.service';
 import type { PlayerSpellView } from '@core/services/player-spell-api.service';
+
+installNativeDialogStub();
 
 function available(spell: PlayerSpell): void {
   spell.castingAvailability = {sourceKey:spell.key!,policyId:spell.policyId ?? null,status:'available',reason:null,

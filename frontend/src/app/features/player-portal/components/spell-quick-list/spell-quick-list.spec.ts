@@ -17,6 +17,29 @@ function setup(spells: PlayerSpell[]) {
 }
 afterEach(() => TestBed.resetTestingModule());
 describe('Shared spell quicklist', () => {
+  it.each(['directory', 'play'] as const)('restores school icons, colors and compact level badges in %s mode', mode => {
+    const { fixture } = setup([
+      { ...spell('a', 1), prepared: true },
+      { ...spell('b', 2, 'Bouclier', 'unavailable'), school: 'abjuration' },
+      { ...spell('c', 3), school: null },
+    ]);
+    fixture.componentRef.setInput('mode', mode);
+    fixture.componentRef.setInput('selectedKey', 'a'); fixture.detectChanges();
+    const cards = fixture.nativeElement.querySelectorAll('.quick-spell') as NodeListOf<HTMLButtonElement>;
+    expect(Array.from(cards, card => card.querySelector('.spell-icon')!.textContent!.trim())).toEqual(['ϟ', '⬡', '✧']);
+    expect(cards[0].dataset['school']).toBe('evocation');
+    expect(getComputedStyle(cards[0].querySelector('.spell-icon')!).color).toBe('rgb(242, 174, 119)');
+    expect(getComputedStyle(cards[1].querySelector('.spell-icon')!).color).toBe('rgb(145, 203, 224)');
+    expect(getComputedStyle(cards[0].querySelector('.spell-level')!).position).toBe('absolute');
+    expect(cards[0].querySelector('.spell-level')!.textContent!.trim()).toBe('1');
+    expect(cards[0].classList.contains('is-selected')).toBe(true);
+    expect(cards[0].querySelector('.prepared-dot')).not.toBeNull();
+    expect(cards[0].title).toBe('a · a');
+    expect(cards[1].disabled).toBe(true);
+    expect(cards[1].classList.contains('is-unavailable')).toBe(true);
+    expect(getComputedStyle(cards[1]).filter).toBe('grayscale(1)');
+    expect(fixture.nativeElement.querySelector('.quick-source')).toBeNull();
+  });
   it('sorts all directory entries by real level and French name without mutating them', () => {
     const entries = [spell('z', 2, 'Zone'), spell('s', 1, 'Soins'), spell('l', 0, 'Lumière'), spell('a', 1, 'Aide', 'unknown')];
     entries[0].castingAvailability!.methods[0].castingLevel = 5;

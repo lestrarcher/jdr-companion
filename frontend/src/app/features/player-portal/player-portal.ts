@@ -117,9 +117,9 @@ export class PlayerPortal {
   protected openQuickSpell(spell: PlayerSpell): void {
     if (!this.canEdit() || this.saveStatus() === 'saving' || this.saveStatus() === 'error'
       || this.pendingRestRequest() || this.preparationPending()) return;
-    // UI-1 reuses the mounted casting panel, including its pending command.
+    // Mount the sole command owner without leaving the current tab.
     this.quickSpellSelection.set({ ...spell });
-    this.selectTab('spells');
+    this.spellsVisited.set(true);
   }
 
   // Features and actions

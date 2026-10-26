@@ -1,4 +1,4 @@
-<section class="player-spells" [attr.aria-busy]="busy()">
+<section [hidden]="!panelVisible()" class="player-spells" [attr.aria-busy]="busy()">
   @if (mode() !== 'details') {
   <header class="magic-heading">
     <div><span class="eyebrow">Magie</span><h2>{{ mode() === 'spellbook' ? 'Grimoire' : 'Sorts et incantations' }}</h2></div>
@@ -19,24 +19,6 @@
     </div>
   }
   @if (success()) { <p class="notice" role="status">{{ success() }}</p> }
-  @if (mode() === 'portal') {
-    @if (castSuccess()) { <p class="notice" role="status">{{ castSuccess() }}</p> }
-    @if (pendingCast(); as pending) {
-      <div class="notice cast-pending" [attr.aria-busy]="castSaving()">
-        <p>{{ pending.name }} · {{ pending.source }} — {{ pending.command.method === 'ritual' ? 'Rituel' : 'Lancement' }}, niveau {{ pending.command.castingLevel }}</p>
-        @if (castSaving()) { <p role="status">Lancement en cours…</p> }
-        @if (castError()) {
-          <p role="alert">{{ castError() }}</p>
-          @if (castUncertain()) {
-            <button type="button" [disabled]="castSaving() || castingBlocked()" (click)="retryCast()">Réessayer la même commande</button>
-          } @else {
-            <button type="button" (click)="dismissCastRefusal()">Fermer ce lancement refusé</button>
-            <button type="button" (click)="refreshAfterCastRefusal()">Actualiser la fiche</button>
-          }
-        }
-      </div>
-    }
-  }
   @for (warning of view()?.warnings ?? []; track warning) { <p class="notice">{{ warning }}</p> }
 
   @if (displayed().length === 0) {
@@ -44,7 +26,7 @@
   } @else {
     <div class="quickbar-shell">
       <p class="eyebrow" id="spell-quickbar-label">Répertoire rapide</p>
-      <app-spell-quick-list [spells]="displayed()" [selectedKey]="selectedSpell() ? spellKey(selectedSpell()!) : null" (selected)="select($event)" />
+      <app-spell-quick-list [spells]="displayed()" [selectedKey]="selectedSpell() ? spellKey(selectedSpell()!) : null" (selected)="selectQuickSpell($event)" />
       <!-- Reserved for future functional metamagic controls; empty projection stays hidden. -->
       <div class="spell-modifiers"><ng-content select="[spell-modifiers]" /></div>
     </div>
@@ -78,20 +60,7 @@
           }
         </dl>
         @if (mode() === 'portal' && !readonly()) {
-          <fieldset class="cast-controls" [disabled]="castingBlocked() || castSaving() || !!pendingCast()">
-            <legend>Lancer {{ spell.name }} · {{ spell.source }}</legend>
-            @for (method of castMethods(); track castMethodKey(method)) {
-              <label class="cast-option">
-                <input type="radio" name="spell-cast-method" [value]="castMethodKey(method)"
-                  [checked]="castChoice() === castMethodKey(method)" (change)="castChoice.set(castMethodKey(method))" />
-                {{ castMethodLabel(method) }}
-              </label>
-            } @empty { <p>Aucun moyen de lancement disponible pour cette source.</p> }
-            @if (chosenCastMethod(); as method) {
-              <p class="cast-cost">{{ method.cost === 0 ? 'Aucun emplacement consommé.' : 'Consommer ' + method.cost + ' emplacement de ' + (method.kind === 'pact-slot' ? 'pacte de ' : '') + 'niveau ' + method.castingLevel + '.' }}</p>
-              <button type="button" class="cast-confirm" [disabled]="!canCast()" (click)="confirmCast()">Confirmer le lancement</button>
-            }
-          </fieldset>
+          <button type="button" class="cast-open" [disabled]="castingBlocked() || castSaving()" (click)="openCastDialog(spell)">Lancer ce sort</button>
         }
         </div>
         @if (spell.details; as details) {
@@ -150,3 +119,18 @@
   }
   }
 </section>
+
+@if (mode() === 'portal' && pendingCast() && !dialogOpen()) {
+  <div class="notice cast-pending" role="status">
+    <p>{{ pendingCast()!.name }} · {{ pendingCast()!.source }} : lancement à résoudre.</p>
+    <button type="button" (click)="dialogOpen.set(true)">Reprendre le lancement</button>
+  </div>
+}
+@if (dialogOpen() && dialogSpell(); as spell) {
+  <app-spell-cast-dialog [spell]="spell" [sources]="dialogSources()" [school]="schoolLabel(spell.school)"
+    [resources]="(view()?.revision ?? revision()) > revision() ? [] : resources()"
+    [saving]="castSaving()" [blocked]="castingBlocked() || readonly() || busy()"
+    [pending]="pendingCast()" [uncertain]="castUncertain()" [error]="castError()" [success]="castSuccess()"
+    (confirmed)="confirmDialogSelection($event)" (closed)="closeCastDialog()" (retried)="retryCast()"
+    (dismissed)="dismissCastRefusal()" (refreshed)="refreshAfterCastRefusal()" />
+}

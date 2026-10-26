@@ -1,0 +1,89 @@
+<dialog #dialog aria-labelledby="spell-cast-title" (cancel)="cancel($event)" [attr.aria-busy]="saving()">
+  <header>
+    <div><small>Incantation · {{ spell().level === 0 ? 'Tour de magie' : 'Niveau ' + (spell().level ?? '?') }}</small>
+      <h2 id="spell-cast-title">{{ spell().name }}</h2>
+      <p class="spell-meta">@if (spell().school) { <span>{{ school() }}</span> }
+        @if (spell().details?.castingTime) { <span>{{ spell().details!.castingTime }}</span> }</p>
+    </div>
+    <button type="button" class="close" aria-label="Fermer le lancement" [disabled]="saving()" (click)="close()">×</button>
+  </header>
+  @if (pending(); as cast) {
+    <p class="pending">{{ cast.name }} · {{ cast.source }} · {{ methodLabel(cast.command.method) }} · niveau {{ cast.command.castingLevel }}</p>
+  } @else if (!success()) {
+    @if (availableSources().length > 1) {
+      <label class="source-picker">Source
+        <select [disabled]="locked()" [value]="activeSource()?.key ?? ''" (change)="selectSource($any($event.target).value)">
+          <option value="" disabled>Choisir une source</option>
+          @for (item of sourceChoices(); track item.source.key) {
+            <option [value]="item.source.key" [disabled]="!item.available">{{ item.source.source }}{{ item.available ? '' : ' — indisponible' }}</option>
+          }
+        </select>
+      </label>
+    } @else if (activeSource(); as source) { <p class="source-caption">{{ source.source }}</p> }
+    @if (standardOptions().length) {
+      <fieldset [disabled]="locked()">
+        <legend>Emplacement · niveau</legend>
+        <div class="levels">
+          @for (option of standardOptions(); track option.key) {
+            <button type="button" class="cast-option level-option" [class.selected]="selected()?.key === option.key"
+              [disabled]="option.method.status !== 'available'" [attr.aria-pressed]="selected()?.key === option.key"
+              [attr.aria-label]="optionLabel(option)" [title]="optionLabel(option)" (click)="select(option.key)">
+              <strong aria-hidden="true">{{ levelLabel(option.method.castingLevel) }}</strong>
+              <small aria-hidden="true">{{ remaining(option) ?? '?' }} rest.</small>
+            </button>
+          }
+        </div>
+      </fieldset>
+    }
+    @if (otherOptions().length) {
+      <fieldset [disabled]="locked()">
+        <legend>Autres moyens</legend>
+        <div class="methods">
+          @for (option of otherOptions(); track option.key) {
+            <button type="button" class="cast-option method-option" [class.selected]="selected()?.key === option.key"
+              [attr.data-method]="option.method.kind" [disabled]="option.method.status !== 'available'"
+              [attr.aria-pressed]="selected()?.key === option.key" [attr.aria-label]="optionLabel(option)" [title]="optionLabel(option)"
+              (click)="select(option.key)">
+              <span>{{ methodLabel(option.method.kind) }} @if (option.method.castingLevel) { · {{ levelLabel(option.method.castingLevel) }} }</span>
+              <small>@if (option.method.poolSlug) { {{ remaining(option) ?? '?' }} rest. }
+                @else if (option.method.status === 'available') { Sans emplacement }
+                @else { {{ unavailableLabel(option) }} }</small>
+            </button>
+          }
+        </div>
+      </fieldset>
+    }
+    @if (visibleOptions().length) { <p class="availability-note">Grisé : indisponible · ? : quantité inconnue</p> }
+    @if (!options().length) { <p>Aucun moyen de lancement disponible pour ce sort.</p> }
+    @if (selected(); as option) {
+      <p class="cast-cost">{{ option.method.cost === 0 ? 'Aucun emplacement consommé.' : 'Consommer ' + option.method.cost + ' emplacement de ' + (option.method.kind === 'pact-slot' ? 'pacte de ' : '') + 'niveau ' + option.method.castingLevel + '.' }}</p>
+      @if (upcasting()) {
+        <section class="higher-levels"><h3>À plus haut niveau · {{ levelLabel(option.method.castingLevel) }}</h3>
+          <p id="spell-cast-higher-level-text" class="higher-level-preview">{{ higherLevelExpanded() ? higherLevelText() : higherLevelPreview() }}</p>
+          @if (higherLevelText().length > 180) {
+            <button type="button" class="higher-level-toggle" aria-controls="spell-cast-higher-level-text"
+              [attr.aria-expanded]="higherLevelExpanded()" (click)="higherLevelExpanded.set(!higherLevelExpanded())">
+              {{ higherLevelExpanded() ? 'Réduire le texte' : 'Lire la suite' }}
+            </button>
+          }
+        </section>
+      }
+    }
+  }
+  @if (saving()) { <p role="status">Lancement en cours…</p> }
+  @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+  @if (success()) { <p class="success" role="status">{{ success() }}</p> }
+  <footer>
+    <button type="button" class="cancel" [disabled]="saving()" (click)="close()">{{ pending() || success() ? 'Fermer' : 'Annuler' }}</button>
+    @if (pending()) {
+      @if (uncertain()) {
+        <button type="button" class="retry" [disabled]="saving() || blocked()" (click)="retried.emit()">Réessayer la même commande</button>
+      } @else if (error()) {
+        <button type="button" (click)="dismissed.emit()">Fermer ce lancement refusé</button>
+        <button type="button" (click)="refreshed.emit()">Actualiser la fiche</button>
+      }
+    } @else if (!success()) {
+      <button type="button" class="cast-confirm" [disabled]="locked() || !selected()" (click)="confirm()">Confirmer le lancement</button>
+    }
+  </footer>
+</dialog>

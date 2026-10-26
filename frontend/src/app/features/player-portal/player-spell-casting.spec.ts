@@ -7,11 +7,14 @@ import { of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PlayerSpells } from './components/player-spells/player-spells';
 import { PlayerPortal } from './player-portal';
+import { installNativeDialogStub } from '../../../testing/native-dialog';
 import { CharacterStateService } from '@core/services/character-state.service';
 import { CampaignConfigurationRegistryService } from '@core/services/campaign-configuration-registry.service';
 import { RestRequestApiService } from '@core/services/rest-request-api.service';
 import type { PlayerSpell } from '@core/services/character-session-state-api.service';
 import type { SpellCastingAvailability, SpellCastMethod } from '@core/models/spell-cast.model';
+
+installNativeDialogStub();
 
 const base='/api/public/characters/test/spells';
 const method=(kind: SpellCastMethod, level: number, status: 'available'|'unknown'|'unavailable'='available'): SpellCastingAvailability['methods'][number] =>
@@ -33,7 +36,7 @@ function session(spells:PlayerSpell[],revision=42,current=2): any {
 }
 function castResponse(spells:PlayerSpell[],kind:SpellCastMethod,level:number,revision=43): any {
   const option=method(kind,level);
-  return {...session(spells,revision,1),cast:{source:{key:spells[0].key,spellId:1,policyId:1,sourceType:'class'},
+  return {...session(spells,revision,1),cast:{source:{key:spells[0].key,spellId:spells[0].spellId,policyId:spells[0].policyId ?? null,sourceType:spells[0].sourceType},
     method:kind,castingLevel:level,poolSlug:option.poolSlug,cost:option.cost},replayed:false};
 }
 async function setup(spells:PlayerSpell[]) {
@@ -50,13 +53,49 @@ async function setup(spells:PlayerSpell[]) {
 afterEach(()=>{ TestBed.inject(HttpTestingController).verify({ignoreCancelled:true}); TestBed.resetTestingModule(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('Spell casting controls',()=>{
+  it('passes existing resource counts for display, hiding them when the directory revision is newer',async()=>{
+    const {fixture,http,c}=await setup([spell()]);
+    fixture.componentRef.setInput('resources',[{id:'spell-slot-1',currentValue:2}]); fixture.detectChanges();
+    fixture.nativeElement.querySelector('.cast-open').click(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.level-option small').textContent).toContain('2 rest.');
+    c.view.set({...view([spell()]),revision:43}); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.level-option small').textContent).toContain('? rest.');
+    http.expectNone(r=>r.method!=='GET');
+  });
+  it('opens from the Sorts quicklist and cancels without a command, UUID or write',async()=>{
+    const uuid=vi.spyOn(crypto,'randomUUID');
+    const {fixture,http,c}=await setup([spell()]);
+    fixture.nativeElement.querySelector('.quick-spell').click(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('dialog').open).toBe(true);
+    fixture.nativeElement.querySelector('app-spell-cast-dialog .cancel').click(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('dialog')).toBeNull();
+    expect(c.pendingCast()).toBeNull(); expect(uuid).not.toHaveBeenCalled();
+    http.expectNone(r=>r.method!=='GET');
+  });
+  it('executes the exact source and level explicitly selected in the shared modal',async()=>{
+    const entries=[spell('wizard',[method('standard-slot',1),method('standard-slot',3)]),
+      {...spell('bard',[method('pact-slot',3)]),source:'Barde',policyId:2}];
+    const {fixture,http,c}=await setup(entries);
+    fixture.nativeElement.querySelector('.cast-open').click(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.cast-confirm').disabled).toBe(true);
+    const source=fixture.nativeElement.querySelector('app-spell-cast-dialog select') as HTMLSelectElement;
+    source.value='bard'; source.dispatchEvent(new Event('change')); fixture.detectChanges();
+    fixture.nativeElement.querySelector('.cast-confirm').click();
+    const req=http.expectOne(base+'/cast');
+    expect(req.request.body).toMatchObject({revision:42,sourceKey:'bard',method:'pact-slot',castingLevel:3});
+    req.flush(castResponse([entries[1],entries[0]],'pact-slot',3)); fixture.detectChanges();
+    expect(c.pendingCast()).toBeNull(); expect(fixture.nativeElement.querySelector('.success').textContent).toContain('Barde');
+    expect(fixture.nativeElement.querySelector('.cast-confirm')).toBeNull();
+    http.expectNone(r=>r.method==='PATCH');
+  });
   it.each([['cantrip',0],['ritual',1],['standard-slot',1],['standard-slot',3],['pact-slot',3]] as const)('confirms %s at server-authorized level %s',async(kind,level)=>{
     const entry=spell('acquisition:1',[method(kind,level)]);
     if(kind==='cantrip') entry.level=0;
     if(kind==='ritual'){entry.known=false;entry.prepared=false;}
     const {fixture,http,c}=await setup([entry]);
-    const radio=fixture.nativeElement.querySelector('input[type=radio]') as HTMLInputElement;
-    expect(radio).not.toBeNull(); radio.click(); fixture.detectChanges();
+    fixture.nativeElement.querySelector('.cast-open').click(); fixture.detectChanges();
+    const option=fixture.nativeElement.querySelector('.cast-option') as HTMLButtonElement;
+    expect(option).not.toBeNull(); option.click(); fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain(kind==='cantrip'||kind==='ritual'?'Aucun emplacement consommé':'Consommer 1 emplacement');
     const button=fixture.nativeElement.querySelector('.cast-confirm') as HTMLButtonElement;
     button.click(); button.click(); fixture.detectChanges();
@@ -149,19 +188,26 @@ describe('Portal adoption of cast responses',()=>{
     expect(fixture.debugElement.query(By.directive(PlayerSpells))).toBeNull();
     const quick=fixture.nativeElement.querySelector('.spell-resource-column .quick-spell') as HTMLButtonElement;
     expect(quick.disabled).toBe(false); quick.click(); fixture.detectChanges();
+    expect(p.activeTab()).toBe('status');
     http.expectNone(r=>r.method==='POST' || r.method==='PATCH');
     http.expectOne(base).flush(view(entries)); await fixture.whenStable();
     const c=fixture.debugElement.query(By.directive(PlayerSpells)).componentInstance as PlayerSpells;
-    expect(c.selectedSpell()?.key).toBe(entries[0].key); c.castChoice.set('standard-slot:1'); c.confirmCast();
+    expect(fixture.nativeElement.querySelector('.level-option small').textContent).toContain('2 rest.');
+    expect(c.selectedSpell()?.key).toBe(entries[0].key);
+    const confirm=fixture.nativeElement.querySelector('.cast-confirm') as HTMLButtonElement;
+    expect(confirm.disabled).toBe(false); confirm.click(); confirm.click();
     const first=http.expectOne(base+'/cast'); const original=first.request.body;
     expect(state.character()!.resources.find(r=>r.id==='spell-slot-1')!.currentValue).toBe(2);
     first.error(new ProgressEvent('error')); fixture.detectChanges();
+    fixture.nativeElement.querySelector('app-spell-cast-dialog .cancel').click(); fixture.detectChanges();
+    p.selectTab('features'); fixture.detectChanges();
     p.selectTab('status'); fixture.detectChanges();
     (fixture.nativeElement.querySelector('.spell-resource-column .quick-spell') as HTMLButtonElement).click(); fixture.detectChanges();
     expect(fixture.debugElement.query(By.directive(PlayerSpells)).componentInstance).toBe(c);
     expect(c.pendingCast()?.command).toEqual(original);
     // Later public data may change revision while the original command is retained.
-    c.retryCast(); const retry=http.expectOne(base+'/cast'); expect(retry.request.body).toEqual(original);
+    fixture.nativeElement.querySelector('app-spell-cast-dialog .retry').click();
+    const retry=http.expectOne(base+'/cast'); expect(retry.request.body).toEqual(original);
     const result={...castResponse([spell('acquisition:1',[method('standard-slot',1,'unavailable')])],'standard-slot',1,47),replayed:true};
     retry.flush(result); await fixture.whenStable();
     expect(p.serverRevision).toBe(47);

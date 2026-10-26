@@ -5,15 +5,17 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Location } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Observable, finalize } from 'rxjs';
-import { SpellQuickList } from '../spell-quick-list/spell-quick-list';
+import { SpellQuickList, spellSchoolIcon } from '../spell-quick-list/spell-quick-list';
+import { SpellCastDialog, SpellCastSelection } from '../spell-cast-dialog/spell-cast-dialog';
 import { PlayerSpell } from '@core/services/character-session-state-api.service';
+import { CharacterResource } from '@core/models/character.model';
 import { PlayerSpellApiService, PlayerSpellChoice, PlayerSpellView } from '@core/services/player-spell-api.service';
-import { createSpellCastCommand, SpellCastCommand, SpellCastResponse } from '@core/models/spell-cast.model';
+import { availableSpellCastMethods, createSpellCastCommand, SpellCastCommand, SpellCastResponse } from '@core/models/spell-cast.model';
 
 @Component({
   selector: 'app-player-spells',
   standalone: true,
-  imports: [FormsModule, RouterLink, SpellQuickList],
+  imports: [FormsModule, RouterLink, SpellQuickList, SpellCastDialog],
   templateUrl: './player-spells.html',
   styleUrl: './player-spells.scss',
 })
@@ -22,10 +24,35 @@ export class PlayerSpells implements OnInit, OnChanges {
   readonly accessToken = input('');
   readonly readonly = input(true);
   readonly revision = input(0);
+  readonly resources = input<readonly Pick<CharacterResource, 'id' | 'currentValue'>[]>([]);
   readonly prioritizePreparation = input(false);
   readonly mode = input<'portal' | 'spellbook' | 'details'>('portal');
   readonly detailSpell = input<PlayerSpell | null>(null);
   readonly quickSelection = input<PlayerSpell | null>(null);
+  readonly panelVisible = input(true);
+  readonly dialogSpell = signal<PlayerSpell | null>(null);
+  readonly dialogOpen = signal(false);
+  readonly dialogSources = computed(() => this.displayed().filter(spell => spell.spellId === this.dialogSpell()?.spellId));
+  openCastDialog(spell: PlayerSpell): void {
+    if (this.mode() !== 'portal' || !this.accessToken() || this.readonly()) return;
+    if (!this.pendingCast()) {
+      this.dialogSpell.set(spell); this.castError.set(''); this.castSuccess.set('');
+    }
+    this.dialogOpen.set(true);
+  }
+  closeCastDialog(): void { if (!this.castSaving()) this.dialogOpen.set(false); }
+  selectQuickSpell(spell: PlayerSpell): void {
+    this.select(spell);
+    this.openCastDialog(spell);
+  }
+  confirmDialogSelection(choice: SpellCastSelection): void {
+    if (!this.dialogOpen() || this.pendingCast() || this.castSuccess()) return;
+    const source = this.dialogSources().find(spell => spell.key === choice.sourceKey);
+    if (!source) return;
+    this.selection.set(source);
+    this.castChoice.set(this.castMethodKey({ kind: choice.method, castingLevel: choice.castingLevel }));
+    this.confirmCast();
+  }
   readonly changed = output<void>();
   readonly castingBlocked = input(false);
   readonly castCompleted = output<SpellCastResponse>();
@@ -44,24 +71,14 @@ export class PlayerSpells implements OnInit, OnChanges {
     if (this.castSaving() || this.castUncertain()) { event.preventDefault(); event.returnValue = ''; }
   }
   readonly castingSpell = computed(() => this.displayed().find(spell => spell.key && spell.key === this.selectedSpell()?.key));
-  readonly castMethods = computed(() => {
-    const spell = this.castingSpell();
-    const availability = spell?.castingAvailability;
-    return availability?.sourceKey === spell?.key ? (availability?.methods ?? []).filter(method =>
-      method.status === 'available' && method.kind !== 'normal' && method.castingLevel !== null) : [];
-  });
+  readonly castMethods = computed(() => availableSpellCastMethods(this.castingSpell()));
   readonly chosenCastMethod = computed(() => this.castMethods().find(method => this.castMethodKey(method) === this.castChoice()));
   readonly canCast = computed(() => this.mode() === 'portal' && !!this.accessToken() && !this.readonly()
     && !this.castingBlocked() && !this.busy() && !this.castSaving() && !this.pendingCast() && !!this.chosenCastMethod());
   castMethodKey(method: { kind: string; castingLevel: number | null }): string { return `${method.kind}:${method.castingLevel}`; }
-  castMethodLabel(method: { kind: string; castingLevel: number | null }): string {
-    if (method.kind === 'cantrip') return 'Tour de magie — sans emplacement';
-    if (method.kind === 'ritual') return `Rituel — niveau ${method.castingLevel}, sans emplacement`;
-    return `${method.kind === 'pact-slot' ? 'Magie de pacte' : 'Emplacement standard'} — niveau ${method.castingLevel}`;
-  }
   confirmCast(): void {
     const method = this.chosenCastMethod(); const spell = this.castingSpell();
-    if (!this.canCast() || !spell?.key || !method || method.kind === 'normal' || method.castingLevel === null) return;
+    if (!this.canCast() || !spell?.key || !method) return;
     this.pendingCast.set({ command: createSpellCastCommand({ revision: Math.max(this.revision(), this.view()?.revision ?? 0),
       sourceKey: spell.key, method: method.kind, castingLevel: method.castingLevel }), name: spell.name, source: spell.source });
     this.sendCast();
@@ -70,6 +87,7 @@ export class PlayerSpells implements OnInit, OnChanges {
   dismissCastRefusal(): void {
     if (this.castSaving() || this.castUncertain()) return;
     this.pendingCast.set(null); this.castError.set(''); this.castChoice.set('');
+    this.closeCastDialog();
   }
   refreshAfterCastRefusal(): void {
     if (this.castSaving() || this.castUncertain()) return;
@@ -148,10 +166,7 @@ export class PlayerSpells implements OnInit, OnChanges {
     this.selection.set(spell);
   }
 }
-  readonly schoolIcon = (school: string | null): string => ({
-    abjuration: '⬡', conjuration: '◇', divination: '◉', enchantment: '❋',
-    evocation: 'ϟ', illusion: '◈', necromancy: '☽', transmutation: '△',
-  } as Record<string, string>)[school ?? ''] ?? '✧';
+  readonly schoolIcon = spellSchoolIcon;
   readonly schoolLabel = (school: string | null): string => ({
     abjuration: 'Abjuration', conjuration: 'Invocation', divination: 'Divination', enchantment: 'Enchantement',
     evocation: 'Évocation', illusion: 'Illusion', necromancy: 'Nécromancie', transmutation: 'Transmutation',
@@ -166,6 +181,7 @@ export class PlayerSpells implements OnInit, OnChanges {
   ngOnChanges(changes?: SimpleChanges): void {
     if (changes?.['quickSelection'] && this.quickSelection()) {
       this.selection.set(this.quickSelection()); this.castChoice.set('');
+      this.openCastDialog(this.quickSelection()!);
     }
     if (this.accessToken() && this.view() && this.revision() > this.view()!.revision && !this.busy()) this.reload();
     if (this.prioritizePreparation() && this.mode() === 'portal' && this.view()?.editable && !this.readonly() && this.preparationAvailable() && !this.skipPreparationRedirect && !this.pendingCast()) {
