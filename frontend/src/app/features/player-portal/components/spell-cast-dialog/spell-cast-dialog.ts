@@ -93,16 +93,21 @@ export class SpellCastDialog implements AfterViewInit, OnDestroy {
   }
   unavailableLabel(option: CastOption): string {
     if (option.method.status === 'unknown') return 'État inconnu';
+    if (option.method.reason === 'insufficient_resource') return 'Ressource insuffisante';
     return option.method.reason === 'exhausted' ? 'Épuisé' : 'Indisponible';
+  }
+  costLabel(option: CastOption): string {
+    return option.method.kind === 'resource' ? `${option.method.cost} unité(s) de ressource de capacité`
+      : option.method.cost === 0 ? 'sans emplacement' : `${option.method.cost} emplacement(s)`;
   }
   optionLabel(option: CastOption): string {
     const remaining = this.remaining(option);
     return `${option.source.source} · ${this.methodLabel(option.method.kind)} · niveau ${option.method.castingLevel}`
-      + ` · coût : ${option.method.cost === 0 ? 'sans emplacement' : option.method.cost + ' emplacement(s)'}`
+      + ` · coût : ${this.costLabel(option)}`
       + (option.method.poolSlug ? ` · ${remaining === null ? 'quantité restante inconnue' : remaining + ' restant(s)'}` : '')
       + (option.method.status === 'available' ? '' : ` · ${this.unavailableLabel(option)}`);
   }
   methodLabel(kind: string): string {
-    return ({ cantrip: 'Tour de magie', ritual: 'Rituel', 'standard-slot': 'Emplacement standard', 'pact-slot': 'Magie de pacte' } as Record<string, string>)[kind] ?? kind;
+    return ({ resource: 'Utilisation de capacité (sans emplacement)', cantrip: 'Tour de magie', ritual: 'Rituel', 'standard-slot': 'Emplacement standard', 'pact-slot': 'Magie de pacte' } as Record<string, string>)[kind] ?? kind;
   }
 }

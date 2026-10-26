@@ -17,6 +17,14 @@ function setup(spells: PlayerSpell[]) {
 }
 afterEach(() => TestBed.resetTestingModule());
 describe('Shared spell quicklist', () => {
+  it('selects a feature resource source without executing or changing its availability', () => {
+    const entry = spell('feature:1', 2); entry.sourceType = 'feature';
+    entry.castingAvailability!.methods = [{ kind: 'resource', castingLevel: 2, poolSlug: 'feat-use', cost: 2, status: 'available', reason: null }];
+    const before = structuredClone(entry); const { fixture, c } = setup([entry]);
+    const selected = vi.fn(); c.selected.subscribe(selected);
+    fixture.nativeElement.querySelector('button').click();
+    expect(selected).toHaveBeenCalledWith(entry); expect(entry).toEqual(before);
+  });
   it.each(['directory', 'play'] as const)('restores school icons, colors and compact level badges in %s mode', mode => {
     const { fixture } = setup([
       { ...spell('a', 1), prepared: true },

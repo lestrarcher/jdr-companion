@@ -53,6 +53,25 @@ async function setup(spells:PlayerSpell[]) {
 afterEach(()=>{ TestBed.inject(HttpTestingController).verify({ignoreCancelled:true}); TestBed.resetTestingModule(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('Spell casting controls',()=>{
+  it('sends a feature resource command only after confirmation and adopts its server result',async()=>{
+    const resource = {...method('resource',2),poolSlug:'feat-use',cost:2};
+    const entry = {...spell('feature:1',[resource,method('standard-slot',2)]),sourceType:'feature' as const,inSpellbook:false};
+    const {fixture,http,c}=await setup([entry]);
+    fixture.nativeElement.querySelector('.quick-spell').click(); fixture.detectChanges();
+    http.expectNone(r=>r.method!=='GET');
+    expect(fixture.nativeElement.querySelector('.cast-confirm').disabled).toBe(true);
+    fixture.nativeElement.querySelector('[data-method=resource]').click(); fixture.detectChanges();
+    http.expectNone(r=>r.method!=='GET');
+    fixture.nativeElement.querySelector('.cast-confirm').click();
+    const req=http.expectOne(base+'/cast');
+    expect(req.request.body).toMatchObject({revision:42,sourceKey:'feature:1',method:'resource',castingLevel:2});
+    expect(req.request.body.cost).toBeUndefined(); expect(req.request.body.poolSlug).toBeUndefined();
+    const result=castResponse([entry],'resource',2); result.cast.cost=2; result.cast.poolSlug='feat-use';
+    result.state.resources.push({id:'feat-use',currentValue:0});
+    const done=vi.fn(); c.castCompleted.subscribe(done); req.flush(result);
+    expect(done).toHaveBeenCalledWith(result); expect(c.pendingCast()).toBeNull();
+    http.expectNone(r=>r.method==='PATCH');
+  });
   it('passes existing resource counts for display, hiding them when the directory revision is newer',async()=>{
     const {fixture,http,c}=await setup([spell()]);
     fixture.componentRef.setInput('resources',[{id:'spell-slot-1',currentValue:2}]); fixture.detectChanges();
@@ -189,7 +208,7 @@ describe('Portal adoption of cast responses',()=>{
     initial.state.resources.push({id:'second-wind',currentValue:1});
     http.expectOne('/api/public/characters/test').flush(initial); fixture.detectChanges();
     expect(fixture.debugElement.query(By.directive(PlayerSpells))).toBeNull();
-    expect(fixture.nativeElement.querySelector('app-spell-slot-bar').textContent).toContain('2/2');
+    expect(fixture.nativeElement.querySelector('app-spell-slot-bar .slot-group').getAttribute('aria-label')).toContain('2 sur 2');
     expect(p.trackerResources().some((r: any)=>r.id==='spell-slot-1')).toBe(false);
     expect(p.trackerResources().map((r: any)=>r.id)).toEqual(['second-wind']);
     const quick=fixture.nativeElement.querySelector('.spell-resource-column .quick-spell') as HTMLButtonElement;
@@ -218,7 +237,7 @@ describe('Portal adoption of cast responses',()=>{
     retry.flush(result); await fixture.whenStable();
     expect(p.serverRevision).toBe(47);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('app-spell-slot-bar').textContent).toContain('1/2');
+    expect(fixture.nativeElement.querySelector('app-spell-slot-bar .slot-group').getAttribute('aria-label')).toContain('1 sur 2');
     expect(state.character()!.resources.find(r=>r.id==='spell-slot-1')!.currentValue).toBe(1);
     expect(p.lastQueuedRevision).toBe(state.revision()); expect(c.castMethods()).toEqual([]);
     p.selectTab('status'); fixture.detectChanges();

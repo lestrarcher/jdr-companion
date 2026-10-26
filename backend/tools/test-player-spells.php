@@ -76,6 +76,12 @@ try {
         return $body;
     };
     $initiated = $sessions['Test initié'];
+    if (($argv[1] ?? '') === '--historical') {
+        require __DIR__.'/test-player-spell-historical-cases.php';
+        $check($fingerprint() === $before, 'Original tables AND sequences unchanged after historical tests');
+        echo "PASS: $checks assertions; historical HTTP; temporary tables and sequences only.\n";
+        return;
+    }
     $view = $get($initiated);
     $pending = array_values(array_filter($view['choices'], static fn($r) => $r['kind'] === 'feature'));
     $check(count($pending) === 2, 'Magic Initiate: two independent remaining grants');

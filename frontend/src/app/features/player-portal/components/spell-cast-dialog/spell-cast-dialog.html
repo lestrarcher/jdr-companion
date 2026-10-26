@@ -45,7 +45,10 @@
               [attr.aria-pressed]="selected()?.key === option.key" [attr.aria-label]="optionLabel(option)" [title]="optionLabel(option)"
               (click)="select(option.key)">
               <span>{{ methodLabel(option.method.kind) }} @if (option.method.castingLevel) { · {{ levelLabel(option.method.castingLevel) }} }</span>
-              <small>@if (option.method.poolSlug) { {{ remaining(option) ?? '?' }} rest. }
+              <small>@if (option.method.kind === 'resource') { Coût : {{ costLabel(option) }} · }
+                @if (option.method.poolSlug) { {{ remaining(option) ?? '?' }} rest.
+                  @if (option.method.status !== 'available') { · {{ unavailableLabel(option) }} }
+                }
                 @else if (option.method.status === 'available') { Sans emplacement }
                 @else { {{ unavailableLabel(option) }} }</small>
             </button>
@@ -56,7 +59,7 @@
     @if (visibleOptions().length) { <p class="availability-note">Grisé : indisponible · ? : quantité inconnue</p> }
     @if (!options().length) { <p>Aucun moyen de lancement disponible pour ce sort.</p> }
     @if (selected(); as option) {
-      <p class="cast-cost">{{ option.method.cost === 0 ? 'Aucun emplacement consommé.' : 'Consommer ' + option.method.cost + ' emplacement de ' + (option.method.kind === 'pact-slot' ? 'pacte de ' : '') + 'niveau ' + option.method.castingLevel + '.' }}</p>
+      <p class="cast-cost">{{ option.method.kind === 'resource' ? 'Consommer ' + costLabel(option) + ', sans emplacement.' : option.method.cost === 0 ? 'Aucun emplacement consommé.' : 'Consommer ' + option.method.cost + ' emplacement de ' + (option.method.kind === 'pact-slot' ? 'pacte de ' : '') + 'niveau ' + option.method.castingLevel + '.' }}</p>
       @if (upcasting()) {
         <section class="higher-levels"><h3>À plus haut niveau · {{ levelLabel(option.method.castingLevel) }}</h3>
           <p id="spell-cast-higher-level-text" class="higher-level-preview">{{ higherLevelExpanded() ? higherLevelText() : higherLevelPreview() }}</p>

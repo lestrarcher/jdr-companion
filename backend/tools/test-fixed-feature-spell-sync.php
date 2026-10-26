@@ -24,6 +24,16 @@ try {
         $db->executeStatement('CREATE TEMP TABLE '.$table.' (LIKE public.'.$table.' INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING IDENTITY INCLUDING INDEXES)');
         $check($db->fetchOne('SELECT relpersistence FROM pg_class WHERE oid=to_regclass(?)', [$table]) === 't', 'Temporary table');
     }
+    // Apply the new DDL to the temporary fixture only, even before local migration.
+    if (!$db->fetchOne("SELECT 1 FROM pg_attribute WHERE attrelid='feature_spell_grant'::regclass AND attname='casting_rules' AND NOT attisdropped")) {
+        require_once __DIR__.'/../migrations/Version20261026010000.php';
+        $migration = new DoctrineMigrations\Version20261026010000($db, new Psr\Log\NullLogger());
+        $migration->up(new Doctrine\DBAL\Schema\Schema());
+        foreach ($migration->getSql() as $query) $db->prepare($query->getStatement())->executeStatement();
+    } else {
+        // LIKE does not copy foreign keys. Keep the isolated fixture equivalent.
+        $db->executeStatement('ALTER TABLE feature_spell_grant ADD CONSTRAINT fixture_casting_resource_fk FOREIGN KEY (resource_definition_id) REFERENCES trackable_resource_definition(id) ON DELETE RESTRICT');
+    }
     $owner = (new User())->setEmail('fixed-grants@example.invalid')->setPassword('unused')->setRoles([SpellCatalogue::ADMIN_ROLE]);
     $campaign = new Campaign($owner, 'fixed-grants', 'Fixed grants');
     $character = new Character($campaign, 'test', 'Test', Character::TYPE_PLAYER);
@@ -134,6 +144,126 @@ try {
     $controller->create('official', $feature->getId(), $choiceRequest, $service, $repository);
     $check($rows() === $rowsBefore, 'Catalogue choice creation does not propagate');
     $check($snapshot() === $untouched, 'All other persisted data, including sessions, preparation and resources, unchanged');
+    $resource = new App\Entity\TrackableResourceDefinition('fixture-casting-use','Fixture use',App\Enum\ResourceRechargeType::LongRest);
+    $em->persist($resource); $em->flush(); $resourceId=$resource->getId();
+    $rules=['version'=>1,'methods'=>[['kind'=>'resource','cost'=>1,'castingLevel'=>3],['kind'=>'standard-slot']], 'restrictions'=>'Only in the stated circumstances'];
+    $patch=static fn(array $data) => Symfony\Component\HttpFoundation\Request::create('/', 'PATCH', [], [], [], [], json_encode($data));
+    $acquired=$rows(); $stateBeforeConfig=$snapshot();
+    $historical=json_decode($controller->list('official',$feature->getId())->getContent(),true)['grants'];
+    $check($historical[0]['castingRules']===null && $historical[0]['resourceDefinitionId']===null,'Historical grants remain unconfigured');
+    $controller->configure('official',$feature->getId(),$grantId,$patch(['castingRules'=>$rules,'resourceDefinitionId'=>$resourceId]));
+    $configured=array_column(json_decode($controller->list('official',$feature->getId())->getContent(),true)['grants'],null,'id')[$grantId];
+    $canonical=static function(mixed $value) use (&$canonical): mixed {
+        if (!is_array($value)) return $value;
+        $value=array_map($canonical,$value);
+        if (!array_is_list($value)) ksort($value);
+        return $value;
+    };
+    $check($canonical($configured['castingRules'])===$canonical($rules) && $configured['resourceDefinitionId']===$resourceId,'Fixed grant configuration roundtrip preserves values and types');
+    $check($configured['mode']==='fixed' && $configured['spellId']===$spell['id'],'Acquisition contract unchanged');
+    $db->beginTransaction(); $fkRejected=false;
+    try { $db->delete('trackable_resource_definition',['id'=>$resourceId]); }
+    catch (Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException) { $fkRejected=true; }
+    finally { $db->rollBack(); }
+    $check($fkRejected,'Referenced resource protected by SQL foreign key');
+    $controller->configure('official',$feature->getId(),$choiceId,$patch(['castingRules'=>['version'=>1,'methods'=>[['kind'=>'standard-slot']]]]));
+    $check($rows()===$acquired && $snapshot()===$stateBeforeConfig,'Configuration updates do not affect acquisitions, resources or sessions');
+    $beforeInvalid=$db->fetchAllAssociative('SELECT * FROM feature_spell_grant ORDER BY id');
+    $invalid=[
+        ['castingRules'=>[]], ['castingRules'=>['version'=>2,'methods'=>[['kind'=>'standard-slot']]]],
+        ['castingRules'=>['version'=>1,'methods'=>[]]],
+        ['castingRules'=>['version'=>1,'methods'=>[['kind'=>'ritual']]]],
+        ['castingRules'=>['version'=>1,'methods'=>[['kind'=>'standard-slot'],['kind'=>'standard-slot']]]],
+        ['castingRules'=>['version'=>1,'methods'=>[['kind'=>'resource','cost'=>'1','castingLevel'=>3]]]],
+        ['castingRules'=>['version'=>1,'methods'=>[['kind'=>'resource','cost'=>1,'castingLevel'=>1]]]],
+        ['castingRules'=>['version'=>1,'methods'=>[['kind'=>'resource','cost'=>1]]]],
+        ['castingRules'=>$rules,'resourceDefinitionId'=>null],
+        ['castingRules'=>$rules,'resourceDefinitionId'=>2147483647],
+        ['castingRules'=>$rules,'resourceDefinitionId'=>(string)$resourceId],
+        ['castingRules'=>['version'=>1,'methods'=>[['kind'=>'standard-slot']]],'resourceDefinitionId'=>$resourceId],
+        ['castingRules'=>null], ['mode'=>'choice'],
+        ['castingRules'=>['version'=>1,'methods'=>[['kind'=>'standard-slot']],'unknown'=>true],'resourceDefinitionId'=>null],
+    ];
+    foreach($invalid as $payload){
+        $rejected=false;
+        try{$controller->configure('official',$feature->getId(),$grantId,$patch($payload));}
+        catch(Symfony\Component\HttpKernel\Exception\BadRequestHttpException){$rejected=true;}
+        $check($rejected && $db->fetchAllAssociative('SELECT * FROM feature_spell_grant ORDER BY id')===$beforeInvalid,'Invalid configuration rejected without mutation: '.json_encode($payload));
+    }
+    $controller->configure('official',$feature->getId(),$grantId,$patch(['castingRules'=>null,'resourceDefinitionId'=>null]));
+    $check($db->fetchOne('SELECT casting_rules FROM feature_spell_grant WHERE id=?',[$grantId])===null,'Explicit reset to unconfigured state');
+    $createConfigured=$patch(['mode'=>'choice','spellLevel'=>2,'castingRules'=>$rules,'resourceDefinitionId'=>$resourceId]);
+    $check($controller->create('official',$feature->getId(),$createConfigured,$service,$repository)->getStatusCode()===201,'Create accepts configured choice grant');
+    $check($rows()===$acquired && $snapshot()===$stateBeforeConfig,'Configured choice creation does not initialize resources');
+    $fixedConfigured=$patch(['mode'=>'fixed','spellId'=>$spell['id'],'castingRules'=>$rules,'resourceDefinitionId'=>$resourceId]);
+    $check($controller->create('official',$feature->getId(),$fixedConfigured,$service,$repository)->getStatusCode()===201,'Create accepts configured fixed grant and preserves propagation');
+    $check($snapshot()===$stateBeforeConfig,'Configured fixed grant does not initialize resources or modify sessions');
+    $eligibility=(new App\Service\CharacterSpellCastEligibility())->evaluate(['sourceType'=>'feature','level'=>2,'known'=>true,'castingRules'=>$rules],null,null);
+    $check($eligibility['requiresGrantReview'] && !$eligibility['canCastNormally'],'Configuration does not unlock runtime casting');
+    $resolveCasting=new App\Service\CharacterFeatureSpellCastingResolver($db,new CharacterFeatureResolver(new CharacterFeatureRuleRepository($registry)));
+    $db->update('feature_spell_grant',['casting_rules'=>json_encode($rules),'resource_definition_id'=>$resourceId,'casting_ability'=>'INT'],['id'=>$grantId]);
+    $resolved=$resolveCasting->resolve($character,$grantId);
+    $check($resolved['status']==='resolved' && $resolved['castingAbility']==='intelligence','Explicit ability resolved');
+    $check($resolved['provenance']['type']==='feat' && $resolved['provenance']['characterFeatId']===$assignment->getId(),'Exact feat acquisition provenance');
+    $check($resolved['methods']===[['kind'=>'resource','resourceDefinitionId'=>$resourceId,'cost'=>1,'castingLevel'=>3],['kind'=>'standard-slot','minimumCastingLevel'=>2]],'Normalized methods contain configured costs and levels, not availability');
+    $check($resolved['requiresRestrictionReview'] && $resolved['restrictions']===$rules['restrictions'],'Descriptive restrictions remain explicit');
+    $feat->setRequiresAbilityChoice(true)->setAllowedAbilities(App\Enum\Ability::Intelligence,App\Enum\Ability::Wisdom,App\Enum\Ability::Charisma);
+    $db->update('feature_spell_grant',['casting_ability'=>'CHOICE'],['id'=>$grantId]);
+    foreach ([App\Enum\Ability::Intelligence,App\Enum\Ability::Wisdom,App\Enum\Ability::Charisma] as $chosen) {
+        $assignment->setChosenAbility($chosen);
+        $check($resolveCasting->resolve($character,$grantId)['castingAbility']===$chosen->value,'Feat choice resolved: '.$chosen->value);
+    }
+    $assignment->setChosenAbility(null);
+    $missing=$resolveCasting->resolve($character,$grantId);
+    $check($missing['status']==='unknown' && $missing['abilityReason']==='ability_choice_missing' && $missing['methods']===[],'Missing choice not inferred');
+    $db->update('feature_spell_grant',['casting_ability'=>null],['id'=>$grantId]);
+    $check($resolveCasting->resolve($character,$grantId)['abilityReason']==='ability_not_configured','NULL is not CHOICE');
+    $db->update('feature_spell_grant',['casting_ability'=>'WIS'],['id'=>$grantId]);
+    $feat->setRepeatable(true);
+    $assignment->setChosenAbility(App\Enum\Ability::Wisdom);
+    $duplicate=(new CharacterFeat($character,$feat))->setChosenAbility(App\Enum\Ability::Charisma); $character->addFeat($duplicate);
+    $check($resolveCasting->resolve($character,$grantId)['reason']==='provenance_ambiguous','Repeated feat acquisitions are ambiguous even with explicit ability');
+    $db->update('feature_spell_grant',['casting_ability'=>'CHOICE'],['id'=>$grantId]);
+    $check($resolveCasting->resolve($character,$grantId)['castingAbility']===null,'Different feat choices are not arbitrarily selected');
+    $character->removeFeat($duplicate);
+    $additionalRule=CharacterFeatureRule::forClass($feature,$class,1); $em->persist($additionalRule); $em->flush();
+    $ambiguous=$resolveCasting->resolve($character,$grantId);
+    $check($ambiguous['reason']==='provenance_ambiguous' && $ambiguous['methods']===[] && $ambiguous['requiresRestrictionReview'],'Different applicable origins are not arbitrarily reduced');
+    $em->remove($additionalRule); $em->flush();
+    $em->remove($rule); $em->flush();
+    $check($resolveCasting->resolve($character,$grantId)['reason']==='provenance_missing','Acquisition alone is not provenance');
+    $rule=CharacterFeatureRule::forFeat($feature,$feat); $em->persist($rule); $em->flush();
+    $db->update('feature_spell_grant',['casting_rules'=>null,'resource_definition_id'=>null],['id'=>$grantId]);
+    $check($resolveCasting->resolve($character,$grantId)['reason']==='casting_rules_missing','Historical configuration remains unknown');
+    $db->update('feature_spell_grant',['casting_rules'=>json_encode(['version'=>1,'methods'=>[['kind'=>'unsupported']]])],['id'=>$grantId]);
+    $check($resolveCasting->resolve($character,$grantId)['reason']==='casting_rules_invalid','Invalid persisted configuration rejected conservatively');
+    $db->update('feature_spell_grant',['casting_rules'=>json_encode(['version'=>1,'methods'=>[['kind'=>'standard-slot']]]),'casting_ability'=>'CHA','spell_level'=>2],['id'=>$choiceId]);
+    $check($resolveCasting->resolve($character,$choiceId)['status']==='resolved','Choice grant resolved from its acquired spell');
+    $readBefore=$snapshot(); $acquisitionsBefore=$rows();
+    $status=$service->status($character);
+    $sameSpell=array_filter($status['known'],fn($entry)=>$entry['spellId']===$spell['id']);
+    $check(count($sameSpell)>1 && count(array_unique(array_column($sameSpell,'grantId')))===count($sameSpell),'Multiple grant sources for the same spell preserved');
+    $check($snapshot()===$readBefore && $rows()===$acquisitionsBefore,'Resolution and status perform no writes');
+    // Exercise other origins using the same applicability checks, not a parallel resolver.
+    $db->update('feature_spell_grant',['casting_rules'=>json_encode(['version'=>1,'methods'=>[['kind'=>'standard-slot']]]),'casting_ability'=>'INT'],['id'=>$grantId]);
+    $em->remove($rule); $em->flush();
+    $classRule=CharacterFeatureRule::forClass($feature,$class,1); $em->persist($classRule); $em->flush();
+    $check($resolveCasting->resolve($character,$grantId)['provenance']['type']==='class','Class provenance resolved');
+    $em->remove($classRule); $em->flush();
+    $race=new App\Entity\CharacterRace('casting-race','Casting race'); $character->setRace($race);
+    $raceRule=CharacterFeatureRule::forRace($feature,$race,1); $em->persist($race); $em->persist($raceRule); $em->flush();
+    $check($resolveCasting->resolve($character,$grantId)['provenance']['type']==='race','Race provenance resolved');
+    $db->update('feature_spell_grant',['casting_ability'=>'CHOICE'],['id'=>$grantId]);
+    $check($resolveCasting->resolve($character,$grantId)['abilityReason']==='ability_choice_unsupported','Race CHOICE does not borrow the feat ability');
+    $em->remove($raceRule); $em->flush();
+    $subclass=new App\Entity\CharacterSubclass($class,'casting-subclass','Casting subclass');
+    $level->setSubclass($subclass);
+    $subclassRule=CharacterFeatureRule::forSubclass($feature,$subclass,1);
+    $em->persist($subclass); $em->persist($subclassRule); $em->flush();
+    $db->update('feature_spell_grant',['casting_ability'=>'INT'],['id'=>$grantId]);
+    $check($resolveCasting->resolve($character,$grantId)['provenance']['type']==='subclass','Subclass provenance resolved');
+    $check($resolveCasting->resolve($other,$grantId)['reason']==='acquisition_missing','No source inferred without an active acquisition');
+    require __DIR__.'/test-feature-spell-availability-cases.php';
     echo "PASS: $checks assertions\n";
 } finally {
     if ($db->isTransactionActive()) $db->rollBack();

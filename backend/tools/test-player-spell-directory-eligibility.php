@@ -205,6 +205,8 @@ try {
         if ($active) {
             $entry=$byKey['feature:2'];
             $check($entry['sourceType']==='feature' && $entry['policyId']===null && $entry['spellId']===$spell['id'],'Progression grant keeps independent source');
+            $check($entry['castingRulesResolution']['provenance']['type']==='progression','Explicit progression context reaches casting provenance');
+            $check($entry['castingRulesResolution']['reason']==='casting_rules_missing','Unconfigured progression grant remains indeterminate');
             $check($entry['castingEligibility']===$byKey['feature:1']['castingEligibility'],'Progression grant retains conservative eligibility');
         }
         $check($context===$originalContext,'Progression read preserves complete supplied state');
@@ -278,6 +280,13 @@ $check(
 );
     $check($snapshot()===$beforeAvailabilityReads,'Availability projection never writes or consumes');
     require __DIR__.'/test-spell-cast-command-cases.php';
+    $db->update('feature_spell_grant',['casting_rules'=>json_encode(['version'=>1,'methods'=>[['kind'=>'standard-slot']]])],['id'=>1]);
+    $resolvedReadBefore=$snapshot();
+    $resolvedEntry=array_column($directory->forCharacter($character,$state),null,'key')['feature:1'];
+    $check($resolvedEntry['castingRulesResolution']['status']==='resolved','Configured class feature metadata is resolved in directory');
+    $check(!$resolvedEntry['castingEligibility']['requiresGrantReview'] && $resolvedEntry['castingEligibility']['canCastNormally'] && array_unique(array_column($resolvedEntry['castingAvailability']['methods'],'kind'))===['standard-slot'],'Resolved configuration exposes only explicitly configured methods');
+    $check($snapshot()===$resolvedReadBefore,'Configured directory read remains mutation-free');
+    $db->update('feature_spell_grant',['casting_rules'=>null],['id'=>1]);
     if (in_array('--cast-execution', $argv, true) || in_array('--cast-http', $argv, true)) {
         // All tables/sequences were verified temporary above. Preserve them across real
         // commits so the executor can own its transaction; connection close drops them.
@@ -288,9 +297,13 @@ $check(
             require __DIR__.'/test-spell-cast-execution-cases.php';
         }
     }
+    if (in_array('--feature-cast-execution', $argv, true)) {
+        $db->commit(); // Only the temporary tables/sequences verified above.
+        require __DIR__.'/test-feature-spell-execution-cases.php';
+    }
     echo "PASS: $checks spell directory/command assertions; temporary schema only.\n";
 } finally {
     while ($db->isTransactionActive()) $db->rollBack();
-    if (in_array('--cast-execution', $argv, true) || in_array('--cast-http', $argv, true)) $db->close();
+    if (in_array('--cast-execution', $argv, true) || in_array('--cast-http', $argv, true) || in_array('--feature-cast-execution', $argv, true)) $db->close();
     $kernel->shutdown();
 }

@@ -26,8 +26,21 @@ final readonly class CharacterSpellCastEligibility
         $inSpellbook = ($entry['inSpellbook'] ?? false) === true;
         $alwaysPrepared = ($entry['alwaysPrepared'] ?? false) === true;
 
-        // Subclass/feature grants may be once-per-rest, slot-only, free-only, etc.
-        // Their metadata must be resolved before authorizing a casting mode.
+        // Resolution describes permission, independently of the current counters.
+        if ($sourceType === 'feature') {
+            $resolution = $entry['castingRulesResolution'] ?? [];
+            if (($resolution['status'] ?? null) === 'resolved'
+                && ($resolution['configurationVersion'] ?? null) === 1
+                && is_array($resolution['provenance'] ?? null)
+                && in_array($resolution['castingAbility'] ?? null, array_column(\App\Enum\Ability::cases(), 'value'), true)
+                && ($resolution['abilityReason'] ?? null) === null
+                && ($resolution['requiresRestrictionReview'] ?? null) === false
+                && ($resolution['restrictions'] ?? null) === null
+                && is_array($resolution['methods'] ?? null) && $resolution['methods'] !== []) {
+                return $this->result(true, false, null, 'ritual_feature_or_preparation_missing', false);
+            }
+        }
+        // Historical features and subclass grants remain subject to explicit review.
         if ($sourceType === 'subclass' || $sourceType === 'feature') {
             return $this->result(false, false, 'grant_rules_pending', 'grant_rules_pending', true);
         }

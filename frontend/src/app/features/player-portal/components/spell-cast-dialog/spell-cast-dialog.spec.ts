@@ -25,6 +25,31 @@ function setup(sources = [spell()]) {
 }
 afterEach(() => TestBed.resetTestingModule());
 describe('Shared casting dialog', () => {
+  it('requires an explicit resource or slot choice and emits only on confirmation', () => {
+    const resource: SpellCastingAvailability['methods'][number] = { kind: 'resource', castingLevel: 2, poolSlug: 'feat-use', cost: 2, status: 'available', reason: null };
+    const entry = { ...spell('feature:1', [resource, method('standard-slot', 2)]), sourceType: 'feature' as const };
+    const { fixture, c } = setup([entry]); const done = vi.fn(); c.confirmed.subscribe(done);
+    const counters = [{ id: 'feat-use', currentValue: 3 }];
+    fixture.componentRef.setInput('resources', counters); fixture.detectChanges();
+    expect(c.selected()).toBeUndefined(); expect(done).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).toContain('2 unité(s) de ressource de capacité');
+    expect(fixture.nativeElement.textContent).toContain('3 rest.');
+    fixture.nativeElement.querySelector('[data-method=resource]').click(); fixture.detectChanges();
+    expect(done).not.toHaveBeenCalled(); expect(counters[0].currentValue).toBe(3);
+    expect(fixture.nativeElement.querySelector('.cast-cost').textContent).toContain('sans emplacement');
+    fixture.nativeElement.querySelector('.cast-confirm').click();
+    expect(done).toHaveBeenLastCalledWith({ sourceKey: 'feature:1', method: 'resource', castingLevel: 2 });
+    c.select(c.standardOptions()[0].key); c.confirm();
+    expect(done).toHaveBeenLastCalledWith({ sourceKey: 'feature:1', method: 'standard-slot', castingLevel: 2 });
+  });
+  it.each(['exhausted', 'insufficient_resource'])('shows a disabled feature resource reason: %s', reason => {
+    const resource: SpellCastingAvailability['methods'][number] = { kind: 'resource', castingLevel: 1, poolSlug: 'feat-use', cost: 2, status: 'unavailable', reason };
+    const { fixture, c } = setup([{ ...spell('feature:1', [resource]), sourceType: 'feature' }]);
+    expect(c.standardOptions()).toEqual([]); expect(c.options()).toEqual([]);
+    expect(fixture.nativeElement.querySelector('[data-method=resource]').disabled).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain(reason === 'exhausted' ? 'Épuisé' : 'Ressource insuffisante');
+    expect(fixture.nativeElement.querySelector('.cast-confirm').disabled).toBe(true);
+  });
   it('hides structurally absent slots and inapplicable ritual/pact methods, keeping exhausted slots', () => {
     const methods = Array.from({length:9}, (_, index) => method('standard-slot', index + 1));
     methods[1].status = 'unavailable'; methods[1].reason = 'exhausted';

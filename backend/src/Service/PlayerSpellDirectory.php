@@ -79,7 +79,7 @@ final readonly class PlayerSpellDirectory
 
         $feature = $this->featureSpells->status($character, CharacterSessionStateSynchronizer::extractProgressionValues($state));
         foreach ($feature['known'] as $grant) {
-            $ability = CharacterFeatureSpellService::castingAbility($grant['castingAbility']);
+            $ability = CharacterFeatureSpellService::castingAbility($grant['castingRulesResolution']['castingAbility']);
             $statistics = $ability === null
                 ? ['spellSaveDc' => null, 'spellAttackBonus' => null]
                 : $this->abilities->spellStatistics($character, $ability);
@@ -89,6 +89,7 @@ final readonly class PlayerSpellDirectory
                 'spellId' => $grant['spellId'], 'name' => $grant['spellName'],
                 'level' => $spell === false ? null : (int) $spell['level'], 'school' => $spell['school'] ?? null,
                 'source' => $grant['featureName'], 'sourceType' => 'feature',
+                'castingRulesResolution' => $grant['castingRulesResolution'],
                 'castingAbility' => $ability?->value,
                 ...$statistics,
                 'known' => true, 'inSpellbook' => false, 'prepared' => null,

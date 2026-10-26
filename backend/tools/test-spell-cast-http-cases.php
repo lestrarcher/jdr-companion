@@ -99,3 +99,18 @@ $httpReset($malformed); $refusal=$httpCall($httpCommand(),409);
 $check($refusal['message']==='malformed_spell_cast_receipts','Malformed receipt explicitly refused without revealing its content');
 $otherHttpAfter=$snapshot(); unset($otherHttpAfter['character_session_state'],$otherHttpAfter['game_session']);
 $check($otherHttpAfter===$otherHttpBefore,'HTTP spells never change acquisitions, preparation records or unrelated tables');
+
+// Explicit fixture-only grant configuration; exercise the same public serializer.
+$db->update('feature_spell_grant',['casting_rules'=>json_encode(['version'=>1,'methods'=>[['kind'=>'resource','cost'=>2,'castingLevel'=>2]]]),
+    'resource_definition_id'=>$resource->getId()],['id'=>1]);
+$featureHttpState=$httpInitial;
+$featureHttpState['resources'][]=['id'=>'directory-charge','currentValue'=>2];
+$httpReset($featureHttpState);
+$featureCommand=array_replace($httpCommand(),['sourceKey'=>'feature:1','method'=>'resource','castingLevel'=>2]);
+$featureResult=$httpCall($featureCommand);
+$check($featureResult['cast']['cost']===2 && $featureResult['cast']['poolSlug']==='directory-charge','Public resource cast uses configured pool and cost');
+$check(array_column($featureResult['state']['resources'],'currentValue','id')['directory-charge']===0,'Public resource state reflects committed consumption');
+$featureStored=$httpStored();
+$featureReplay=$httpCall($featureCommand);
+$check($featureReplay['replayed'] && $featureReplay['cast']===$featureResult['cast'] && $httpStored()===$featureStored,'Public resource replay preserves current state');
+$db->update('feature_spell_grant',['casting_rules'=>null,'resource_definition_id'=>null],['id'=>1]);

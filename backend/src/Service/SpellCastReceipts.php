@@ -26,7 +26,7 @@ final class SpellCastReceipts
         if (!self::keys($command, ['revision','requestId','sourceKey','method','castingLevel'])
             || !is_int($command['revision']) || $command['revision'] < 1
             || !is_string($command['sourceKey']) || $command['sourceKey'] === '' || strlen($command['sourceKey']) > 255
-            || !in_array($command['method'], ['standard-slot','pact-slot','cantrip','ritual'], true)
+            || !in_array($command['method'], ['standard-slot','pact-slot','cantrip','ritual','resource'], true)
             || !is_int($command['castingLevel']) || $command['castingLevel'] < 0 || $command['castingLevel'] > 9) {
             throw new \InvalidArgumentException('invalid_command');
         }
@@ -65,6 +65,16 @@ final class SpellCastReceipts
                     || !in_array($cast['source']['sourceType'], ['class','subclass','feature'], true)
                     || $cast['method'] !== $command['method'] || $cast['castingLevel'] !== $command['castingLevel']) throw new \InvalidArgumentException();
                 $method=$cast['method']; $level=$cast['castingLevel'];
+                // Historical facts only: never consult current catalogue configuration.
+                if ($method === 'resource') {
+                    if ($cast['source']['sourceType'] !== 'feature'
+                        || !is_int($cast['cost']) || $cast['cost'] < 1 || $cast['cost'] > 2147483647
+                        || !is_string($cast['poolSlug']) || $cast['poolSlug'] === ''
+                        || str_starts_with($cast['poolSlug'], 'spell-slot-') || $cast['poolSlug'] === 'warlock-pact-slots') {
+                        throw new \InvalidArgumentException();
+                    }
+                    continue;
+                }
                 $slot=in_array($method,['standard-slot','pact-slot'],true);
                 $slug=match ($method) {'standard-slot'=>'spell-slot-'.$level, 'pact-slot'=>'warlock-pact-slots', default=>null};
                 if ($cast['cost'] !== ($slot?1:0) || $cast['poolSlug'] !== $slug

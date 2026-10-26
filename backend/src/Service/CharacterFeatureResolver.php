@@ -33,15 +33,7 @@ final readonly class CharacterFeatureResolver
     ): array {
         $resolvedRules = [];
 
-        $owner = $character->getCampaign()->getOwner();
-        foreach ($this->ruleRepository->findVisibleForOwner($owner) as $rule) {
-            if (!ReferenceVisibility::allows($rule, $owner)) {
-                continue;
-            }
-            if (!$this->isRuleApplicable($character, $rule, $progressionValues)) {
-                continue;
-            }
-
+        foreach ($this->applicableRules($character, $progressionValues) as $rule) {
             $slug = $rule->getFeatureDefinition()->getSlug();
             $currentRule = $resolvedRules[$slug] ?? null;
 
@@ -76,6 +68,18 @@ final readonly class CharacterFeatureResolver
         );
 
         return $resolvedRules;
+    }
+
+    /** All applicable attributions, before the historical one-rule-per-feature reduction.
+     * @param array<string,int> $progressionValues
+     * @return list<CharacterFeatureRule>
+     */
+    public function applicableRules(Character $character, array $progressionValues = []): array
+    {
+        $owner = $character->getCampaign()->getOwner();
+        return array_values(array_filter($this->ruleRepository->findVisibleForOwner($owner),
+            fn(CharacterFeatureRule $rule): bool => ReferenceVisibility::allows($rule, $owner)
+                && $this->isRuleApplicable($character, $rule, $progressionValues)));
     }
 
     private function shouldReplaceRule(

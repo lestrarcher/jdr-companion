@@ -110,8 +110,18 @@ try {
             $em->persist($acquisition); $em->flush();
             $sources[$kind]='acquisition:'.$acquisition->getId(); $spellIds[$kind]=$spell['id'];
         }
+        $grantResource=new E\TrackableResourceDefinition('concurrent-grant-use','Grant use',V\ResourceRechargeType::LongRest);
+        $grantResource->setBaseMaximum(1);
+        $grantFeature=new E\CharacterFeatureDefinition('concurrent-grant','Grant');
+        $grantFeature->setResourceDefinition($grantResource);
+        foreach ([$grantResource,$grantFeature,E\CharacterFeatureRule::forClass($grantFeature,$class,1)] as $entity) $em->persist($entity);
+        $em->flush();
+        $db->insert('feature_spell_grant',['id'=>1,'feature_id'=>$grantFeature->getId(),'spell_id'=>$spellIds['spell'],
+            'mode'=>'fixed','unlock_level'=>1,'casting_ability'=>'INT','resource_definition_id'=>$grantResource->getId(),
+            'casting_rules'=>json_encode(['version'=>1,'methods'=>[['kind'=>'resource','cost'=>1,'castingLevel'=>1],['kind'=>'standard-slot']]])]);
+        $db->insert('character_feature_spell',['id'=>1,'character_id'=>$character->getId(),'grant_id'=>1,'spell_id'=>$spellIds['spell'],'active'=>true,'created_at'=>date('Y-m-d H:i:s')]);
         $initial=['hitPoints'=>['current'=>6,'temporary'=>0],'hitDice'=>[['id'=>'d6','current'=>1]],'progressions'=>[],
-            'resources'=>[['id'=>'spell-slot-1','currentValue'=>2,'flexibleCastingBonus'=>1]],
+            'resources'=>[['id'=>'spell-slot-1','currentValue'=>2,'flexibleCastingBonus'=>1],['id'=>'concurrent-grant-use','currentValue'=>1]],
             'preparedSpells'=>[$policy->getId()=>[$spellIds['spell']]],'spellPreparationAllowed'=>false];
         $session=new E\CharacterSessionState($game,$character,$initial); $em->persist($session); $em->flush();
         $sessionId=$session->getId();
@@ -181,23 +191,26 @@ try {
         $command=static fn(int $revision):array=>['revision'=>$revision,'requestId'=>$uuid,'sourceKey'=>$sources['spell'],'method'=>'standard-slot','castingLevel'=>1];
         $cast=static fn(array $body):array=>['action'=>'cast','body'=>$body];
         $patch=static fn(int $revision):array=>['action'=>'patch','body'=>['revision'=>$revision,'state'=>['hitPoints'=>['current'=>3]]]];
-        foreach (['same','different-id','conflict','cantrip','ritual'] as $scenario) {
+        foreach (['same','different-id','conflict','cantrip','ritual','resource-same','resource-different-id','resource-conflict'] as $scenario) {
             $reset(); $before=$read(); $cmd=$command($before['revision']);
+            $resourceScenario=str_starts_with($scenario,'resource-');
+            $case=$resourceScenario?substr($scenario,9):$scenario;
+            if ($resourceScenario) $cmd=array_replace($cmd,['sourceKey'=>'feature:1','method'=>'resource']);
             if ($scenario==='cantrip') $cmd=array_replace($cmd,['sourceKey'=>$sources['cantrip'],'method'=>'cantrip','castingLevel'=>0]);
             if ($scenario==='ritual') $cmd['method']='ritual';
             $other=$cmd;
-            if ($scenario==='different-id') $other['requestId']='a0000000-0000-4000-8000-000000000002';
-            if ($scenario==='conflict') $other['method']='ritual'; // Valid but different content.
+            if ($case==='different-id') $other['requestId']='a0000000-0000-4000-8000-000000000002';
+            if ($case==='conflict') $other['method']=$resourceScenario?'standard-slot':'ritual'; // Valid but different content.
             $results=$run($scenario,[$cast($cmd),$cast($other)]); $after=$read();
             $check($results[0]['status']===200 && $results[0]['body']['replayed']===false,$scenario.': first acceptance');
-            if (in_array($scenario,['different-id','conflict'],true)) {
-                $check($results[1]['status']===409 && $results[1]['message']===($scenario==='conflict'?'request_id_conflict':'stale_revision'),$scenario.': exact conflict');
+            if (in_array($case,['different-id','conflict'],true)) {
+                $check($results[1]['status']===409 && $results[1]['message']===($case==='conflict'?'request_id_conflict':'stale_revision'),$scenario.': exact conflict');
             } else {
                 $check($results[1]['status']===200 && $results[1]['body']['replayed']===true && $results[1]['body']['cast']===$results[0]['body']['cast'],$scenario.': historical replay');
                 $check($results[1]['body']['revision']===$after['revision'],$scenario.': replay revision current');
             }
             $expected=$before['state']['resources'];
-            if (!in_array($scenario,['cantrip','ritual'],true)) --$expected[0]['currentValue'];
+            if (!in_array($scenario,['cantrip','ritual'],true)) --$expected[$resourceScenario?1:0]['currentValue'];
             $check($after['state']['resources']===$expected,$scenario.': exact counters and metadata');
             $check($after['revision']===$before['revision']+1,$scenario.': exactly one revision');
             $receipts=S\SpellCastReceipts::validateState($after['state']);

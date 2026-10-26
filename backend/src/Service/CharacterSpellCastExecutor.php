@@ -65,9 +65,15 @@ final readonly class CharacterSpellCastExecutor
                     throw new UnprocessableEntityHttpException($validation['reason'] ?? 'cast_not_allowed');
                 }
                 $method = $validation['method'];
-                if (in_array($method, ['standard-slot', 'pact-slot'], true)) {
-                    $slug = $method === 'standard-slot' ? 'spell-slot-'.$validation['castingLevel'] : 'warlock-pact-slots';
-                    if ($validation['poolSlug'] !== $slug || $validation['cost'] !== 1) {
+                if (in_array($method, ['standard-slot', 'pact-slot', 'resource'], true)) {
+                    $slug = $validation['poolSlug'];
+                    $cost = $validation['cost'];
+                    $expectedSlug = $method === 'standard-slot' ? 'spell-slot-'.$validation['castingLevel'] : 'warlock-pact-slots';
+                    if ($method === 'resource'
+                        ? (($validation['source']['sourceType'] ?? null) !== 'feature'
+                            || !is_string($slug) || $slug === '' || str_starts_with($slug, 'spell-slot-') || $slug === 'warlock-pact-slots'
+                            || !is_int($cost) || $cost < 1 || $cost > 2147483647)
+                        : ($slug !== $expectedSlug || $cost !== 1)) {
                         throw new UnprocessableEntityHttpException('invalid_cast_cost');
                     }
                     $indices = [];
@@ -77,8 +83,8 @@ final readonly class CharacterSpellCastExecutor
                     if (count($indices) !== 1) throw new UnprocessableEntityHttpException('invalid_counter');
                     $index = $indices[0];
                     $remaining = $state['resources'][$index]['currentValue'] ?? null;
-                    if (!is_int($remaining) || $remaining < 1) throw new UnprocessableEntityHttpException('invalid_counter');
-                    $state['resources'][$index]['currentValue'] = $remaining - 1;
+                    if (!is_int($remaining) || $remaining < $cost) throw new UnprocessableEntityHttpException('invalid_counter');
+                    $state['resources'][$index]['currentValue'] = $remaining - $cost;
                 } elseif (!in_array($method, ['cantrip', 'ritual'], true)
                     || $validation['poolSlug'] !== null || $validation['cost'] !== 0) {
                     throw new UnprocessableEntityHttpException('invalid_cast_cost');

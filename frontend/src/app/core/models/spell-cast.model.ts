@@ -1,7 +1,7 @@
 import type { HttpErrorResponse } from '@angular/common/http';
 import type { CharacterSessionStateApiResponse, PlayerSpell } from '../services/character-session-state-api.service';
 
-export type SpellCastMethod = 'standard-slot' | 'pact-slot' | 'cantrip' | 'ritual';
+export type SpellCastMethod = 'standard-slot' | 'pact-slot' | 'cantrip' | 'ritual' | 'resource';
 export interface SpellCastingAvailability {
   sourceKey: string | null;
   policyId: number | null;
@@ -47,7 +47,7 @@ export interface SpellCastResult {
   method: SpellCastMethod;
   castingLevel: number;
   poolSlug: string | null;
-  cost: 0 | 1;
+  cost: number;
 }
 
 export interface SpellCastResponse extends CharacterSessionStateApiResponse {

@@ -131,10 +131,12 @@ final readonly class CharacterFeatureSpellService
         foreach ($grants as $g) if ($g['mode']==='choice' && !isset($byGrant[$g['id']])) {
             $pending[]=['grantId'=>(int)$g['id'],'featureName'=>$g['feature_name'],'spellLevel'=>(int)$g['spell_level'],'classId'=>$g['class_id']===null?null:(int)$g['class_id'],'schools'=>$g['schools']===null?[]:json_decode($g['schools'],true),'castingAbility'=>$g['casting_ability']];
         }
-        return ['known'=>array_map(function ($r) use ($character) {
-            $ability = self::castingAbility($r['casting_ability']);
+        $castingResolver = new CharacterFeatureSpellCastingResolver($this->db, $this->features);
+        return ['known'=>array_map(function ($r) use ($character, $progressionValues, $castingResolver) {
+            $casting = $castingResolver->resolve($character, (int)$r['grant_id'], $progressionValues);
+            $ability = self::castingAbility($casting['castingAbility']);
             $stats = $ability === null ? ['spellSaveDc'=>null,'spellAttackBonus'=>null] : $this->abilityCalculator->spellStatistics($character, $ability);
-            return ['grantId'=>(int)$r['grant_id'],'spellId'=>(int)$r['spell_id'],'spellName'=>$r['spell_name'],'featureName'=>$r['feature_name'],'castingAbility'=>$r['casting_ability'],...$stats];
+            return ['grantId'=>(int)$r['grant_id'],'spellId'=>(int)$r['spell_id'],'spellName'=>$r['spell_name'],'featureName'=>$r['feature_name'],'castingAbility'=>$r['casting_ability'],'castingRulesResolution'=>$casting,...$stats];
         },$rows),'pending'=>$pending];
     }
 

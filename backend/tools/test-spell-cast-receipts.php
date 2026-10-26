@@ -36,4 +36,15 @@ foreach (['cantrip','ritual','pact-slot'] as $method) {
     $check(R::compare([R::STATE_KEY=>[$id=>R::create($cmd,$result)]],$cmd)==='identical','Valid method receipt: '.$method);
 }
 $check($state===$original,'No mutations');
+$resourceCommand=array_replace($command,['sourceKey'=>'feature:9','method'=>'resource','castingLevel'=>0]);
+$resourceCast=['source'=>['key'=>'feature:9','spellId'=>12,'policyId'=>null,'sourceType'=>'feature'],
+    'method'=>'resource','castingLevel'=>0,'poolSlug'=>'feature-use','cost'=>2];
+$resourceReceipt=R::create($resourceCommand,$resourceCast);
+$mixed=$state; $mixed[R::STATE_KEY]['7a00a010-0000-4000-8000-000000000002']=$resourceReceipt;
+$check(count(R::validateState($mixed))===2,'Historical and resource receipts coexist in format version 1');
+$check(R::compare($mixed,array_replace($resourceCommand,['requestId'=>'7a00a010-0000-4000-8000-000000000002']))==='identical','Resource receipt supports level zero and a configured cost greater than one');
+foreach (['cost'=>0,'poolSlug'=>'spell-slot-1'] as $field=>$value) $reject(fn()=>R::create($resourceCommand,array_replace($resourceCast,[$field=>$value])));
+foreach (['2',-1,1.5,2147483648] as $cost) $reject(fn()=>R::create($resourceCommand,array_replace($resourceCast,['cost'=>$cost])));
+foreach ([null,'','warlock-pact-slots'] as $slug) $reject(fn()=>R::create($resourceCommand,array_replace($resourceCast,['poolSlug'=>$slug])));
+$badSource=$resourceCast; $badSource['source']['sourceType']='class'; $reject(fn()=>R::create($resourceCommand,$badSource));
 echo "PASS: $checks receipt assertions; no database.\n";
