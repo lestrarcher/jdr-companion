@@ -25,6 +25,25 @@ function setup(sources = [spell()]) {
 }
 afterEach(() => TestBed.resetTestingModule());
 describe('Shared casting dialog', () => {
+  it.each([
+    { key: 'feature:13', spellId: 219, name: 'Foulée brumeuse', level: 2, pool: 'fey-touched-grant-13' },
+    { key: 'feature:14', spellId: 430, name: 'Soins', level: 1, pool: 'fey-touched-grant-14' },
+  ])('offers both Fey Touched modes for $name without sharing the free counter', ({ key, spellId, name, level, pool }) => {
+    const methods: SpellCastingAvailability['methods'] = [
+      { kind: 'resource', castingLevel: level, poolSlug: pool, cost: 1, status: 'available', reason: null },
+      method('standard-slot', level),
+    ];
+    const entry = { ...spell(key, methods), spellId, name, level, source: 'Faveur des Fées', sourceType: 'feature' as const, castingAbility: 'wisdom' };
+    const { fixture, c } = setup([entry]);
+    fixture.componentRef.setInput('resources', [{ id: pool, currentValue: 1 }, { id: `spell-slot-${level}`, currentValue: 2 }]); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-method=resource]').disabled).toBe(false);
+    expect(fixture.nativeElement.querySelector('.level-option').disabled).toBe(false);
+    expect(c.selected()).toBeUndefined();
+    expect(c.otherOptions()[0].method.poolSlug).toBe(pool);
+    expect(c.remaining(c.otherOptions()[0])).toBe(1);
+    expect(c.remaining(c.standardOptions()[0])).toBe(2);
+    expect(fixture.nativeElement.querySelector('.cast-confirm').disabled).toBe(true);
+  });
   it('requires an explicit resource or slot choice and emits only on confirmation', () => {
     const resource: SpellCastingAvailability['methods'][number] = { kind: 'resource', castingLevel: 2, poolSlug: 'feat-use', cost: 2, status: 'available', reason: null };
     const entry = { ...spell('feature:1', [resource, method('standard-slot', 2)]), sourceType: 'feature' as const };

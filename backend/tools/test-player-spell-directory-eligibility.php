@@ -297,6 +297,10 @@ $check(
             require __DIR__.'/test-spell-cast-execution-cases.php';
         }
     }
+    if (in_array('--fey-touched-repair', $argv, true)) {
+        $db->commit(); // Only the verified temporary fixture tables.
+        require __DIR__.'/test-fey-touched-repair-cases.php';
+    }
     if (in_array('--feature-cast-execution', $argv, true)) {
         $db->commit(); // Only the temporary tables/sequences verified above.
         require __DIR__.'/test-feature-spell-execution-cases.php';
