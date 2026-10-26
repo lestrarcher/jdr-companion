@@ -127,6 +127,7 @@ export interface CharacterResourceSummary {
   name: string;
   maximum: number;
   rechargeType: string;
+  slotLevel?: number | null;
 }
 
 export interface CharacterApiResponse {

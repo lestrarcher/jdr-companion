@@ -184,8 +184,14 @@ describe('Portal adoption of cast responses',()=>{
       {provide:RestRequestApiService,useValue:{getLatest:()=>of(null)}}]});
     const entries=[spell()]; const fixture=TestBed.createComponent(PlayerPortal); const p=fixture.componentInstance as any;
     const http=TestBed.inject(HttpTestingController); const state=TestBed.inject(CharacterStateService);
-    http.expectOne('/api/public/characters/test').flush(session(entries)); fixture.detectChanges();
+    const initial=session(entries);
+    initial.character.resources.push({slug:'second-wind',name:'Second souffle',maximum:1,rechargeType:'short-rest'});
+    initial.state.resources.push({id:'second-wind',currentValue:1});
+    http.expectOne('/api/public/characters/test').flush(initial); fixture.detectChanges();
     expect(fixture.debugElement.query(By.directive(PlayerSpells))).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-spell-slot-bar').textContent).toContain('2/2');
+    expect(p.trackerResources().some((r: any)=>r.id==='spell-slot-1')).toBe(false);
+    expect(p.trackerResources().map((r: any)=>r.id)).toEqual(['second-wind']);
     const quick=fixture.nativeElement.querySelector('.spell-resource-column .quick-spell') as HTMLButtonElement;
     expect(quick.disabled).toBe(false); quick.click(); fixture.detectChanges();
     expect(p.activeTab()).toBe('status');
@@ -211,6 +217,8 @@ describe('Portal adoption of cast responses',()=>{
     const result={...castResponse([spell('acquisition:1',[method('standard-slot',1,'unavailable')])],'standard-slot',1,47),replayed:true};
     retry.flush(result); await fixture.whenStable();
     expect(p.serverRevision).toBe(47);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-spell-slot-bar').textContent).toContain('1/2');
     expect(state.character()!.resources.find(r=>r.id==='spell-slot-1')!.currentValue).toBe(1);
     expect(p.lastQueuedRevision).toBe(state.revision()); expect(c.castMethods()).toEqual([]);
     p.selectTab('status'); fixture.detectChanges();

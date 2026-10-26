@@ -31,6 +31,7 @@ import { FlexibleCastingActionModal, FlexibleCastingPayload } from './components
 import { CharacterStatistics } from './components/character-statistics/character-statistics';
 import { PlayerSpells } from './components/player-spells/player-spells';
 import { SpellQuickList } from './components/spell-quick-list/spell-quick-list';
+import { SpellSlotBar, spellSlotGroups } from './components/spell-slot-bar/spell-slot-bar';
 import { CharacterFeatures } from './components/character-features/character-features';
 import { ArcaneRecoveryActionModal, ArcaneRecoveryPayload } from './components/arcane-recovery-action-modal/arcane-recovery-action-modal';
 
@@ -73,6 +74,7 @@ type PlayerPortalTab =
     CharacterStatistics,
     PlayerSpells,
     SpellQuickList,
+    SpellSlotBar,
     ArcaneRecoveryActionModal,
   ],
   templateUrl: './player-portal.html',
@@ -166,6 +168,11 @@ export class PlayerPortal {
       .sort((first, second) => first.displayOrder - second.displayOrder);
   });
   protected readonly storedValueResources = computed(() => this.sortedResources().filter(resource => resource.storedValuesConfig !== undefined));
+  protected readonly spellSlotGroups = computed(() => spellSlotGroups(this.sortedResources()));
+  protected readonly trackerResources = computed(() => {
+    const represented = new Set(this.spellSlotGroups().map(group => group.id));
+    return this.sortedResources().filter(resource => !represented.has(resource.id));
+  });
   protected readonly aidSpellSlots = computed<AidSpellSlot[]>(() =>
     this.characterState()
       ?.resources

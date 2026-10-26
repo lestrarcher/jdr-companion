@@ -151,10 +151,11 @@
                 <div class="tracker-layout">
                   <app-character-vitals [readonly]="!canEdit()" [character]="currentCharacter" />
                   <div class="spell-resource-column">
+                    <app-spell-slot-bar [groups]="spellSlotGroups()" />
                     <app-spell-quick-list [spells]="playerSpells()" mode="play"
                       [disabled]="!canEdit() || saveStatus() === 'saving' || saveStatus() === 'error' || !!pendingRestRequest() || preparationPending()"
                       (selected)="openQuickSpell($event)" />
-                    <app-character-resources [readonly]="!canEdit()" [resources]="sortedResources()" [hasSupplement]="hasTinkering()" [tinkeringNotes]="tinkeringEditor">
+                    <app-character-resources [readonly]="!canEdit()" [resources]="trackerResources()" [hasSupplement]="hasTinkering()" [tinkeringNotes]="tinkeringEditor">
                       @if (hasTinkering() && !tinkeringResources().length) {
                         <app-magical-tinkering-notes [notes]="tinkeringNotes()" [token]="accessToken" [revision]="serverRevision"
                           [editable]="sessionStatus() === 'live'" [busy]="saveStatus() === 'saving'" (refreshed)="refreshTinkering()" />

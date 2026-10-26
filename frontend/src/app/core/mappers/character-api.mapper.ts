@@ -78,6 +78,7 @@ export interface CharacterProfilePayload {
     name: string;
     maximum: number;
     rechargeType: string;
+    slotLevel?: number | null;
   }>;
 
   definition?: {
@@ -254,6 +255,14 @@ export function characterProfileToCharacter(
         storedResource?.currentValue ??
         resource.maximum,
       maximumValue: resource.maximum,
+      ...(/^(spell-slot-[1-9]|warlock-pact-slots)$/.test(resource.slug) ? {
+        slotPool: {
+          level: resource.slug === 'warlock-pact-slots' ? resource.slotLevel ?? null : Number(resource.slug.slice(-1)),
+          counterKnown: state.resources.filter(row => row.id === resource.slug).length === 1
+            && Number.isInteger(storedResource?.currentValue)
+            && storedResource!.currentValue >= 0 && storedResource!.currentValue <= resource.maximum,
+        },
+      } : {}),
       level: legacyResource?.level,
       displayOrder:
         legacyResource?.displayOrder ?? index,

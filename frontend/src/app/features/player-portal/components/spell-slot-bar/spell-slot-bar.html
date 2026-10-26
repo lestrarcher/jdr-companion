@@ -1,0 +1,18 @@
+@if (groups().length) {
+  <section aria-label="Emplacements de sorts">
+    <div class="slot-groups">
+      @for (group of groups(); track group.id) {
+        <div class="slot-group" [class.pact]="group.pact" role="group" [attr.aria-label]="label(group)">
+          <div class="heading"><strong>{{ roman(group.level) }}</strong><small>{{ group.current ?? '?' }}/{{ group.maximum ?? '?' }}</small></div>
+          <div class="cells">
+            @for (cell of group.cells; track cell) {
+              <span class="cell" [class.full]="group.current !== null && cell < group.current" role="img"
+                [attr.aria-label]="'Emplacement ' + (cell + 1) + ' : ' + (group.current === null ? 'état inconnu' : cell < group.current ? 'disponible' : 'consommé')">{{ group.current === null ? '?' : cell < group.current ? '◆' : '·' }}</span>
+            }
+          </div>
+          @if (group.pact) { <small class="pact-caption">Pacte · repos court</small> }
+        </div>
+      }
+    </div>
+  </section>
+}
