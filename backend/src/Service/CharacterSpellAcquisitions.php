@@ -273,6 +273,131 @@ final readonly class CharacterSpellAcquisitions
     }
 
     /**
+     * Read-only inventory of outstanding acquisition opportunities at persisted
+     * class levels. This does not reconstruct unknown historical decisions and
+     * never authorizes a write. Each level is evaluated using the pinned policy.
+     */
+    public function historicalPreview(Character $character, int $policyId, User $actor): array
+    {
+        return (new CharacterSpellHistoricalChoices($this->em, $this))->preview($character, $policyId, $actor);
+    }
+
+    /** Internal inventory; the historical evaluator applies cross-level reservations. */
+    public function historicalInventory(Character $character, int $policyId, User $actor): array
+    {
+        $this->authorize($character, $actor);
+        [$definition, $levels] = $this->context($character, $policyId);
+        $rows = $this->rows($character, $policyId);
+        $advancedRules = $definition->getFormatVersion() === 2 ? (new AdvancedSpellChoices($this->em, $this->access))->rules($definition) : [];
+        $choiceRules = $this->em->getConnection()->fetchAllKeyValue('SELECT c.acquisition_id, c.rule_id FROM character_spell_choice c JOIN character_spell_acquisition a ON a.id=c.acquisition_id WHERE a.character_id=? AND a.policy_definition_id=?', [$character->getId(), $policyId]);
+        $issues = [];
+        $entries = [];
+        foreach ($levels as $index => $level) {
+            $options = $this->options($character, $policyId, $actor, $level->getId());
+            $rules = [];
+            if ($definition->getFormatVersion() === 2) {
+                foreach ($options['choices'] as $choice) {
+                    $spent = count(array_filter($rows, static fn ($r) => (int)$r['class_level_id'] === $level->getId() && $r['replaces_id'] === null && $r['provenance'] !== 'spellbook-copy' && (int)($choiceRules[$r['id']] ?? 0) === $choice['ruleId']));
+                    if ($spent > $advancedRules[$choice['ruleId']]->parameters()->at('opportunities', $index + 1)) $issues[] = 'Budget historique dépassé au niveau '.($index + 1).'.';
+                    $rules[] = [
+                        'ruleId' => $choice['ruleId'],
+                        'key' => $choice['key'],
+                        'quota' => $choice['quota'],
+                        'result' => $choice['result'],
+                        'remaining' => $choice['remaining'],
+                        'available' => $choice['available'],
+                        'replacementAvailable' => $choice['replacementAvailable'],
+                        'opportunities' => $advancedRules[$choice['ruleId']]->parameters()->at('opportunities', $index + 1),
+                        'replacementBudget' => $advancedRules[$choice['ruleId']]->parameters()->values['replacementBudget'],
+                        'replacements' => $advancedRules[$choice['ruleId']]->parameters()->values['optionalReplacement'] ? 0 : $advancedRules[$choice['ruleId']]->parameters()->at('replacements', $index + 1),
+                        'replacementMinimumSpellLevel' => $advancedRules[$choice['ruleId']]->parameters()->values['replacementMinimumSpellLevel'],
+                    ];
+                }
+            }
+            if ($definition->getFormatVersion() === 1) {
+                foreach (['cantrips', 'known', 'spellbook'] as $bucket) {
+                    $spent = count(array_filter($rows, static fn ($r) => (int)$r['class_level_id'] === $level->getId() && $r['quota_bucket'] === $bucket && $r['replaces_id'] === null && $r['provenance'] !== 'spellbook-copy'));
+                    if ($spent > $definition->policy()->additionsAtLevel($index + 1, $bucket)) $issues[] = 'Budget historique dépassé au niveau '.($index + 1).'.';
+                    $rules[] = ['ruleId'=>null, 'key'=>$bucket, 'quota'=>$bucket, 'result'=>$bucket,
+                        'remaining'=>max(0, $definition->policy()->additionsAtLevel($index + 1, $bucket) - $spent),
+                        'available'=>array_values(array_filter($options['available'], static fn ($s) => ($s['level'] === 0) === ($bucket === 'cantrips'))),
+                        'replacementAvailable'=>$bucket === 'known' ? array_values(array_filter($options['available'], static fn ($s) => $s['level'] > 0)) : [],
+                        'opportunities'=>$definition->policy()->additionsAtLevel($index + 1, $bucket),
+                        'replacementBudget'=>$bucket, 'replacements'=>$bucket === 'known' ? $options['limits']['replacements'] : 0,
+                        'replacementMinimumSpellLevel'=>1];
+                }
+            }
+            $entries[] = [
+                'classLevelId' => $level->getId(),
+                'classLevel' => $index + 1,
+                'status' => $options['status'],
+                'remaining' => $options['remaining'],
+                'rules' => $rules,
+                'blocked' => $options['blocked'],
+                'automatic' => $options['automatic'],
+                'acquisitions' => $options['acquisitions'],
+            ];
+        }
+        return [
+            'characterId' => $character->getId(),
+            'policyId' => $policyId,
+            'className' => $definition->getCharacterClass()->getName(),
+            'limitations' => $definition->policy()->limitations,
+            'issues' => array_values(array_unique($issues)),
+            'formatVersion' => $definition->getFormatVersion(),
+            'readOnly' => true,
+            'historicalChoicesReconstructed' => false,
+            'warning' => 'Projection des opportunités non dépensées par niveau. Les acquisitions existantes et la chronologie peuvent empêcher une reprise automatique.',
+            'levels' => $entries,
+        ];
+    }
+
+    /** Current-list additions only; never calls revise(), retires or replaces an acquisition. */
+    public function completeHistorical(Character $character, int $policyId, array $input, User $actor): array
+    {
+        $this->authorize($character, $actor);
+        if (array_diff(array_keys($input), ['choices','expectedAcquisitionIds','confirmed']) || ($input['confirmed'] ?? false) !== true
+            || !is_array($input['choices'] ?? null) || !array_is_list($input['choices']) || !$input['choices'] || count($input['choices']) > 100
+            || !is_array($input['expectedAcquisitionIds'] ?? null) || !array_is_list($input['expectedAcquisitionIds'])) throw new BadRequestHttpException('Réconciliation explicitement confirmée requise.');
+        $seen = [];
+        foreach ($input['choices'] as $choice) {
+            if (!is_array($choice) || array_diff(array_keys($choice), ['spellId','ruleId']) || !is_int($choice['spellId'] ?? null) || $choice['spellId'] < 1
+                || !array_key_exists('ruleId', $choice) || ($choice['ruleId'] !== null && (!is_int($choice['ruleId']) || $choice['ruleId'] < 1))
+                || isset($seen[$choice['spellId']])) throw new BadRequestHttpException('Sélection invalide ou dupliquée.');
+            $seen[$choice['spellId']] = true;
+        }
+        foreach ($input['expectedAcquisitionIds'] as $id) if (!is_int($id) || $id < 1) throw new BadRequestHttpException('Acquisitions attendues invalides.');
+        usort($input['choices'], static fn ($a,$b) => $a['spellId'] <=> $b['spellId']);
+        $command = hash('sha256', json_encode(array_map(static fn ($c) => [$c['spellId'],$c['ruleId']], $input['choices']), JSON_THROW_ON_ERROR));
+        return $this->em->getConnection()->transactional(function () use ($character, $policyId, $input, $actor, $command): array {
+            $this->em->lock($character, LockMode::PESSIMISTIC_WRITE);
+            $this->em->refresh($character);
+            $this->authorize($character, $actor);
+            $this->em->getConnection()->executeStatement('LOCK TABLE spellcasting_policy_definition, character_class, character_subclass, character_class_level, spell_definition, spell_class_list_entry, spell_subclass_grant, spell_policy_choice_rule IN SHARE MODE');
+            $service = new CharacterSpellHistoricalChoices($this->em, $this);
+            $preview = $service->preview($character, $policyId, $actor);
+            $rows = $service->rows($character, $policyId); $replayed = [];
+            foreach ($input['choices'] as $choice) foreach ($rows as $row) {
+                if ((int)$row['spell_id'] === $choice['spellId'] && ($row['rule_id'] === null ? null : (int)$row['rule_id']) === $choice['ruleId']
+                    && (CharacterSpellHistoricalChoices::trace($row)['command'] ?? null) === $command
+                    && in_array((int)$row['id'], $preview['expectedAcquisitionIds'], true)) $replayed[] = (int)$row['id'];
+            }
+            if (count($replayed) === count($input['choices'])) return ['acquisitionIds'=>$replayed, 'createdAcquisitionIds'=>[]];
+            $expected = $input['expectedAcquisitionIds']; $actual = $preview['expectedAcquisitionIds']; sort($expected); sort($actual);
+            if ($expected !== $actual) throw new ConflictHttpException('Les acquisitions ont changé. Rechargez la sélection.');
+            $witness = $service->validate($character, $policyId, $input['choices'], $actor);
+            $ids = [];
+            foreach ($input['choices'] as $choice) {
+                $internal = $choice + ['classLevelId'=>$preview['classLevelId']];
+                if ($internal['ruleId'] === null) unset($internal['ruleId']);
+                $note = CharacterSpellHistoricalChoices::NOTE.json_encode(['command'=>$command,'witness'=>$witness[$choice['spellId']], 'meaning'=>'Témoin de faisabilité, pas un historique réel.'], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+                $ids = [...$ids, ...$this->record($character, $policyId, [$internal], 'manual-reconciliation', $note, $actor, historicalCompletion: true)];
+            }
+            return ['acquisitionIds'=>$ids, 'createdAcquisitionIds'=>$ids];
+        });
+    }
+
+    /**
      * Batch decisions are atomic. Each choice: spellId, classLevelId, optional replacesId.
      * Reconciliation is GM-only and explicitly does not validate historical budgets.
      * No automatic grant can create a persistent choice through this command.
@@ -428,13 +553,13 @@ final readonly class CharacterSpellAcquisitions
         return ['policyId'=>$policyId,'acquisitions'=>$active,'targets'=>array_map(static fn ($p)=>['id'=>$p->getId(),'label'=>$p->getSource()->getName().' — '.$p->policy()->key.' v'.$p->policy()->version],$targets),'history'=>$this->revisions($character,$actor)];
     }
 
-    private function record(Character $character, int $policyId, array $choices, string $provenance, string $note, User $actor, ?array $copyDetails = null, ?int $revisionId = null, bool $overrideRules = false): array
+    private function record(Character $character, int $policyId, array $choices, string $provenance, string $note, User $actor, ?array $copyDetails = null, ?int $revisionId = null, bool $overrideRules = false, bool $historicalCompletion = false): array
     {
         $this->authorize($character, $actor);
         if (trim($note) === '' || mb_strlen($note) > 10000
             || !array_is_list($choices) || !$choices || count($choices) > 100) throw new BadRequestHttpException('Décision invalide.');
         $db = $this->em->getConnection();
-        return $db->transactional(function () use ($db, $character, $policyId, $choices, $provenance, $note, $actor, $copyDetails, $revisionId, $overrideRules) {
+        return $db->transactional(function () use ($db, $character, $policyId, $choices, $provenance, $note, $actor, $copyDetails, $revisionId, $overrideRules, $historicalCompletion) {
             $this->em->lock($character, LockMode::PESSIMISTIC_WRITE);
             $this->em->refresh($character);
             $this->authorize($character, $actor);
@@ -442,11 +567,11 @@ final readonly class CharacterSpellAcquisitions
             $db->executeStatement('LOCK TABLE spellcasting_policy_definition, character_class, character_subclass, character_class_level, spell_definition, spell_class_list_entry, spell_subclass_grant IN SHARE MODE');
             [$definition, $levels] = $this->context($character, $policyId);
             if ($definition->getFormatVersion()===2) {
-                return (new AdvancedSpellChoices($this->em,$this->access))->recordLocked($character,$definition,$levels,$choices,$provenance,$note,$actor,$revisionId,$overrideRules,$copyDetails);
+                return (new AdvancedSpellChoices($this->em,$this->access))->recordLocked($character,$definition,$levels,$choices,$provenance,$note,$actor,$revisionId,$overrideRules,$copyDetails,$historicalCompletion);
             }
             $policy = $definition->policy();
             $rows = $this->rows($character, $policyId);
-            if ($provenance === 'manual-reconciliation') foreach ($rows as $row) if ($row['provenance'] !== $provenance) throw new ConflictHttpException('Une reconstruction historique a déjà commencé.');
+            if ($provenance === 'manual-reconciliation' && !$historicalCompletion) foreach ($rows as $row) if ($row['provenance'] !== $provenance) throw new ConflictHttpException('Une reconstruction historique a déjà commencé.');
             $ids = [];
             foreach ($choices as $choice) {
                 if (!is_array($choice) || array_diff(array_keys($choice), ['spellId', 'classLevelId', 'replacesId'])
@@ -478,7 +603,7 @@ final readonly class CharacterSpellAcquisitions
                 } elseif (!$overrideRules && $options['remaining'][$bucket] === 0 && !(in_array($provenance, ['manual-reconciliation', 'spellbook-copy'], true) && $bucket === 'spellbook')) throw new ConflictHttpException('Quota atteint.');
                 if ($provenance === 'level-history') {
                     $indices = array_flip(array_map(static fn ($l) => $l->getId(), $levels));
-                    foreach ($rows as $row) if ($row['provenance'] !== 'spellbook-copy' && $indices[$row['class_level_id']] >= $options['classLevel']) throw new ConflictHttpException('Reconstruction attendue dans l’ordre des niveaux.');
+                    foreach ($rows as $row) if (!$historicalCompletion && $row['provenance'] !== 'spellbook-copy' && $indices[$row['class_level_id']] >= $options['classLevel']) throw new ConflictHttpException('Reconstruction attendue dans l’ordre des niveaux.');
                     if ($replaces === null) {
                         $spent = count(array_filter($rows, static fn ($r) => $r['provenance'] !== 'spellbook-copy' && (int) $r['class_level_id'] === $choice['classLevelId'] && $r['quota_bucket'] === $bucket && $r['replaces_id'] === null));
                         if ($spent >= $policy->additionsAtLevel($options['classLevel'], $bucket)) throw new ConflictHttpException('Budget de ce niveau épuisé.');

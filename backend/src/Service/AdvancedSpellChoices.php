@@ -141,7 +141,7 @@ final readonly class AdvancedSpellChoices
     }
 
     /** Existing caller owns authorization, character lock, reference locks and transaction. */
-    public function recordLocked(Character $character,SpellcastingPolicyDefinition $policy,array $levels,array $choices,string $provenance,string $note,User $actor,?int $revisionId=null,bool $override=false,?array $copyDetails=null): array
+    public function recordLocked(Character $character,SpellcastingPolicyDefinition $policy,array $levels,array $choices,string $provenance,string $note,User $actor,?int $revisionId=null,bool $override=false,?array $copyDetails=null,bool $historicalCompletion=false): array
     {
         $db=$this->em->getConnection(); $rules=$this->rules($policy); $ids=[];
         $db->executeStatement('LOCK TABLE spell_policy_choice_rule IN SHARE MODE');
@@ -164,12 +164,13 @@ final readonly class AdvancedSpellChoices
             if ($provenance==='manual-reconciliation' && $index!==count($levels)-1) throw new BadRequestHttpException('Reprise au niveau actuel uniquement.');
             foreach ($rows as $row) {
                 $oldIndex=array_search((int)$row['class_level_id'],array_map(static fn($l)=>$l->getId(),$levels),true);
-                if ($row['provenance']!=='spellbook-copy' && $provenance==='level-history' && ($oldIndex>$index || ($row['provenance']==='manual-reconciliation' && $oldIndex>=$index))) throw new ConflictHttpException('Chronologie historique incompatible.');
-                if ($provenance==='manual-reconciliation' && $revisionId===null && $row['provenance']!=='manual-reconciliation') throw new ConflictHttpException('Reconstruction déjà commencée.');
+                if ($row['provenance']!=='spellbook-copy' && $provenance==='level-history' && ((!$historicalCompletion && $oldIndex>$index) || ($row['provenance']==='manual-reconciliation' && $oldIndex>=$index))) throw new ConflictHttpException('Chronologie historique incompatible.');
+                if ($provenance==='manual-reconciliation' && !$historicalCompletion && $revisionId===null && $row['provenance']!=='manual-reconciliation') throw new ConflictHttpException('Reconstruction déjà commencée.');
             }
             $spell=(new SpellCatalogue($db))->get($choice['spellId'],$actor);
             $route=array_column($options['choices'],null,'ruleId')[$rule->getId()];
-            if (!$override && !in_array($spell['id'],array_column($route[$replaces!==null?'replacementAvailable':'available'],'id'),true)) throw new BadRequestHttpException('Sort hors des critères de choix.');
+            $eligible = $historicalCompletion && $provenance === 'manual-reconciliation' ? [...$route['available'], ...$route['replacementAvailable']] : $route[$replaces!==null?'replacementAvailable':'available'];
+            if (!$override && !in_array($spell['id'],array_column($eligible,'id'),true)) throw new BadRequestHttpException('Sort hors des critères de choix.');
             foreach ($active as $row) if ((int)$row['spell_id']===$choice['spellId']) throw new ConflictHttpException('Sort déjà acquis.');
             foreach ($options['automatic'] as $grant) if ($grant['spellId']===$choice['spellId'] && $grant['bucket']!==null) throw new ConflictHttpException('Sort automatiquement attribué.');
             $bucket=$p->values['quota'];

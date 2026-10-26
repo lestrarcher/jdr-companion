@@ -41,6 +41,21 @@ final class CharacterSpellAcquisitionController extends AbstractController
         return $this->json($result, $result['createdAcquisitionIds'] === [] ? 200 : 201);
     }
 
+    #[Route('/{policyId}/historical-preview', name: 'api_character_spell_historical_preview', requirements: ['policyId' => '\d+'], methods: ['GET'])]
+    public function historicalPreview(Character $character, int $policyId, CharacterSpellAcquisitions $service): JsonResponse
+    {
+        return $this->json($service->historicalPreview($character, $policyId, $this->actor($character)));
+    }
+
+    #[Route('/{policyId}/historical-completion', name: 'api_character_spell_historical_completion', requirements: ['policyId' => '\d+'], methods: ['POST'])]
+    public function completeHistorical(Character $character, int $policyId, Request $request, CharacterSpellAcquisitions $service): JsonResponse
+    {
+        $actor = $this->actor($character);
+        if ($request->getContentTypeFormat() !== 'json' || !str_starts_with(ltrim($request->getContent()), '{')) throw new BadRequestHttpException('Objet JSON requis.');
+        $result = $service->completeHistorical($character, $policyId, $request->toArray(), $actor);
+        return $this->json($result, $result['createdAcquisitionIds'] === [] ? 200 : 201);
+    }
+
     #[Route('/{policyId}', name: 'api_character_spell_acquisition_options', requirements: ['policyId' => '\d+'], methods: ['GET'])]
     public function options(Character $character, int $policyId, CharacterSpellAcquisitions $service): JsonResponse
     {

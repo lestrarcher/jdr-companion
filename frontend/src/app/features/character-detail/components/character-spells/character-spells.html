@@ -129,5 +129,5 @@
       </div>
     }
   }
-  <nav class="spell-actions" aria-label="Gestion des sorts"><h3>Gestion des sorts</h3><div class="spell-action-links"><a [routerLink]="['/campaigns', campaignId(), 'characters', character().id, 'spellbook']">Copies de grimoire ↗</a><a [routerLink]="['/campaigns', campaignId(), 'characters', character().id, 'spell-revision']">Réviser les acquisitions ↗</a><a [routerLink]="['/campaigns', campaignId(), 'characters', character().id, 'spell-substitutions']">Substitutions ↗</a></div></nav>
+  <nav class="spell-actions" aria-label="Gestion des sorts"><h3>Gestion des sorts</h3><div class="spell-action-links"><a [routerLink]="['/campaigns', campaignId(), 'characters', character().id, 'spellbook']">Copies de grimoire ↗</a><a [routerLink]="['/campaigns', campaignId(), 'characters', character().id, 'spell-revision']">Réviser les acquisitions ↗</a><a [routerLink]="['/campaigns', campaignId(), 'characters', character().id, 'spell-substitutions']">Substitutions ↗</a></div><app-spell-historical [characterId]="character().id" (saved)="historicalSaved()" /></nav>
 </div>

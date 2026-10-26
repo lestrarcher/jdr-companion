@@ -23,7 +23,9 @@ if (($argv[1] ?? '') === '--worker') {
     $character = $em->find(Character::class,(int)$argv[3]); $actor = $em->find(User::class,(int)$argv[7]);
     echo "ready\n"; flush();
     try {
-        if (($argv[8] ?? '') === 'initialization') {
+        if (($argv[8] ?? '') === 'historical') {
+            $service->completeHistorical($character, (int)$argv[4], ['choices'=>[['spellId'=>(int)$argv[6], 'ruleId'=>null]], 'expectedAcquisitionIds'=>array_map('intval', explode(',', $argv[5])), 'confirmed'=>true], $actor);
+        } elseif (($argv[8] ?? '') === 'initialization') {
             $result = $service->initialize($character, ['policyId'=>(int)$argv[4], 'reason'=>'Initial fixture', 'choices'=>[['spellId'=>(int)$argv[6], 'ruleId'=>null]]], $actor);
             echo $result['createdAcquisitionIds'] === [] ? "200\n" : "201\n";
             exit;
@@ -44,7 +46,7 @@ if (($argv[1] ?? '') === '--worker') {
     catch (HttpExceptionInterface $e) { echo $e->getStatusCode()."\n"; }
     exit;
 }
-$concurrent = in_array($argv[1] ?? '', ['--concurrency', '--initialization-concurrency'], true);
+$concurrent = in_array($argv[1] ?? '', ['--concurrency', '--initialization-concurrency', '--historical-concurrency'], true);
 $isolatedSchema = $concurrent ? 'spell_acq_test_'.bin2hex(random_bytes(8)) : null;
 $check = static function (bool $ok, string $message) use (&$checks): void { if (!$ok) throw new RuntimeException($message); ++$checks; };
 $refuse = static function (callable $fn, int $code) use ($check): void { try { $fn(); } catch (HttpExceptionInterface $e) { $check($e->getStatusCode() === $code, 'Expected '.$code.', got '.$e->getStatusCode().': '.$e->getMessage()); return; } throw new RuntimeException('Expected refusal '.$code); };
@@ -378,6 +380,11 @@ try {
     $refuse(fn ()=>$grants->save($spells[3]['id'],$grant['id'],['quotaImpact'=>'free'],$other),404);
     $refuse(fn ()=>$service->definePolicy($sub,$knownPolicy,$other),404);
     require __DIR__.'/test-advanced-spell-choice-cases.php';
+    if (in_array($argv[1] ?? '', ['--historical', '--historical-concurrency'], true)) {
+        require __DIR__.'/test-spell-historical-cases.php';
+        echo "OK: $checks assertions (historical completion and acquisition prerequisites)\n";
+        return;
+    }
     if (!in_array($argv[1] ?? '', ['--initialization-preview', '--initialization-concurrency'], true)) require __DIR__.'/test-spell-substitution-cases.php';
     (static function () use ($em,$db,$registry,$service,$access,$catalogue,$metadata,$check,$http,$campaign,$owner,$admin,$other,$advancedClass,$advancedSub,$advancedPolicy,$bookClass,$byKey,$advancedChoice): void {
         require __DIR__.'/test-level-up-spell-preview-cases.php';

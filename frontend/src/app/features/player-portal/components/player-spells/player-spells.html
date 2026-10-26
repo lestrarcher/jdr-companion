@@ -97,11 +97,12 @@
   }
 
   @if (mode() === 'portal') {
-  @if ((view()?.choices?.length ?? 0) > 0) {
+  <app-spell-historical [accessToken]="accessToken()" [disabled]="!editable() || !!pendingCast() || castingBlocked()" (saved)="historicalSaved()" />
+  @if (otherChoices().length > 0) {
     <section class="choices-section" aria-labelledby="spell-choices-heading">
       <h3 id="spell-choices-heading">Choix disponibles</h3>
       <p>Chaque choix est enregistré pour sa propre source. Vérifiez votre sélection avant de confirmer.</p>
-      @for (choice of view()?.choices ?? []; track choice.key) {
+      @for (choice of otherChoices(); track choice.key) {
         <fieldset [disabled]="!editable()">
           <legend>{{ choice.source }} · {{ choice.label }}</legend>
           <p>{{ choice.remaining }} restant(s) · Incantation : {{ abilityLabel(choice.ability) }}</p>

@@ -58,6 +58,34 @@ final readonly class PlayerSpellManagement
         return ['id'=>(int)$spell['id'], 'name'=>$spell['name'], 'level'=>(int)$spell['level'], 'school'=>$spell['school'] ?? null];
     }
 
+    public function historicalView(CharacterSessionState $session): array
+    {
+        $character = $session->getCharacter();
+        $owner = $character->getCampaign()->getOwner();
+        $classes = [];
+        foreach ($this->acquisitions->status($character, $owner) as $status) {
+            if ($status['status'] !== 'policy-configured') {
+                $classes[] = ['className'=>$status['className'], 'policyId'=>null, 'categories'=>[], 'expectedAcquisitionIds'=>[], 'warning'=>'Politique à vérifier avec le MJ.'];
+                continue;
+            }
+            try {
+                $preview = $this->acquisitions->historicalPreview($character, $status['policyIds'][0], $owner);
+                // Explicit public projection: no actor, decision notes or internal acquisition rows.
+                $categories = array_map(static fn ($category) => array_replace($category, ['available'=>array_map(self::candidate(...), $category['available'])]), $preview['categories']);
+                $classes[] = ['className'=>$status['className'], 'policyId'=>$status['policyIds'][0], 'categories'=>$categories,
+                    'expectedAcquisitionIds'=>$preview['expectedAcquisitionIds'], 'warning'=>$preview['warning'], 'limitations'=>$preview['limitations'] ?? []];
+            } catch (ConflictHttpException $error) {
+                $classes[] = ['className'=>$status['className'], 'policyId'=>$status['policyIds'][0], 'categories'=>[], 'expectedAcquisitionIds'=>[], 'warning'=>$error->getMessage()];
+            }
+        }
+        return ['revision'=>$session->getRevision(), 'editable'=>$session->isParticipating() && $session->getGameSession()->getStatus() === 'live', 'classes'=>$classes];
+    }
+
+    public function completeHistorical(Character $character, int $policyId, array $choice): array
+    {
+        return $this->acquisitions->completeHistorical($character, $policyId, $choice, $character->getCampaign()->getOwner());
+    }
+
     private function routes(Character $character, array $options, string $source): array
     {
         if ($options['blocked'] || $options['status'] === 'quota-exceeded') return [];

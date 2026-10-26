@@ -1,0 +1,68 @@
+<button class="button-subtle" type="button" [attr.aria-expanded]="open()" [disabled]="busy()" (click)="toggle()">Compléter les sorts manquants</button>
+@if (open()) {
+  <section class="panel historical-shell" aria-label="Compléter les sorts manquants" [attr.aria-busy]="busy()">
+    <header class="historical-intro">
+      <div><span class="historical-eyebrow">Grimoire · Réconciliation</span><h3>Compléter la liste actuelle des sorts</h3></div>
+      <p>Ouvrez une catégorie, choisissez vos sorts et confirmez. Les sorts déjà acquis sont conservés.</p>
+    </header>
+    @if (busy()) { <p role="status">Chargement et vérification…</p> }
+    @if (error()) { <p class="notice error" role="alert">{{ error() }}</p><button type="button" [disabled]="busy()" (click)="load()">Actualiser les quotas</button> }
+    @if (success()) { <p class="notice success" role="status">{{ success() }}</p> }
+    @if (view(); as data) {
+      @for (source of data.classes; track source.policyId ?? $index) {
+        <fieldset class="historical-class" [disabled]="busy() || disabled() || !data.editable || !!source.warning">
+          <legend>{{ source.className }}</legend>
+          @if (source.warning) { <p class="warning" role="alert">{{ source.warning }}</p> }
+          @for (limitation of source.limitations ?? []; track limitation) { <p class="hint">{{ limitation }}</p> }
+          <div class="historical-categories">
+            @for (category of source.categories; track category.key) {
+              <section class="historical-category" [class.category-complete]="category.remaining === 0">
+                <button type="button" class="category-trigger" [attr.aria-expanded]="isExpanded(source, category)" [attr.aria-controls]="categoryId(source, category)" (click)="toggleCategory(source, category)">
+                  <span class="category-icon" aria-hidden="true">{{ categoryIcon(category) }}</span>
+                  <span class="category-heading"><strong>{{ label(category) }}</strong><small>{{ categoryDescription(category) }}</small></span>
+                  <span class="category-progress" [class.is-complete]="category.remaining === 0">{{ category.maximum - category.remaining + selectedCount(source, category) }}/{{ category.maximum }}</span>
+                  <span class="category-chevron" aria-hidden="true">{{ isExpanded(source, category) ? '⌃' : '⌄' }}</span>
+                </button>
+                @if (isExpanded(source, category)) {
+                  <div class="category-content" [id]="categoryId(source, category)">
+                    @if (category.known.length) {
+                      <div class="known-spells"><span>Déjà acquis</span><div class="known-tags">@for (spell of category.known; track spell.id) { <span class="known-tag">✓ {{ spell.name }}</span> }</div></div>
+                    }
+                    @if (category.remaining > 0) {
+                      <div class="category-toolbar">
+                        <label class="search-control"><span>Rechercher</span><input type="search" [(ngModel)]="query[key(source, category)]" [ngModelOptions]="{standalone:true}" placeholder="Nom du sort…" /></label>
+                        <label class="level-control"><span>Niveau</span><select [(ngModel)]="levelFilter[key(source, category)]" [ngModelOptions]="{standalone:true}"><option [ngValue]="-1">Tous</option>@for (level of levels(category); track level) { <option [ngValue]="level">{{ level === 0 ? 'Mineur' : 'Niveau ' + level }}</option> }</select></label>
+                      </div>
+                      <div class="historical-spell-scroll">
+                      <div class="historical-spell-grid" aria-label="Sorts disponibles">
+                        @for (spell of candidates(source, category); track spell.id) {
+                          <button type="button" class="historical-spell-card" [class.is-selected]="isSelected(source, spell.id)" [attr.aria-pressed]="isSelected(source, spell.id)" [disabled]="!isSelected(source, spell.id) && selectedCount(source, category) >= category.remaining" (click)="toggleChoice(source, category, spell)">
+                        <span class="spell-glyph" aria-hidden="true">
+                          @if (artwork(spell); as src) {
+                            <img class="spell-art" [src]="src" alt="" loading="lazy" (error)="onArtError($event, spell)" />
+                          }
+                          <span class="fallback-glyph">✦</span>
+                        </span>
+                            <span class="spell-card-text"><strong>{{ spell.name }}</strong><small>{{ spell.level === 0 ? 'Sort mineur' : 'Niveau ' + spell.level }}</small></span>
+                            <span class="spell-card-check" aria-hidden="true">{{ isSelected(source, spell.id) ? '✓' : '+' }}</span>
+                          </button>
+                        } @empty { <p class="category-empty">Aucun sort éligible pour cette recherche.</p> }
+                      </div>
+                      </div>
+                      <div class="category-footer">
+                        <span class="selection-count">{{ selectedCount(source, category) }} / {{ category.remaining }} à ajouter</span>
+                        <button type="button" class="button-primary" [disabled]="!selectedCount(source, category) || busy()" (click)="saveCategory(source, category)">Confirmer {{ selectedCount(source, category) }} sort(s)</button>
+                      </div>
+                      <p class="category-hint">La validation vérifie aussi la faisabilité de la progression. Les sorts existants ne sont pas retirés.</p>
+                    } @else { <p class="category-done">✓ Cette catégorie est complète.</p> }
+                  </div>
+                }
+              </section>
+            }
+          </div>
+          @if (!hasChoices(source) && !source.warning) { <p class="category-done">Tous les sorts de cette classe sont renseignés.</p> }
+        </fieldset>
+      } @empty { <p>Aucune classe magique configurée.</p> }
+    }
+  </section>
+}

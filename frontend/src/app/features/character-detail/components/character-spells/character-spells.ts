@@ -5,6 +5,7 @@ import { forkJoin, of, catchError, switchMap } from 'rxjs';
 import { CharacterProfile } from '@core/services/character-api.service';
 import { SpellInitializationPreview } from '@core/models/spell-initialization.model';
 import { CharacterApiService } from '@core/services/character-api.service';
+import { SpellHistorical } from './spell-historical';
 
 type FeatureSpellStatus = { known: { grantId: number; spellId: number; spellName: string; featureName: string; castingAbility?: string | null; spellSaveDc?: number | null; spellAttackBonus?: number | null }[]; pending: { grantId: number; featureName: string; spellLevel: number; classId: number | null; schools: string[]; castingAbility?: string | null }[] };
 type FeatureSpellOption = { id: number; name: string; level: number; school?: string };
@@ -20,11 +21,12 @@ type Entry = { id: number; name: string; level: number; origin: string; ritual: 
 @Component({
   selector: 'app-character-spells',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, SpellHistorical],
   templateUrl: './character-spells.html',
   styleUrl: './character-spells.scss',
 })
 export class CharacterSpells {
+  historicalSaved(): void { this.refresh.update(value => value + 1); }
   readonly refresh = signal(0);
   readonly featureSpells = signal<FeatureSpellStatus>({ known: [], pending: [] });
   readonly featureOptions = signal<Record<number, FeatureSpellOption[]>>({});

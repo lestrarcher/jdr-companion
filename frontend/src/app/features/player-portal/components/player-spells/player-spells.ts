@@ -6,6 +6,7 @@ import { Location } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Observable, finalize } from 'rxjs';
 import { SpellQuickList, spellSchoolIcon } from '../spell-quick-list/spell-quick-list';
+import { SpellHistorical } from '../../../character-detail/components/character-spells/spell-historical';
 import { SpellCastDialog, SpellCastSelection } from '../spell-cast-dialog/spell-cast-dialog';
 import { PlayerSpell } from '@core/services/character-session-state-api.service';
 import { CharacterResource } from '@core/models/character.model';
@@ -15,11 +16,13 @@ import { availableSpellCastMethods, createSpellCastCommand, SpellCastCommand, Sp
 @Component({
   selector: 'app-player-spells',
   standalone: true,
-  imports: [FormsModule, RouterLink, SpellQuickList, SpellCastDialog],
+  imports: [FormsModule, RouterLink, SpellQuickList, SpellCastDialog, SpellHistorical],
   templateUrl: './player-spells.html',
   styleUrl: './player-spells.scss',
 })
 export class PlayerSpells implements OnInit, OnChanges {
+  readonly otherChoices = computed(() => (this.view()?.choices ?? []).filter(choice => choice.kind !== 'class'));
+  historicalSaved(): void { this.reload(); this.changed.emit(); }
   readonly spells = input.required<PlayerSpell[]>();
   readonly accessToken = input('');
   readonly readonly = input(true);

@@ -60,19 +60,26 @@ final class PlayerSpellController extends AbstractController
         ]);
     }
 
-    #[Route('/{operation}', name: 'api_public_character_spells_update', requirements: ['operation'=>'learn|choose|prepare|confirm-preparation'], methods: ['POST'])]
+    #[Route('/historical', name: 'api_public_character_spells_historical', methods: ['GET'])]
+    public function historical(string $accessToken): JsonResponse
+    {
+        return $this->json($this->management->historicalView($this->access->requireParticipating($accessToken)));
+    }
+
+    #[Route('/{operation}', name: 'api_public_character_spells_update', requirements: ['operation'=>'learn|choose|prepare|confirm-preparation|historical-completion'], methods: ['POST'])]
     public function update(string $accessToken, string $operation, Request $request): JsonResponse
     {
         $session = $this->access->requireParticipating($accessToken);
         if ($request->getContentTypeFormat() !== 'json' || !str_starts_with(ltrim($request->getContent()), '{')) throw new BadRequestHttpException('Objet JSON requis.');
         $data = $request->toArray();
         $keys = match ($operation) {
+            'historical-completion'=>['revision','policyId','choices','expectedAcquisitionIds','confirmed'],
             'learn'=>['revision','policyId','spellId','ruleId'], 'choose'=>['revision','grantId','spellId'], 'prepare'=>['revision','policyId','spellIds'],
             'confirm-preparation'=>['revision','selections'],
         };
         if (array_diff(array_keys($data), $keys) || array_diff($keys, array_keys($data))) throw new BadRequestHttpException('Champs invalides.');
         $identifiers = $operation === 'confirm-preparation' ? ['revision']
-            : ['revision', $operation === 'choose' ? 'grantId' : 'policyId', ...($operation === 'prepare' ? [] : ['spellId'])];
+            : ['revision', $operation === 'choose' ? 'grantId' : 'policyId', ...(in_array($operation, ['prepare','historical-completion'], true) ? [] : ['spellId'])];
         foreach ($identifiers as $key) {
             if (!is_int($data[$key]) || $data[$key] < 1) throw new BadRequestHttpException('Identifiant ou révision invalide.');
         }
@@ -83,6 +90,10 @@ final class PlayerSpellController extends AbstractController
             PlayerCharacterAccess::lockForMutation($this->em, $session);
             if ($session->getRevision() !== $data['revision']) throw new ConflictHttpException('Le personnage a changé. Rechargez ses sorts.');
             $character = $session->getCharacter();
+            if ($operation === 'historical-completion') {
+                $result = $this->management->completeHistorical($character, $data['policyId'], array_intersect_key($data, array_flip(['choices','expectedAcquisitionIds','confirmed'])));
+                if ($result['createdAcquisitionIds'] === []) return $this->json($this->management->historicalView($session));
+            }
             if ($operation === 'learn') $this->management->learn($character, $data['policyId'], $data['spellId'], $data['ruleId']);
             if ($operation === 'choose') $this->features->choose($character, $data['grantId'], $data['spellId'], $character->getCampaign()->getOwner()->getId());
             $state = $session->getState();
@@ -90,7 +101,7 @@ final class PlayerSpellController extends AbstractController
             if ($operation === 'confirm-preparation') $state = $this->preparation->confirm($character, $data['selections'], $state);
             $session->setState($state);
             $this->em->flush();
-            return $this->json($this->management->view($session));
+            return $this->json($operation === 'historical-completion' ? $this->management->historicalView($session) : $this->management->view($session));
         });
     }
 }

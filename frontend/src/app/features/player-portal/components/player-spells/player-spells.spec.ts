@@ -39,6 +39,15 @@ async function setup(data = view(), readonly = false) {
 }
 afterEach(() => { TestBed.inject(HttpTestingController).verify(); TestBed.resetTestingModule(); });
 describe('Player spell autonomy', () => {
+  it('offers one global class reconciliation while retaining independent feature choices', async () => {
+    const data = view();
+    data.choices.push({ ...data.choices[0], key: 'class:7', kind: 'class', policyId: 7, grantId: null, label: 'Ancien choix de classe' });
+    const { fixture, component } = await setup(data);
+    expect(fixture.nativeElement.textContent).toContain('Compléter les sorts manquants');
+    expect(fixture.nativeElement.textContent).not.toContain('Ancien choix de classe');
+    expect(component.otherChoices()).toHaveLength(2);
+    expect(component.otherChoices().every(choice => choice.kind === 'feature')).toBe(true);
+  });
   it('sorts only the quickbar by real level then French name without changing source entries', async () => {
     const data = view();
     const spell = data.spells[0];
