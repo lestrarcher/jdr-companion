@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PlayerSpell } from '@core/services/character-session-state-api.service';
-import { SpellQuickList } from './spell-quick-list';
+import { SpellQuickList, spellArtwork } from './spell-quick-list';
 
 function spell(key: string, level: number, name = key, status: 'available' | 'unavailable' | 'unknown' = 'available'): PlayerSpell {
   return { key, spellId: 1, name, level, school: 'evocation', source: key, sourceType: 'class',
@@ -82,4 +82,19 @@ describe('Shared spell quicklist', () => {
     fixture.componentRef.setInput('disabled', true); fixture.detectChanges(); c.choose(pact);
     expect(selected).toHaveBeenCalledTimes(2);
   });
+  it('uses stable spell IDs for custom art, and school assets otherwise', () => {
+    expect(spellArtwork({ spellId: 219, school: 'conjuration' })).toBe('/spells/custom/misty-step.svg');
+    expect(spellArtwork({ spellId: 99999, school: 'abjuration' })).toBe('/spells/schools/abjuration.svg');
+    expect(spellArtwork({ spellId: 99999, school: null })).toBeNull();
+  });
+  it('falls back from broken custom art to the school and finally the glyph', () => {
+    const { fixture, c } = setup([{ ...spell('misty', 2), spellId: 219, school: 'conjuration' }]);
+    const img = fixture.nativeElement.querySelector('.spell-art') as HTMLImageElement;
+    expect(img.getAttribute('src')).toBe('/spells/custom/misty-step.svg');
+    c.onArtError({ target: img } as unknown as Event, c.entries()[0]);
+    expect(img.getAttribute('src')).toBe('/spells/schools/conjuration.svg');
+    c.onArtError({ target: img } as unknown as Event, c.entries()[0]);
+    expect(img.hidden).toBe(true);
+  });
+
 });

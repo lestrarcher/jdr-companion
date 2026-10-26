@@ -151,10 +151,16 @@
                 <div class="tracker-layout">
                   <app-character-vitals [readonly]="!canEdit()" [character]="currentCharacter" />
                   <div class="spell-resource-column">
-                    <app-spell-slot-bar [groups]="spellSlotGroups()" />
-                    <app-spell-quick-list [spells]="playerSpells()" mode="play"
-                      [disabled]="!canEdit() || saveStatus() === 'saving' || saveStatus() === 'error' || !!pendingRestRequest() || preparationPending()"
-                      (selected)="openQuickSpell($event)" />
+                    <section class="magic-section" aria-labelledby="magic-section-title">
+                      <div class="magic-section__heading">
+                        <span class="magic-section__eyebrow">Magie</span>
+                        <h2 id="magic-section-title">Emplacements &amp; sorts</h2>
+                      </div>
+                      <app-spell-slot-bar [groups]="spellSlotGroups()" />
+                      <app-spell-quick-list [spells]="playerSpells()" mode="play"
+                        [disabled]="!canEdit() || saveStatus() === 'saving' || saveStatus() === 'error' || !!pendingRestRequest() || preparationPending()"
+                        (selected)="openQuickSpell($event)" />
+                    </section>
                     <app-character-resources [readonly]="!canEdit()" [resources]="trackerResources()" [hasSupplement]="hasTinkering()" [tinkeringNotes]="tinkeringEditor">
                       @if (hasTinkering() && !tinkeringResources().length) {
                         <app-magical-tinkering-notes [notes]="tinkeringNotes()" [token]="accessToken" [revision]="serverRevision"

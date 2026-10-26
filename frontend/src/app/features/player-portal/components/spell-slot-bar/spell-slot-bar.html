@@ -1,18 +1,20 @@
 @if (groups().length) {
-  <section aria-label="Emplacements de sorts">
-    <div class="slot-groups">
-      @for (group of groups(); track group.id) {
-        <div class="slot-group" [class.pact]="group.pact" role="group" [attr.aria-label]="label(group)">
-          <div class="heading"><strong>{{ roman(group.level) }}</strong><small>{{ group.current ?? '?' }}/{{ group.maximum ?? '?' }}</small></div>
-          <div class="cells">
-            @for (cell of group.cells; track cell) {
-              <span class="cell" [class.full]="group.current !== null && cell < group.current" role="img"
-                [attr.aria-label]="'Emplacement ' + (cell + 1) + ' : ' + (group.current === null ? 'état inconnu' : cell < group.current ? 'disponible' : 'consommé')">{{ group.current === null ? '?' : cell < group.current ? '◆' : '·' }}</span>
-            }
-          </div>
-          @if (group.pact) { <small class="pact-caption">Pacte · repos court</small> }
+  <div class="slot-groups" role="group" aria-label="Emplacements de sorts">
+    @for (group of groups(); track group.id; let last = $last; let index = $index) {
+      <div class="slot-group" [class.pact]="group.pact" [class.row-end]="(index + 1) % 5 === 0 || last"
+        role="group" [attr.aria-label]="label(group)">
+        <div class="heading"><strong>{{ roman(group.level) }}</strong></div>
+        <div class="cells">
+          @for (cell of group.cells; track cell) {
+            <span class="cell" [class.full]="group.current !== null && cell < group.current"
+              [class.unknown]="group.current === null" role="img"
+              [attr.aria-label]="'Emplacement ' + (cell + 1) + ' : ' + (group.current === null ? 'état inconnu' : cell < group.current ? 'disponible' : 'consommé')">
+              @if (group.current === null) { ? }
+            </span>
+          }
         </div>
-      }
-    </div>
-  </section>
+        @if (group.pact) { <small class="pact-caption">Pacte</small> }
+      </div>
+    }
+  </div>
 }

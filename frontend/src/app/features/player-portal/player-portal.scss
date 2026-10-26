@@ -1,4 +1,28 @@
-.spell-resource-column { min-width: 0; }
+/* Right-hand stack: Magic and Resources are two independent panels. */
+.spell-resource-column { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+.magic-section {
+  min-width: 0;
+  padding: 1.25rem;
+  border: 1px solid rgba(201, 168, 95, .25);
+  background: rgba(8, 9, 14, .88);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, .22);
+}
+.magic-section__heading { margin-bottom: 1rem; }
+.magic-section__eyebrow {
+  display: block;
+  margin-bottom: .35rem;
+  color: var(--portal-accent);
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+.magic-section__heading h2 {
+  margin: 0;
+  color: var(--portal-text);
+  font: 400 1.4rem/1.2 Georgia, 'Times New Roman', serif;
+}
+@media (max-width: 390px) { .magic-section { padding: 1rem .7rem; } }
 :host {
   --portal-background: #090a11;
   --portal-surface: rgba(14, 15, 25, 0.96);
