@@ -380,6 +380,11 @@ try {
     $refuse(fn ()=>$grants->save($spells[3]['id'],$grant['id'],['quotaImpact'=>'free'],$other),404);
     $refuse(fn ()=>$service->definePolicy($sub,$knownPolicy,$other),404);
     require __DIR__.'/test-advanced-spell-choice-cases.php';
+    if (($argv[1] ?? '') === '--official-policies') {
+        require __DIR__.'/test-official-spell-policy-cases.php';
+        echo "OK: $checks assertions (official policies and acquisition prerequisites)\n";
+        return;
+    }
     if (in_array($argv[1] ?? '', ['--historical', '--historical-concurrency'], true)) {
         require __DIR__.'/test-spell-historical-cases.php';
         echo "OK: $checks assertions (historical completion and acquisition prerequisites)\n";

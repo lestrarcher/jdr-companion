@@ -128,6 +128,18 @@ final readonly class AdvancedSpellChoices
                 'replacementAvailable'=>array_values(array_filter($all,fn($s)=>$this->eligible($rule,$s,$index+1,true,$owner,$extensions)))];
         }
         $limits=$policy->policy()->atLevel($index+1);
+        // Prepared casters choose daily from their class list, not from acquisition rules.
+        // Those rules describe cantrips and bonus choices only. Keep class-level limits
+        // independent of combined multiclass slots, and never create acquisitions here.
+        if ($policy->policy()->learningStyle === 'prepared' && $limits['preparationBase'] !== null) {
+            $classId = $policy->getCharacterClass()->getId();
+            foreach ($all as $spell) {
+                if ($spell['level'] < 1 || $spell['level'] > $limits['maxSpellLevel']) continue;
+                if (in_array($classId, array_column($spell['classes'], 'id'), true) || isset($extensions[$classId][$spell['id']])) {
+                    $available[$spell['id']] = $spell;
+                }
+            }
+        }
         $remaining=['known'=>max(0,$limits['known']-$used['known']),'cantrips'=>max(0,$limits['cantrips']-$used['cantrips']),'spellbook'=>0];
         foreach ($choices as $choice) if ($choice['quota']==='spellbook') $remaining['spellbook']+=$choice['remaining'];
         $overQuota=$used['known']>$limits['known'] || $used['cantrips']>$limits['cantrips'];
