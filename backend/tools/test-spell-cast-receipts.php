@@ -47,4 +47,23 @@ foreach (['cost'=>0,'poolSlug'=>'spell-slot-1'] as $field=>$value) $reject(fn()=
 foreach (['2',-1,1.5,2147483648] as $cost) $reject(fn()=>R::create($resourceCommand,array_replace($resourceCast,['cost'=>$cost])));
 foreach ([null,'','warlock-pact-slots'] as $slug) $reject(fn()=>R::create($resourceCommand,array_replace($resourceCast,['poolSlug'=>$slug])));
 $badSource=$resourceCast; $badSource['source']['sourceType']='class'; $reject(fn()=>R::create($resourceCommand,$badSource));
+$targetCommand=$command+['targetCharacterIds'=>[3,1], 'hitPointRoll'=>10];
+$targetReceipt=R::create($targetCommand,$cast);
+$check($targetReceipt['version']===2 && $targetReceipt['command']['targetCharacterIds']===[1,3],'Effect receipt v2 normalizes target set');
+$targetState=[R::STATE_KEY=>[$id=>$targetReceipt]];
+$check(R::compare($targetState,array_replace($targetCommand,['targetCharacterIds'=>[1,3]]))==='identical','Target order does not change intent');
+foreach ([['targetCharacterIds'=>[2,3]],['hitPointRoll'=>11]] as $patch) {
+    $check(R::compare($targetState,array_replace($targetCommand,$patch))==='conflict','Changed effect parameters conflict');
+}
+$check(R::compare($targetState,$command)==='conflict','Omitting effect parameters conflicts with v2');
+$check(R::compare($state,$targetCommand)==='conflict','Adding effect parameters conflicts with historical v1');
+foreach ([['targetCharacterIds'=>[]],['targetCharacterIds'=>[1,1]],['targetCharacterIds'=>['1']],['targetCharacterIds'=>[0]],
+    ['targetCharacterIds'=>range(1,13)],['hitPointRoll'=>1],['hitPointRoll'=>21],['hitPointRoll'=>'10'],['hitPointRoll'=>10.5]] as $patch) {
+    $reject(fn()=>R::normalizeCommand(array_replace($targetCommand,$patch)));
+}
+$reject(fn()=>R::normalizeCommand($command+['hitPointRoll'=>10]));
+foreach ([1,3] as $version) {
+    $bad=$targetState; $bad[R::STATE_KEY][$id]['version']=$version;
+    $reject(fn()=>R::validateState($bad));
+}
 echo "PASS: $checks receipt assertions; no database.\n";

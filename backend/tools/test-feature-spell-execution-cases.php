@@ -26,7 +26,7 @@ $game=(new App\Entity\GameSession($campaign,'feature-execution','Feature executi
 $castSession=new App\Entity\CharacterSessionState($game,$character,$initial);
 $em->persist($game); $em->persist($castSession); $em->flush();
 $untouchedBefore=$snapshot(); unset($untouchedBefore['character_session_state'],$untouchedBefore['feature_spell_grant']);
-$executor=new App\Service\CharacterSpellCastExecutor($em,$validator);
+$executor=new App\Service\CharacterSpellCastExecutor($em,$validator,new App\Service\CharacterSpellHitPointEffects($em,new App\Service\CharacterHitPointBoostService(new App\Service\CharacterHitPointStateService(new App\Service\CharacterHitPointCalculator(new App\Service\CharacterAbilityCalculator())),new App\Repository\CharacterActiveEffectRepository($registry),$em)));
 $stored=static fn():array=>$db->fetchAssociative('SELECT state,revision,updated_at FROM character_session_state WHERE id=?',[$castSession->getId()]);
 $reset=static function(array $next) use($castSession,$em):void { $castSession->setState($next); $em->flush(); };
 $make=static fn(array $replace=[]):array=>array_replace(['revision'=>$castSession->getRevision(),

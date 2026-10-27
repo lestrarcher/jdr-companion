@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 // Included only with --cast-execution, after committing the isolated temporary fixtures.
-$executor = new App\Service\CharacterSpellCastExecutor($em,$validator);
+$executor = new App\Service\CharacterSpellCastExecutor($em,$validator,new App\Service\CharacterSpellHitPointEffects($em,new App\Service\CharacterHitPointBoostService(new App\Service\CharacterHitPointStateService(new App\Service\CharacterHitPointCalculator(new App\Service\CharacterAbilityCalculator())),new App\Repository\CharacterActiveEffectRepository($registry),$em)));
 $game=(new App\Entity\GameSession($campaign,'cast-execution','Cast execution'))->setStatus(App\Entity\GameSession::STATUS_LIVE);
 $executionState=$commandState;
 $executionState['resources'][0]['flexibleCastingBonus']=1;
@@ -60,10 +60,10 @@ $secondResult=$executor->execute($executionSession,$secondCommand);
 $check($secondResult['replayed']===false && count($secondResult['state']['spellCastReceipts'])===2,'A second accepted command preserves the first receipt');
 $assertReplay($originalCommand,$historicalCast);
 $assertReplay($secondCommand,$secondResult['cast']);
-foreach ([null,[$originalCommand['requestId']=>['version'=>1]],[$originalCommand['requestId']=>array_replace($changed['spellCastReceipts'][$originalCommand['requestId']],['version'=>2])]] as $receipts) {
+foreach ([null,[$originalCommand['requestId']=>['version'=>1]],[$originalCommand['requestId']=>array_replace($changed['spellCastReceipts'][$originalCommand['requestId']],['version'=>3])]] as $receipts) {
     $malformed=$executionState; $malformed['spellCastReceipts']=$receipts; $reset($malformed);
     $reject(array_replace($command,['revision'=>$executionSession->getRevision()]),409,
-        is_array($receipts) && ($receipts[$originalCommand['requestId']]['version']??null)===2
+        is_array($receipts) && ($receipts[$originalCommand['requestId']]['version']??null)===3
             ? 'unsupported_spell_cast_receipt_version' : 'malformed_spell_cast_receipts');
 }
 $reset($executionState);

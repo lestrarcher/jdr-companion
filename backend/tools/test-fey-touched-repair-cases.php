@@ -38,7 +38,7 @@ $after=$snapshot(); $repair->run($anatoly->getId(),$session->getId(),true);
 $check($snapshot()===$after,'Second repair is fully idempotent including revision');
 $check(array_slice($session->getState()['resources'],0,3)===$initial['resources'],'Existing counters preserved');
 $check($db->fetchAllAssociative('SELECT * FROM character_feature_spell ORDER BY id')===$acquired,'All acquisitions including GM Soins preserved');
-$executor=new App\Service\CharacterSpellCastExecutor($em,new App\Service\CharacterSpellCastCommandValidator($directory)); $request=0;
+$executor=new App\Service\CharacterSpellCastExecutor($em,new App\Service\CharacterSpellCastCommandValidator($directory),new App\Service\CharacterSpellHitPointEffects($em,new App\Service\CharacterHitPointBoostService(new App\Service\CharacterHitPointStateService(new App\Service\CharacterHitPointCalculator(new App\Service\CharacterAbilityCalculator())),new App\Repository\CharacterActiveEffectRepository($registry),$em))); $request=0;
 $cast=static function(int $grant,string $method,int $level) use($executor,$session,&$request):array {
     return $executor->execute($session,['revision'=>$session->getRevision(),'requestId'=>sprintf('e0000000-0000-4000-8000-%012d',++$request),'sourceKey'=>'feature:'.$grant,'method'=>$method,'castingLevel'=>$level]);
 };

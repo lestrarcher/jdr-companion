@@ -10,12 +10,13 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
-/** Internal command boundary. No effects or public endpoint. */
+/** Single transaction boundary for casting costs, effects and replay receipts. */
 final readonly class CharacterSpellCastExecutor
 {
     public function __construct(
         private EntityManagerInterface $em,
         private CharacterSpellCastCommandValidator $validator,
+        private CharacterSpellHitPointEffects $effects,
     ) {}
 
     /**
@@ -32,12 +33,13 @@ final readonly class CharacterSpellCastExecutor
         $db->beginTransaction();
         try {
             $result = (function () use ($session, $command, &$mutated): array {
-                PlayerCharacterAccess::lockForMutation($this->em, $session);
                 try {
                     $command = SpellCastReceipts::normalizeCommand($command);
                 } catch (\InvalidArgumentException $error) {
                     throw new UnprocessableEntityHttpException('invalid_command', $error);
                 }
+                $this->effects->lockCharacters($session, $command);
+                PlayerCharacterAccess::lockForMutation($this->em, $session);
                 $state = $session->getState();
                 try {
                     $receiptStatus = SpellCastReceipts::compare($state, $command);
@@ -64,6 +66,7 @@ final readonly class CharacterSpellCastExecutor
                 if ($validation['valid'] !== true) {
                     throw new UnprocessableEntityHttpException($validation['reason'] ?? 'cast_not_allowed');
                 }
+                $effect = $this->effects->prepare($session, $command, $validation);
                 $method = $validation['method'];
                 if (in_array($method, ['standard-slot', 'pact-slot', 'resource'], true)) {
                     $slug = $validation['poolSlug'];
@@ -94,6 +97,8 @@ final readonly class CharacterSpellCastExecutor
                 $mutated = true;
                 // The receipt makes zero-cost acceptance a durable state change too.
                 $session->setState($state);
+                // Apply after setting cost + receipt, so self-targeting preserves both.
+                $this->effects->apply($session, $effect);
                 $this->em->flush();
                 return [
                     'cast'=>$cast,

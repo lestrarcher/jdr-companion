@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 // Included by the directory harness: synthetic characters and temporary tables only.
-(static function () use ($em,$db,$campaign,$owner,$catalogue,$grants,$directory,$validator,$acquisitions,$ability,$check): void {
+(static function () use ($em,$db,$registry,$campaign,$owner,$catalogue,$grants,$directory,$validator,$acquisitions,$ability,$check): void {
     foreach (['paladin'=>13,'cleric'=>5,'druid'=>5] as $slug=>$levelCount) {
         $class=new App\Entity\CharacterClass('grant-test-'.$slug,'Fixture '.$slug,8,1,
             $slug==='paladin' ? App\Enum\SpellcastingProgressionType::Half : App\Enum\SpellcastingProgressionType::Full);
@@ -50,7 +50,7 @@ declare(strict_types=1);
         $before=$db->fetchAllAssociative('SELECT * FROM character_spell_acquisition ORDER BY id');
         $cmd=['revision'=>$session->getRevision(),'requestId'=>'8a00a010-0000-4000-8000-000000000001',
             'sourceKey'=>'subclass-grant:'.$grantIds[0],'method'=>'standard-slot','castingLevel'=>$slug==='paladin'?4:3];
-        $executor=new App\Service\CharacterSpellCastExecutor($em,$validator);
+        $executor=new App\Service\CharacterSpellCastExecutor($em,$validator,new App\Service\CharacterSpellHitPointEffects($em,new App\Service\CharacterHitPointBoostService(new App\Service\CharacterHitPointStateService(new App\Service\CharacterHitPointCalculator(new App\Service\CharacterAbilityCalculator())),new App\Repository\CharacterActiveEffectRepository($registry),$em)));
         $result=$executor->execute($session,$cmd);
         $expected=$resources; --$expected[count($expected)-1]['currentValue'];
         $check($result['state']['resources']===$expected,"$slug: upcast consumes exactly one chosen slot");
