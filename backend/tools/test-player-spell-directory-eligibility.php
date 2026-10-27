@@ -126,13 +126,14 @@ try {
         foreach (['key','policyId','alwaysPrepared','spellId','name','level','school','source','sourceType','castingAbility','spellSaveDc','spellAttackBonus','known','inSpellbook','prepared','details'] as $field) $check(array_key_exists($field,$entry),'Existing contract: '.$field);
         $decision=$entry['castingEligibility'];
         $availability=$entry['castingAvailability'];
+        $ordinaryGrant=$entry['sourceType']==='subclass' && $entry['mode']!=='grant-cast';
         $check(array_keys($availability)===['sourceKey','policyId','status','reason','methods'],'Availability contract');
         $check($availability['sourceKey']===$entry['key'] && $availability['policyId']===$entry['policyId'],'Availability preserves source identity');
-        $check($availability['status']===($entry['sourceType']==='class'?'available':'unknown'),'Cantrip/ritual available, unresolved grants unknown');
+        $check($availability['status']===($entry['sourceType']==='class' || ($ordinaryGrant && $decision['canCastAsRitual'])?'available':'unknown'),'Cantrip/ritual available, unresolved grants or counters unknown');
         $isCantrip=$entry['spellId']===$cantrips['known']['id'];
         foreach (['spellId'=>$isCantrip?$cantrips['known']['id']:$spell['id'],'name'=>$isCantrip?'known cantrip':'Shared ritual',
-            'level'=>$isCantrip?0:1,'school'=>'divination','spellSaveDc'=>$entry['sourceType']==='subclass'?null:10,
-            'spellAttackBonus'=>$entry['sourceType']==='subclass'?null:2] as $field=>$expected) {
+            'level'=>$isCantrip?0:1,'school'=>'divination','spellSaveDc'=>$entry['sourceType']==='subclass' && !$ordinaryGrant?null:10,
+            'spellAttackBonus'=>$entry['sourceType']==='subclass' && !$ordinaryGrant?null:2] as $field=>$expected) {
             $check($entry[$field]===$expected,'Existing value and type: '.$field);
         }
         $check(is_string($entry['key']) && $entry['key']!=='','Stable string identity');
@@ -153,12 +154,12 @@ try {
             $check($decision['canCastNormally']===!$wizard && $decision['canCastAsRitual']===!$isCantrip,'Exact policy and cantrip eligibility');
             if ($wizard) $check($decision['reason']==='spell_not_prepared' && $entry['prepared']===false,'Unprepared wizard book ritual');
         } else {
-            $check(!$decision['canCastNormally'] && !$decision['canCastAsRitual'] && $decision['requiresGrantReview'],'No automatic grant permission');
+            $check($decision['canCastNormally']===$ordinaryGrant && $decision['requiresGrantReview']===!$ordinaryGrant,'Only ordinary grants use resolved casting policy');
             $check($entry['policyId']===null,'Grant is not a class acquisition');
             $subclass=$entry['sourceType']==='subclass';
             $always=$subclass && $entry['mode']==='grant-always-prepared';
             $check($entry['source']===($subclass?'Fixture subclass':'Independent capability')
-                && $entry['castingAbility']===($subclass?null:'intelligence') && $entry['alwaysPrepared']===$always
+                && $entry['castingAbility']===($subclass && !$ordinaryGrant?null:'intelligence') && $entry['alwaysPrepared']===$always
                 && $entry['known']===(!$subclass || $entry['mode']==='grant-known')
                 && $entry['inSpellbook']===false && $entry['prepared']===($subclass?$always:null),'Grant legacy fields retain exact values and types');
             if ($entry['sourceType']==='subclass') {
@@ -304,6 +305,10 @@ $check(
     if (in_array('--feature-cast-execution', $argv, true)) {
         $db->commit(); // Only the temporary tables/sequences verified above.
         require __DIR__.'/test-feature-spell-execution-cases.php';
+    }
+    if (in_array('--subclass-cast-execution', $argv, true)) {
+        $db->commit(); // Only the temporary tables/sequences verified above.
+        require __DIR__.'/test-subclass-spell-cast-cases.php';
     }
     echo "PASS: $checks spell directory/command assertions; temporary schema only.\n";
 } finally {

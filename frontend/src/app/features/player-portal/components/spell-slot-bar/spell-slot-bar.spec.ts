@@ -21,23 +21,23 @@ describe('Spell slot bar',()=>{
     expect(fixture.nativeElement.querySelectorAll('.slot-group')).toHaveLength(2);
     expect(fixture.nativeElement.querySelectorAll('.cell')).toHaveLength(5);
     expect(fixture.nativeElement.querySelectorAll('.full')).toHaveLength(2);
-    expect(fixture.nativeElement.textContent).toContain('2/3');
+    expect(fixture.nativeElement.querySelector('.slot-group').getAttribute('aria-label')).toContain('2 sur 3');
     expect(fixture.nativeElement.querySelector('.pact').getAttribute('aria-label')).toContain('niveau 3');
-    expect(fixture.nativeElement.querySelector('.pact').textContent).toContain('repos court');
+    expect(fixture.nativeElement.querySelector('.pact').getAttribute('aria-label')).toContain('repos court');
     expect(fixture.nativeElement.querySelector('[aria-label="Emplacement 3 : consommé"]')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('button,input')).toBeNull();
     const represented=new Set(spellSlotGroups(resources).map(g=>g.id));
     expect(resources.filter(r=>!represented.has(r.id)).map(r=>r.id)).toEqual(['spell-slot-2','other']);
     expect(JSON.stringify(resources)).toBe(before);
     fixture.componentRef.setInput('groups',spellSlotGroups(mapped([{id:'spell-slot-1',currentValue:1}]))); fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('1/3');
+    expect(fixture.nativeElement.querySelector('.slot-group').getAttribute('aria-label')).toContain('1 sur 3');
     expect(fixture.nativeElement.querySelectorAll('.full')).toHaveLength(1);
   });
   it.each([[],[{id:'spell-slot-1',currentValue:-1}],[{id:'spell-slot-1',currentValue:4}],
     [{id:'spell-slot-1',currentValue:1.5}],[{id:'spell-slot-1',currentValue:1},{id:'spell-slot-1',currentValue:2}]].map(values=>({values})))('keeps unknown counters unknown: %j',({values})=>{
     const fixture=TestBed.createComponent(SpellSlotBar);
     fixture.componentRef.setInput('groups',spellSlotGroups(mapped(values))); fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('?/3');
+    expect(fixture.nativeElement.querySelector('.slot-group').getAttribute('aria-label')).toContain('quantité inconnue sur 3');
     expect(fixture.nativeElement.querySelectorAll('.full')).toHaveLength(0);
     expect(fixture.nativeElement.querySelector('[aria-label="Emplacement 1 : état inconnu"]')).not.toBeNull();
   });

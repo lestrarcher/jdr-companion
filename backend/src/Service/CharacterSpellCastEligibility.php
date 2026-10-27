@@ -40,14 +40,19 @@ final readonly class CharacterSpellCastEligibility
                 return $this->result(true, false, null, 'ritual_feature_or_preparation_missing', false);
             }
         }
-        // Historical features and subclass grants remain subject to explicit review.
-        if ($sourceType === 'subclass' || $sourceType === 'feature') {
+        $ordinaryGrant = $sourceType === 'subclass' && $learningStyle !== null
+            && in_array($entry['mode'] ?? null, ['grant-known', 'grant-always-prepared'], true)
+            && in_array($entry['castingAbility'] ?? null, array_column(\App\Enum\Ability::cases(), 'value'), true)
+            && ($entry['restrictions'] ?? null) === null && ($entry['resource'] ?? null) === null
+            && ($entry['slotUsage'] ?? null) === null;
+        // Special or unresolved grants still require explicit casting configuration.
+        if (($sourceType === 'subclass' && !$ordinaryGrant) || $sourceType === 'feature') {
             return $this->result(false, false, 'grant_rules_pending', 'grant_rules_pending', true);
         }
         if (!is_int($level) || $level < 0 || $level > 9) {
             return $this->result(false, false, 'spell_level_unknown', 'spell_level_unknown', false);
         }
-        if ($sourceType !== 'class' || $learningStyle === null) {
+        if (($sourceType !== 'class' && !$ordinaryGrant) || $learningStyle === null) {
             return $this->result(false, false, 'source_policy_unknown', 'source_policy_unknown', false);
         }
 
@@ -56,7 +61,7 @@ final readonly class CharacterSpellCastEligibility
                 $known ? null : 'cantrip_not_known', 'not_a_ritual', false);
         }
 
-        $normal = match ($learningStyle) {
+        $normal = $ordinaryGrant ? ($known || $alwaysPrepared) : match ($learningStyle) {
             'known' => $known,
             'spellbook' => $inSpellbook && $prepared,
             'prepared' => $prepared || $alwaysPrepared,

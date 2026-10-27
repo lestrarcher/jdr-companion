@@ -82,7 +82,7 @@ final readonly class CharacterSpellCastAvailability
             || !is_bool($eligibility['requiresGrantReview'] ?? null)) {
             return array_replace($result, ['reason'=>'eligibility_unknown']);
         }
-        if ($eligibility['requiresGrantReview'] || ($entry['sourceType'] ?? null) === 'subclass') {
+        if ($eligibility['requiresGrantReview']) {
             return array_replace($result, ['reason'=>'grant_rules_pending']);
         }
         if (($entry['sourceType'] ?? null) === 'feature') {

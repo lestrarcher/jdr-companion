@@ -53,6 +53,23 @@ async function setup(spells:PlayerSpell[]) {
 afterEach(()=>{ TestBed.inject(HttpTestingController).verify({ignoreCancelled:true}); TestBed.resetTestingModule(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('Spell casting controls',()=>{
+  it('opens an always-prepared oath spell with slot methods and no implicit free casting',async()=>{
+    const entry={...spell('subclass-grant:7',[method('standard-slot',1),method('standard-slot',4)]),
+      policyId:null,sourceType:'subclass' as const,source:'Vengeance',castingAbility:'charisma',
+      known:false,inSpellbook:false,prepared:true,alwaysPrepared:true};
+    entry.castingAvailability!.policyId=null;
+    const {fixture,http,c}=await setup([entry]);
+    fixture.nativeElement.querySelector('.quick-spell').click(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('dialog').open).toBe(true);
+    expect(c.castMethods().every(m=>m.kind==='standard-slot' && m.cost===1)).toBe(true);
+    fixture.nativeElement.querySelectorAll('.level-option')[1].click(); fixture.detectChanges();
+    fixture.nativeElement.querySelector('.cast-confirm').click();
+    const req=http.expectOne(base+'/cast');
+    expect(req.request.body).toMatchObject({sourceKey:entry.key,method:'standard-slot',castingLevel:4});
+    req.flush(castResponse([entry],'standard-slot',4));
+    expect(c.pendingCast()).toBeNull();
+    http.expectNone(r=>r.method==='PATCH');
+  });
   it('sends a feature resource command only after confirmation and adopts its server result',async()=>{
     const resource = {...method('resource',2),poolSlug:'feat-use',cost:2};
     const entry = {...spell('feature:1',[resource,method('standard-slot',2)]),sourceType:'feature' as const,inSpellbook:false};
@@ -239,6 +256,9 @@ describe('Portal adoption of cast responses',()=>{
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('app-spell-slot-bar .slot-group').getAttribute('aria-label')).toContain('1 sur 2');
     expect(state.character()!.resources.find(r=>r.id==='spell-slot-1')!.currentValue).toBe(1);
+    p.selectTab('spells'); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-spell-slot-bar .slot-group').getAttribute('aria-label')).toContain('1 sur 2');
+    expect(fixture.nativeElement.querySelectorAll('app-spell-slot-bar')).toHaveLength(1);
     expect(p.lastQueuedRevision).toBe(state.revision()); expect(c.castMethods()).toEqual([]);
     p.selectTab('status'); fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.spell-resource-column .quick-spell').disabled).toBe(true);

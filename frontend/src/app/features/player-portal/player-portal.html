@@ -271,7 +271,11 @@
                 [quickSelection]="quickSpellSelection()"
                 [readonly]="!canEdit()" [prioritizePreparation]="activeTab() === 'spells'"
                 [castingBlocked]="saveStatus() === 'saving' || saveStatus() === 'error' || !!pendingRestRequest() || preparationPending()"
-                (casting)="spellCasting.set($event)" (castCompleted)="adoptSpellCast($event)" (changed)="refreshSpells()" />
+                (casting)="spellCasting.set($event)" (castCompleted)="adoptSpellCast($event)" (changed)="refreshSpells()">
+                @if (activeTab() === 'spells' && spellSlotGroups().length) {
+                  <app-spell-slot-bar spell-slots [groups]="spellSlotGroups()" />
+                }
+              </app-player-spells>
             }
           </div>
         </div>

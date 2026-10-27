@@ -58,16 +58,26 @@ final readonly class PlayerSpellDirectory
             ];
         }
 
+        // Use the character's applicable (possibly pinned) policy, not an arbitrary
+        // latest version or a class name inferred from the granting subclass.
+        $castingPolicies = [];
+        foreach ($this->acquisitions->status($character, $character->getCampaign()->getOwner()) as $status) {
+            if ($status['status'] !== 'policy-configured' || count($status['policyIds']) !== 1) continue;
+            $castingPolicies[$status['classId']] = $this->em->find(SpellcastingPolicyDefinition::class, $status['policyIds'][0]);
+        }
         // Automatic subclass grants are distinct from class acquisition quotas.
         foreach ($this->access->resolve($character, CharacterSessionStateSynchronizer::extractProgressionValues($state)) as $path) {
             if (!in_array($path->mode, ['grant-known', 'grant-always-prepared', 'grant-cast'], true)) continue;
+            $castingPolicy = in_array($path->mode, ['grant-known', 'grant-always-prepared'], true)
+                ? ($castingPolicies[$path->castingClass['id'] ?? 0] ?? null) : null;
+            $ability = $castingPolicy?->policy()->ability;
             $result[] = [
                 'key'=>$path->key, 'policyId'=>null, 'alwaysPrepared'=>$path->mode === 'grant-always-prepared',
                 'spellId' => (int) $path->spell['id'], 'name' => $path->spell['name'],
                 'level' => (int) $path->spell['level'], 'school' => $path->spell['school'] ?? null,
                 'source' => $path->source['subclassName'] ?? $path->source['className'] ?? 'Sous-classe',
-                'sourceType' => 'subclass', 'castingAbility' => null,
-                'spellSaveDc' => null, 'spellAttackBonus' => null,
+                'sourceType' => 'subclass', 'castingAbility' => $ability?->value,
+                ...($ability === null ? ['spellSaveDc'=>null, 'spellAttackBonus'=>null] : $this->abilities->spellStatistics($character, $ability)),
                 'known' => $path->mode === 'grant-known',
                 'inSpellbook' => false,
                 'prepared' => $path->mode === 'grant-always-prepared',
@@ -124,6 +134,9 @@ final readonly class PlayerSpellDirectory
             // Resolve the exact source policy, never a character-wide casting style.
             $policy = $entry['sourceType'] === 'class' && $entry['policyId'] !== null
                 ? $this->em->find(SpellcastingPolicyDefinition::class, $entry['policyId']) : null;
+            if ($entry['sourceType'] === 'subclass' && $entry['castingAbility'] !== null) {
+                $policy = $castingPolicies[$entry['castingClass']['id'] ?? 0] ?? null;
+            }
             $entry['castingEligibility'] = $this->eligibility->evaluate(
                 $entry, $policy?->policy()->learningStyle, $policy?->getCharacterClass()->getSlug(),
             );

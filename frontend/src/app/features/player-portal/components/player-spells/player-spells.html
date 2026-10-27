@@ -20,6 +20,7 @@
   }
   @if (success()) { <p class="notice" role="status">{{ success() }}</p> }
   @for (warning of view()?.warnings ?? []; track warning) { <p class="notice">{{ warning }}</p> }
+  <ng-content select="[spell-slots]" />
 
   @if (displayed().length === 0) {
     <p class="empty-state">{{ mode() === 'spellbook' ? 'Aucun sort inscrit dans le grimoire.' : 'Aucun sort enregistré pour ce personnage.' }}</p>
