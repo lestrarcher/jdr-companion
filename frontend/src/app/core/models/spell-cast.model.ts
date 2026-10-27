@@ -23,6 +23,16 @@ export interface SpellCastCommand {
   readonly sourceKey: NonNullable<PlayerSpell['key']>;
   readonly method: SpellCastMethod;
   readonly castingLevel: number;
+  readonly targetCharacterIds?: readonly number[];
+  readonly hitPointRoll?: number;
+}
+
+export function spellHitPointEffect(spell: PlayerSpell | undefined): 'aid' | 'feast' | null {
+  switch (spell?.details?.importKey) {
+    case 'aidedd-2014:aide': return 'aid';
+    case 'aidedd-2014:festin-des-heros': return 'feast';
+    default: return null;
+  }
 }
 
 export type AvailableSpellCastMethod = Omit<SpellCastingAvailability['methods'][number], 'kind' | 'castingLevel'> & {
@@ -76,5 +86,7 @@ export function createSpellCastCommand(intent: Omit<SpellCastCommand, 'requestId
     sourceKey: intent.sourceKey,
     method: intent.method,
     castingLevel: intent.castingLevel,
+    ...(intent.targetCharacterIds !== undefined ? { targetCharacterIds: Object.freeze([...intent.targetCharacterIds]) } : {}),
+    ...(intent.hitPointRoll !== undefined ? { hitPointRoll: intent.hitPointRoll } : {}),
   });
 }

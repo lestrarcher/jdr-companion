@@ -228,6 +228,75 @@ try {
         $legacyResources=$initial[0]['resources']; --$legacyResources[1]['currentValue']; --$legacyResources[5]['currentValue'];
         $check($read(0)['state']['resources']===$legacyResources,'Legacy endpoints retain their own single consumption');
 
+        // Long rests consume the same effect records as the new executor; no second effect engine.
+        $ability=new S\CharacterAbilityCalculator(); $hp=new S\CharacterHitPointCalculator($ability);
+        $resources=new S\CharacterResourceResolver(new App\Repository\TrackableResourceRuleRepository($registry),$ability,new S\CharacterFeatureResolver(new App\Repository\CharacterFeatureRuleRepository($registry)));
+        $effects=new App\Repository\CharacterActiveEffectRepository($registry);
+        $rest=new S\CharacterRestService($hp,$s['hpState'],$resources,$s['sync'],new S\CharacterSpellSlotCalculator(),new App\Repository\TrackableResourceDefinitionRepository($registry),$ability,$effects,new S\CharacterActiveEffectService($s['hpState']),$em);
+        foreach (['arcane-recovery'=>V\ResourceRechargeType::LongRest,'rest-short'=>V\ResourceRechargeType::ShortRest,'rest-persistent'=>V\ResourceRechargeType::None] as $slug=>$recharge) {
+            $em->persist(new E\TrackableResourceDefinition($slug,$slug,$recharge,V\ResourceMaximumType::Fixed,1));
+        }
+        $em->flush();
+        foreach (['none','aid','feast','both'] as $case) {
+            $reset(); $commands=[];
+            if (in_array($case,['aid','both'],true)) { $commands[]=$command('aid',3,[$ids[0]]); $execute($commands[array_key_last($commands)]); }
+            if (in_array($case,['feast','both'],true)) { $commands[]=$command('feast',6,[$ids[0]],13); $execute($commands[array_key_last($commands)]); }
+            $session=$em->find(E\CharacterSessionState::class,$sessionIds[0]);
+            // Unrelated persistent effect: the rest must not infer an expiry from its age or amount.
+            $persistent=null;
+            if ($case==='both') {
+                $persistent=new E\CharacterActiveEffect($session->getCharacter(),$session->getCharacter(),'fixture-persistent',0);
+                (new ReflectionProperty($persistent,'createdAt'))->setValue($persistent,new DateTimeImmutable('-30 days'));
+                $em->persist($persistent);
+            }
+            $state=$session->getState(); $state['hitPoints']['current']=1; $state['hitPoints']['temporary']=9;
+            $state['hitDice']=[['id'=>'d6','current'=>0,'note'=>'preserve']];
+            $state['resources'][0]['currentValue']=0; $state['resources'][0]['flexibleCastingBonus']=2;
+            foreach (['arcane-recovery','rest-short','rest-persistent'] as $slug) $state['resources'][]=['id'=>$slug,'currentValue'=>0,'note'=>'preserve'];
+            $session->setState($state); $em->flush();
+            $persistentId=$persistent?->getId()??0;
+            $persistentRow=$db->fetchAssociative('SELECT * FROM character_active_effect WHERE id=?',[$persistentId]);
+            $feastRow=$db->fetchAssociative("SELECT * FROM character_active_effect WHERE target_character_id=? AND effect_type='heroes-feast'",[$ids[0]]);
+            $casterBefore=$read(1); $receipts=$read(0)['state']['spellCastReceipts']??null;
+            $check($commands===[] || count($receipts)===count($commands),$case.': cast receipts exist before rest');
+            $expectedAdjustment=7+(in_array($case,['feast','both'],true)?13:0);
+            foreach ([1,2] as $pass) {
+                $db->transactional(function() use($rest,$session,$em):void { $rest->apply($session,E\RestRequest::TYPE_LONG_REST); $em->flush(); });
+                $em->refresh($session); $after=$read(0)['state'];
+                $check($after['hitPoints']===['current'=>68+$expectedAdjustment,'temporary'=>0,'maximumAdjustment'=>$expectedAdjustment],$case.' rest '.$pass.': removes Aid once, preserves manual adjustment/Feast, heals and clears temporary HP');
+                $check($effects->findEffectFor($session->getCharacter(),E\CharacterActiveEffect::TYPE_AID)===null,$case.' rest '.$pass.': Aid record removed');
+                $check($db->fetchAssociative("SELECT * FROM character_active_effect WHERE target_character_id=? AND effect_type='heroes-feast'",[$ids[0]])===$feastRow,$case.' rest '.$pass.': Feast amount, source and date unchanged');
+                $check($db->fetchAssociative('SELECT * FROM character_active_effect WHERE id=?',[$persistentId])===$persistentRow,$case.' rest '.$pass.': unrelated persistent effect unchanged');
+                $pools=array_column($after['resources'],null,'id');
+                $check($pools['spell-slot-1']===['id'=>'spell-slot-1','currentValue'=>4,'note'=>'preserve'],$case.' rest '.$pass.': flexible bonus removed and natural slots restored');
+                foreach ($initial[0]['resources'] as $pool) $check($pools[$pool['id']]===$pool,$case.' rest '.$pass.': restores '.$pool['id'].' exactly');
+                $check($pools['arcane-recovery']['currentValue']===1 && $pools['rest-short']['currentValue']===1 && $pools['rest-persistent']['currentValue']===0,$case.' rest '.$pass.': recharge periods respected');
+                $check($after['hitDice']===[['id'=>'d6','current'=>8*$pass,'note'=>'preserve']],$case.' rest '.$pass.': hit dice restore normally');
+                $check($after['progressions']===$initial[0]['progressions'] && $read(1)===$casterBefore,$case.' rest '.$pass.': progression and other character unchanged');
+                $check(($after['spellCastReceipts']??null)===$receipts,$case.' rest '.$pass.': casting receipts preserved');
+                $check($after['characterActions']===['prepared'=>[],'preparationPending'=>true] && $after['spellPreparationAllowed']===true,$case.' rest '.$pass.': preparation lifecycle unchanged without recasting prepared actions');
+            }
+            foreach ($commands as $cmd) { $before=$snapshot(); $check($execute($cmd)['replayed'] && $snapshot()===$before,$case.': old cast receipt cannot reapply an expired effect after rest'); }
+        }
+
+        // Arcane Recovery still consumes its own recharged pool after an ordinary long rest.
+        $wizard=new E\CharacterClass('wizard','Rest wizard',6,20,V\SpellcastingProgressionType::Full);
+        $mage=new E\Character($session->getCharacter()->getCampaign(),'rest-mage','Rest mage',E\Character::TYPE_PLAYER);
+        $em->persist($wizard); $em->persist($mage);
+        foreach ([1,2] as $position) { $level=new E\CharacterClassLevel($mage,$wizard,$position,null,4,V\HitPointGainMethod::Average); $mage->addClassLevel($level); $em->persist($level); }
+        $definition=$em->getRepository(E\TrackableResourceDefinition::class)->findOneBy(['slug'=>'arcane-recovery']);
+        $em->persist(E\TrackableResourceRule::forClass($definition,$wizard,1));
+        $mageState=new E\CharacterSessionState($session->getGameSession(),$mage,['hitPoints'=>['current'=>1,'temporary'=>2],'resources'=>[['id'=>'arcane-recovery','currentValue'=>0],['id'=>'spell-slot-1','currentValue'=>0]]]);
+        $em->persist($mageState); $em->flush();
+        $rest->apply($mageState,E\RestRequest::TYPE_LONG_REST); $em->flush();
+        $state=$mageState->getState(); foreach ($state['resources'] as &$pool) if ($pool['id']==='spell-slot-1') --$pool['currentValue']; unset($pool); $mageState->setState($state);
+        $recovery=new S\CharacterAction\CharacterArcaneRecoveryActionService($resources,new S\CharacterSpellSlotStateService(new S\CharacterSpellSlotCalculator()),$s['sync']);
+        $recovery->recoverSpellSlots($mageState,[1=>1]); $em->flush();
+        $values=array_column($mageState->getState()['resources'],'currentValue','id');
+        $check($values['spell-slot-1']===3 && $values['arcane-recovery']===0,'Arcane Recovery after long rest restores one slot and consumes one independent use');
+        $rest->apply($mageState,E\RestRequest::TYPE_LONG_REST); $em->flush();
+        $check(array_column($mageState->getState()['resources'],'currentValue','id')['arcane-recovery']===1,'Next long rest restores Arcane Recovery');
+
         // Two real worker connections, observer holds the lowest Character lock.
         $run = static function(array $requests, ?int $lockId=null) use ($db,$schema,$ids,&$processes,$check): array {
             $started=[]; $db->beginTransaction();

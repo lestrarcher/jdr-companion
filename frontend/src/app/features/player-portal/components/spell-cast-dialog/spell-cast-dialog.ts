@@ -1,18 +1,21 @@
 import { AfterViewInit, Component, ElementRef, OnDestroy, computed, input, output, signal, viewChild } from '@angular/core';
 import { PlayerSpell } from '@core/services/character-session-state-api.service';
-import { SpellCastCommand, SpellCastingAvailability, availableSpellCastMethods } from '@core/models/spell-cast.model';
+import { SpellCastCommand, SpellCastingAvailability, availableSpellCastMethods, spellHitPointEffect } from '@core/models/spell-cast.model';
 import { CharacterResource } from '@core/models/character.model';
+import { SpellTargetPicker } from '../spell-target-picker/spell-target-picker';
 
-export type SpellCastSelection = Pick<SpellCastCommand, 'sourceKey' | 'method' | 'castingLevel'>;
+export type SpellCastSelection = Pick<SpellCastCommand, 'sourceKey' | 'method' | 'castingLevel' | 'targetCharacterIds' | 'hitPointRoll'>;
 type CastOption = { source: PlayerSpell; method: SpellCastingAvailability['methods'][number]; key: string };
 
 @Component({
   selector: 'app-spell-cast-dialog',
+  imports: [SpellTargetPicker],
   templateUrl: './spell-cast-dialog.html',
   styleUrl: './spell-cast-dialog.scss',
 })
 export class SpellCastDialog implements AfterViewInit, OnDestroy {
   readonly spell = input.required<PlayerSpell>();
+  readonly accessToken = input('');
   readonly sources = input.required<PlayerSpell[]>();
   readonly resources = input<readonly Pick<CharacterResource, 'id' | 'currentValue'>[]>([]);
   readonly school = input('');
@@ -31,12 +34,33 @@ export class SpellCastDialog implements AfterViewInit, OnDestroy {
   private readonly choice = signal<string | null>(null);
   private readonly sourceChoice = signal<string | null>(null);
   readonly higherLevelExpanded = signal(false);
+  readonly hitPointEffect = computed(() => spellHitPointEffect(this.spell()));
+  readonly maximumTargets = computed(() => this.hitPointEffect() === 'aid' ? 3 : 12);
+  readonly targetIds = signal<number[]>([]);
+  readonly hitPointRoll = signal<number | null>(null);
+  readonly hitPointBonus = computed(() => {
+    const level = this.selected()?.method.castingLevel;
+    return this.hitPointEffect() === 'aid' ? (level === null || level === undefined ? null : 5 * (level - 1))
+      : this.validRoll() ? this.hitPointRoll() : null;
+  });
+  readonly validRoll = computed(() => {
+    const roll = this.hitPointRoll();
+    return roll !== null && Number.isInteger(roll) && roll >= 2 && roll <= 20;
+  });
+  readonly canConfirm = computed(() => !this.locked() && !!this.selected()
+    && (!this.hitPointEffect() || this.targetIds().length >= 1 && this.targetIds().length <= this.maximumTargets()
+      && (this.hitPointEffect() !== 'feast' || this.validRoll())));
+  updateTargets(ids: number[]): void { if (!this.locked()) this.targetIds.set([...ids]); }
+  updateRoll(value: string): void {
+    if (!this.locked()) this.hitPointRoll.set(value.trim() === '' ? null : Number(value));
+  }
   readonly displayOptions = computed<CastOption[]>(() => this.sources()
     .filter(source => source.spellId === this.spell().spellId && !!source.key && source.castingAvailability?.sourceKey === source.key)
     .flatMap(source => source.castingAvailability!.methods
       .map((method, index) => ({ source, method,
         key: JSON.stringify([source.key, source.policyId, method.kind, method.castingLevel, method.poolSlug, method.cost, index]) }))
       .filter(({ method }) => method.kind !== 'normal' && method.castingLevel !== null
+        && (!this.hitPointEffect() || method.castingLevel >= (this.hitPointEffect() === 'aid' ? 2 : 6))
         // Only explicit server reasons establish structural inapplicability.
         // Missing/invalid counters (unknown) must remain visible and disabled.
         && !(method.status === 'unavailable' && [
@@ -81,8 +105,11 @@ export class SpellCastDialog implements AfterViewInit, OnDestroy {
   cancel(event: Event): void { event.preventDefault(); this.close(); }
   confirm(): void {
     const option = this.selected();
-    if (!this.locked() && option && option.method.kind !== 'normal' && option.method.castingLevel !== null) this.confirmed.emit({ sourceKey: option.source.key!,
-      method: option.method.kind, castingLevel: option.method.castingLevel });
+    if (this.canConfirm() && option && option.method.kind !== 'normal' && option.method.castingLevel !== null) this.confirmed.emit({ sourceKey: option.source.key!,
+      method: option.method.kind, castingLevel: option.method.castingLevel,
+      ...(this.hitPointEffect() ? { targetCharacterIds: [...this.targetIds()] } : {}),
+      ...(this.hitPointEffect() === 'feast' ? { hitPointRoll: this.hitPointRoll()! } : {}),
+    });
   }
   levelLabel(level: number | null): string { return ['0', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'][level ?? -1] ?? '?'; }
   remaining(option: CastOption): number | null {

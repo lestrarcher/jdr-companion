@@ -11,7 +11,7 @@ import { SpellCastDialog, SpellCastSelection } from '../spell-cast-dialog/spell-
 import { PlayerSpell } from '@core/services/character-session-state-api.service';
 import { CharacterResource } from '@core/models/character.model';
 import { PlayerSpellApiService, PlayerSpellChoice, PlayerSpellView } from '@core/services/player-spell-api.service';
-import { availableSpellCastMethods, createSpellCastCommand, SpellCastCommand, SpellCastResponse } from '@core/models/spell-cast.model';
+import { availableSpellCastMethods, createSpellCastCommand, spellHitPointEffect, SpellCastCommand, SpellCastResponse } from '@core/models/spell-cast.model';
 
 @Component({
   selector: 'app-player-spells',
@@ -54,7 +54,7 @@ export class PlayerSpells implements OnInit, OnChanges {
     if (!source) return;
     this.selection.set(source);
     this.castChoice.set(this.castMethodKey({ kind: choice.method, castingLevel: choice.castingLevel }));
-    this.confirmCast();
+    this.confirmCast(choice);
   }
   readonly changed = output<void>();
   readonly castingBlocked = input(false);
@@ -79,11 +79,21 @@ export class PlayerSpells implements OnInit, OnChanges {
   readonly canCast = computed(() => this.mode() === 'portal' && !!this.accessToken() && !this.readonly()
     && !this.castingBlocked() && !this.busy() && !this.castSaving() && !this.pendingCast() && !!this.chosenCastMethod());
   castMethodKey(method: { kind: string; castingLevel: number | null }): string { return `${method.kind}:${method.castingLevel}`; }
-  confirmCast(): void {
+  confirmCast(selection?: SpellCastSelection): void {
     const method = this.chosenCastMethod(); const spell = this.castingSpell();
     if (!this.canCast() || !spell?.key || !method) return;
+    const effect = spellHitPointEffect(spell);
+    const targets = selection?.targetCharacterIds;
+    const roll = selection?.hitPointRoll;
+    if (effect && (!targets || targets.length < 1 || targets.length > (effect === 'aid' ? 3 : 12)
+      || targets.some(id => !Number.isInteger(id) || id < 1) || new Set(targets).size !== targets.length
+      || method.castingLevel < (effect === 'aid' ? 2 : 6)
+      || effect === 'feast' && (roll === undefined || !Number.isInteger(roll) || roll < 2 || roll > 20))) return;
     this.pendingCast.set({ command: createSpellCastCommand({ revision: Math.max(this.revision(), this.view()?.revision ?? 0),
-      sourceKey: spell.key, method: method.kind, castingLevel: method.castingLevel }), name: spell.name, source: spell.source });
+      sourceKey: spell.key, method: method.kind, castingLevel: method.castingLevel,
+      ...(effect ? { targetCharacterIds: targets } : {}),
+      ...(effect === 'feast' ? { hitPointRoll: roll } : {}),
+    }), name: spell.name, source: spell.source });
     this.sendCast();
   }
   retryCast(): void { if (this.castUncertain() && !this.castSaving() && !this.castingBlocked()) this.sendCast(); }

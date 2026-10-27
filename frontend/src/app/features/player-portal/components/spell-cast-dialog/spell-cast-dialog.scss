@@ -38,3 +38,7 @@ select { min-width: 0; max-width: 100%; min-height: 44px; flex: 1; padding: .4re
 .error { color: #f1b5ac; }
 .success { color: #a7dbc2; }
 footer { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; margin-top: 1rem; }
+.roll-input { display: flex; align-items: center; gap: .75rem; font-size: .85rem; }
+.roll-input input { width: 6rem; min-height: 44px; padding: .4rem; border: 1px solid #a78b5980; border-radius: .5rem; background: #232837; color: inherit; font: inherit; }
+.roll-input input:focus-visible { outline: 2px solid #dfbf80; outline-offset: 3px; }
+.hp-bonus { color: #dfbf80; }

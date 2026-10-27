@@ -57,6 +57,7 @@ export interface PlayerSpell {
   policyId?: number | null;
   alwaysPrepared?: boolean;
   details?: {
+    importKey?: string | null;
     description: string; higherLevels: string | null; castingTime: string; range: string; duration: string;
     verbal: boolean; somatic: boolean; material: boolean; materialDescription: string | null;
     concentration: boolean; ritual: boolean;

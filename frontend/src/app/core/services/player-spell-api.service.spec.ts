@@ -106,4 +106,20 @@ describe('Player spell casting API', () => {
     expect(first.requestId).not.toBe(second.requestId);
     expect(uuid).toHaveBeenCalledTimes(2);
   });
+
+  it('snapshots and freezes target parameters and sends exactly the same body on retry', () => {
+    const targets = [1, 2];
+    const pending = createSpellCastCommand({ ...intent, targetCharacterIds: targets, hitPointRoll: 14 });
+    expect(Object.isFrozen(pending.targetCharacterIds)).toBe(true);
+    targets.push(3);
+    api.cast('token', pending).subscribe({ error: () => {} });
+    const first = http.expectOne('/api/public/characters/token/spells/cast');
+    const body = first.request.body;
+    expect(body).toEqual({ ...pending, targetCharacterIds: [1, 2], hitPointRoll: 14 });
+    first.error(new ProgressEvent('error'));
+    api.cast('token', pending).subscribe();
+    const replay = http.expectOne('/api/public/characters/token/spells/cast');
+    expect(replay.request.body).toEqual(body);
+    replay.flush(response);
+  });
 });

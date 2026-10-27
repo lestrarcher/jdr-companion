@@ -130,6 +130,7 @@
 }
 @if (dialogOpen() && dialogSpell(); as spell) {
   <app-spell-cast-dialog [spell]="spell" [sources]="dialogSources()" [school]="schoolLabel(spell.school)"
+    [accessToken]="accessToken()"
     [resources]="(view()?.revision ?? revision()) > revision() ? [] : resources()"
     [saving]="castSaving()" [blocked]="castingBlocked() || readonly() || busy()"
     [pending]="pendingCast()" [uncertain]="castUncertain()" [error]="castError()" [success]="castSuccess()"

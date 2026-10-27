@@ -66,6 +66,7 @@ try {
         'castingTime'=>'1 action','range'=>'Self','duration'=>'1 minute','description'=>'Fixture','ritual'=>true,
         'classIds'=>array_map(static fn($class)=>$class->getId(),array_values($classes))],$owner,true);
     $spellEntity = $em->find(SpellDefinition::class,$spell['id']);
+    $spellEntity->setImportKey('aidedd-2014:directory-fixture');
     $cantrips=[];
     foreach (['known','unknown'] as $kind) {
         $cantrips[$kind]=$catalogue->create(['slug'=>'directory-'.$kind,'name'=>$kind.' cantrip','level'=>0,'school'=>'divination',
@@ -131,6 +132,12 @@ try {
         $check($availability['sourceKey']===$entry['key'] && $availability['policyId']===$entry['policyId'],'Availability preserves source identity');
         $check($availability['status']===($entry['sourceType']==='class' || ($ordinaryGrant && $decision['canCastAsRitual'])?'available':'unknown'),'Cantrip/ritual available, unresolved grants or counters unknown');
         $isCantrip=$entry['spellId']===$cantrips['known']['id'];
+        $check(array_key_exists('importKey',$entry['details'])
+            && $entry['details']['importKey']===($isCantrip?null:'aidedd-2014:directory-fixture'),
+            'Public canonical import identity is preserved across all sources, including null');
+        $detailKeys=array_keys($entry['details']); sort($detailKeys);
+        $expectedKeys=['description','higherLevels','castingTime','range','duration','verbal','somatic','material','materialDescription','concentration','ritual','importKey']; sort($expectedKeys);
+        $check($detailKeys===$expectedKeys,'Details expose only public spell fields, no owner or access information');
         foreach (['spellId'=>$isCantrip?$cantrips['known']['id']:$spell['id'],'name'=>$isCantrip?'known cantrip':'Shared ritual',
             'level'=>$isCantrip?0:1,'school'=>'divination','spellSaveDc'=>$entry['sourceType']==='subclass' && !$ordinaryGrant?null:10,
             'spellAttackBonus'=>$entry['sourceType']==='subclass' && !$ordinaryGrant?null:2] as $field=>$expected) {

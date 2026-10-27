@@ -25,6 +25,13 @@ function spell(key='acquisition:1', methods=[method('standard-slot',1)]): Player
     castingAbility:'intelligence', spellSaveDc:12, spellAttackBonus:4, known:true, inSpellbook:true, prepared:true,
     castingAvailability:{sourceKey:key,policyId:1,status:'available',reason:null,methods} };
 }
+function hpSpell(kind: 'aid' | 'feast', levels = kind === 'aid' ? [2, 4] : [6, 7, 8, 9]): PlayerSpell {
+  return { ...spell('acquisition:1', levels.map(level => method('standard-slot', level))),
+    name: 'Nom volontairement différent', level: kind === 'aid' ? 2 : 6,
+    details: { importKey: kind === 'aid' ? 'aidedd-2014:aide' : 'aidedd-2014:festin-des-heros',
+      description: '', higherLevels: null, castingTime: '1 action', range: '9 m', duration: '8 heures',
+      verbal: true, somatic: true, material: false, materialDescription: null, concentration: false, ritual: false } };
+}
 const view=(spells:PlayerSpell[])=>({revision:42,editable:true,spellPreparationAllowed:false,preparations:[],choices:[],warnings:[],spells});
 function session(spells:PlayerSpell[],revision=42,current=2): any {
   return {id:1,revision,participating:true,campaign:{id:2,configurationKey:'strahd'},session:{id:3,name:'Session',status:'live'},
@@ -53,6 +60,69 @@ async function setup(spells:PlayerSpell[]) {
 afterEach(()=>{ TestBed.inject(HttpTestingController).verify({ignoreCancelled:true}); TestBed.resetTestingModule(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('Spell casting controls',()=>{
+  it('selects 1 to 3 Aid targets, allows self-targeting and previews the selected level bonus', async () => {
+    const {fixture,http,c}=await setup([hpSpell('aid',[1,2,4])]);
+    c.openCastDialog(c.spells()[0]); fixture.detectChanges();
+    const confirm=()=>fixture.nativeElement.querySelector('.cast-confirm') as HTMLButtonElement;
+    expect(confirm().disabled).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain('Chargement des participants');
+    http.expectOne('/api/public/characters/test/action-targets').flush({targets:[1,2,3,4].map(id=>({id,name:id===1?'Moi':`Cible ${id}`}))});
+    await fixture.whenStable();
+    const levels=fixture.nativeElement.querySelectorAll('.level-option');
+    expect(levels).toHaveLength(2); levels[1].click(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.hp-bonus').textContent).toContain('+15 PV actuels et maximum');
+    const boxes=fixture.nativeElement.querySelectorAll('app-spell-target-picker input') as NodeListOf<HTMLInputElement>;
+    boxes[0].click(); fixture.detectChanges(); expect(confirm().disabled).toBe(false);
+    boxes[1].click(); boxes[2].click(); fixture.detectChanges(); expect(boxes[3].disabled).toBe(true);
+    boxes[1].click(); fixture.detectChanges(); expect(boxes[3].disabled).toBe(false);
+    boxes[3].click(); fixture.detectChanges(); confirm().click();
+    const request=http.expectOne(base+'/cast');
+    expect(request.request.body).toEqual({revision:42,requestId:expect.any(String),sourceKey:'acquisition:1',method:'standard-slot',castingLevel:4,targetCharacterIds:[1,3,4]});
+    request.flush(castResponse(c.spells(),'standard-slot',4));
+  });
+
+  it('requires 1 to 12 Feast participants and an integer 2d10 result, independent of upcasting', async () => {
+    const {fixture,http,c}=await setup([hpSpell('feast')]);
+    c.openCastDialog(c.spells()[0]); fixture.detectChanges();
+    http.expectOne('/api/public/characters/test/action-targets').flush({targets:Array.from({length:13},(_,i)=>({id:i+1,name:`Cible ${i+1}`}))});
+    await fixture.whenStable();
+    const levels=fixture.nativeElement.querySelectorAll('.level-option'); expect(levels).toHaveLength(4); levels[3].click();
+    const boxes=fixture.nativeElement.querySelectorAll('app-spell-target-picker input') as NodeListOf<HTMLInputElement>;
+    for(let i=0;i<12;i++) boxes[i].click(); fixture.detectChanges(); expect(boxes[12].disabled).toBe(true);
+    const roll=fixture.nativeElement.querySelector('#spell-cast-hit-point-roll') as HTMLInputElement;
+    const confirm=()=>fixture.nativeElement.querySelector('.cast-confirm') as HTMLButtonElement;
+    for(const value of ['', '1','21','2.5']) {
+      roll.value=value; roll.dispatchEvent(new Event('input')); fixture.detectChanges(); expect(confirm().disabled).toBe(true);
+    }
+    for(const value of ['2','20']) {
+      roll.value=value; roll.dispatchEvent(new Event('input')); fixture.detectChanges(); expect(confirm().disabled).toBe(false);
+      expect(fixture.nativeElement.querySelector('.hp-bonus').textContent).toContain(`+${value} PV actuels et maximum`);
+    }
+    levels[0].click(); fixture.detectChanges(); expect(fixture.nativeElement.querySelector('.hp-bonus').textContent).toContain('+20');
+    confirm().click(); const req=http.expectOne(base+'/cast');
+    expect(req.request.body).toEqual({revision:42,requestId:expect.any(String),sourceKey:'acquisition:1',method:'standard-slot',castingLevel:6,targetCharacterIds:Array.from({length:12},(_,i)=>i+1),hitPointRoll:20});
+    req.flush(castResponse(c.spells(),'standard-slot',6));
+  });
+
+  it('keeps confirmation disabled on target loading failure and an empty retry', async () => {
+    const {fixture,http,c}=await setup([hpSpell('aid',[2])]); c.openCastDialog(c.spells()[0]); fixture.detectChanges();
+    http.expectOne('/api/public/characters/test/action-targets').flush({}, {status:500,statusText:'Error'});
+    await fixture.whenStable(); expect(fixture.nativeElement.textContent).toContain('Impossible de charger');
+    expect(fixture.nativeElement.querySelector('.cast-confirm').disabled).toBe(true);
+    fixture.nativeElement.querySelector('app-spell-target-picker button').click(); fixture.detectChanges();
+    http.expectOne('/api/public/characters/test/action-targets').flush({targets:[]}); await fixture.whenStable();
+    expect(fixture.nativeElement.textContent).toContain('Aucun participant disponible');
+    expect(fixture.nativeElement.querySelector('.cast-confirm').disabled).toBe(true); http.expectNone(base+'/cast');
+  });
+
+  it.each([undefined,null,'other:aid'])('does not infer an effect from the displayed name when importKey is %s', async importKey => {
+    const entry=hpSpell('aid',[2]); entry.name='Aide'; entry.details!.importKey=importKey;
+    const {fixture,http,c}=await setup([entry]); c.openCastDialog(entry); fixture.detectChanges();
+    http.expectNone('/api/public/characters/test/action-targets');
+    fixture.nativeElement.querySelector('.cast-confirm').click(); const req=http.expectOne(base+'/cast');
+    expect(Object.keys(req.request.body).sort()).toEqual(['revision','requestId','sourceKey','method','castingLevel'].sort());
+    req.flush(castResponse([entry],'standard-slot',2));
+  });
   it('opens an always-prepared oath spell with slot methods and no implicit free casting',async()=>{
     const entry={...spell('subclass-grant:7',[method('standard-slot',1),method('standard-slot',4)]),
       policyId:null,sourceType:'subclass' as const,source:'Vengeance',castingAbility:'charisma',
@@ -212,6 +282,56 @@ describe('Spell casting controls',()=>{
 });
 
 describe('Portal adoption of cast responses',()=>{
+  it.each([
+    ['status','aid'], ['spells','aid'], ['status','feast'], ['spells','feast'],
+  ] as const)('casts %s / %s through the sole dialog and preserves every parameter during an uncertain retry', async (tab,kind) => {
+    vi.stubGlobal('matchMedia',vi.fn(()=>({matches:false,addEventListener:vi.fn(),removeEventListener:vi.fn()})));
+    TestBed.configureTestingModule({providers:[provideHttpClient(),provideHttpClientTesting(),provideRouter([]),
+      {provide:ActivatedRoute,useValue:{snapshot:{paramMap:convertToParamMap({campaignId:'2',sessionId:'3',accessToken:'test'}),queryParamMap:convertToParamMap({tab})}}},
+      {provide:CampaignConfigurationRegistryService,useValue:{getConfiguration:()=>({id:'2',name:'Test'})}},
+      {provide:RestRequestApiService,useValue:{getLatest:()=>of(null)}}]});
+    const level=kind==='aid'?2:6;
+    const entry=hpSpell(kind,[level]);
+    entry.sourceType=kind==='aid'?'feature':'subclass'; entry.key=kind==='aid'?'feature:13':'subclass-grant:7';
+    entry.castingAvailability!.sourceKey=entry.key;
+    const entries=[entry]; const fixture=TestBed.createComponent(PlayerPortal); const p=fixture.componentInstance as any;
+    const http=TestBed.inject(HttpTestingController);
+    const initial=session(entries);
+    initial.character.resources=[{slug:`spell-slot-${level}`,name:'Emplacements',maximum:2,rechargeType:'long-rest'}];
+    initial.state.resources=[{id:`spell-slot-${level}`,currentValue:2}];
+    http.expectOne('/api/public/characters/test').flush(initial); fixture.detectChanges();
+    for (const req of http.match(base)) req.flush(view(entries)); await fixture.whenStable();
+    fixture.nativeElement.querySelector('.quick-spell').click(); fixture.detectChanges();
+    for (const req of http.match(base)) req.flush(view(entries)); await fixture.whenStable();
+    expect(p.activeTab()).toBe(tab);
+    expect(fixture.nativeElement.querySelectorAll('app-spell-cast-dialog')).toHaveLength(1);
+    http.expectOne('/api/public/characters/test/action-targets').flush({targets:[{id:1,name:'Moi'},{id:2,name:'Compagnon'}]});
+    await fixture.whenStable();
+    fixture.nativeElement.querySelector('app-spell-target-picker input').click();
+    if(kind==='feast') {
+      const input=fixture.nativeElement.querySelector('#spell-cast-hit-point-roll'); input.value='12'; input.dispatchEvent(new Event('input'));
+    }
+    fixture.detectChanges(); fixture.nativeElement.querySelector('.cast-confirm').click();
+    const first=http.expectOne(base+'/cast'); const original=structuredClone(first.request.body);
+    expect(original).toEqual({revision:42,requestId:expect.any(String),sourceKey:entry.key,method:'standard-slot',castingLevel:level,targetCharacterIds:[1],...(kind==='feast'?{hitPointRoll:12}:{})});
+    const c=fixture.debugElement.query(By.directive(PlayerSpells)).componentInstance as PlayerSpells;
+    first.error(new ProgressEvent('error')); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-spell-target-picker')).toBeNull();
+    expect(fixture.nativeElement.querySelector('#spell-cast-hit-point-roll')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.level-option')).toBeNull();
+    c.confirmDialogSelection({sourceKey:entry.key!,method:'standard-slot',castingLevel:9,targetCharacterIds:[2],hitPointRoll:20});
+    expect(c.pendingCast()?.command).toEqual(original); http.expectNone(base+'/cast');
+    fixture.nativeElement.querySelector('app-spell-cast-dialog .cancel').click(); fixture.detectChanges();
+    p.selectTab(tab==='status'?'spells':'status'); fixture.detectChanges();
+    c.dialogOpen.set(true); fixture.detectChanges();
+    http.expectNone('/api/public/characters/test/action-targets');
+    fixture.nativeElement.querySelector('app-spell-cast-dialog .retry').click();
+    const retry=http.expectOne(base+'/cast'); expect(retry.request.body).toEqual(original);
+    retry.flush({...initial,revision:43,cast:{source:{key:entry.key,spellId:1,policyId:1,sourceType:entry.sourceType},method:'standard-slot',castingLevel:level,poolSlug:`spell-slot-${level}`,cost:1},replayed:true});
+    await fixture.whenStable(); expect(c.pendingCast()).toBeNull();
+    http.expectNone(r=>r.method==='PATCH'); fixture.destroy();
+  });
+
   it('retains pending commands across tabs and adopts a replay without a PATCH or local consumption',async()=>{
     vi.stubGlobal('matchMedia',vi.fn(()=>({matches:false,addEventListener:vi.fn(),removeEventListener:vi.fn()})));
     TestBed.configureTestingModule({providers:[provideHttpClient(),provideHttpClientTesting(),provideRouter([]),

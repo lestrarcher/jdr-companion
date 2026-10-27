@@ -9,6 +9,11 @@
   </header>
   @if (pending(); as cast) {
     <p class="pending">{{ cast.name }} · {{ cast.source }} · {{ methodLabel(cast.command.method) }} · niveau {{ cast.command.castingLevel }}</p>
+    @if (cast.command.targetCharacterIds; as targets) {
+      <p>{{ targets.length }} participant(s) sélectionné(s).
+        @if (cast.command.hitPointRoll !== undefined) { Résultat des 2d10 : {{ cast.command.hitPointRoll }}. }
+        Les paramètres de ce lancement sont conservés.</p>
+    }
   } @else if (!success()) {
     @if (availableSources().length > 1) {
       <label class="source-picker">Source
@@ -73,6 +78,18 @@
       }
     }
   }
+  @if (hitPointEffect() && !pending() && !success()) {
+    <app-spell-target-picker [accessToken]="accessToken()" [maximum]="maximumTargets()" [locked]="locked()"
+      (changed)="updateTargets($event)" />
+    @if (hitPointEffect() === 'feast') {
+      <label class="roll-input" for="spell-cast-hit-point-roll">Résultat des 2d10
+        <input id="spell-cast-hit-point-roll" type="number" min="2" max="20" step="1" inputmode="numeric"
+          placeholder="2 à 20" [disabled]="locked()" [value]="hitPointRoll() ?? ''"
+          (input)="updateRoll($any($event.target).value)" />
+      </label>
+    }
+    @if (hitPointBonus(); as bonus) { <p class="hp-bonus">+{{ bonus }} PV actuels et maximum par participant.</p> }
+  }
   @if (saving()) { <p role="status">Lancement en cours…</p> }
   @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
   @if (success()) { <p class="success" role="status">{{ success() }}</p> }
@@ -86,7 +103,7 @@
         <button type="button" (click)="refreshed.emit()">Actualiser la fiche</button>
       }
     } @else if (!success()) {
-      <button type="button" class="cast-confirm" [disabled]="locked() || !selected()" (click)="confirm()">Confirmer le lancement</button>
+      <button type="button" class="cast-confirm" [disabled]="!canConfirm()" (click)="confirm()">Confirmer le lancement</button>
     }
   </footer>
 </dialog>

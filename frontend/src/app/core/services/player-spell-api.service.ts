@@ -26,6 +26,8 @@ export class PlayerSpellApiService {
     const { revision, requestId, sourceKey, method, castingLevel } = command;
     return this.http.post<SpellCastResponse>(`${this.base(token)}/cast`, {
       revision, requestId, sourceKey, method, castingLevel,
+      ...(command.targetCharacterIds !== undefined ? { targetCharacterIds: [...command.targetCharacterIds] } : {}),
+      ...(command.hitPointRoll !== undefined ? { hitPointRoll: command.hitPointRoll } : {}),
     });
   }
   choose(token: string, revision: number, choice: PlayerSpellChoice, spellId: number) {

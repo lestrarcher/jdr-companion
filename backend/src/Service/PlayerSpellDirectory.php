@@ -127,7 +127,7 @@ final readonly class PlayerSpellDirectory
             $spellId = $entry['spellId'];
             if (!array_key_exists($spellId, $details)) {
                 try { $details[$spellId] = array_intersect_key($this->catalogue->get($spellId, $character->getCampaign()->getOwner()), array_flip([
-                    'description', 'higherLevels', 'castingTime', 'range', 'duration', 'verbal', 'somatic', 'material', 'materialDescription', 'concentration', 'ritual',
+                    'description', 'higherLevels', 'castingTime', 'range', 'duration', 'verbal', 'somatic', 'material', 'materialDescription', 'concentration', 'ritual', 'importKey',
                 ])); } catch (\Symfony\Component\HttpKernel\Exception\NotFoundHttpException) { $details[$spellId] = null; }
             }
             $entry['details'] = $details[$spellId];

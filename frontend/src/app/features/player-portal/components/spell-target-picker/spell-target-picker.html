@@ -1,0 +1,20 @@
+<fieldset [disabled]="locked() || loading()" [attr.aria-busy]="loading()">
+  <legend>Participants · {{ selected().length }} / {{ maximum() }}</legend>
+  @if (loading()) { <p role="status">Chargement des participants…</p> }
+  @else if (failed()) {
+    <p role="alert">Impossible de charger les participants.</p>
+    <button type="button" (click)="retry()">Réessayer le chargement</button>
+  } @else {
+    <div class="targets">
+      @for (target of targets(); track target.id) {
+        <label>
+          <input type="checkbox" [checked]="selected().includes(target.id)"
+            [disabled]="!selected().includes(target.id) && selected().length >= maximum()"
+            (change)="toggle(target.id)" />
+          <span>{{ target.name }}</span>
+        </label>
+      } @empty { <p>Aucun participant disponible dans cette session.</p> }
+    </div>
+    <p>Choisissez de 1 à {{ maximum() }} participants, vous-même inclus si souhaité.</p>
+  }
+</fieldset>
