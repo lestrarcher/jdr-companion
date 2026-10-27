@@ -11,7 +11,8 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 require __DIR__.'/../vendor/autoload.php';
 (new Symfony\Component\Dotenv\Dotenv())->bootEnv(__DIR__.'/../.env');
 putenv('SHELL_VERBOSITY=-1'); $_SERVER['SHELL_VERBOSITY'] = $_ENV['SHELL_VERBOSITY'] = -1;
-$kernel = new App\Kernel('dev', true); $kernel->boot();
+// Historical scenarios perform many inventory projections; do not retain every SQL backtrace.
+$kernel = new App\Kernel('dev', !in_array($argv[1] ?? '', ['--historical', '--historical-concurrency'], true)); $kernel->boot();
 $registry = $kernel->getContainer()->get('doctrine'); $em = $registry->getManager(); $db = $em->getConnection(); $checks = 0;
 if (($argv[1] ?? '') === '--worker') {
     $schemaName = $argv[2] ?? '';

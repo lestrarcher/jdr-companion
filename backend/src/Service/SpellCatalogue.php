@@ -64,7 +64,8 @@ final readonly class SpellCatalogue
         $total = (int) $this->db->fetchOne('SELECT COUNT(*) FROM spell_definition WHERE '.$where, $params);
         $limit = $context['pageSize']; $offset = ($context['page'] - 1) * $limit;
         $rows = $this->db->fetchAllAssociative("SELECT * FROM spell_definition WHERE $where ORDER BY name, id LIMIT $limit OFFSET $offset", $params);
-        return ['spells' => array_map(fn ($row) => $this->serialize($row, $user, $official), $rows), 'total' => $total, 'page' => $context['page'], 'pageSize' => $limit];
+        $classes = $this->classesForSpells(array_column($rows, 'id'));
+        return ['spells' => array_map(fn ($row) => $this->serialize($row, $user, $official, $classes[$row['id']] ?? []), $rows), 'total' => $total, 'page' => $context['page'], 'pageSize' => $limit];
     }
 
     private function row(int $id, User $user, bool $write = false): array
@@ -95,12 +96,24 @@ final readonly class SpellCatalogue
         return array_map(static fn ($row) => ['id' => (int) $row['id'], 'name' => $row['name'], 'origin' => $row['origin']], $rows);
     }
 
-    private function serialize(array $row, User $user, bool $official = false): array
+    /** Per-read batching only: no cache can survive a catalogue edit or an owner change. */
+    private function classesForSpells(array $ids): array
+    {
+        if ($ids === []) return [];
+        $classes = [];
+        foreach ($this->db->fetchAllAssociative(
+            'SELECT e.spell_id, c.id, c.name, c.origin, c.owner_id FROM spell_class_list_entry e JOIN character_class c ON c.id = e.character_class_id WHERE e.spell_id IN (?) ORDER BY c.name, c.id',
+            [$ids], [\Doctrine\DBAL\ArrayParameterType::INTEGER],
+        ) as $class) $classes[$class['spell_id']][] = $class;
+        return $classes;
+    }
+
+    private function serialize(array $row, User $user, bool $official = false, ?array $classes = null): array
     {
         $data = ['id' => (int) $row['id'], 'slug' => $row['slug'], 'level' => (int) $row['level'], 'school' => $row['school'], 'origin' => $row['origin'], 'edition' => $row['edition'], 'importKey' => $row['import_key'], 'materialCostCp' => $row['material_cost_cp'] === null ? null : (int) $row['material_cost_cp']];
         foreach (self::TEXT as $field => $column) $data[$field] = $row[$column];
         foreach (self::FLAGS as $field => $column) $data[$field] = filter_var($row[$column], FILTER_VALIDATE_BOOL);
-        $classes = $this->db->fetchAllAssociative('SELECT c.id, c.name, c.origin, c.owner_id FROM spell_class_list_entry e JOIN character_class c ON c.id = e.character_class_id WHERE e.spell_id = ? ORDER BY c.name, c.id', [$row['id']]);
+        $classes ??= $this->classesForSpells([(int) $row['id']])[$row['id']] ?? [];
         foreach ($classes as $class) if (!(($class['origin'] === 'OFFICIAL' && $class['owner_id'] === null) || ($row['origin'] === 'CUSTOM' && $class['origin'] === 'CUSTOM' && $class['owner_id'] === $row['owner_id']))) throw new NotFoundHttpException('Sort indisponible.');
         $data['classes'] = array_map(static fn ($class) => ['id' => (int) $class['id'], 'name' => $class['name'], 'origin' => $class['origin']], $classes);
         $data['classIds'] = array_column($data['classes'], 'id');
@@ -118,13 +131,20 @@ final readonly class SpellCatalogue
             [$classIds], [\Doctrine\DBAL\ArrayParameterType::INTEGER],
         );
         $result = []; $spells = [];
+        $ids = array_values(array_unique(array_column($rows, 'spell_id')));
+        if ($ids === []) return [];
+        $spellRows = $this->db->fetchAllAssociative(
+            "SELECT * FROM spell_definition WHERE id IN (?) AND ((origin = 'OFFICIAL' AND owner_id IS NULL) OR (origin = 'CUSTOM' AND owner_id = ?))",
+            [$ids, $owner->getId()], [\Doctrine\DBAL\ArrayParameterType::INTEGER, \Doctrine\DBAL\ParameterType::INTEGER],
+        );
+        $classes = $this->classesForSpells(array_column($spellRows, 'id'));
+        foreach ($spellRows as $spellRow) {
+            try { $spells[$spellRow['id']] = $this->serialize($spellRow, $owner, false, $classes[$spellRow['id']] ?? []); }
+            catch (NotFoundHttpException) { /* Keep malformed dependencies hidden, as in get(). */ }
+        }
         foreach ($rows as $row) {
             $spellId = (int) $row['spell_id'];
-            if (!array_key_exists($spellId, $spells)) {
-                try { $spells[$spellId] = $this->get($spellId, $owner); }
-                catch (NotFoundHttpException) { $spells[$spellId] = null; }
-            }
-            if ($spells[$spellId] !== null) $result[] = ['id' => (int) $row['id'], 'classId' => (int) $row['character_class_id'], 'spell' => $spells[$spellId]];
+            if (isset($spells[$spellId])) $result[] = ['id' => (int) $row['id'], 'classId' => (int) $row['character_class_id'], 'spell' => $spells[$spellId]];
         }
         return $result;
     }

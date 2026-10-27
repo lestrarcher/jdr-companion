@@ -16,7 +16,7 @@ $spec=App\Service\Dnd2014AdvancedSpellPolicies::warlock($warlock);
 $wp=$service->defineAdvancedPolicy($warlock,$spec['policy'],$admin,$spec['rules']);
 $sp=$service->definePolicy($sorcerer,App\Service\Dnd2014SpellPolicies::get('sorcerer-2014'),$admin);
 $pool=[];
-foreach([0=>8,1=>16,2=>16,5=>12,6=>3,7=>2] as $level=>$count) for($i=0;$i<$count;++$i) {
+foreach([0=>8,1=>16,2=>16,3=>3,4=>3,5=>12,6=>3,7=>2] as $level=>$count) for($i=0;$i<$count;++$i) {
     $pool[$level][]=$catalogue->create(['slug'=>"global-$level-$i",'name'=>"Global $level $i",'level'=>$level,'school'=>'abjuration',
         'castingTime'=>'Fixture','range'=>'Fixture','duration'=>'Fixture','description'=>'Fixture','classIds'=>[$warlock->getId(),$sorcerer->getId()]],$admin,true);
 }
@@ -77,9 +77,63 @@ $service->acquire($manual,$sp->getId(),[['spellId'=>$pool[1][0]['id'],'classLeve
 $check($preview($manual,$sp)['warning']!=='','Unknown preexisting reconciliation requires GM intervention');
 $refuse(fn()=>$service->completeHistorical($manual,$sp->getId(),$payload($manual,$sp,$batch([$pool[1][1]],null)),$owner),409);
 
-if($concurrent) {
+// Mixed current list: an existing level-three spell occupies the level-eleven gain.
+// Six previously reconciled cantrips must be replanned without consuming known-spell slots.
+// Pin the concurrency fixture to v1 before publishing the advanced v2 fixture.
+if ($concurrent) {
     [$race,$rl]=$make('Global race',[[$sorcerer,2]]);
     $service->completeHistorical($race,$sp->getId(),$payload($race,$sp,$batch(array_slice($pool[0],0,3),null)),$owner);
+}
+$basePolicy=App\Service\Dnd2014SpellPolicies::get('sorcerer-2014');
+$versionTwo=new App\Dto\SpellcastingPolicy($basePolicy->key,2,$basePolicy->ability,$basePolicy->learningStyle,$basePolicy->levels,$basePolicy->provenance,$basePolicy->limitations);
+$spec=App\Service\Dnd2014AdvancedSpellPolicies::ordinary($sorcerer,$versionTwo);
+$mixedPolicy=$service->defineAdvancedPolicy($sorcerer,$spec['policy'],$admin,$spec['rules']);
+[$mixed,$mixedLevels]=$make('Mixed historical progression',[[$warlock,2],[$sorcerer,11]]);
+$p=$preview($mixed,$mixedPolicy); $mixedKnown=$category($p,'ordinary')['ruleId']; $mixedMinor=$category($p,'cantrips')['ruleId'];
+$service->acquire($mixed,$mixedPolicy->getId(),[['spellId'=>$pool[3][0]['id'],'classLevelId'=>$mixedLevels[$sorcerer->getId()][10]->getId(),'ruleId'=>$mixedKnown]],'level-history','Pinned last-level gain',$owner);
+$service->completeHistorical($mixed,$mixedPolicy->getId(),$payload($mixed,$mixedPolicy,$batch(array_slice($pool[0],0,6),$mixedMinor)),$owner);
+$p=$preview($mixed,$mixedPolicy); $beforeMixed=$snapshot($mixed);
+$check(count($p['expectedAcquisitionIds'])===7 && $category($p,'ordinary')['remaining']===11,'Seven concurrency IDs include six cantrips and one known spell, with eleven choices remaining');
+$mixedSpells=[$pool[1][0],$pool[1][1],$pool[2][0],$pool[3][1],$pool[3][2],...$pool[4],$pool[5][0],$pool[5][1],$pool[6][0]];
+$mixedInput=$payload($mixed,$mixedPolicy,$batch($mixedSpells,$mixedKnown));
+$result=$service->completeHistorical($mixed,$mixedPolicy->getId(),$mixedInput,$owner);
+$check(count($result['createdAcquisitionIds'])===11,'Mixed levels 1,1,2,3,3,4,4,4,5,5,6 are reachable with a pinned level-eleven gain');
+$check(array_slice($snapshot($mixed),0,7)===$beforeMixed,'Existing spell and reconciled cantrips are unchanged');
+$check($service->options($mixed,$mixedPolicy->getId(),$owner)['used']['known']===12,'Mixed selection reaches exactly twelve sorcerer known spells');
+$check($service->completeHistorical($mixed,$mixedPolicy->getId(),$mixedInput,$owner)['createdAcquisitionIds']===[],'Mixed historical completion remains idempotent');
+$mixedRows=$snapshot($mixed);
+$sixth=array_values(array_filter($mixedRows,static fn($r)=>(int)$r['spell_id']===$pool[6][0]['id']))[0];
+$sixthTrace=App\Service\CharacterSpellHistoricalChoices::trace($sixth)['witness'];
+$check($sixthTrace['learnedAt']===11 && $sixthTrace['originLevel']<11 && $sixthTrace['placeholderSpellId']!==null,'Level-six spell uses the level-eleven replacement, never the pinned gain');
+
+foreach ([8,0] as $pinnedAt) {
+    [$variant,$variantLevels]=$make('Mixed pinned '.$pinnedAt,[[$warlock,2],[$sorcerer,11]]);
+    if ($pinnedAt) $service->acquire($variant,$mixedPolicy->getId(),[['spellId'=>$pool[3][0]['id'],'classLevelId'=>$variantLevels[$sorcerer->getId()][$pinnedAt-1]->getId(),'ruleId'=>$mixedKnown]],'level-history','Pinned earlier gain',$owner);
+    $service->completeHistorical($variant,$mixedPolicy->getId(),$payload($variant,$mixedPolicy,$batch(array_slice($pool[0],0,6),$mixedMinor)),$owner);
+    $beforeVariant=$snapshot($variant);
+    $variantChoices=$batch(array_reverse($mixedSpells),$mixedKnown);
+    $witness=(new App\Service\CharacterSpellHistoricalChoices($em,$service))->validate($variant,$mixedPolicy->getId(),$variantChoices,$owner);
+    $check(count($witness)===17,'Mixed witness also exists with reversed input and earlier or absent pinned acquisition');
+    $result=$service->completeHistorical($variant,$mixedPolicy->getId(),$payload($variant,$mixedPolicy,$variantChoices),$owner);
+    $check(count($result['createdAcquisitionIds'])===11 && array_slice($snapshot($variant),0,count($beforeVariant))===$beforeVariant,'Earlier or absent pinned acquisition completes without rewriting existing rows');
+    $check($category($preview($variant,$mixedPolicy),'ordinary')['remaining']===($pinnedAt?0:1),'Absent original spell leaves exactly one known-spell choice');
+    $check($category($preview($variant,$wp),'ordinary')['remaining']===3,'Mixed completion never uses the warlock quota');
+}
+
+// At level eleven, only one new gain and one replacement can introduce level-six spells.
+foreach ([0,11] as $pinnedAt) {
+    [$boundary,$boundaryLevels]=$make('Sixth level boundary '.$pinnedAt,[[$warlock,2],[$sorcerer,11]]);
+    if ($pinnedAt) $service->acquire($boundary,$mixedPolicy->getId(),[['spellId'=>$pool[3][0]['id'],'classLevelId'=>$boundaryLevels[$sorcerer->getId()][10]->getId(),'ruleId'=>$mixedKnown]],'level-history','Reserved last gain',$owner);
+    $beforeBoundary=$snapshot($boundary);
+    $tooMany=$batch(array_slice($pool[6],0,$pinnedAt?2:3),$mixedKnown);
+    $refuse(fn()=>$service->completeHistorical($boundary,$mixedPolicy->getId(),$payload($boundary,$mixedPolicy,$tooMany),$owner),409);
+    $check($snapshot($boundary)===$beforeBoundary,'Impossible high-level distribution leaves acquisitions unchanged');
+    $allowed=$batch(array_slice($pool[6],0,$pinnedAt?1:2),$mixedKnown);
+    $result=$service->completeHistorical($boundary,$mixedPolicy->getId(),$payload($boundary,$mixedPolicy,$allowed),$owner);
+    $check(count($result['createdAcquisitionIds'])===count($allowed),'Exact level-eleven gain/replacement boundary remains accepted');
+}
+
+if($concurrent) {
     $expected=implode(',',$preview($race,$sp)['expectedAcquisitionIds']);
     $db->commit(); $db->beginTransaction(); $db->fetchOne('SELECT id FROM character WHERE id=? FOR UPDATE',[$race->getId()]); $workers=[];
     foreach(array_slice($pool[0],3,2) as $spell) {

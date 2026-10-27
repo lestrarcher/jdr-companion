@@ -65,6 +65,26 @@ $check($service->search(['classId' => $a], $other)['total'] === 1, 'Custom membe
 $check($service->search(['classId' => $c], $owner)['total'] === 1 && $service->search(['classId' => $c], $other)['total'] === 0, 'Custom class filter isolated');
 $check($service->search(['classId' => $a, 'pageSize' => 1, 'page' => 2], $owner)['total'] === 2, 'Class filter count before pagination');
 $check($service->search(['classId' => $a, 'origin' => 'CUSTOM'], $admin, true)['total'] === 1, 'Admin cannot force custom catalogue through filter');
+// Batch reads retain the exact get() contract, while issuing a constant number of queries.
+$holder=null;
+foreach ($db->getConfiguration()->getMiddlewares() as $middleware) if ($middleware instanceof Doctrine\Bundle\DoctrineBundle\Middleware\DebugMiddleware) {
+    $holder=(new ReflectionProperty($middleware,'debugDataHolder'))->getValue($middleware);
+}
+$check($holder!==null,'SQL profiler enabled for batch query regression');
+$queryCount=static function() use($holder):int {
+    $data=(new ReflectionProperty(Symfony\Bridge\Doctrine\Middleware\Debug\DebugDataHolder::class,'data'))->getValue($holder);
+    return array_sum(array_map('count',$data));
+};
+$start=$queryCount(); $batch=$service->search(['classId'=>$a,'pageSize'=>100],$owner);
+$check($queryCount()-$start===3,'Search reads all memberships in one query per page');
+foreach ($batch['spells'] as $spell) $check($spell===$service->get($spell['id'],$owner),'Batched catalogue preserves every field and class order');
+$start=$queryCount(); $entries=$service->entriesForClasses([$a,$b,$c],$owner);
+$check($queryCount()-$start===3,'Class resolution reads entries, spells and memberships in three queries');
+foreach ($entries as $entry) $check($entry['spell']===$service->get($entry['spell']['id'],$owner),'Batched memberships preserve exact spell projection');
+$ids=array_column($entries,'id'); $sorted=$ids; sort($sorted); $check($ids===$sorted,'Membership entry order unchanged');
+$check($service->search(['page'=>999,'pageSize'=>100],$owner)['spells']===[],'Empty page needs no memberships');
+$check($service->entriesForClasses([], $owner)===[],'Empty class set remains empty');
+$check(!in_array($own['id'],array_column(array_column($service->entriesForClasses([$a,$c],$other),'spell'),'id'),true),'Batch resolver cannot expose another owner spell');
 $service->patch($own['id'], ['description' => 'Description seule'], $owner);
 $check($service->get($own['id'], $owner)['classIds'] === [$a, $c], 'Omitted classIds preserve memberships');
 $refuse(fn () => $service->delete($own['id'], $owner), 409);
@@ -81,6 +101,7 @@ finally { $db->rollbackSavepoint('list_class_fk'); $db->releaseSavepoint('list_c
 $db->insert('spell_class_list_entry', ['spell_id' => $own['id'], 'character_class_id' => $d]);
 $refuse(fn () => $service->get($own['id'], $owner), 404);
 $check($service->search(['classId' => $a], $owner)['total'] === 1, 'Invalid dependency hidden before pagination');
+$check(!in_array($own['id'],array_column(array_column($service->entriesForClasses([$a],$owner),'spell'),'id'),true),'Batch resolver hides malformed foreign dependencies');
 $db->delete('spell_class_list_entry', ['spell_id' => $own['id'], 'character_class_id' => $d]);
 $countBefore = (int) $db->fetchOne('SELECT COUNT(*) FROM spell_definition');
 $refuse(fn () => $service->create(array_replace($fixture, ['slug' => 'invalid-class', 'classIds' => [$d]]), $owner), 400);

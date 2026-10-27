@@ -160,25 +160,42 @@ final readonly class CharacterSpellHistoricalChoices
             usort($options, static fn ($a,$b) => ($a['group'] !== null) <=> ($b['group'] !== null) ?: $roots[$b['root']]['level'] <=> $roots[$a['root']]['level']);
             $plans[] = $target + ['options'=>$options];
         }
-        usort($plans, static fn ($a,$b) => count($a['options']) <=> count($b['options']));
         $steps = 0; $taken = []; $fillers = []; $budgetUsed = []; $occupancy = []; $witness = [];
-        $search = function (int $index) use (&$search, &$steps, &$taken, &$fillers, &$budgetUsed, &$occupancy, &$witness, $plans, $roots, $levels, $capacities, $replacementLimits): bool {
+        $fits = static function (array $option) use (&$taken, &$fillers, &$budgetUsed, &$occupancy, $roots, $levels, $capacities, $replacementLimits): bool {
+            $root = $roots[$option['root']]; $bucket = $root['quota'];
+            if (isset($taken[$option['root']]) || ($option['placeholder'] !== null && isset($fillers[$option['placeholder']]))
+                || ($option['group'] !== null && ($budgetUsed[$option['at']][$option['group']] ?? 0) >= $replacementLimits[$option['at']][$option['group']])) return false;
+            for ($n=$root['level']; $n<count($levels); ++$n) if (in_array($bucket, ['known','cantrips'], true) && ($occupancy[$n][$bucket] ?? 0) >= $capacities[$n][$bucket]) return false;
+            return true;
+        };
+        $search = function (array $remaining) use (&$search, &$steps, &$taken, &$fillers, &$budgetUsed, &$occupancy, &$witness, $plans, $roots, $levels, $fits): bool {
             if (++$steps > 20000) return false;
-            if ($index === count($plans)) return true;
-            $plan = $plans[$index];
-            foreach ($plan['options'] as $option) {
+            if ($remaining === []) return true;
+            // Fail immediately if any target has lost every witness. Prioritize scarce learning
+            // levels, then root/replacement choices: filler synonyms do not add temporal freedom.
+            $best = null; $selected = null; $options = [];
+            foreach ($remaining as $index) {
+                $available = []; $dates = []; $routes = [];
+                foreach ($plans[$index]['options'] as $option) if ($fits($option)) {
+                    $available[] = $option;
+                    $dates[$option['at']] = true;
+                    $routes[$option['root'].':'.$option['at'].':'.$option['group']] = true;
+                }
+                if ($available === []) return false;
+                $score = [count($dates), count($routes)];
+                if ($best === null || $score < $best) { $best = $score; $selected = $index; $options = $available; }
+            }
+            $plan = $plans[$selected];
+            $next = array_values(array_filter($remaining, static fn ($index) => $index !== $selected));
+            foreach ($options as $option) {
                 if ($steps >= 20000) return false;
                 $rootId = $option['root']; $root = $roots[$rootId]; $bucket = $root['quota']; $group = $option['group']; $at = $option['at']; $filler = $option['placeholder'];
-                if (isset($taken[$rootId]) || ($filler !== null && isset($fillers[$filler])) || ($group !== null && ($budgetUsed[$at][$group] ?? 0) >= $replacementLimits[$at][$group])) continue;
-                $fits = true;
-                for ($n=$root['level']; $n<count($levels); ++$n) if (in_array($bucket, ['known','cantrips'], true) && ($occupancy[$n][$bucket] ?? 0) >= $capacities[$n][$bucket]) $fits = false;
-                if (!$fits) continue;
                 $taken[$rootId] = true;
                 if ($filler !== null) $fillers[$filler] = true;
                 if ($group !== null) $budgetUsed[$at][$group] = ($budgetUsed[$at][$group] ?? 0) + 1;
                 for ($n=$root['level']; $n<count($levels); ++$n) $occupancy[$n][$bucket] = ($occupancy[$n][$bucket] ?? 0) + 1;
                 $witness[$plan['spellId']] = ['originLevel'=>$root['level']+1, 'learnedAt'=>$at+1, 'placeholderSpellId'=>$filler, 'replacementBudget'=>$group];
-                if ($search($index+1)) return true;
+                if ($search($next)) return true;
                 unset($taken[$rootId], $witness[$plan['spellId']]);
                 if ($filler !== null) unset($fillers[$filler]);
                 if ($group !== null) --$budgetUsed[$at][$group];
@@ -186,7 +203,9 @@ final readonly class CharacterSpellHistoricalChoices
             }
             return false;
         };
-        if (!$search(0)) throw new ConflictHttpException('Sélection incompatible ou progression non démontrable avec les apprentissages et remplacements autorisés. Ajustez les niveaux de sorts ou demandez une vérification au MJ.');
+        $found = $search(array_keys($plans));
+        if (!$found && $steps >= 20000) throw new ConflictHttpException('Recherche historique interrompue : limite de calcul atteinte. La légalité de la sélection reste indéterminée ; vérification par le MJ nécessaire.');
+        if (!$found) throw new ConflictHttpException('Sélection incompatible ou progression non démontrable avec les apprentissages et remplacements autorisés. Ajustez les niveaux de sorts ou demandez une vérification au MJ.');
         return $witness;
     }
 }
