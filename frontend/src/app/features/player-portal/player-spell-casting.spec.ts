@@ -19,7 +19,7 @@ installNativeDialogStub();
 const base='/api/public/characters/test/spells';
 const method=(kind: SpellCastMethod, level: number, status: 'available'|'unknown'|'unavailable'='available'): SpellCastingAvailability['methods'][number] =>
   ({kind, castingLevel:level, status, reason:null, cost:['cantrip','ritual'].includes(kind)?0:1,
-    poolSlug:kind==='standard-slot'?`spell-slot-${level}`:kind==='pact-slot'?'warlock-pact-slots':null});
+    poolSlug:kind==='standard-slot'?`spell-slot-${level}`:kind==='pact-slot'?'warlock-pact-slots':kind==='arcanum'?`mystic-arcanum-${level}-use`:null});
 function spell(key='acquisition:1', methods=[method('standard-slot',1)]): PlayerSpell {
   return { key, spellId:1, policyId:1, name:'Sort partagé', level:1, school:'divination', source:'Magicien', sourceType:'class',
     castingAbility:'intelligence', spellSaveDc:12, spellAttackBonus:4, known:true, inSpellbook:true, prepared:true,
@@ -206,19 +206,21 @@ describe('Spell casting controls',()=>{
     expect(fixture.nativeElement.querySelector('.cast-confirm')).toBeNull();
     http.expectNone(r=>r.method==='PATCH');
   });
-  it.each([['cantrip',0],['ritual',1],['standard-slot',1],['standard-slot',3],['pact-slot',3]] as const)('confirms %s at server-authorized level %s',async(kind,level)=>{
+  it.each([['cantrip',0],['ritual',1],['standard-slot',1],['standard-slot',3],['pact-slot',3],['arcanum',6],['arcanum',7],['arcanum',8],['arcanum',9]] as const)('confirms %s at server-authorized level %s',async(kind,level)=>{
     const entry=spell('acquisition:1',[method(kind,level)]);
     if(kind==='cantrip') entry.level=0;
     if(kind==='ritual'){entry.known=false;entry.prepared=false;}
+    if(kind==='arcanum'){entry.level=level;entry.known=false;entry.prepared=false;entry.inSpellbook=false;}
     const {fixture,http,c}=await setup([entry]);
     fixture.nativeElement.querySelector('.cast-open').click(); fixture.detectChanges();
     const option=fixture.nativeElement.querySelector('.cast-option') as HTMLButtonElement;
     expect(option).not.toBeNull(); option.click(); fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain(kind==='cantrip'||kind==='ritual'?'Aucun emplacement consommé':'Consommer 1 emplacement');
+    expect(fixture.nativeElement.textContent).toContain(kind==='arcanum'?'1 utilisation d’Arcanum (sans emplacement)':kind==='cantrip'||kind==='ritual'?'Aucun emplacement consommé':'Consommer 1 emplacement');
     const button=fixture.nativeElement.querySelector('.cast-confirm') as HTMLButtonElement;
     button.click(); button.click(); fixture.detectChanges();
     const req=http.expectOne(base+'/cast');
     expect(req.request.body).toMatchObject({revision:42,sourceKey:entry.key,method:kind,castingLevel:level});
+    expect(Object.keys(req.request.body).sort()).toEqual(['castingLevel','method','requestId','revision','sourceKey']);
     expect(c.castSaving()).toBe(true);
     expect(c.displayed()[0]).toEqual(entry);
     const done=vi.fn(); c.castCompleted.subscribe(done);
@@ -294,6 +296,41 @@ describe('Spell casting controls',()=>{
 });
 
 describe('Portal adoption of cast responses',()=>{
+  it('hides only exact arcanum counters while preserving casting data and spell cards',async()=>{
+    vi.stubGlobal('matchMedia',vi.fn(()=>({matches:false,addEventListener:vi.fn(),removeEventListener:vi.fn()})));
+    TestBed.configureTestingModule({providers:[provideHttpClient(),provideHttpClientTesting(),provideRouter([]),
+      {provide:ActivatedRoute,useValue:{snapshot:{paramMap:convertToParamMap({campaignId:'2',sessionId:'3',accessToken:'test'}),queryParamMap:convertToParamMap({tab:'status'})}}},
+      {provide:CampaignConfigurationRegistryService,useValue:{getConfiguration:()=>({id:'2',name:'Test'})}},
+      {provide:RestRequestApiService,useValue:{getLatest:()=>of(null)}}]});
+    const entries=[6,7,8,9].map(level=>({...spell(`acquisition:${level}`,[method('arcanum',level,level===7?'unavailable':'available')]),
+      spellId:level,name:`Sort ${level}`,level,known:false,prepared:false,inSpellbook:false}));
+    const initial=session(entries);
+    const hidden=[6,7,8,9].map(level=>`mystic-arcanum-${level}-use`);
+    const visible=['sorcery-points','mystic-arcanum-5-use','mystic-arcanum-10-use','mystic-arcanum-6-use-extra','prefix-mystic-arcanum-6-use'];
+    for(const slug of [...hidden,...visible]) {
+      initial.character.resources.push({slug,name:slug,maximum:1,rechargeType:'long-rest'});
+      initial.state.resources.push({id:slug,currentValue:slug==='mystic-arcanum-7-use'?0:1});
+    }
+    const fixture=TestBed.createComponent(PlayerPortal); const p=fixture.componentInstance as any;
+    const http=TestBed.inject(HttpTestingController);
+    http.expectOne('/api/public/characters/test').flush(initial); fixture.detectChanges(); await fixture.whenStable();
+    const block=fixture.nativeElement.querySelector('app-character-resources');
+    for(const slug of hidden) expect([...block.querySelectorAll('.resource-information strong')].some((node:any)=>node.textContent.trim()===slug)).toBe(false);
+    for(const slug of visible) expect(block.textContent).toContain(slug);
+    expect(p.trackerResources().map((resource:any)=>resource.id)).toEqual(visible);
+    const character=TestBed.inject(CharacterStateService).character();
+    for(const slug of hidden) expect(character?.resources.find(resource=>resource.id===slug)?.currentValue).toBe(slug==='mystic-arcanum-7-use'?0:1);
+    expect(p.playerSpells()).toEqual(entries);
+    const quick=fixture.debugElement.query(By.css('.magic-section app-spell-quick-list')).componentInstance;
+    expect(quick.entries()).toEqual(entries);
+    expect(quick.available(entries[0])).toBe(true);
+    expect(quick.available(entries[1])).toBe(false);
+    p.openQuickSpell(entries[0]); fixture.detectChanges();
+    for(const request of http.match(base)) request.flush(view(entries)); await fixture.whenStable();
+    const casting=fixture.debugElement.query(By.directive(PlayerSpells)).componentInstance as PlayerSpells;
+    for(const slug of hidden) expect(casting.resources().some(resource=>resource.id===slug)).toBe(true);
+    http.expectNone(request=>request.method==='POST'||request.method==='PATCH'); fixture.destroy();
+  });
   it('toggles one shared filter, accepts pact levels and clears an exhausted pool on refresh',async()=>{
     vi.stubGlobal('matchMedia',vi.fn(()=>({matches:false,addEventListener:vi.fn(),removeEventListener:vi.fn()})));
     TestBed.configureTestingModule({providers:[provideHttpClient(),provideHttpClientTesting(),provideRouter([]),

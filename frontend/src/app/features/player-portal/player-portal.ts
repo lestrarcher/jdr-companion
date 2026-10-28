@@ -182,7 +182,8 @@ export class PlayerPortal {
   }
   protected readonly trackerResources = computed(() => {
     const represented = new Set(this.spellSlotGroups().map(group => group.id));
-    return this.sortedResources().filter(resource => !represented.has(resource.id));
+    return this.sortedResources().filter(resource => !represented.has(resource.id)
+      && !/^mystic-arcanum-[6-9]-use$/.test(resource.id));
   });
   // Rest workflow
   protected readonly restFeedback = signal<string | null>(null);
