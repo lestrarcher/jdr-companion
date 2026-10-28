@@ -25,8 +25,6 @@ import { MagicalTinkeringNotes } from './components/magical-tinkering-notes/magi
 import { CharacterStoredValues } from './components/character-stored-values/character-stored-values';
 import { CharacterVitals } from './components/character-vitals/character-vitals';
 import { RestControls } from './components/rest-controls/rest-controls';
-import { AidActionModal, AidActionPayload, AidSpellSlot, AidTarget } from './components/aid-action-modal/aid-action-modal';
-import { HeroesFeastActionModal, HeroesFeastActionPayload } from './components/heroes-feast-action-modal/heroes-feast-action-modal';
 import { FlexibleCastingActionModal, FlexibleCastingPayload } from './components/flexible-casting-action-modal/flexible-casting-action-modal';
 import { CharacterStatistics } from './components/character-statistics/character-statistics';
 import { PlayerSpells } from './components/player-spells/player-spells';
@@ -67,8 +65,6 @@ type PlayerPortalTab =
     RestControls,
     ActionPreparationModal,
     RouterLink,
-    AidActionModal,
-    HeroesFeastActionModal,
     FlexibleCastingActionModal,
     CharacterFeatures,
     CharacterStatistics,
@@ -144,11 +140,13 @@ export class PlayerPortal {
   protected readonly flexibleCastingAction = computed(() => this.actions().find(action => action.handlerType === 'flexible-casting'));
   protected readonly arcaneRecoveryResource = computed(() => this.character()?.resources.find(resource => resource.id === 'arcane-recovery'));
   protected readonly arcaneRecoveryAction = computed(() => this.actions().find(action => action.handlerType === 'arcane-recovery' && (this.arcaneRecoveryResource()?.currentValue ?? 0) > 0));
-  protected readonly preparationActions = computed(() => this.actions().filter(action => action.requiresPreparation));
+  // Ignore retired handlers even in an older cached profile or prepared state.
+  protected readonly availableActions = computed(() => this.actions().filter(action => action.handlerType !== 'aid' && action.handlerType !== 'heroes-feast'));
+  protected readonly preparationActions = computed(() => this.availableActions().filter(action => action.requiresPreparation));
   protected readonly preparationPending = computed(() => this.characterActions()?.preparationPending === true && this.preparationActions().length > 0);
   protected readonly preparedActions = computed(() => {
     const prepared = this.characterActions()?.prepared ?? [];
-    return this.actions().filter(action => prepared.includes(action.slug));
+    return this.availableActions().filter(action => prepared.includes(action.slug));
   });
 
   // Resources and trackers
@@ -173,16 +171,6 @@ export class PlayerPortal {
     const represented = new Set(this.spellSlotGroups().map(group => group.id));
     return this.sortedResources().filter(resource => !represented.has(resource.id));
   });
-  protected readonly aidSpellSlots = computed<AidSpellSlot[]>(() =>
-    this.characterState()
-      ?.resources
-      .filter(resource => resource.id.startsWith('spell-slot-') && resource.currentValue > 0)
-      .map(resource => ({ level: Number(resource.id.replace('spell-slot-', '')), current: resource.currentValue }))
-      .filter(slot => Number.isInteger(slot.level) && slot.level >= 2)
-      .sort((a, b) => a.level - b.level)
-    ?? [],
-  );
-
   // Rest workflow
   protected readonly restFeedback = signal<string | null>(null);
   private readonly latestRestRequest = signal<RestRequestApiResponse | null>(null);
@@ -197,7 +185,6 @@ export class PlayerPortal {
   // Action workflow
   protected readonly preparationSaving = signal(false);
   protected readonly preparationError = signal<string | null>(null);
-  protected readonly aidTargets = signal<AidTarget[]>([]);
   protected readonly flexibleCastingSaving = signal(false);
   protected readonly flexibleCastingError = signal<string | null>(null);
   protected readonly arcaneRecoverySaving = signal(false);
@@ -817,25 +804,7 @@ protected openAction(
       this.arcaneRecoveryError.set(null);
       this.activeAction.set(action);
       break;
-    case 'aid':
-    case 'heroes-feast':
-      this.characterSessionStateApi
-        .getActionTargets(this.accessToken)
-        .pipe(
-          takeUntilDestroyed(this.destroyRef),
-        )
-        .subscribe({
-          next: targets => {
-            this.aidTargets.set(targets);
-            this.activeAction.set(action);
-          },
-          error: () => {
-            this.saveError.set(
-              'Impossible de charger les cibles disponibles.',
-            );
-          },
-        });
-      break;
+
   }
 }
 
@@ -920,110 +889,4 @@ protected openAction(
     });
   }
 
-  protected useAid(
-    payload: AidActionPayload,
-  ): void {
-    if (this.sessionStatus() !== 'live') {
-      return;
-    }
-
-    this.saveError.set(null);
-    this.saveStatus.set('saving');
-
-    this.characterSessionStateApi
-      .useAid(
-        this.accessToken,
-        payload.spellSlotLevel,
-        payload.targetIds,
-        this.serverRevision,
-      )
-      .pipe(
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: (response) => {
-          this.serverRevision = response.revision;
-          this.inspiration.set(response.state.inspiration === true);
-
-          const character =
-            characterProfileToCharacter(
-              response.character,
-              response.state,
-            );
-
-          this.characterStateService.applyServerState(
-            character,
-          );
-
-          this.actions.set(
-            response.character.actions ?? [],
-          );
-
-          this.characterActions.set(
-            response.state.characterActions ?? null,
-          );
-
-          this.activeAction.set(null);
-
-          this.saveStatus.set('saved');
-        },
-
-        error: (error) => {
-          if (error.status === 409) {
-            this.loadCharacter(false);
-
-            this.saveError.set(
-              'Le personnage a été modifié ailleurs. Ses données ont été rechargées.',
-            );
-
-            return;
-          }
-
-          this.saveStatus.set('error');
-
-          this.saveError.set(
-            error.error?.message
-              ?? 'Impossible de lancer Aide.',
-          );
-        },
-      });
-  }
-
-  protected useHeroesFeast(payload: HeroesFeastActionPayload): void {
-    if (this.sessionStatus() !== 'live') {
-      return;
-    }
-
-    this.saveError.set(null);
-    this.saveStatus.set('saving');
-
-    this.characterSessionStateApi.useHeroesFeast(this.accessToken, payload.hitPointBonus, payload.targetIds, this.serverRevision)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (response) => {
-          this.serverRevision = response.revision;
-          this.inspiration.set(response.state.inspiration === true);
-
-          this.playerSpells.set(response.spells ?? []);
-      const character = characterProfileToCharacter(response.character, response.state);
-          this.characterStateService.applyServerState(character);
-
-          this.actions.set(response.character.actions ?? []);
-          this.characterActions.set(response.state.characterActions ?? null);
-          this.activeAction.set(null);
-          this.saveStatus.set('saved');
-        },
-
-        error: (error) => {
-          if (error.status === 409) {
-            this.loadCharacter(false);
-            this.saveError.set('Le personnage a été modifié ailleurs. Ses données ont été rechargées.');
-            return;
-          }
-
-          this.saveStatus.set('error');
-          this.saveError.set(error.error?.message ?? 'Impossible d’utiliser Festin des héros.');
-        },
-      });
-  }
 }

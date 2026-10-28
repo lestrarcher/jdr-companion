@@ -195,10 +195,10 @@ try {
         $refuse($legacy+['targetCharacterIds'=>[$ids[2]]],409,'Cannot retrofit targets onto historical receipt');
 
         // Existing public endpoint accepts the extended contract; receipts remain private.
-        $http = static function(array $cmd,int $expectedStatus=200,string $suffix='spells/cast') use ($kernel,$sessions,$check,$snapshot): array {
+        $http = static function(array $cmd,int $expectedStatus=200,string $suffix='spells/cast',string $method='POST') use ($kernel,$sessions,$check,$snapshot): array {
             $before=$snapshot();
             $request=Symfony\Component\HttpFoundation\Request::create(
-                '/public/characters/'.$sessions[0]->getAccessToken().'/'.$suffix,'POST',
+                '/public/characters/'.$sessions[0]->getAccessToken().'/'.$suffix,$method,
                 server:['CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json'],content:json_encode($cmd));
             $response=$kernel->handle($request);
             $body=json_decode($response->getContent(),true,512,JSON_THROW_ON_ERROR);
@@ -222,11 +222,28 @@ try {
         }
 
         $reset();
-        $http(['revision'=>$read(0)['revision'],'spellSlotLevel'=>2,'targetIds'=>[$ids[2]]],200,'actions/aid');
-        $http(['revision'=>$read(0)['revision'],'hitPointBonus'=>10,'targetIds'=>[$ids[2]]],200,'actions/heroes-feast');
-        $check($read(2)['state']['hitPoints']===['current'=>25,'temporary'=>3,'maximumAdjustment'=>22],'Legacy endpoints still stack the same HP effects');
-        $legacyResources=$initial[0]['resources']; --$legacyResources[1]['currentValue']; --$legacyResources[5]['currentValue'];
-        $check($read(0)['state']['resources']===$legacyResources,'Legacy endpoints retain their own single consumption');
+        $http(['revision'=>$read(0)['revision'],'spellSlotLevel'=>2,'targetIds'=>[$ids[2]]],410,'actions/aid');
+        $http(['revision'=>$read(0)['revision'],'hitPointBonus'=>10,'targetIds'=>[$ids[2]]],410,'actions/heroes-feast');
+        $http([],410,'actions/aid');
+        $http([],410,'actions/heroes-feast');
+
+        // Resolve by handler identity, including renamed legacy definitions.
+        $caster=$em->find(E\Character::class,$ids[0]);
+        $fixtureClass=$em->find(E\CharacterClass::class,$class->getId());
+        foreach (V\CharacterActionHandlerType::cases() as $handler) {
+            $definition=new E\CharacterActionDefinition('fixture-'.$handler->value,'Fixture '.$handler->value,$handler);
+            $definition->setRequiresPreparation($handler!==V\CharacterActionHandlerType::FlexibleCasting);
+            $em->persist($definition);
+            $em->persist(new E\CharacterActionClassRule($definition,$fixtureClass,1));
+        }
+        $em->flush();
+        $actions=(new S\CharacterActionResolver(new App\Repository\CharacterActionClassRuleRepository($registry)))->resolve($caster);
+        $check(!isset($actions['fixture-aid'],$actions['fixture-heroes-feast']) && count($actions)===2,'Retired handlers excluded even with alternate slugs');
+        $check(isset($actions['fixture-flexible-casting'],$actions['fixture-arcane-recovery']),'Independent actions remain available');
+        $http(['revision'=>$read(0)['revision'],'prepared'=>['fixture-aid']],422,'actions/prepared','PATCH');
+        $http(['revision'=>$read(0)['revision'],'prepared'=>['fixture-heroes-feast']],422,'actions/prepared','PATCH');
+        $http(['revision'=>$read(0)['revision'],'prepared'=>['fixture-arcane-recovery']],200,'actions/prepared','PATCH');
+        $check($read(0)['state']['characterActions']['prepared']===['fixture-arcane-recovery'],'Other preparable actions still save normally');
 
         // Long rests consume the same effect records as the new executor; no second effect engine.
         $ability=new S\CharacterAbilityCalculator(); $hp=new S\CharacterHitPointCalculator($ability);

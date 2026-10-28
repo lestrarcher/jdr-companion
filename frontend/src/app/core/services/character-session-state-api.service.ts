@@ -210,16 +210,6 @@ export class CharacterSessionStateApiService {
       .pipe(map(response => response.targets));
   }
 
-  useAid( accessToken: string, spellSlotLevel: number, targetIds: number[], revision: number): Observable<CharacterSessionStateApiResponse>
-  {
-    return this.http.post<CharacterSessionStateApiResponse>(`${this.apiUrl}/public/characters/${accessToken}/actions/aid`, { spellSlotLevel, targetIds, revision });
-  }
-
-  useHeroesFeast(accessToken: string, hitPointBonus: number, targetIds: number[], revision: number): Observable<CharacterSessionStateApiResponse>
-  {
-    return this.http.post<CharacterSessionStateApiResponse>(`${this.apiUrl}/public/characters/${accessToken}/actions/heroes-feast`, { hitPointBonus, targetIds, revision });
-  }
-
   createFlexibleCastingSlot(accessToken: string, level: number, revision: number): Observable<CharacterSessionStateApiResponse> {
     return this.http.post<CharacterSessionStateApiResponse>(`${this.apiUrl}/public/characters/${accessToken}/actions/flexible-casting/create-spell-slot`, { level, revision });
   }

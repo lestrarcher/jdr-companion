@@ -282,6 +282,31 @@ describe('Spell casting controls',()=>{
 });
 
 describe('Portal adoption of cast responses',()=>{
+  it.each([false,true])('ignores retired preparation handlers and preserves other preparable actions (other=%s)', async other => {
+    vi.stubGlobal('matchMedia',vi.fn(()=>({matches:false,addEventListener:vi.fn(),removeEventListener:vi.fn()})));
+    TestBed.configureTestingModule({providers:[provideHttpClient(),provideHttpClientTesting(),provideRouter([]),
+      {provide:ActivatedRoute,useValue:{snapshot:{paramMap:convertToParamMap({campaignId:'2',sessionId:'3',accessToken:'test'}),queryParamMap:convertToParamMap({tab:'status'})}}},
+      {provide:CampaignConfigurationRegistryService,useValue:{getConfiguration:()=>({id:'2',name:'Test'})}},
+      {provide:RestRequestApiService,useValue:{getLatest:()=>of(null)}}]});
+    const fixture=TestBed.createComponent(PlayerPortal); const p=fixture.componentInstance as any;
+    const http=TestBed.inject(HttpTestingController);
+    http.expectOne('/api/public/characters/test').flush(session([hpSpell('aid',[2])]));
+    const legacy=[{slug:'renamed-aid',name:'Aide',handlerType:'aid',requiresPreparation:true},
+      {slug:'renamed-feast',name:'Festin',handlerType:'heroes-feast',requiresPreparation:true}];
+    const retained={slug:'other',name:'Autre préparation',handlerType:'arcane-recovery',requiresPreparation:true};
+    p.actions.set(other?[...legacy,retained]:legacy);
+    p.characterActions.set({prepared:['renamed-aid','renamed-feast',...(other?['other']:[])],preparationPending:true});
+    fixture.detectChanges(); await fixture.whenStable();
+    expect(p.preparationActions()).toEqual(other?[retained]:[]);
+    expect(p.preparedActions()).toEqual(other?[retained]:[]);
+    expect(p.preparationPending()).toBe(other);
+    expect(fixture.nativeElement.querySelectorAll('app-action-preparation-modal')).toHaveLength(other?1:0);
+    for (const action of legacy) p.openAction(action);
+    http.expectNone('/api/public/characters/test/action-targets');
+    expect(fixture.nativeElement.querySelector('app-aid-action-modal, app-heroes-feast-action-modal')).toBeNull();
+    fixture.destroy();
+  });
+
   it.each([
     ['status','aid'], ['spells','aid'], ['status','feast'], ['spells','feast'],
   ] as const)('casts %s / %s through the sole dialog and preserves every parameter during an uncertain retry', async (tab,kind) => {

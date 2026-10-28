@@ -299,15 +299,6 @@
     />
   }
 
-  @if (canEdit() && activeAction()?.handlerType === 'aid') {
-    <app-aid-action-modal
-      [spellSlots]="aidSpellSlots()"
-      [targets]="aidTargets()"
-      (closed)="closeAction()"
-      (confirmed)="useAid($event)"
-    />
-  }
-
   @if (canEdit() && activeAction()?.handlerType === 'flexible-casting') {
     <app-flexible-casting-action-modal
       [resources]="characterState()?.resources ?? []"
@@ -315,14 +306,6 @@
       [error]="flexibleCastingError()"
       (closed)="closeAction()"
       (confirmed)="useFlexibleCasting($event)"
-    />
-  }
-
-  @if (canEdit() && activeAction()?.handlerType === 'heroes-feast') {
-    <app-heroes-feast-action-modal
-      [targets]="aidTargets()"
-      (closed)="closeAction()"
-      (confirmed)="useHeroesFeast($event)"
     />
   }
 
