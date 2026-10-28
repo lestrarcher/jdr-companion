@@ -35,6 +35,15 @@ $check($evaluate($entry(0,'bard',false),$context)['status']==='unavailable','Unk
 $ritual=$usable($evaluate($entry(2,'wizard',false,false,true),$context));
 $check(count($ritual)===1 && $ritual[0]['kind']==='ritual' && $ritual[0]['castingLevel']===2 && $ritual[0]['cost']===0,'Unprepared wizard ritual at base level');
 $check($evaluate($entry(2,'sorcerer',true,false,true),$context)['status']==='unavailable','Ritual tag alone does not suffice');
+$artificer = $entry(1,'artificer',false,true,true);
+$artificer['castingEligibility'] = $eligibility->evaluate($artificer,'prepared','artificer');
+$ritual = $usable($evaluate($artificer,$context));
+$check(count($ritual)===1 && $ritual[0]['kind']==='ritual'
+    && $ritual[0]['castingLevel']===1 && $ritual[0]['cost']===0 && $ritual[0]['poolSlug']===null,
+    'Prepared artificer ritual needs no slot pool and costs zero');
+$artificer['prepared'] = false;
+$artificer['castingEligibility'] = $eligibility->evaluate($artificer,'prepared','artificer');
+$check($usable($evaluate($artificer,$context))===[], 'Unprepared artificer ritual unavailable even with ritual tag');
 $context['standardSlots'][0]=$pool('spell-slot-1',1,true,1,'available');
 $check($evaluate($entry(2),$context)['status']==='unavailable','Lower slot insufficient');
 $context['standardSlots'][2]=$pool('spell-slot-3',3,true,2,'available');

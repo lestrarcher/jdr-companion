@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__.'/../src/Service/CharacterSpellCastEligibility.php';
+require_once __DIR__.'/../src/Enum/Ability.php';
 
 use App\Service\CharacterSpellCastEligibility;
 
@@ -39,10 +40,26 @@ $assert(!$g['canCastNormally'] && !$g['canCastAsRitual'] && $g['requiresGrantRev
 foreach (['wizard'=>'spellbook','bard'=>'known','cleric'=>'prepared','druid'=>'prepared','sorcerer'=>'known','warlock'=>'known','paladin'=>'prepared','ranger'=>'known','artificer'=>'prepared'] as $slug=>$style) {
     $result = $service->evaluate($entry(1,true,true,true,true),$style,$slug);
     $assert($result['canCastNormally'], 'Normal casting for '.$slug);
-    $assert($result['canCastAsRitual'] === in_array($slug,['wizard','bard','cleric','druid'],true), 'Only explicitly supported ritual features: '.$slug);
+    $assert($result['canCastAsRitual'] === in_array($slug,['wizard','bard','cleric','druid','artificer'],true), 'Only explicitly supported ritual features: '.$slug);
     $result = $service->evaluate($entry(1,true,true,true,false),$style,$slug);
     $assert(!$result['canCastAsRitual'] && $result['ritualReason']==='not_a_ritual','Ritual feature cannot replace ritual tag');
 }
+foreach ([false, true] as $prepared) {
+    $result = $service->evaluate($entry(1,false,false,$prepared,true),'prepared','artificer');
+    $assert($result['canCastAsRitual'] === $prepared, 'Artificer class-list ritual requires preparation');
+}
+$specialty = array_replace($entry(1,false,false,false,true), [
+    'sourceType'=>'subclass', 'mode'=>'grant-always-prepared', 'alwaysPrepared'=>true,
+    'castingAbility'=>'intelligence',
+]);
+$result = $service->evaluate($specialty,'prepared','artificer');
+$assert($result['canCastNormally'] && $result['canCastAsRitual'], 'Artificer specialty always-prepared ritual');
+$specialty['details']['ritual'] = false;
+$assert(!$service->evaluate($specialty,'prepared','artificer')['canCastAsRitual'], 'Specialty does not supply the ritual tag');
+$result = $service->evaluate($entry(1,true,true,false,true),'prepared','artificer');
+$assert(!$result['canCastAsRitual'], 'Known or spellbook artificer spell does not replace preparation');
+$result = $service->evaluate($entry(1,true,true,true,true),'known','artificer');
+$assert(!$result['canCastAsRitual'], 'Artificer ritual requires the prepared policy');
 $result = $service->evaluate($entry(0,false,false,true,true),'prepared','cleric');
 $assert(!$result['canCastNormally'] && $result['reason']==='cantrip_not_known','Preparation cannot invent a known cantrip');
 $result = $service->evaluate($entry(1,false,false,false,true),'known','bard');

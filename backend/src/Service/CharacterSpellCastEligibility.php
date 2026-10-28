@@ -79,12 +79,12 @@ final readonly class CharacterSpellCastEligibility
         if ($ritual) {
             $slug = strtolower((string) $classSlug);
             // 2014: wizard may cast ritual spells from spellbook without preparing.
-            // Bard may ritual-cast known spells; cleric/druid require preparation.
+            // Bard may ritual-cast known spells; cleric/druid and Tasha's artificer require preparation.
             // Other classes/subclasses require explicit feature authorization (D2 follow-up).
             $canRitual = match ($slug) {
                 'wizard' => $learningStyle === 'spellbook' && $inSpellbook,
                 'bard' => $learningStyle === 'known' && $known,
-                'cleric', 'druid' => $learningStyle === 'prepared' && ($prepared || $alwaysPrepared),
+                'cleric', 'druid', 'artificer' => $learningStyle === 'prepared' && ($prepared || $alwaysPrepared),
                 default => false,
             };
             $ritualReason = $canRitual ? null : 'ritual_feature_or_preparation_missing';
