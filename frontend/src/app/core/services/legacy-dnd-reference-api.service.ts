@@ -142,6 +142,8 @@ export interface ProgressionStageReference {
 }
 
 export interface ProgressionReference {
+  irreversible?: boolean;
+  defaultCastingAbility?: string | null;
   editable?: boolean;
   deletable?: boolean;
   id: number;
@@ -258,6 +260,8 @@ export interface ProgressionListResponse {
 }
 
 export interface SaveProgressionPayload {
+  irreversible?: boolean;
+  defaultCastingAbility?: string | null;
   slug: string;
   name: string;
   description: string | null;

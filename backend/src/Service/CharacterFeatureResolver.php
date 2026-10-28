@@ -82,6 +82,17 @@ final readonly class CharacterFeatureResolver
                 && $this->isRuleApplicable($character, $rule, $progressionValues)));
     }
 
+    /** Source ownership for persisted acquisitions, never runtime permission. */
+    public function acquisitionRules(Character $character): array
+    {
+        $owner = $character->getCampaign()->getOwner();
+        return array_values(array_filter($this->ruleRepository->findVisibleForOwner($owner),
+            fn(CharacterFeatureRule $rule): bool => ReferenceVisibility::allows($rule, $owner)
+                && ($rule->getProgressionDefinition() !== null
+                    ? $character->hasProgression($rule->getProgressionDefinition())
+                    : $this->isRuleApplicable($character, $rule, []))));
+    }
+
     private function shouldReplaceRule(
         CharacterFeatureRule $currentRule,
         CharacterFeatureRule $rule,
@@ -112,6 +123,16 @@ final readonly class CharacterFeatureResolver
         if ($progression !== null) {
             $slug = $progression->getSlug();
             $threshold = $rule->getProgressionThreshold();
+
+            if ($progression->isIrreversible()) {
+                foreach ($character->getProgressions() as $assignment) {
+                    if ($assignment->getProgressionDefinition() === $progression) {
+                        $maximum = $assignment->getMaximumReached();
+                        return $threshold !== null && $maximum !== null && $maximum >= $threshold;
+                    }
+                }
+                return false;
+            }
 
             return $character->hasProgression($progression)
                 && $threshold !== null

@@ -75,6 +75,7 @@ final class CharacterProgressionController extends AbstractController
         ProgressionDefinition $progressionDefinition,
         EntityManagerInterface $entityManager,
         CharacterSessionStateSynchronizer $sessionStateSynchronizer,
+        \App\Service\CharacterFeatureSpellService $featureSpells,
     ): JsonResponse {
         $this->denyAccessUnlessGranted(
             CampaignVoter::MANAGE,
@@ -101,12 +102,12 @@ final class CharacterProgressionController extends AbstractController
 
         $character->addProgression($progression);
 
-        $entityManager->persist($progression);
-
-        $sessionStateSynchronizer
-            ->synchronizeProgressionAssignment($character, $progressionDefinition);
-
-        $entityManager->flush();
+        $entityManager->wrapInTransaction(function () use ($entityManager, $progression, $character, $progressionDefinition, $sessionStateSynchronizer, $featureSpells): void {
+            $entityManager->persist($progression);
+            $sessionStateSynchronizer->synchronizeProgressionAssignment($character, $progressionDefinition);
+            $entityManager->flush();
+            $featureSpells->synchronizeProgression($character, $progressionDefinition);
+        });
 
         return $this->json(
             [

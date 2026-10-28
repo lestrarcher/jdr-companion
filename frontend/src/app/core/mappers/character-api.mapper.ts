@@ -78,6 +78,7 @@ export interface CharacterProfilePayload {
     name: string;
     maximum: number;
     rechargeType: string;
+    hiddenFromTracker?: boolean;
     slotLevel?: number | null;
   }>;
 
@@ -239,6 +240,7 @@ export function characterProfileToCharacter(
 
     return {
       id: resource.slug,
+      hiddenFromTracker: resource.hiddenFromTracker === true,
       name: resource.name,
       shortName: legacyResource?.shortName,
       category:

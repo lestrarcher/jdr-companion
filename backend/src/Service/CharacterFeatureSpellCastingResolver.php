@@ -17,6 +17,7 @@ final readonly class CharacterFeatureSpellCastingResolver
             'castingAbility'=>null,'abilityReason'=>'provenance_unresolved','configurationVersion'=>null,'methods'=>[],'restrictions'=>null,'requiresRestrictionReview'=>false];
         $grant=$this->db->fetchAssociative('SELECT g.*,a.spell_id AS acquired_spell_id,s.level AS acquired_level,d.origin AS feature_origin,d.owner_id AS feature_owner FROM character_feature_spell a JOIN feature_spell_grant g ON g.id=a.grant_id JOIN spell_definition s ON s.id=a.spell_id JOIN character_feature_definition d ON d.id=g.feature_id WHERE a.character_id=? AND a.grant_id=? AND a.active=true',[$character->getId(),$grantId]);
         if (!$grant) return array_replace($result,['reason'=>'acquisition_missing']);
+        if (!$grant['enabled']) return array_replace($result,['reason'=>'grant_disabled']);
         try { $rawRules=$grant['casting_rules']===null?null:json_decode($grant['casting_rules'],true,512,JSON_THROW_ON_ERROR); }
         catch (\JsonException) { $rawRules=null; }
         if (is_array($rawRules) && is_string($rawRules['restrictions']??null)) {
@@ -47,7 +48,19 @@ final readonly class CharacterFeatureSpellCastingResolver
             $origin['characterFeatId']=$assignments[0]->getId();
         }
         $result['provenance']=$origin;
-        if ($grant['casting_ability']==='CHOICE') {
+        $progressionAbility = null;
+        if ($origin['type'] === 'progression') {
+            foreach ($character->getProgressions() as $assignment) {
+                if ($assignment->getProgressionDefinition()->getId() === $origin['id']) {
+                    $progressionAbility = $assignment->getProgressionDefinition()->getDefaultCastingAbility();
+                }
+            }
+        }
+        if ($origin['type'] === 'progression' && in_array($grant['casting_ability'], [null, 'CHOICE'], true)) {
+            // Legacy progression CHOICE never represented a persisted choice.
+            $ability = $progressionAbility;
+            $abilityReason = 'ability_not_configured';
+        } elseif ($grant['casting_ability']==='CHOICE') {
             $ability=$assignments===[] ? null : $assignments[0]->getChosenAbility();
             $abilityReason=$origin['type']==='feat'?'ability_choice_missing':'ability_choice_unsupported';
         } else {

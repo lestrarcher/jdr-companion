@@ -51,7 +51,7 @@ try {
                 $request=Symfony\Component\HttpFoundation\Request::create('/','PATCH',[],[],[],['CONTENT_TYPE'=>'application/json'],json_encode($data['body'],JSON_THROW_ON_ERROR));
                 $response=$s['controller']->updatePublic($session->getAccessToken(),$request,
                     new S\PlayerCharacterAccess($s['states']),$em,new S\PlayerCharacterStateUpdater($s['sync'],$s['hpState']),
-                    new S\CharacterInspirationService($em,$s['states']));
+                    new S\CharacterInspirationService($em,$s['states']),new S\CharacterProgressionMaximumRecorder($em));
                 $result=['status'=>$response->getStatusCode(),'body'=>json_decode($response->getContent(),true,512,JSON_THROW_ON_ERROR)];
             }
         } catch (HttpExceptionInterface $error) {
@@ -67,6 +67,7 @@ try {
         foreach (['feature_spell_grant','character_feature_spell'] as $table) {
             $db->executeStatement('CREATE TABLE '.$table.' (LIKE public.'.$table.')');
         }
+        require __DIR__.'/feature-grant-fixture-schema.php';
         $owner=(new E\User())->setEmail('spell-concurrency@example.invalid')->setPassword('unused')->setRoles([S\SpellCatalogue::ADMIN_ROLE]);
         $campaign=new E\Campaign($owner,'spell-test','Spell test');
         $class=new E\CharacterClass('wizard','Wizard',6,20,V\SpellcastingProgressionType::Full);
@@ -91,11 +92,10 @@ try {
         $grantResource=new E\TrackableResourceDefinition('concurrent-grant-use','Grant use',V\ResourceRechargeType::LongRest);
         $grantResource->setBaseMaximum(1);
         $grantFeature=new E\CharacterFeatureDefinition('concurrent-grant','Grant');
-        $grantFeature->setResourceDefinition($grantResource);
         foreach ([$grantResource,$grantFeature,E\CharacterFeatureRule::forClass($grantFeature,$class,1)] as $entity) $em->persist($entity);
         $em->flush();
         $db->insert('feature_spell_grant',['id'=>1,'feature_id'=>$grantFeature->getId(),'spell_id'=>$spellIds['spell'],
-            'mode'=>'fixed','unlock_level'=>1,'casting_ability'=>'INT','resource_definition_id'=>$grantResource->getId(),
+            'mode'=>'fixed','unlock_level'=>1,'casting_ability'=>'INT','resource_definition_id'=>$grantResource->getId(),'managed_resource_id'=>$grantResource->getId(),
             'casting_rules'=>json_encode(['version'=>1,'methods'=>[['kind'=>'resource','cost'=>1,'castingLevel'=>1],['kind'=>'standard-slot']]])]);
         $db->insert('character_feature_spell',['id'=>1,'character_id'=>$character->getId(),'grant_id'=>1,'spell_id'=>$spellIds['spell'],'active'=>true,'created_at'=>date('Y-m-d H:i:s')]);
         $initial=['hitPoints'=>['current'=>6,'temporary'=>0],'hitDice'=>[['id'=>'d6','current'=>1]],'progressions'=>[],

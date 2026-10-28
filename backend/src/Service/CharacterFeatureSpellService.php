@@ -11,11 +11,18 @@ use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 /** Persisted, source-specific spell knowledge. Does not handle spell uses or class quotas. */
 final readonly class CharacterFeatureSpellService
 {
-    public function __construct(private Connection $db, private CharacterFeatureResolver $features, private CharacterAbilityCalculator $abilityCalculator = new CharacterAbilityCalculator()) {}
+    public function __construct(private Connection $db, private CharacterFeatureResolver $features, private CharacterAbilityCalculator $abilityCalculator = new CharacterAbilityCalculator(), private ?FeatureSpellGrantConfiguration $configuration = null) {}
+
+    /** Add only fixed grants belonging to this newly assigned progression. */
+    public function synchronizeProgression(Character $character, \App\Entity\ProgressionDefinition $progression): void
+    {
+        $ids = $this->db->fetchFirstColumn('SELECT DISTINCT g.id FROM feature_spell_grant g JOIN character_feature_rule r ON r.feature_definition_id=g.feature_id WHERE r.progression_definition_id=? AND g.mode=? ORDER BY g.id', [$progression->getId(), 'fixed']);
+        foreach ($ids as $id) $this->synchronize($character, (int)$id);
+    }
 
     /**
      * Propagate one persisted fixed grant, never replacing existing acquisitions.
-     * No implicit session: progression-only eligibility requires a separate explicit context.
+     * No implicit session: acquisition follows source ownership; reads enforce thresholds.
      * @param iterable<Character> $characters
      * @return array{eligible:int, missing:int, created:int}
      */
@@ -29,7 +36,7 @@ final readonly class CharacterFeatureSpellService
             ksort($ordered, SORT_NUMERIC);
             foreach ($ordered as $id => $character) {
                 if (!$dryRun) $this->db->fetchOne('SELECT id FROM character WHERE id=? FOR UPDATE', [$id]);
-                if (!isset($this->applicable($character)[$grantId])) continue;
+                if (!isset($this->applicable($character, [], true)[$grantId])) continue;
                 ++$result['eligible'];
                 // Even an inactive or inconsistent historical row is not ours to change.
                 if ($this->db->fetchOne('SELECT id FROM character_feature_spell WHERE character_id=? AND grant_id=?', [$id, $grantId]) !== false) continue;
@@ -56,17 +63,19 @@ final readonly class CharacterFeatureSpellService
 
     /** @param array<string,int> $progressionValues
      *  @return array<int, array<string,mixed>> */
-    private function applicable(Character $character, array $progressionValues = []): array
+    private function applicable(Character $character, array $progressionValues = [], bool $acquisition = false): array
     {
         $featureIds = [];
-        foreach ($this->features->resolve($character, $progressionValues) as $rule) {
+        $rules = $acquisition ? $this->features->acquisitionRules($character)
+            : $this->features->resolve($character, $progressionValues);
+        foreach ($rules as $rule) {
             $id = $rule->getFeatureDefinition()->getId();
             if ($id !== null) $featureIds[] = $id;
         }
         if ($featureIds === []) return [];
         $params = implode(',', array_fill(0, count($featureIds), '?'));
         $rows = $this->db->fetchAllAssociative(
-            "SELECT g.*, d.name AS feature_name FROM feature_spell_grant g JOIN character_feature_definition d ON d.id=g.feature_id WHERE g.feature_id IN ($params) AND g.unlock_level <= ? ORDER BY g.id",
+            "SELECT g.*, d.name AS feature_name FROM feature_spell_grant g JOIN character_feature_definition d ON d.id=g.feature_id WHERE g.feature_id IN ($params) AND g.unlock_level <= ?".($acquisition ? '' : ' AND g.enabled=true').' ORDER BY g.id',
             [...$featureIds, $character->getTotalLevel()]
         );
         return array_column($rows, null, 'id');
@@ -84,7 +93,7 @@ final readonly class CharacterFeatureSpellService
         try {
             // Lock the parent even when no acquisition exists yet, as choose() does.
             $this->db->fetchOne('SELECT id FROM character WHERE id=? FOR UPDATE', [$id]);
-            $grants = $this->applicable($character);
+            $grants = $this->applicable($character, [], true);
             if ($grantId !== null) {
                 // Targeted reconciliation never retires unrelated or session-specific grants.
                 $grant = $grants[$grantId] ?? null;
@@ -113,6 +122,7 @@ final readonly class CharacterFeatureSpellService
                     $this->db->update('character_feature_spell', ['spell_id'=>$grant['spell_id'],'active'=>true,'retired_at'=>null], ['id'=>$old['id']], ['active'=>ParameterType::BOOLEAN]);
                 }
             }
+            foreach ($grants as $grant) $this->configuration?->synchronize((int)$grant['id'], $character->getId());
             $this->db->commit();
         } catch (\Throwable $e) { $this->db->rollBack(); throw $e; }
         return $this->status($character);
@@ -168,6 +178,7 @@ final readonly class CharacterFeatureSpellService
             if ($existing && $existing['active']) throw new BadRequestHttpException('Ce choix a déjà été effectué.');
             if ($existing) $this->db->update('character_feature_spell',['spell_id'=>$spellId,'active'=>true,'retired_at'=>null],['id'=>$existing['id']], ['active'=>ParameterType::BOOLEAN]);
             else $this->db->insert('character_feature_spell',['character_id'=>$character->getId(),'grant_id'=>$grantId,'spell_id'=>$spellId]);
+            $this->configuration?->synchronize($grantId, $character->getId());
             $this->db->commit();
         } catch (\Throwable $e) { $this->db->rollBack(); throw $e; }
         return $this->status($character);

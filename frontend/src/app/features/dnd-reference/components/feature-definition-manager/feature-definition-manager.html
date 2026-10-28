@@ -250,21 +250,28 @@
                   @if (grant.castingAbility) { · {{ abilityLabels[grant.castingAbility] || grant.castingAbility }} }
                 </span>
               </div>
-              @if (!readOnly()) { <button type="button" class="grant-button grant-button--danger" [disabled]="spellGrantLoading()" (click)="removeSpellGrant(grant.id)">Retirer</button> }
+              @if (!readOnly()) {
+                <button type="button" class="grant-button" [disabled]="spellGrantLoading()" (click)="editSpellGrant(grant)">Modifier le lancement</button>
+                @if (grant.enabled === false) {
+                  <span>Désactivé</span><button type="button" class="grant-button" [disabled]="spellGrantLoading()" (click)="enableSpellGrant(grant)">Réactiver</button>
+                } @else {
+                  <button type="button" class="grant-button grant-button--danger" [disabled]="spellGrantLoading()" (click)="removeSpellGrant(grant.id)">Désactiver</button>
+                }
+              }
             </div>
           }
           @if (!readOnly()) {
-            <button type="button" class="grant-button grant-button--secondary" [disabled]="spellGrantLoading()" (click)="spellGrantEditing.set(!spellGrantEditing())">
+            <button type="button" class="grant-button grant-button--secondary" [disabled]="spellGrantLoading()" (click)="spellGrantEditing() ? spellGrantEditing.set(false) : startSpellGrant()">
               {{ spellGrantEditing() ? 'Annuler' : '+ Ajouter un sort' }}
             </button>
             @if (spellGrantEditing()) {
               <div class="feature-spell-grant-form">
                 <label>Attribution
-                  <select name="grantMode" [(ngModel)]="grantMode"><option value="fixed">Sort défini</option><option value="choice">Sort au choix</option></select>
+                  <select name="grantMode" [(ngModel)]="grantMode" [disabled]="editingGrantId !== null"><option value="fixed">Sort défini</option><option value="choice">Sort au choix</option></select>
                 </label>
                 @if (grantMode === 'fixed') {
                   <label>Sort octroyé
-                    <select name="grantSpellId" [(ngModel)]="grantSpellId">
+                    <select name="grantSpellId" [(ngModel)]="grantSpellId" [disabled]="editingGrantId !== null" (ngModelChange)="freeLevel = null">
                       <option [ngValue]="null">Sélectionner un sort…</option>
                       @for (spell of grantSpells(); track spell.id) { <option [ngValue]="spell.id">{{ spell.name }} (niveau {{ spell.level }})</option> }
                     </select>
@@ -291,7 +298,7 @@
                 }
                 <label>Caractéristique d'incantation
                   <select name="grantCastingAbility" [(ngModel)]="grantCastingAbility">
-                    <option value="">Non précisée</option>
+                    <option value="">Hériter de la progression</option>
                     <option value="INT">Intelligence</option><option value="WIS">Sagesse</option>
                     <option value="CHA">Charisme</option><option value="STR">Force</option>
                     <option value="DEX">Dextérité</option><option value="CON">Constitution</option>
@@ -299,8 +306,19 @@
                   </select>
                 </label>
                 <label>Déblocage au niveau
-                  <input type="number" name="grantUnlockLevel" min="1" max="20" step="1" [(ngModel)]="grantUnlockLevel" />
+                  <input type="number" name="grantUnlockLevel" min="1" max="20" step="1" [(ngModel)]="grantUnlockLevel" [disabled]="editingGrantId !== null" />
                 </label>
+                <label><input type="checkbox" name="configureCasting" [(ngModel)]="configureCasting" />Configurer les méthodes de lancement</label>
+                @if (configureCasting) {
+                  <label><input type="checkbox" name="freeCasting" [(ngModel)]="freeCasting" />Lancement sans emplacement</label>
+                  @if (freeCasting) {
+                    <label>Utilisations gratuites<input type="number" name="freeUses" min="1" max="1000" step="1" [(ngModel)]="freeUses" /></label>
+                    <label>Récupération<select name="freeRecharge" [(ngModel)]="freeRecharge"><option value="long-rest">Repos long</option><option value="short-rest">Repos court ou long</option></select></label>
+                    <label>Niveau gratuit (vide : niveau de base du sort)<input type="number" name="freeLevel" min="0" max="9" step="1" [(ngModel)]="freeLevel" /></label>
+                  }
+                  <label><input type="checkbox" name="standardCasting" [(ngModel)]="standardCasting" />Lancement avec emplacement classique</label>
+                  <p>Chaque nouvel octroi dispose de son propre compteur. Désactiver puis réactiver conserve les utilisations restantes.</p>
+                }
                 <button type="button" class="grant-button grant-button--primary" [disabled]="spellGrantLoading()" (click)="addSpellGrant()">Enregistrer le sort</button>
               </div>
             }

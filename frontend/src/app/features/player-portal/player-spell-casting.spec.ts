@@ -305,10 +305,10 @@ describe('Portal adoption of cast responses',()=>{
     const entries=[6,7,8,9].map(level=>({...spell(`acquisition:${level}`,[method('arcanum',level,level===7?'unavailable':'available')]),
       spellId:level,name:`Sort ${level}`,level,known:false,prepared:false,inSpellbook:false}));
     const initial=session(entries);
-    const hidden=[6,7,8,9].map(level=>`mystic-arcanum-${level}-use`);
+    const hidden=[...[6,7,8,9].map(level=>`mystic-arcanum-${level}-use`), 'arbitrary-technical-counter'];
     const visible=['sorcery-points','mystic-arcanum-5-use','mystic-arcanum-10-use','mystic-arcanum-6-use-extra','prefix-mystic-arcanum-6-use'];
     for(const slug of [...hidden,...visible]) {
-      initial.character.resources.push({slug,name:slug,maximum:1,rechargeType:'long-rest'});
+      initial.character.resources.push({slug,name:slug,maximum:1,rechargeType:'long-rest',hiddenFromTracker:slug==='arbitrary-technical-counter'});
       initial.state.resources.push({id:slug,currentValue:slug==='mystic-arcanum-7-use'?0:1});
     }
     const fixture=TestBed.createComponent(PlayerPortal); const p=fixture.componentInstance as any;

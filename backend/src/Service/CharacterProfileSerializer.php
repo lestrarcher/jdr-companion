@@ -253,6 +253,7 @@ final readonly class CharacterProfileSerializer
                 'name' => $resource->getName(),
                 'maximum' => $resource->getMaximum(),
                 'rechargeType' => $resource->getRechargeType()->value,
+                'hiddenFromTracker' => $resource->getDefinition()->isHiddenFromTracker(),
             ];
             if ($resource->getSlug() === 'warlock-pact-slots') {
                 $resources[$resource->getSlug()]['slotLevel'] = $this->spellSlotCalculator->pactSlotLevel($character);

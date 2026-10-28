@@ -73,7 +73,8 @@ final readonly class CustomReferenceCatalogueService
                 if (array_key_exists('characterClassId',$data)) throw new ConflictHttpException('Classe parente immuable.');
                 if ($this->hasReferences($item)) {
                     $current=$this->serialize($item);
-                    foreach ($data as $field=>$value) if (!in_array($field,['name','description'],true) && ($current[$field]??null)!==$value) throw new ConflictHttpException('Mécaniques verrouillées : cette référence est utilisée.');
+                    $editable = $item instanceof ProgressionDefinition ? ['name','description','defaultCastingAbility','irreversible'] : ['name','description'];
+                    foreach ($data as $field=>$value) if (!in_array($field,$editable,true) && ($current[$field]??null)!==$value) throw new ConflictHttpException('Mécaniques verrouillées : cette référence est utilisée.');
                 }
             }
             if ($item instanceof CharacterSubclass && !$this->subclassVisible($item,$actor)) throw new BadRequestHttpException('Classe parente incompatible.');
@@ -351,7 +352,7 @@ final readonly class CustomReferenceCatalogueService
             'subclasses' => ['characterClassId', 'spellcastingProgression'],
             'races' => ['parentRaceId', 'selectable', 'sizeOptions', 'walkingSpeed', 'movementSpeeds', 'languages', 'languageChoiceCount', 'senses', 'damageResistances', 'damageImmunities', 'conditionImmunities', 'featChoiceCount', ...($creating?['abilityModifiers']:[])],
             'feats' => ['repeatable', 'requiresAbilityChoice', 'chosenAbilityIncrease', 'allowedAbilities'],
-            'progressions' => ['minimumValue', 'maximumValue', 'accentColor', 'gainLabel', 'spendLabel', 'bulkAdjustmentEnabled'],
+            'progressions' => ['minimumValue', 'maximumValue', 'accentColor', 'gainLabel', 'spendLabel', 'bulkAdjustmentEnabled', 'defaultCastingAbility', 'irreversible'],
         };
         $allowed = array_merge($common, $specific, $creating ? ['slug'] : []);
         foreach (array_keys($data) as $key) {
@@ -432,6 +433,16 @@ final readonly class CustomReferenceCatalogueService
             if (array_key_exists('chosenAbilityIncrease', $data)) $item->setChosenAbilityIncrease($this->integer($data, 'chosenAbilityIncrease'));
         }
         if ($category === 'progressions') {
+            if (array_key_exists('irreversible', $data)) {
+                if (!is_bool($data['irreversible'])) throw new BadRequestHttpException('Booléen attendu.');
+                $item->setIrreversible($data['irreversible']);
+            }
+            if (array_key_exists('defaultCastingAbility', $data)) {
+                $value = $data['defaultCastingAbility'];
+                $ability = is_string($value) ? \App\Enum\Ability::tryFrom($value) : null;
+                if ($value !== null && $ability === null) throw new BadRequestHttpException('Caractéristique invalide.');
+                $item->setDefaultCastingAbility($ability);
+            }
             // Validate the final interval before applying either endpoint.
             $min=array_key_exists('minimumValue',$data)?$this->integer($data,'minimumValue'):$item->getMinimumValue();
             $max=array_key_exists('maximumValue',$data)?($data['maximumValue']===null?null:$this->integer($data,'maximumValue')):$item->getMaximumValue();
@@ -474,7 +485,7 @@ final readonly class CustomReferenceCatalogueService
         if ($item instanceof CharacterSubclass) $out += ['characterClassId'=>$item->getCharacterClass()->getId(), 'spellcastingProgression'=>$item->getSpellcastingProgression()?->value];
         if ($item instanceof CharacterRace) $out += ['parentRaceId'=>$item->getParentRace()?->getId(), 'selectable'=>$item->isSelectable(), 'featChoiceCount'=>$item->getFeatChoiceCount(), 'sizeOptions'=>$item->getSizeOptions(), 'walkingSpeed'=>$item->getWalkingSpeed(), 'movementSpeeds'=>$item->getMovementSpeeds(), 'languages'=>$item->getLanguages(), 'languageChoiceCount'=>$item->getLanguageChoiceCount(), 'senses'=>$item->getSenses(), 'damageResistances'=>$item->getDamageResistances(), 'damageImmunities'=>$item->getDamageImmunities(), 'conditionImmunities'=>$item->getConditionImmunities()];
         if ($item instanceof Feat) $out += ['repeatable'=>$item->isRepeatable(), 'requiresAbilityChoice'=>$item->requiresAbilityChoice(), 'chosenAbilityIncrease'=>$item->getChosenAbilityIncrease(), 'allowedAbilities'=>array_map(static fn($a)=>$a->value,$item->getAllowedAbilities())];
-        if ($item instanceof ProgressionDefinition) $out += ['minimumValue'=>$item->getMinimumValue(), 'maximumValue'=>$item->getMaximumValue(), 'accentColor'=>$item->getAccentColor(), 'gainLabel'=>$item->getGainLabel(), 'spendLabel'=>$item->getSpendLabel(), 'bulkAdjustmentEnabled'=>$item->isBulkAdjustmentEnabled(),
+        if ($item instanceof ProgressionDefinition) $out += ['irreversible'=>$item->isIrreversible(), 'defaultCastingAbility'=>$item->getDefaultCastingAbility()?->value, 'minimumValue'=>$item->getMinimumValue(), 'maximumValue'=>$item->getMaximumValue(), 'accentColor'=>$item->getAccentColor(), 'gainLabel'=>$item->getGainLabel(), 'spendLabel'=>$item->getSpendLabel(), 'bulkAdjustmentEnabled'=>$item->isBulkAdjustmentEnabled(),
             'stages'=>array_map(static fn($s)=>['id'=>$s->getId(),'label'=>$s->getLabel(),'description'=>$s->getDescription(),'minimumValue'=>$s->getMinimumValue(),'maximumValue'=>$s->getMaximumValue(),'iconUrl'=>$s->getIconUrl(),'displayOrder'=>$s->getDisplayOrder()],$item->getStages()->toArray()),
             'adjustmentRules'=>array_map(static fn($r)=>['id'=>$r->getId(),'direction'=>$r->getDirection()->value,'triggerType'=>$r->getTriggerType(),'description'=>$r->getDescription(),'adjustmentLabel'=>$r->getAdjustmentLabel(),'displayOrder'=>$r->getDisplayOrder()],$item->getAdjustmentRules()->toArray())];
         return $out;

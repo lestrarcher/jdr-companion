@@ -30,6 +30,28 @@ class CharacterProgression
     #[ORM\JoinColumn(nullable: false, onDelete: 'RESTRICT')]
     private ProgressionDefinition $progressionDefinition;
 
+    #[ORM\Column(nullable: true)]
+    private ?int $maximumReached = null;
+
+    /** Explicit administrative corrections, not reconstructed session history. */
+    #[ORM\Column(type: 'json', options: ['jsonb' => true, 'default' => '[]'])]
+    private array $maximumCorrections = [];
+
+    public function getMaximumReached(): ?int { return $this->maximumReached; }
+
+    public function recordReachedValue(int $value): void
+    {
+        $this->maximumReached = $this->maximumReached === null ? $value : max($this->maximumReached, $value);
+    }
+
+    public function correctMaximumReached(int $value, string $reason): void
+    {
+        if (trim($reason) === '') throw new \InvalidArgumentException('Un motif est requis.');
+        $this->maximumCorrections[] = ['before'=>$this->maximumReached, 'after'=>$value,
+            'reason'=>trim($reason), 'at'=>(new \DateTimeImmutable())->format(DATE_ATOM)];
+        $this->maximumReached = $value;
+    }
+
     public function __construct(
         Character $character,
         ProgressionDefinition $progressionDefinition,

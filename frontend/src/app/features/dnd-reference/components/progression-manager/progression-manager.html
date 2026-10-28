@@ -189,6 +189,27 @@
           />
         </label>
 
+        <label>
+          <span>Caractéristique d’incantation par défaut</span>
+          <select name="defaultCastingAbility" [(ngModel)]="form.defaultCastingAbility">
+            <option [ngValue]="null">Non définie</option>
+            <option value="strength">Force</option>
+            <option value="dexterity">Dextérité</option>
+            <option value="constitution">Constitution</option>
+            <option value="intelligence">Intelligence</option>
+            <option value="wisdom">Sagesse</option>
+            <option value="charisma">Charisme</option>
+          </select>
+        </label>
+
+        <label class="checkbox-field">
+          <input type="checkbox" name="irreversible" [(ngModel)]="form.irreversible" />
+          <span>Conserver les capacités débloquées au maximum atteint, dans toutes les sessions</span>
+        </label>
+        @if (form.irreversible) {
+          <p>Les maximums historiques doivent être initialisés explicitement. Activer cette option ne les déduit pas des sessions existantes.</p>
+        }
+
         <label class="checkbox-field">
           <input
             type="checkbox"

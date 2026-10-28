@@ -7,7 +7,7 @@ function spellConcurrencyServices($registry): array {
     $em=$registry->getManager(); $db=$em->getConnection();
     $ability=new S\CharacterAbilityCalculator();
     $features=new S\CharacterFeatureResolver(new R\CharacterFeatureRuleRepository($registry));
-    $resources=new S\CharacterResourceResolver(new R\TrackableResourceRuleRepository($registry),$ability,$features);
+    $resources=new S\CharacterResourceResolver(new R\TrackableResourceRuleRepository($registry),$ability,$features,$em);
     $slots=new S\CharacterSpellSlotCalculator(); $slotState=new S\CharacterSpellSlotStateService($slots);
     $catalogue=new S\SpellCatalogue($db);
     $access=new S\CharacterSpellAccessResolver($catalogue,new S\SpellSubclassGrants($db,$catalogue),$resources);

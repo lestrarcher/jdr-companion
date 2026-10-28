@@ -36,6 +36,8 @@ final class ProgressionController extends AbstractController
             'gainLabel' => $progression->getGainLabel(),
             'spendLabel' => $progression->getSpendLabel(),
             'bulkAdjustmentEnabled' => $progression->isBulkAdjustmentEnabled(),
+            'defaultCastingAbility' => $progression->getDefaultCastingAbility()?->value,
+            'irreversible' => $progression->isIrreversible(),
             'custom' => $progression->isCustom(),
             'adjustmentRules' => $this->serializeAdjustmentRules($progression),
             'stages' => array_map(

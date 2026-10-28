@@ -30,6 +30,7 @@ try {
     foreach (['feature_spell_grant','character_feature_spell'] as $table) {
         $db->executeStatement('CREATE TEMP TABLE '.$table.' (LIKE public.'.$table.' INCLUDING DEFAULTS INCLUDING CONSTRAINTS)');
     }
+    require __DIR__.'/feature-grant-fixture-schema.php';
     $tables = [...array_map(static fn($meta)=>$meta->getTableName(),$metadata),'feature_spell_grant','character_feature_spell'];
     foreach ($tables as $table) $check($db->fetchOne('SELECT relpersistence FROM pg_class WHERE oid=to_regclass(?)',[$table])==='t','Temporary isolation: '.$table);
     $owner = (new User())->setEmail('directory@example.invalid')->setPassword('unused')->setRoles([SpellCatalogue::ADMIN_ROLE]);
@@ -92,7 +93,7 @@ try {
     $db->insert('character_feature_spell',['id'=>1,'character_id'=>$character->getId(),'grant_id'=>1,'spell_id'=>$spell['id']]);
     $ability = new CharacterAbilityCalculator();
     $features = new CharacterFeatureResolver(new CharacterFeatureRuleRepository($registry));
-    $resources = new CharacterResourceResolver(new TrackableResourceRuleRepository($registry),$ability,$features);
+    $resources = new CharacterResourceResolver(new TrackableResourceRuleRepository($registry),$ability,$features,$em);
     $access = new CharacterSpellAccessResolver($catalogue,$grants,$resources);
     $acquisitions = new CharacterSpellAcquisitions($em,$access,$ability);
     $definitions = new class($registry) extends App\Repository\TrackableResourceDefinitionRepository {

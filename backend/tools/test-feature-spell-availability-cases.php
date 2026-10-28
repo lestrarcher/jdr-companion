@@ -3,7 +3,7 @@ declare(strict_types=1);
 // Included by test-fixed-feature-spell-sync.php: synthetic entities, temporary tables only.
 $abilityCalculator=new App\Service\CharacterAbilityCalculator();
 $featureResolver=new App\Service\CharacterFeatureResolver(new App\Repository\CharacterFeatureRuleRepository($registry));
-$resourceResolver=new App\Service\CharacterResourceResolver(new App\Repository\TrackableResourceRuleRepository($registry),$abilityCalculator,$featureResolver);
+$resourceResolver=new App\Service\CharacterResourceResolver(new App\Repository\TrackableResourceRuleRepository($registry),$abilityCalculator,$featureResolver,$em);
 $slotCalculator=new App\Service\CharacterSpellSlotCalculator();
 $slotState=new App\Service\CharacterSpellSlotStateService($slotCalculator);
 $definitions=new App\Repository\TrackableResourceDefinitionRepository($registry);

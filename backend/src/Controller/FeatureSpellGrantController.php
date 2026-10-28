@@ -16,7 +16,7 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/reference/{scope}/features/{featureId}/spell-grants', requirements: ['scope'=>'custom|official','featureId'=>'\d+'])]
 final class FeatureSpellGrantController extends AbstractController
 {
-    public function __construct(private readonly Connection $db) {}
+    public function __construct(private readonly Connection $db, private readonly ?\App\Service\FeatureSpellGrantConfiguration $configuration = null) {}
 
     private function feature(int $id, string $scope): array
     {
@@ -34,12 +34,17 @@ final class FeatureSpellGrantController extends AbstractController
     private function rows(int $featureId): array
     {
         $rows=$this->db->fetchAllAssociative('SELECT g.*,s.name AS spell_name,c.name AS class_name FROM feature_spell_grant g LEFT JOIN spell_definition s ON s.id=g.spell_id LEFT JOIN character_class c ON c.id=g.class_id WHERE g.feature_id=? ORDER BY g.id',[$featureId]);
-        return array_map(static function(array $r):array {return ['id'=>(int)$r['id'],'mode'=>$r['mode'],'spellId'=>$r['spell_id']===null?null:(int)$r['spell_id'],'spellName'=>$r['spell_name'],'spellLevel'=>$r['spell_level']===null?null:(int)$r['spell_level'],'classId'=>$r['class_id']===null?null:(int)$r['class_id'],'className'=>$r['class_name'],'schools'=>$r['schools']===null?[]:json_decode($r['schools'],true),'unlockLevel'=>(int)$r['unlock_level'],'castingAbility'=>$r['casting_ability'], 'castingRules'=>$r['casting_rules']===null?null:json_decode($r['casting_rules'],true,512,JSON_THROW_ON_ERROR), 'resourceDefinitionId'=>$r['resource_definition_id']===null?null:(int)$r['resource_definition_id']];},$rows);
+        return array_map(function(array $r):array {
+            $resource = $r['resource_definition_id'] === null ? false : $this->db->fetchAssociative('SELECT base_maximum,recharge_type FROM trackable_resource_definition WHERE id=?', [$r['resource_definition_id']]);
+            return ['enabled'=>(bool)$r['enabled'], 'managedResourceId'=>$r['managed_resource_id'] === null ? null : (int)$r['managed_resource_id'],
+                'freeUses'=>$resource ? (int)$resource['base_maximum'] : 0, 'rechargeType'=>$resource ? $resource['recharge_type'] : 'long-rest',
+                'id'=>(int)$r['id'],'mode'=>$r['mode'],'spellId'=>$r['spell_id']===null?null:(int)$r['spell_id'],'spellName'=>$r['spell_name'],'spellLevel'=>$r['spell_level']===null?null:(int)$r['spell_level'],'classId'=>$r['class_id']===null?null:(int)$r['class_id'],'className'=>$r['class_name'],'schools'=>$r['schools']===null?[]:json_decode($r['schools'],true),'unlockLevel'=>(int)$r['unlock_level'],'castingAbility'=>$r['casting_ability'], 'castingRules'=>$r['casting_rules']===null?null:json_decode($r['casting_rules'],true,512,JSON_THROW_ON_ERROR), 'resourceDefinitionId'=>$r['resource_definition_id']===null?null:(int)$r['resource_definition_id']];},$rows);
     }
-    private function castingConfiguration(array $feature, mixed $rules, mixed $resourceId, int $baseLevel): array
+    private function castingConfiguration(array $feature, mixed $rules, mixed $resourceId, int $baseLevel, ?int $grantId = null): array
     {
         $rules = FeatureSpellCastingRules::validate($rules, $resourceId, $baseLevel);
         if ($resourceId !== null) {
+            if ($this->db->fetchOne('SELECT 1 FROM feature_spell_grant WHERE managed_resource_id=? AND id<>?', [$resourceId,$grantId ?? 0])) throw new BadRequestHttpException('Cette ressource appartient à un autre octroi.');
             $resource = $this->db->fetchAssociative('SELECT origin,owner_id FROM trackable_resource_definition WHERE id=?', [$resourceId]);
             if (!$resource || !($resource['origin'] === 'OFFICIAL' && $resource['owner_id'] === null)
                 && !($feature['origin'] === 'CUSTOM' && $resource['origin'] === 'CUSTOM' && (int)$resource['owner_id'] === (int)$feature['owner_id'])) {
@@ -83,10 +88,16 @@ final class FeatureSpellGrantController extends AbstractController
         }
         $baseLevel = $mode === 'fixed' ? (int)$this->db->fetchOne('SELECT level FROM spell_definition WHERE id=?', [$spellId]) : $spellLevel;
         $configuration = $this->castingConfiguration($feature, $v['castingRules'] ?? null, $v['resourceDefinitionId'] ?? null, $baseLevel);
-        $this->db->transactional(function () use ($featureId, $mode, $spellId, $spellLevel, $classId, $schools, $level, $ability, $featureSpells, $characters, $configuration): void {
+        if (isset($v['casting']) && (array_key_exists('castingRules',$v) || array_key_exists('resourceDefinitionId',$v))) throw new BadRequestHttpException('Configurations incompatibles.');
+        $this->db->transactional(function () use ($featureId, $mode, $spellId, $spellLevel, $classId, $schools, $level, $ability, $featureSpells, $characters, $configuration, $v, $feature, $baseLevel): void {
             $this->db->insert('feature_spell_grant',['feature_id'=>$featureId,'mode'=>$mode,'spell_id'=>$spellId,'spell_level'=>$spellLevel,'class_id'=>$classId,'schools'=>$schools,'unlock_level'=>$level,'casting_ability'=>$ability,...$configuration]);
             $grantId = (int)$this->db->lastInsertId();
+            if (array_key_exists('casting', $v)) {
+                $grant = $this->db->fetchAssociative('SELECT * FROM feature_spell_grant WHERE id=?', [$grantId]);
+                $this->db->update('feature_spell_grant', $this->configuration->configure($feature, $grant, $v['casting'], $baseLevel), ['id'=>$grantId]);
+            }
             if ($mode === 'fixed') $featureSpells->propagateFixedGrant($grantId, $characters->findBy([], ['id'=>'ASC']));
+            if (array_key_exists('casting', $v)) $this->configuration->synchronize($grantId);
         });
         return $this->json(['grants'=>$this->rows($featureId)],201);
     }
@@ -95,14 +106,29 @@ final class FeatureSpellGrantController extends AbstractController
     {
         $feature=$this->feature($featureId,$scope); $this->editable($feature,$scope);
         $payload=$request->toArray();
-        if ($payload === [] || array_is_list($payload) || array_diff(array_keys($payload), ['castingRules','resourceDefinitionId'])) throw new BadRequestHttpException('Seule la configuration de lancement est modifiable.');
+        if ($payload === [] || array_is_list($payload) || array_diff(array_keys($payload), ['castingRules','resourceDefinitionId','casting','castingAbility','enabled'])) throw new BadRequestHttpException('Seule la configuration de lancement est modifiable.');
+        if (array_key_exists('casting',$payload) && (array_key_exists('castingRules',$payload) || array_key_exists('resourceDefinitionId',$payload))) throw new BadRequestHttpException('Configurations incompatibles.');
         $this->db->transactional(function () use ($feature,$featureId,$id,$payload): void {
+            $this->configuration?->lockOwners($id);
             $grant=$this->db->fetchAssociative('SELECT * FROM feature_spell_grant WHERE id=? AND feature_id=? FOR UPDATE', [$id,$featureId]);
             if (!$grant) throw new NotFoundHttpException('Octroi introuvable.');
             $rules=array_key_exists('castingRules',$payload) ? $payload['castingRules'] : ($grant['casting_rules']===null ? null : json_decode($grant['casting_rules'],true,512,JSON_THROW_ON_ERROR));
             $resourceId=array_key_exists('resourceDefinitionId',$payload) ? $payload['resourceDefinitionId'] : ($grant['resource_definition_id']===null ? null : (int)$grant['resource_definition_id']);
             $baseLevel=$grant['mode']==='fixed' ? (int)$this->db->fetchOne('SELECT level FROM spell_definition WHERE id=?',[$grant['spell_id']]) : (int)$grant['spell_level'];
-            $this->db->update('feature_spell_grant',$this->castingConfiguration($feature,$rules,$resourceId,$baseLevel),['id'=>$id]);
+            $changes = array_key_exists('casting', $payload)
+                ? $this->configuration->configure($feature, $grant, $payload['casting'], $baseLevel)
+                : $this->castingConfiguration($feature,$rules,$resourceId,$baseLevel,$id);
+            if ($grant['managed_resource_id'] !== null && !array_key_exists('casting',$payload) && (array_key_exists('castingRules',$payload) || array_key_exists('resourceDefinitionId',$payload))) throw new BadRequestHttpException('Utiliser le formulaire des méthodes pour cette ressource automatique.');
+            if (array_key_exists('castingAbility',$payload)) {
+                if ($payload['castingAbility'] !== null && !in_array($payload['castingAbility'], ['STR','DEX','CON','INT','WIS','CHA','CHOICE'], true)) throw new BadRequestHttpException('Caractéristique invalide.');
+                $changes['casting_ability'] = $payload['castingAbility'];
+            }
+            if (array_key_exists('enabled',$payload)) {
+                if (!is_bool($payload['enabled'])) throw new BadRequestHttpException('Booléen attendu.');
+                $changes['enabled'] = $payload['enabled'] ? 1 : 0;
+            }
+            $this->db->update('feature_spell_grant',$changes,['id'=>$id]);
+            $this->configuration?->synchronize($id);
         });
         return $this->json(['grants'=>$this->rows($featureId)]);
     }
@@ -110,7 +136,10 @@ final class FeatureSpellGrantController extends AbstractController
     public function delete(string $scope,int $featureId,int $id): JsonResponse
     {
         $feature=$this->feature($featureId,$scope); $this->editable($feature,$scope);
-        $count=$this->db->delete('feature_spell_grant',['id'=>$id,'feature_id'=>$featureId]);
+        $count=$this->db->transactional(function () use ($id,$featureId): int {
+            $this->configuration?->lockOwners($id);
+            return $this->db->executeStatement('UPDATE feature_spell_grant SET enabled=false WHERE id=? AND feature_id=?', [$id,$featureId]);
+        });
         if (!$count) throw new NotFoundHttpException('Octroi introuvable.');
         return $this->json(['grants'=>$this->rows($featureId)]);
     }

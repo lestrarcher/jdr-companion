@@ -12,6 +12,8 @@ import {
 } from '../../../../core/services/legacy-dnd-reference-api.service';
 
 interface ProgressionForm {
+  defaultCastingAbility: string | null;
+  irreversible: boolean;
   slug: string;
   name: string;
   description: string;
@@ -137,6 +139,8 @@ export class ProgressionManager {
       spendLabel: progression.spendLabel ?? '',
       custom: progression.custom,
       bulkAdjustmentEnabled: progression.bulkAdjustmentEnabled,
+      defaultCastingAbility: progression.defaultCastingAbility ?? null,
+      irreversible: progression.irreversible ?? false,
     };
 
     this.stageForm = this.emptyStageForm();
@@ -423,6 +427,8 @@ export class ProgressionManager {
       spendLabel: this.form.spendLabel.trim() || null,
       custom: this.form.custom,
       bulkAdjustmentEnabled: this.form.bulkAdjustmentEnabled,
+      defaultCastingAbility: this.form.defaultCastingAbility,
+      irreversible: this.form.irreversible,
     };
   }
 
@@ -453,6 +459,8 @@ export class ProgressionManager {
       spendLabel: '',
       custom: this.api.scope !== 'official',
       bulkAdjustmentEnabled: false,
+      defaultCastingAbility: null,
+      irreversible: false,
     };
   }
 

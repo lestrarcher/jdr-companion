@@ -66,6 +66,46 @@ export class FeatureDefinitionManager {
   protected grantClassId: number | null = null;
   protected grantSchool = '';
   protected grantUnlockLevel = 1;
+  protected editingGrantId: number | null = null;
+  protected configureCasting = false;
+  protected freeCasting = false;
+  protected freeUses = 1;
+  protected freeRecharge: 'short-rest' | 'long-rest' = 'long-rest';
+  protected freeLevel: number | null = null;
+  protected standardCasting = true;
+
+  protected startSpellGrant(): void {
+    this.grantMode = 'fixed'; this.grantSpellId = null; this.grantUnlockLevel = 1;
+    this.grantSpellLevel = 0; this.grantClassId = null; this.grantSchool = '';
+    this.editingGrantId = null; this.configureCasting = true;
+    this.freeCasting = false; this.freeUses = 1; this.freeRecharge = 'long-rest';
+    this.freeLevel = null; this.standardCasting = true; this.grantCastingAbility = '';
+    this.spellGrantEditing.set(true);
+  }
+
+  protected editSpellGrant(grant: FeatureSpellGrant): void {
+    this.editingGrantId = grant.id; this.grantMode = grant.mode;
+    this.grantSpellId = grant.spellId; this.grantSpellLevel = grant.spellLevel ?? 0;
+    this.grantClassId = grant.classId; this.grantSchool = grant.schools?.[0] ?? '';
+    this.grantUnlockLevel = grant.unlockLevel; this.grantCastingAbility = grant.castingAbility ?? '';
+    const free = grant.castingRules?.methods.find(method => method.kind === 'resource');
+    this.configureCasting = false; // Editing the ability alone preserves legacy methods/costs.
+    this.freeCasting = !!free; this.freeUses = grant.freeUses ?? 1;
+    this.freeRecharge = grant.rechargeType === 'short-rest' ? 'short-rest' : 'long-rest';
+    this.freeLevel = free?.kind === 'resource' ? free.castingLevel : null;
+    this.standardCasting = grant.castingRules?.methods.some(method => method.kind === 'standard-slot') ?? true;
+    this.spellGrantEditing.set(true);
+  }
+
+  protected enableSpellGrant(grant: FeatureSpellGrant): void {
+    const id = this.selectedFeatureId();
+    if (id === null || this.readOnly() || this.spellGrantLoading()) return;
+    this.spellGrantLoading.set(true);
+    this.api.configureFeatureSpellGrant(id, grant.id, { enabled: true }).subscribe({
+      next: response => { this.spellGrants.set(response.grants); this.spellGrantLoading.set(false); },
+      error: error => { this.spellGrantError.set(error.error?.detail ?? 'Réactivation impossible.'); this.spellGrantLoading.set(false); },
+    });
+  }
 
   protected loadSpellGrants(featureId: number): void {
     this.spellGrantLoading.set(true);
@@ -90,7 +130,15 @@ export class FeatureDefinitionManager {
       this.spellGrantError.set('Vérifie le sort et le niveau de déblocage.'); return;
     }
     this.spellGrantLoading.set(true); this.spellGrantError.set(null);
-    this.api.addFeatureSpellGrant(featureId, payload).subscribe({
+    const casting = this.configureCasting ? {
+      freeUses: this.freeCasting ? Number(this.freeUses) : 0, rechargeType: this.freeRecharge,
+      castingLevel: this.freeLevel === null ? (this.grantMode === 'fixed' ? this.grantSpells().find(spell => spell.id === this.grantSpellId)?.level ?? 0 : this.grantSpellLevel) : Number(this.freeLevel),
+      standardSlot: this.standardCasting,
+    } : undefined;
+    const request = this.editingGrantId === null
+      ? this.api.addFeatureSpellGrant(featureId, { ...payload, ...(casting ? { casting } : {}) })
+      : this.api.configureFeatureSpellGrant(featureId, this.editingGrantId, { castingAbility: this.grantCastingAbility || null, ...(casting ? { casting } : {}) });
+    request.subscribe({
       next: response => { this.spellGrants.set(response.grants); this.spellGrantEditing.set(false); this.spellGrantLoading.set(false); },
       error: error => { this.spellGrantError.set(error.error?.detail ?? 'Impossible d’ajouter ce sort.'); this.spellGrantLoading.set(false); },
     });

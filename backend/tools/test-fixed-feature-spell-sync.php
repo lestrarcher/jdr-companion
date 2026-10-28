@@ -8,6 +8,7 @@ use App\Repository\CharacterFeatureRuleRepository;
 
 require __DIR__.'/../vendor/autoload.php';
 (new Symfony\Component\Dotenv\Dotenv())->bootEnv(__DIR__.'/../.env');
+putenv('SHELL_VERBOSITY=-1'); $_SERVER['SHELL_VERBOSITY'] = $_ENV['SHELL_VERBOSITY'] = -1;
 $kernel = new App\Kernel('dev', true); $kernel->boot();
 $registry = $kernel->getContainer()->get('doctrine');
 $em = $registry->getManager(); $db = $em->getConnection(); $checks = 0;
@@ -24,6 +25,7 @@ try {
         $db->executeStatement('CREATE TEMP TABLE '.$table.' (LIKE public.'.$table.' INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING IDENTITY INCLUDING INDEXES)');
         $check($db->fetchOne('SELECT relpersistence FROM pg_class WHERE oid=to_regclass(?)', [$table]) === 't', 'Temporary table');
     }
+    require __DIR__.'/feature-grant-fixture-schema.php';
     // Apply the new DDL to the temporary fixture only, even before local migration.
     if (!$db->fetchOne("SELECT 1 FROM pg_attribute WHERE attrelid='feature_spell_grant'::regclass AND attname='casting_rules' AND NOT attisdropped")) {
         require_once __DIR__.'/../migrations/Version20261026010000.php';
@@ -264,6 +266,7 @@ try {
     $check($resolveCasting->resolve($character,$grantId)['provenance']['type']==='subclass','Subclass provenance resolved');
     $check($resolveCasting->resolve($other,$grantId)['reason']==='acquisition_missing','No source inferred without an active acquisition');
     require __DIR__.'/test-feature-spell-availability-cases.php';
+    require __DIR__.'/test-progression-spell-acquisition-cases.php';
     echo "PASS: $checks assertions\n";
 } finally {
     if ($db->isTransactionActive()) $db->rollBack();

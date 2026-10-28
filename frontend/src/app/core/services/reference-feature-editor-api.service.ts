@@ -20,6 +20,9 @@ export class ReferenceFeatureEditorApiService {
   deleteFeatureSpellGrant(featureId: number, grantId: number) {
     return this.http.delete<{ grants: FeatureSpellGrant[] }>(`/api/reference/${this.scope}/features/${featureId}/spell-grants/${grantId}`);
   }
+  configureFeatureSpellGrant(featureId: number, grantId: number, payload: { castingAbility?: string | null; casting?: GrantCastingConfiguration; enabled?: boolean }) {
+    return this.http.patch<{ grants: FeatureSpellGrant[] }>(`/api/reference/${this.scope}/features/${featureId}/spell-grants/${grantId}`, payload);
+  }
   getFeatures() { return this.http.get<FeatureListResponse>(this.url('features')); }
   deletePersonalFeature(id: number) { return this.http.delete<void>(`/api/reference/custom/features/${id}`); }
   deletePersonalResource(id: number) { return this.http.delete<void>(`/api/reference/custom/resources/${id}`); }
@@ -55,6 +58,12 @@ export class ReferenceFeatureEditorApiService {
 }
 
 export interface FeatureSpellGrant {
+  enabled?: boolean;
+  managedResourceId?: number | null;
+  resourceDefinitionId?: number | null;
+  freeUses?: number;
+  rechargeType?: string;
+  castingRules?: { version: number; methods: ({ kind: 'resource'; cost: number; castingLevel: number } | { kind: 'standard-slot' })[] } | null;
   id: number;
   mode: 'fixed' | 'choice';
   spellId: number | null;
@@ -66,6 +75,12 @@ export interface FeatureSpellGrant {
   unlockLevel: number;
   castingAbility: string | null;
 }
-export type FeatureSpellGrantPayload =
+export interface GrantCastingConfiguration {
+  freeUses: number;
+  rechargeType: 'short-rest' | 'long-rest';
+  castingLevel: number;
+  standardSlot: boolean;
+}
+export type FeatureSpellGrantPayload = (
   | { mode: 'fixed'; spellId: number; unlockLevel: number; castingAbility: string | null }
-  | { mode: 'choice'; spellLevel: number; classId: number | null; schools: string[]; unlockLevel: number; castingAbility: string | null };
+  | { mode: 'choice'; spellLevel: number; classId: number | null; schools: string[]; unlockLevel: number; castingAbility: string | null }) & { casting?: GrantCastingConfiguration };
