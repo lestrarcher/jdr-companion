@@ -102,13 +102,28 @@ final class FeatureSpellGrantController extends AbstractController
         return $this->json(['grants'=>$this->rows($featureId)],201);
     }
     #[Route('/{id}',requirements:['id'=>'\d+'],methods:['PATCH'])]
-    public function configure(string $scope, int $featureId, int $id, Request $request): JsonResponse
+    public function configure(string $scope, int $featureId, int $id, Request $request, CharacterFeatureSpellService $featureSpells, CharacterRepository $characters): JsonResponse
     {
         $feature=$this->feature($featureId,$scope); $this->editable($feature,$scope);
         $payload=$request->toArray();
         if ($payload === [] || array_is_list($payload) || array_diff(array_keys($payload), ['castingRules','resourceDefinitionId','casting','castingAbility','enabled'])) throw new BadRequestHttpException('Seule la configuration de lancement est modifiable.');
         if (array_key_exists('casting',$payload) && (array_key_exists('castingRules',$payload) || array_key_exists('resourceDefinitionId',$payload))) throw new BadRequestHttpException('Configurations incompatibles.');
-        $this->db->transactional(function () use ($feature,$featureId,$id,$payload): void {
+        $this->db->transactional(function () use ($feature,$featureId,$id,$payload,$featureSpells,$characters): void {
+            // Include missing beneficiaries before locking the grant, in the same
+            // character-first order as casting and acquisition reconciliation.
+            $candidates = [];
+            $ownerIds = $this->db->fetchFirstColumn('SELECT character_id FROM character_feature_spell WHERE grant_id=?', [$id]);
+            if ($this->db->fetchOne('SELECT mode FROM feature_spell_grant WHERE id=? AND feature_id=?', [$id,$featureId]) === 'fixed') {
+                foreach ($characters->findBy([], ['id'=>'ASC']) as $character) {
+                    if ($featureSpells->propagateFixedGrant($id, [$character], true)['eligible'] > 0) {
+                        $candidates[] = $character;
+                        $ownerIds[] = $character->getId();
+                    }
+                }
+            }
+            $ownerIds = array_unique($ownerIds);
+            sort($ownerIds, SORT_NUMERIC);
+            foreach ($ownerIds as $ownerId) $this->db->fetchOne('SELECT id FROM character WHERE id=? FOR UPDATE', [$ownerId]);
             $this->configuration?->lockOwners($id);
             $grant=$this->db->fetchAssociative('SELECT * FROM feature_spell_grant WHERE id=? AND feature_id=? FOR UPDATE', [$id,$featureId]);
             if (!$grant) throw new NotFoundHttpException('Octroi introuvable.');
@@ -128,6 +143,9 @@ final class FeatureSpellGrantController extends AbstractController
                 $changes['enabled'] = $payload['enabled'] ? 1 : 0;
             }
             $this->db->update('feature_spell_grant',$changes,['id'=>$id]);
+            if ($grant['mode'] === 'fixed' && ($payload['enabled'] ?? (bool)$grant['enabled'])) {
+                $featureSpells->propagateFixedGrant($id, $candidates);
+            }
             $this->configuration?->synchronize($id);
         });
         return $this->json(['grants'=>$this->rows($featureId)]);

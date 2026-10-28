@@ -88,3 +88,44 @@ $call('PATCH',$base.'/'.$managedId,['castingAbility'=>null]);
 $beforeInvalid=$db->fetchAssociative('SELECT * FROM feature_spell_grant WHERE id=?',[$managedId]);
 $call('PATCH',$base.'/'.$managedId,['casting'=>array_replace($casting,['freeUses'=>0,'standardSlot'=>false])],400);
 $check($db->fetchAssociative('SELECT * FROM feature_spell_grant WHERE id=?',[$managedId])===$beforeInvalid,'Invalid no-method configuration rolls back');
+
+// Historical fixed grant with a missing acquisition: CLI and PATCH repair only it.
+$ineligible = new App\Entity\Character($em->find(App\Entity\Campaign::class, $campaign->getId()), 'repair-ineligible', 'Repair ineligible', App\Entity\Character::TYPE_PLAYER);
+$em->persist($ineligible); $em->flush();
+$db->delete('character_feature_spell', ['character_id'=>$character->getId(), 'grant_id'=>$managedId]);
+$preserved = static fn(): array => [
+    $db->fetchAllAssociative('SELECT * FROM character_progression ORDER BY id'),
+    $db->fetchAllAssociative('SELECT * FROM character_session_state ORDER BY id'),
+    $db->fetchAllAssociative('SELECT * FROM trackable_resource_definition ORDER BY id'),
+    $db->fetchAllAssociative('SELECT * FROM feature_spell_grant ORDER BY id'),
+    $db->fetchAllAssociative('SELECT * FROM character_feature_spell WHERE NOT (grant_id='.$managedId.' AND character_id='.$character->getId().') ORDER BY id'),
+];
+$beforeRepair = $preserved();
+$repairService = new App\Service\CharacterFeatureSpellService($db, $features, new App\Service\CharacterAbilityCalculator(),
+    new App\Service\FeatureSpellGrantConfiguration($db, $em, $synchronizer));
+$tester = new Symfony\Component\Console\Tester\CommandTester(new App\Command\ReconcileFixedSpellGrantCommand(
+    $db, new App\Repository\CharacterRepository($registry), $repairService));
+$args = ['character'=>(string)$character->getId(), 'grant'=>(string)$managedId];
+$check($tester->execute($args) === 0, 'Reconciliation defaults to successful preview');
+$check(json_decode($tester->getDisplay(),true)['missing'] === 1 && $preserved() === $beforeRepair
+    && !$db->fetchOne('SELECT 1 FROM character_feature_spell WHERE grant_id=? AND character_id=?',[$managedId,$character->getId()]), 'Preview has no writes: '.$tester->getDisplay().' preserved='.(int)($preserved() === $beforeRepair).' remaining='.json_encode($db->fetchAllAssociative('SELECT character_id FROM character_feature_spell WHERE grant_id=? AND character_id=?',[$managedId,$character->getId()])));
+$check($tester->execute([...$args,'--apply'=>true]) === 0 && json_decode($tester->getDisplay(),true)['created'] === 1, 'Scoped CLI creates missing acquisition');
+$check($preserved() === $beforeRepair, 'CLI preserves all progressions, sessions, consumed pools, receipts, grants and other acquisitions');
+$acquisition = $db->fetchAssociative('SELECT * FROM character_feature_spell WHERE grant_id=? AND character_id=?',[$managedId,$character->getId()]);
+$tester->execute([...$args,'--apply'=>true]);
+$check(json_decode($tester->getDisplay(),true)['created'] === 0 && $preserved() === $beforeRepair
+    && $db->fetchAssociative('SELECT * FROM character_feature_spell WHERE grant_id=? AND character_id=?',[$managedId,$character->getId()]) === $acquisition, 'CLI apply is idempotent');
+$check($tester->execute(['character'=>(string)$ineligible->getId(),'grant'=>(string)$managedId,'--apply'=>true]) === 1
+    && $preserved() === $beforeRepair, 'Ineligible character is not reconciled');
+$db->delete('character_feature_spell', ['character_id'=>$character->getId(), 'grant_id'=>$managedId]);
+$call('PATCH',$base.'/'.$managedId,['castingAbility'=>null]);
+$check((int)$db->fetchOne('SELECT COUNT(*) FROM character_feature_spell WHERE grant_id=? AND character_id=?',[$managedId,$character->getId()]) === 1
+    && $preserved() === $beforeRepair, 'PATCH reconciles missing fixed acquisition without touching history or other characters');
+$acquisition = $db->fetchAssociative('SELECT * FROM character_feature_spell WHERE grant_id=? AND character_id=?',[$managedId,$character->getId()]);
+$call('PATCH',$base.'/'.$managedId,['castingAbility'=>null]);
+$check($db->fetchAssociative('SELECT * FROM character_feature_spell WHERE grant_id=? AND character_id=?',[$managedId,$character->getId()]) === $acquisition
+    && $preserved() === $beforeRepair, 'Repeated PATCH is idempotent');
+$db->update('character_feature_spell',['active'=>0,'retired_at'=>date('Y-m-d H:i:s')],['id'=>$acquisition['id']]);
+$tester->execute([...$args,'--apply'=>true]);
+$call('PATCH',$base.'/'.$managedId,['castingAbility'=>null]);
+$check(!$db->fetchOne('SELECT active FROM character_feature_spell WHERE id=?',[$acquisition['id']]), 'Existing inactive acquisition is never reactivated by reconciliation');

@@ -153,7 +153,7 @@ try {
     $acquired=$rows(); $stateBeforeConfig=$snapshot();
     $historical=json_decode($controller->list('official',$feature->getId())->getContent(),true)['grants'];
     $check($historical[0]['castingRules']===null && $historical[0]['resourceDefinitionId']===null,'Historical grants remain unconfigured');
-    $controller->configure('official',$feature->getId(),$grantId,$patch(['castingRules'=>$rules,'resourceDefinitionId'=>$resourceId]));
+    $controller->configure('official',$feature->getId(),$grantId,$patch(['castingRules'=>$rules,'resourceDefinitionId'=>$resourceId]),$service,$repository);
     $configured=array_column(json_decode($controller->list('official',$feature->getId())->getContent(),true)['grants'],null,'id')[$grantId];
     $canonical=static function(mixed $value) use (&$canonical): mixed {
         if (!is_array($value)) return $value;
@@ -168,7 +168,7 @@ try {
     catch (Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException) { $fkRejected=true; }
     finally { $db->rollBack(); }
     $check($fkRejected,'Referenced resource protected by SQL foreign key');
-    $controller->configure('official',$feature->getId(),$choiceId,$patch(['castingRules'=>['version'=>1,'methods'=>[['kind'=>'standard-slot']]]]));
+    $controller->configure('official',$feature->getId(),$choiceId,$patch(['castingRules'=>['version'=>1,'methods'=>[['kind'=>'standard-slot']]]]),$service,$repository);
     $check($rows()===$acquired && $snapshot()===$stateBeforeConfig,'Configuration updates do not affect acquisitions, resources or sessions');
     $beforeInvalid=$db->fetchAllAssociative('SELECT * FROM feature_spell_grant ORDER BY id');
     $invalid=[
@@ -188,11 +188,11 @@ try {
     ];
     foreach($invalid as $payload){
         $rejected=false;
-        try{$controller->configure('official',$feature->getId(),$grantId,$patch($payload));}
+        try{$controller->configure('official',$feature->getId(),$grantId,$patch($payload),$service,$repository);}
         catch(Symfony\Component\HttpKernel\Exception\BadRequestHttpException){$rejected=true;}
         $check($rejected && $db->fetchAllAssociative('SELECT * FROM feature_spell_grant ORDER BY id')===$beforeInvalid,'Invalid configuration rejected without mutation: '.json_encode($payload));
     }
-    $controller->configure('official',$feature->getId(),$grantId,$patch(['castingRules'=>null,'resourceDefinitionId'=>null]));
+    $controller->configure('official',$feature->getId(),$grantId,$patch(['castingRules'=>null,'resourceDefinitionId'=>null]),$service,$repository);
     $check($db->fetchOne('SELECT casting_rules FROM feature_spell_grant WHERE id=?',[$grantId])===null,'Explicit reset to unconfigured state');
     $createConfigured=$patch(['mode'=>'choice','spellLevel'=>2,'castingRules'=>$rules,'resourceDefinitionId'=>$resourceId]);
     $check($controller->create('official',$feature->getId(),$createConfigured,$service,$repository)->getStatusCode()===201,'Create accepts configured choice grant');
