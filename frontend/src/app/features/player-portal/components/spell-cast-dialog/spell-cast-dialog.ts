@@ -124,6 +124,7 @@ export class SpellCastDialog implements AfterViewInit, OnDestroy {
     return option.method.reason === 'exhausted' ? 'Épuisé' : 'Indisponible';
   }
   costLabel(option: CastOption): string {
+    if (option.method.kind === 'arcanum') return '1 utilisation d’Arcanum (sans emplacement)';
     return option.method.kind === 'resource' ? `${option.method.cost} unité(s) de ressource de capacité`
       : option.method.cost === 0 ? 'sans emplacement' : `${option.method.cost} emplacement(s)`;
   }
@@ -135,6 +136,6 @@ export class SpellCastDialog implements AfterViewInit, OnDestroy {
       + (option.method.status === 'available' ? '' : ` · ${this.unavailableLabel(option)}`);
   }
   methodLabel(kind: string): string {
-    return ({ resource: 'Utilisation de capacité (sans emplacement)', cantrip: 'Tour de magie', ritual: 'Rituel', 'standard-slot': 'Emplacement standard', 'pact-slot': 'Magie de pacte' } as Record<string, string>)[kind] ?? kind;
+    return ({ arcanum: 'Arcanum mystique (sans emplacement)', resource: 'Utilisation de capacité (sans emplacement)', cantrip: 'Tour de magie', ritual: 'Rituel', 'standard-slot': 'Emplacement standard', 'pact-slot': 'Magie de pacte' } as Record<string, string>)[kind] ?? kind;
   }
 }

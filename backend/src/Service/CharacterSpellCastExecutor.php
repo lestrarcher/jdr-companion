@@ -68,10 +68,17 @@ final readonly class CharacterSpellCastExecutor
                 }
                 $effect = $this->effects->prepare($session, $command, $validation);
                 $method = $validation['method'];
-                if (in_array($method, ['standard-slot', 'pact-slot', 'resource'], true)) {
+                if (in_array($method, ['standard-slot', 'pact-slot', 'resource', 'arcanum'], true)) {
                     $slug = $validation['poolSlug'];
                     $cost = $validation['cost'];
                     $expectedSlug = $method === 'standard-slot' ? 'spell-slot-'.$validation['castingLevel'] : 'warlock-pact-slots';
+                    if ($method === 'arcanum') {
+                        if (($validation['source']['sourceType'] ?? null) !== 'class'
+                            || $validation['castingLevel'] < 6 || $validation['castingLevel'] > 9) {
+                            throw new UnprocessableEntityHttpException('invalid_cast_cost');
+                        }
+                        $expectedSlug = 'mystic-arcanum-'.$validation['castingLevel'].'-use';
+                    }
                     if ($method === 'resource'
                         ? (($validation['source']['sourceType'] ?? null) !== 'feature'
                             || !is_string($slug) || $slug === '' || str_starts_with($slug, 'spell-slot-') || $slug === 'warlock-pact-slots'

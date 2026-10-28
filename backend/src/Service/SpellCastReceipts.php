@@ -28,7 +28,7 @@ final class SpellCastReceipts
             || array_diff(array_keys($command), [...$required, 'targetCharacterIds', 'hitPointRoll'])
             || !is_int($command['revision']) || $command['revision'] < 1
             || !is_string($command['sourceKey']) || $command['sourceKey'] === '' || strlen($command['sourceKey']) > 255
-            || !in_array($command['method'], ['standard-slot','pact-slot','cantrip','ritual','resource'], true)
+            || !in_array($command['method'], ['standard-slot','pact-slot','cantrip','ritual','resource','arcanum'], true)
             || !is_int($command['castingLevel']) || $command['castingLevel'] < 0 || $command['castingLevel'] > 9) {
             throw new \InvalidArgumentException('invalid_command');
         }
@@ -99,9 +99,10 @@ final class SpellCastReceipts
                     }
                     continue;
                 }
-                $slot=in_array($method,['standard-slot','pact-slot'],true);
-                $slug=match ($method) {'standard-slot'=>'spell-slot-'.$level, 'pact-slot'=>'warlock-pact-slots', default=>null};
+                $slot=in_array($method,['standard-slot','pact-slot','arcanum'],true);
+                $slug=match ($method) {'standard-slot'=>'spell-slot-'.$level, 'pact-slot'=>'warlock-pact-slots', 'arcanum'=>'mystic-arcanum-'.$level.'-use', default=>null};
                 if ($cast['cost'] !== ($slot?1:0) || $cast['poolSlug'] !== $slug
+                    || ($method==='arcanum' && ($level<6 || $cast['source']['sourceType']!=='class'))
                     || ($method==='cantrip' ? $level!==0 : $level<1)
                     || ($method==='pact-slot' && $level>5)) throw new \InvalidArgumentException();
             } catch (\InvalidArgumentException $error) {

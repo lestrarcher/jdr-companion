@@ -33,19 +33,29 @@ final readonly class PlayerSpellDirectory
         $id = $character->getId();
         $rows = $this->db->fetchAllAssociative(
             'SELECT a.id, a.spell_id, a.policy_definition_id, a.quota_bucket, a.known, a.in_spellbook,
-                    s.name, s.level, s.school
+                    s.name, s.level, s.school, r.rule_key, r.policy_id AS choice_policy_id
              FROM character_spell_acquisition a
              JOIN spell_definition s ON s.id=a.spell_id
+             LEFT JOIN character_spell_choice c ON c.acquisition_id=a.id
+             LEFT JOIN spell_policy_choice_rule r ON r.id=c.rule_id
              WHERE a.character_id=? AND a.retirement_id IS NULL
                AND NOT EXISTS (SELECT 1 FROM character_spell_acquisition next_a WHERE next_a.replaces_id=a.id)
              ORDER BY s.level,s.name,a.id',
             [$id],
         );
+        $warlockLevel = count(array_filter($character->getClassLevels()->toArray(),
+            static fn($level): bool => $level->getCharacterClass()->getSlug() === 'warlock'));
         foreach ($rows as $row) {
             $definition = $this->em->find(SpellcastingPolicyDefinition::class, (int) $row['policy_definition_id']);
             if ($definition === null) continue;
             $ability = $definition->policy()->ability;
+            $spellLevel = (int) $row['level'];
+            $arcanum = $row['quota_bucket'] === 'cast' && $definition->getCharacterClass()->getSlug() === 'warlock'
+                && $row['rule_key'] === 'arcanum-'.$spellLevel
+                && (int) $row['choice_policy_id'] === $definition->getId()
+                && $spellLevel >= 6 && $spellLevel <= 9 && $warlockLevel >= 2 * $spellLevel - 1;
             $result[] = [
+                'arcanum'=>$arcanum,
                 'key'=>'acquisition:'.$row['id'], 'policyId'=>(int)$row['policy_definition_id'], 'alwaysPrepared'=>false,
                 'spellId' => (int) $row['spell_id'], 'name' => $row['name'],
                 'level' => (int) $row['level'], 'school' => $row['school'],

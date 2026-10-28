@@ -36,6 +36,16 @@ foreach (['cantrip','ritual','pact-slot'] as $method) {
     $check(R::compare([R::STATE_KEY=>[$id=>R::create($cmd,$result)]],$cmd)==='identical','Valid method receipt: '.$method);
 }
 $check($state===$original,'No mutations');
+foreach ([6,7,8,9] as $level) {
+    $cmd=array_replace($command,['method'=>'arcanum','castingLevel'=>$level]);
+    $result=array_replace($cast,['method'=>'arcanum','castingLevel'=>$level,'poolSlug'=>'mystic-arcanum-'.$level.'-use']);
+    $arcanumReceipt=R::create($cmd,$result);
+    $check(R::compare([R::STATE_KEY=>[$id=>$arcanumReceipt]],$cmd)==='identical','Arcanum receipt replays at level '.$level);
+    foreach (['poolSlug'=>'warlock-pact-slots','cost'=>0] as $field=>$value) $reject(fn()=>R::create($cmd,array_replace($result,[$field=>$value])));
+}
+$mixedArcanum=$state; $mixedArcanum[R::STATE_KEY]['7a00a010-0000-4000-8000-000000000002']=$arcanumReceipt;
+$check(count(R::validateState($mixedArcanum))===2,'Arcanum and historical receipts coexist');
+$reject(fn()=>R::create(array_replace($cmd,['castingLevel'=>5]),array_replace($result,['castingLevel'=>5,'poolSlug'=>'mystic-arcanum-5-use'])));
 $resourceCommand=array_replace($command,['sourceKey'=>'feature:9','method'=>'resource','castingLevel'=>0]);
 $resourceCast=['source'=>['key'=>'feature:9','spellId'=>12,'policyId'=>null,'sourceType'=>'feature'],
     'method'=>'resource','castingLevel'=>0,'poolSlug'=>'feature-use','cost'=>2];

@@ -25,6 +25,11 @@ final readonly class CharacterSpellCastEligibility
         $prepared = ($entry['prepared'] ?? false) === true;
         $inSpellbook = ($entry['inSpellbook'] ?? false) === true;
         $alwaysPrepared = ($entry['alwaysPrepared'] ?? false) === true;
+        // Server directory resolves this only from an active warlock Arcanum acquisition.
+        if (($entry['arcanum'] ?? false) === true && $sourceType === 'class'
+            && $classSlug === 'warlock' && is_int($level) && $level >= 6 && $level <= 9) {
+            return $this->result(true, false, null, 'ritual_feature_or_preparation_missing', false);
+        }
 
         // Resolution describes permission, independently of the current counters.
         if ($sourceType === 'feature') {

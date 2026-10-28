@@ -317,6 +317,10 @@ $check(
         $db->commit(); // Only the temporary tables/sequences verified above.
         require __DIR__.'/test-subclass-spell-cast-cases.php';
     }
+    if (in_array('--arcanum-cast-execution', $argv, true)) {
+        $db->commit(); // Only the temporary tables/sequences verified above.
+        require __DIR__.'/test-arcanum-spell-cast-cases.php';
+    }
     echo "PASS: $checks spell directory/command assertions; temporary schema only.\n";
 } finally {
     while ($db->isTransactionActive()) $db->rollBack();

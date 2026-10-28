@@ -97,6 +97,12 @@ final readonly class CharacterSpellCastAvailability
         $methods = [];
         if (!$eligibility['canCastNormally']) {
             $methods[] = $this->method('normal', null, $level, 0, 'unavailable', $eligibility['reason'] ?? 'normal_cast_not_allowed');
+        } elseif (($entry['arcanum'] ?? false) === true) {
+            $slug = 'mystic-arcanum-'.$level.'-use';
+            $pools = array_values(array_filter($context['resources'] ?? [], static fn(array $pool): bool => ($pool['slug'] ?? null) === $slug));
+            $pool = count($pools) === 1 ? $pools[0] : [];
+            $method = $this->slotMethod('arcanum', $slug, $level, $level, $pool);
+            return array_replace($result, ['status'=>$method['status'], 'reason'=>$method['reason'], 'methods'=>[$method]]);
         } elseif ($level === 0) {
             $methods[] = $this->method('cantrip', null, 0, 0, 'available', null);
         } else {
