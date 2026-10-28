@@ -13,6 +13,23 @@ function mapped(values: CharacterSessionStatePayload['resources']) {
 }
 afterEach(()=>TestBed.resetTestingModule());
 describe('Spell slot bar',()=>{
+  it('offers level zero and keyboard filters without altering cells or exhausted pools',()=>{
+    const fixture=TestBed.createComponent(SpellSlotBar); const selections:string[]=[];
+    fixture.componentInstance.filterSelected.subscribe(value=>selections.push(value));
+    fixture.componentRef.setInput('groups',spellSlotGroups(mapped([{id:'spell-slot-1',currentValue:1},{id:'warlock-pact-slots',currentValue:0}])));
+    fixture.componentRef.setInput('showCantrips',true); fixture.detectChanges();
+    const groups=fixture.nativeElement.querySelectorAll('.slot-group');
+    expect(groups[0].querySelector('strong').textContent).toBe('0');
+    expect(groups[0].querySelector('.cantrip-symbol').textContent).toBe('∞');
+    groups[0].dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}));
+    groups[1].dispatchEvent(new KeyboardEvent('keydown',{key:' '}));
+    groups[2].click();
+    expect(selections).toEqual(['cantrips','spell-slot-1']);
+    expect(groups[2].getAttribute('aria-disabled')).toBe('true');
+    fixture.componentRef.setInput('selectedPool','spell-slot-1'); fixture.detectChanges();
+    expect(groups[1].getAttribute('aria-pressed')).toBe('true');
+    expect(fixture.nativeElement.querySelectorAll('.cell')).toHaveLength(5);
+  });
   it('renders server totals, available and spent cells, and distinct pact slots without controls',()=>{
     const resources=mapped([{id:'spell-slot-1',currentValue:2},{id:'warlock-pact-slots',currentValue:0}]);
     const before=JSON.stringify(resources);

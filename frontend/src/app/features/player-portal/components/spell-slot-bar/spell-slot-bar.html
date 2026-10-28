@@ -1,8 +1,19 @@
-@if (groups().length) {
+@if (groups().length || showCantrips()) {
   <div class="slot-groups" role="group" aria-label="Emplacements de sorts">
+    @if (showCantrips()) {
+      <div class="slot-group cantrips" [class.row-end]="!groups().length" role="button" tabindex="0"
+        aria-label="Tours de magie" [attr.aria-pressed]="selectedPool() === 'cantrips'"
+        (click)="filterSelected.emit('cantrips')" (keydown.enter)="filterSelected.emit('cantrips')"
+        (keydown.space)="$event.preventDefault(); filterSelected.emit('cantrips')">
+        <div class="heading"><strong>0</strong></div>
+        <div class="cantrip-symbol" aria-hidden="true">∞</div>
+      </div>
+    }
     @for (group of groups(); track group.id; let last = $last; let index = $index) {
-      <div class="slot-group" [class.pact]="group.pact" [class.row-end]="(index + 1) % 5 === 0 || last"
-        role="group" [attr.aria-label]="label(group)">
+      <div class="slot-group" [class.pact]="group.pact" [class.row-end]="(index + 1 + (showCantrips() ? 1 : 0)) % 5 === 0 || last"
+        role="button" [attr.tabindex]="selectable(group) ? 0 : -1" [attr.aria-disabled]="!selectable(group)"
+        [attr.aria-pressed]="selectedPool() === group.id" [attr.aria-label]="label(group)"
+        (click)="choose(group)" (keydown.enter)="choose(group)" (keydown.space)="$event.preventDefault(); choose(group)">
         <div class="heading"><strong>{{ roman(group.level) }}</strong></div>
         <div class="cells">
           @for (cell of group.cells; track cell) {

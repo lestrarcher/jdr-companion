@@ -167,6 +167,19 @@ export class PlayerPortal {
   });
   protected readonly storedValueResources = computed(() => this.sortedResources().filter(resource => resource.storedValuesConfig !== undefined));
   protected readonly spellSlotGroups = computed(() => spellSlotGroups(this.sortedResources()));
+  protected readonly selectedSpellPool = signal<string | null>(null);
+  protected readonly spellLevelFilter = computed(() => this.selectedSpellPool() === 'cantrips' ? 0
+    : this.spellSlotGroups().find(group => group.id === this.selectedSpellPool())?.level ?? null);
+  private readonly resetUnavailableSpellFilter = effect(() => {
+    const pool = this.selectedSpellPool();
+    if (pool && pool !== 'cantrips' && !this.spellSlotGroups().some(group => group.id === pool && (group.current ?? 0) > 0 && group.level !== null)) {
+      this.selectedSpellPool.set(null);
+    }
+  });
+  protected toggleSpellPool(pool: string): void {
+    if (pool !== 'cantrips' && !this.spellSlotGroups().some(group => group.id === pool && (group.current ?? 0) > 0 && group.level !== null)) return;
+    this.selectedSpellPool.update(current => current === pool ? null : pool);
+  }
   protected readonly trackerResources = computed(() => {
     const represented = new Set(this.spellSlotGroups().map(group => group.id));
     return this.sortedResources().filter(resource => !represented.has(resource.id));

@@ -24,6 +24,7 @@ export class PlayerSpells implements OnInit, OnChanges {
   readonly otherChoices = computed(() => (this.view()?.choices ?? []).filter(choice => choice.kind !== 'class'));
   historicalSaved(): void { this.reload(); this.changed.emit(); }
   readonly spells = input.required<PlayerSpell[]>();
+  readonly levelFilter = input<number | null>(null);
   readonly accessToken = input('');
   readonly readonly = input(true);
   readonly revision = input(0);

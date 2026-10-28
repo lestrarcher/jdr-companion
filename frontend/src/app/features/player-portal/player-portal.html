@@ -156,8 +156,8 @@
                         <span class="magic-section__eyebrow">Magie</span>
                         <h2 id="magic-section-title">Emplacements &amp; sorts</h2>
                       </div>
-                      <app-spell-slot-bar [groups]="spellSlotGroups()" />
-                      <app-spell-quick-list [spells]="playerSpells()" mode="play"
+                      <app-spell-slot-bar [groups]="spellSlotGroups()" [showCantrips]="true" [selectedPool]="selectedSpellPool()" (filterSelected)="toggleSpellPool($event)" />
+                      <app-spell-quick-list [spells]="playerSpells()" mode="play" [levelFilter]="spellLevelFilter()"
                         [disabled]="!canEdit() || saveStatus() === 'saving' || saveStatus() === 'error' || !!pendingRestRequest() || preparationPending()"
                         (selected)="openQuickSpell($event)" />
                     </section>
@@ -268,12 +268,12 @@
               <app-player-spells [spells]="playerSpells()" [accessToken]="accessToken" [revision]="serverRevision"
                 [resources]="characterState()?.resources ?? []"
                 [panelVisible]="activeTab() === 'spells'"
-                [quickSelection]="quickSpellSelection()"
+                [quickSelection]="quickSpellSelection()" [levelFilter]="spellLevelFilter()"
                 [readonly]="!canEdit()" [prioritizePreparation]="activeTab() === 'spells'"
                 [castingBlocked]="saveStatus() === 'saving' || saveStatus() === 'error' || !!pendingRestRequest() || preparationPending()"
                 (casting)="spellCasting.set($event)" (castCompleted)="adoptSpellCast($event)" (changed)="refreshSpells()">
-                @if (activeTab() === 'spells' && spellSlotGroups().length) {
-                  <app-spell-slot-bar spell-slots [groups]="spellSlotGroups()" />
+                @if (activeTab() === 'spells') {
+                  <app-spell-slot-bar spell-slots [groups]="spellSlotGroups()" [showCantrips]="true" [selectedPool]="selectedSpellPool()" (filterSelected)="toggleSpellPool($event)" />
                 }
               </app-player-spells>
             }

@@ -50,6 +50,9 @@ export function spellArtwork(spell: Pick<PlayerSpell, 'spellId' | 'school'>): st
           @if (spell.prepared) { <span class="prepared-dot" aria-label="Préparé"></span> }
         </button>
       }
+      @if (levelFilter() !== null && entries().length === 0) {
+        <p role="status">{{ levelFilter() === 0 ? 'Aucun tour de magie connu.' : 'Aucun sort compatible avec ce niveau.' }}</p>
+      }
     </div>
   `,
   styles: `
@@ -93,12 +96,16 @@ export class SpellQuickList {
   }
   readonly spells = input.required<PlayerSpell[]>();
   readonly mode = input<'directory' | 'play'>('directory');
+  readonly levelFilter = input<number | null>(null);
   readonly hideUnavailable = input(false);
   readonly disabled = input(false);
   readonly selectedKey = input<string | null>(null);
   readonly selected = output<PlayerSpell>();
   readonly entries = computed(() => this.spells()
-    .filter(spell => (this.mode() === 'directory' || (spell.level !== null && spell.level >= 1))
+    .filter(spell => (this.levelFilter() === null
+      ? this.mode() === 'directory' || (spell.level !== null && spell.level >= 1)
+      : spell.level !== null && (this.levelFilter() === 0 ? spell.level === 0 && spell.known
+        : spell.level >= 1 && spell.level <= this.levelFilter()! && (spell.prepared || spell.alwaysPrepared || spell.known && !spell.inSpellbook)))
       && (!this.hideUnavailable() || this.available(spell)))
     .sort((a, b) => (a.level ?? Infinity) - (b.level ?? Infinity) || a.name.localeCompare(b.name, 'fr')));
   key(spell: PlayerSpell): string { return spell.key ?? `${spell.sourceType}:${spell.source}:${spell.spellId}`; }

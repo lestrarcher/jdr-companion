@@ -27,7 +27,7 @@
   } @else {
     <div class="quickbar-shell">
       <p class="eyebrow" id="spell-quickbar-label">Répertoire rapide</p>
-      <app-spell-quick-list [spells]="displayed()" [selectedKey]="selectedSpell() ? spellKey(selectedSpell()!) : null" (selected)="selectQuickSpell($event)" />
+      <app-spell-quick-list [spells]="displayed()" [mode]="mode() === 'portal' ? 'play' : 'directory'" [levelFilter]="mode() === 'portal' ? levelFilter() : null" [selectedKey]="selectedSpell() ? spellKey(selectedSpell()!) : null" (selected)="selectQuickSpell($event)" />
       <!-- Reserved for future functional metamagic controls; empty projection stays hidden. -->
       <div class="spell-modifiers"><ng-content select="[spell-modifiers]" /></div>
     </div>

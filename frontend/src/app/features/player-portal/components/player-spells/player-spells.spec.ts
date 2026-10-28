@@ -54,17 +54,19 @@ describe('Player spell autonomy', () => {
     data.spells = [
       {...spell, key:'level2-z', name:'Zone de vérité', level:2, prepared:true},
       {...spell, key:'level1-z', name:'Soins', level:1, prepared:true},
-      {...spell, key:'level0-z', name:'Lumière', level:0},
+      {...spell, key:'level0-z', name:'Lumière', level:0, known:true, inSpellbook:false},
       {...spell, key:'level2-a', name:'Aide', level:2, prepared:true},
       {...spell, key:'level1-a', name:'Bénédiction', level:1, prepared:true},
-      {...spell, key:'level0-a', name:'Éclair de feu', level:0},
+      {...spell, key:'level0-a', name:'Éclair de feu', level:0, known:true, inSpellbook:false},
     ];
     const original = structuredClone(data.spells);
     const {fixture,component} = await setup(data);
     expect(Array.from(fixture.nativeElement.querySelectorAll('.quick-name') as NodeListOf<HTMLElement>)
       .map(node => node.textContent!.trim()))
-      .toEqual(['Éclair de feu','Lumière','Bénédiction','Soins','Aide','Zone de vérité']);
-    expect(fixture.nativeElement.querySelectorAll('.quick-spell')).toHaveLength(original.length);
+      .toEqual(['Bénédiction','Soins','Aide','Zone de vérité']);
+    expect(fixture.nativeElement.querySelectorAll('.quick-spell')).toHaveLength(original.length - 2);
+    fixture.componentRef.setInput('levelFilter',0); fixture.detectChanges();
+    expect(Array.from(fixture.nativeElement.querySelectorAll('.quick-name'), (node:any)=>node.textContent.trim())).toEqual(['Éclair de feu','Lumière']);
     expect(component.displayed()).toEqual(original);
     expect(component.view()!.spells).toEqual(original);
     expect(data.spells).toEqual(original);
@@ -195,7 +197,7 @@ describe('Player spell autonomy', () => {
     ];
     const {fixture,component,http} = await setup(data);
     const names = () => Array.from(fixture.nativeElement.querySelectorAll('.quick-name') as NodeListOf<HTMLElement>).map(node => node.textContent!.trim());
-    expect(names()).toEqual(['Tour de magie','Bouclier','Sort connu','Sort de don','Sort non disponible','Sort préparé','Toujours préparé']);
+    expect(names()).toEqual(['Bouclier','Sort connu','Sort de don','Sort non disponible','Sort préparé','Toujours préparé']);
     expect(component.displayed()).toEqual(data.spells);
     expect(component.sections().find(section => section.key === 'known')!.spells).toHaveLength(3);
     const consultation = fixture.nativeElement.querySelector('[aria-labelledby=spells-other] .spell-row') as HTMLButtonElement;

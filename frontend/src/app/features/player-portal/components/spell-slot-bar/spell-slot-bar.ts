@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import { CharacterResource } from '@core/models/character.model';
 
 export interface SpellSlotGroup {
@@ -25,6 +25,11 @@ export function spellSlotGroups(resources: readonly CharacterResource[]): SpellS
 })
 export class SpellSlotBar {
   readonly groups = input.required<SpellSlotGroup[]>();
+  readonly showCantrips = input(false);
+  readonly selectedPool = input<string | null>(null);
+  readonly filterSelected = output<string>();
+  selectable(group: SpellSlotGroup): boolean { return (group.current ?? 0) > 0 && group.level !== null && group.level >= 1 && group.level <= 9; }
+  choose(group: SpellSlotGroup): void { if (this.selectable(group)) this.filterSelected.emit(group.id); }
   roman(level: number | null): string { return ['0','I','II','III','IV','V','VI','VII','VIII','IX'][level ?? -1] ?? '?'; }
   label(group: SpellSlotGroup): string {
     return `${group.pact ? 'Magie de pacte' : 'Emplacements'} — niveau ${group.level ?? 'inconnu'} : ${group.current ?? 'quantité inconnue'} sur ${group.maximum ?? 'maximum inconnu'}${group.pact ? ', récupération au repos court' : ''}`;

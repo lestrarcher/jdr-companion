@@ -17,6 +17,31 @@ function setup(spells: PlayerSpell[]) {
 }
 afterEach(() => TestBed.resetTestingModule());
 describe('Shared spell quicklist', () => {
+  it('filters existing known/prepared sources by level, not class, and sorts French names', () => {
+    const entries=[spell('z',2,'Zèle'),spell('a',1,'Armure'),spell('e',2,'Éclair'),spell('c',0,'Lumière'),spell('high',6),
+      {...spell('pact',1,'Bouclier'),source:'Occultiste'}, {...spell('book',1),inSpellbook:true,prepared:false},
+      {...spell('prepared',2,'Aide'),known:false,prepared:true}];
+    const before=structuredClone(entries); const {fixture,c}=setup(entries);
+    fixture.componentRef.setInput('mode','play');
+    fixture.componentRef.setInput('levelFilter',2); fixture.detectChanges();
+    expect(c.entries().map(s=>s.name)).toEqual(['Armure','Bouclier','Aide','Éclair','Zèle']);
+    fixture.componentRef.setInput('levelFilter',1); fixture.detectChanges();
+    expect(c.entries().map(s=>s.key)).toEqual(['a','pact']);
+    fixture.componentRef.setInput('levelFilter',0); fixture.detectChanges();
+    expect(c.entries().map(s=>s.key)).toEqual(['c']);
+    const selected=vi.fn(); c.selected.subscribe(selected); fixture.nativeElement.querySelector('button').click();
+    expect(selected).toHaveBeenCalledWith(entries[3]);
+    fixture.componentRef.setInput('levelFilter',null); fixture.detectChanges();
+    expect(c.entries().some(s=>s.level===0)).toBe(false);
+    expect(entries).toEqual(before);
+  });
+  it('explains empty cantrip and level filters',()=>{
+    const {fixture}=setup([]);
+    fixture.componentRef.setInput('levelFilter',0); fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Aucun tour de magie connu');
+    fixture.componentRef.setInput('levelFilter',3); fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Aucun sort compatible');
+  });
   it('selects a feature resource source without executing or changing its availability', () => {
     const entry = spell('feature:1', 2); entry.sourceType = 'feature';
     entry.castingAvailability!.methods = [{ kind: 'resource', castingLevel: 2, poolSlug: 'feat-use', cost: 2, status: 'available', reason: null }];

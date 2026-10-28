@@ -60,6 +60,18 @@ async function setup(spells:PlayerSpell[]) {
 afterEach(()=>{ TestBed.inject(HttpTestingController).verify({ignoreCancelled:true}); TestBed.resetTestingModule(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('Spell casting controls',()=>{
+  it.each([0,3])('keeps the existing cast command for filtered level %s',async level=>{
+    const entry={...spell('acquisition:1',[method(level===0?'cantrip':'standard-slot',level)]),level:level===0?0:1};
+    const {fixture,http}=await setup([entry]);
+    fixture.componentRef.setInput('levelFilter',level); fixture.detectChanges();
+    fixture.nativeElement.querySelector('.quick-spell').click(); fixture.detectChanges();
+    http.expectNone(r=>r.method==='POST');
+    fixture.nativeElement.querySelector('.cast-confirm').click();
+    const request=http.expectOne(base+'/cast');
+    expect(request.request.body).toEqual({revision:42,requestId:expect.any(String),sourceKey:entry.key,
+      method:level===0?'cantrip':'standard-slot',castingLevel:level});
+    request.flush(castResponse([entry],level===0?'cantrip':'standard-slot',level)); await fixture.whenStable();
+  });
   it('selects 1 to 3 Aid targets, allows self-targeting and previews the selected level bonus', async () => {
     const {fixture,http,c}=await setup([hpSpell('aid',[1,2,4])]);
     c.openCastDialog(c.spells()[0]); fixture.detectChanges();
@@ -282,6 +294,33 @@ describe('Spell casting controls',()=>{
 });
 
 describe('Portal adoption of cast responses',()=>{
+  it('toggles one shared filter, accepts pact levels and clears an exhausted pool on refresh',async()=>{
+    vi.stubGlobal('matchMedia',vi.fn(()=>({matches:false,addEventListener:vi.fn(),removeEventListener:vi.fn()})));
+    TestBed.configureTestingModule({providers:[provideHttpClient(),provideHttpClientTesting(),provideRouter([]),
+      {provide:ActivatedRoute,useValue:{snapshot:{paramMap:convertToParamMap({campaignId:'2',sessionId:'3',accessToken:'test'}),queryParamMap:convertToParamMap({tab:'status'})}}},
+      {provide:CampaignConfigurationRegistryService,useValue:{getConfiguration:()=>({id:'2',name:'Test'})}},
+      {provide:RestRequestApiService,useValue:{getLatest:()=>of(null)}}]});
+    const fixture=TestBed.createComponent(PlayerPortal); const p=fixture.componentInstance as any;
+    const http=TestBed.inject(HttpTestingController); const initial=session([spell()]);
+    initial.character.resources.push({slug:'warlock-pact-slots',name:'Pacte',maximum:2,slotLevel:3,rechargeType:'short-rest'});
+    initial.state.resources.push({id:'warlock-pact-slots',currentValue:1});
+    http.expectOne('/api/public/characters/test').flush(initial); fixture.detectChanges();
+    fixture.nativeElement.querySelector('.cantrips').click(); fixture.detectChanges();
+    expect(p.spellLevelFilter()).toBe(0);
+    fixture.nativeElement.querySelector('.cantrips').click(); expect(p.spellLevelFilter()).toBeNull();
+    fixture.nativeElement.querySelector('.pact').click(); fixture.detectChanges(); expect(p.spellLevelFilter()).toBe(3);
+    p.selectTab('spells'); fixture.detectChanges();
+    for(const request of http.match(base)) request.flush(view([spell()])); await fixture.whenStable();
+    http.expectOne('/api/public/characters/test').flush(initial); await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('.pact').getAttribute('aria-pressed')).toBe('true');
+    p.refreshSpells(); initial.state.resources[1].currentValue=0;
+    http.expectOne('/api/public/characters/test').flush(initial); fixture.detectChanges(); await fixture.whenStable();
+    expect(p.selectedSpellPool()).toBeNull();
+    p.toggleSpellPool('warlock-pact-slots'); expect(p.selectedSpellPool()).toBeNull();
+    p.toggleSpellPool('spell-slot-1'); expect(p.spellLevelFilter()).toBe(1);
+    p.toggleSpellPool('cantrips'); expect(p.spellLevelFilter()).toBe(0);
+    http.expectNone(r=>r.method==='POST'||r.method==='PATCH'); fixture.destroy();
+  });
   it.each([false,true])('ignores retired preparation handlers and preserves other preparable actions (other=%s)', async other => {
     vi.stubGlobal('matchMedia',vi.fn(()=>({matches:false,addEventListener:vi.fn(),removeEventListener:vi.fn()})));
     TestBed.configureTestingModule({providers:[provideHttpClient(),provideHttpClientTesting(),provideRouter([]),
@@ -370,7 +409,7 @@ describe('Portal adoption of cast responses',()=>{
     initial.state.resources.push({id:'second-wind',currentValue:1});
     http.expectOne('/api/public/characters/test').flush(initial); fixture.detectChanges();
     expect(fixture.debugElement.query(By.directive(PlayerSpells))).toBeNull();
-    expect(fixture.nativeElement.querySelector('app-spell-slot-bar .slot-group').getAttribute('aria-label')).toContain('2 sur 2');
+    expect(fixture.nativeElement.querySelector('app-spell-slot-bar .slot-group:not(.cantrips)').getAttribute('aria-label')).toContain('2 sur 2');
     expect(p.trackerResources().some((r: any)=>r.id==='spell-slot-1')).toBe(false);
     expect(p.trackerResources().map((r: any)=>r.id)).toEqual(['second-wind']);
     const quick=fixture.nativeElement.querySelector('.spell-resource-column .quick-spell') as HTMLButtonElement;
@@ -399,10 +438,10 @@ describe('Portal adoption of cast responses',()=>{
     retry.flush(result); await fixture.whenStable();
     expect(p.serverRevision).toBe(47);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('app-spell-slot-bar .slot-group').getAttribute('aria-label')).toContain('1 sur 2');
+    expect(fixture.nativeElement.querySelector('app-spell-slot-bar .slot-group:not(.cantrips)').getAttribute('aria-label')).toContain('1 sur 2');
     expect(state.character()!.resources.find(r=>r.id==='spell-slot-1')!.currentValue).toBe(1);
     p.selectTab('spells'); fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('app-spell-slot-bar .slot-group').getAttribute('aria-label')).toContain('1 sur 2');
+    expect(fixture.nativeElement.querySelector('app-spell-slot-bar .slot-group:not(.cantrips)').getAttribute('aria-label')).toContain('1 sur 2');
     expect(fixture.nativeElement.querySelectorAll('app-spell-slot-bar')).toHaveLength(1);
     expect(p.lastQueuedRevision).toBe(state.revision()); expect(c.castMethods()).toEqual([]);
     p.selectTab('status'); fixture.detectChanges();
