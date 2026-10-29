@@ -31,6 +31,7 @@ public function __construct(
     {
         $this->addOption('dry-run', null, InputOption::VALUE_NONE, 'Simulation explicite, identique au comportement par défaut.');
         $this->addOption('apply', null, InputOption::VALUE_NONE, 'Insérer uniquement si tout le catalogue admissible est valide.');
+        $this->addOption('private-unverified', null, InputOption::VALUE_NONE, 'Accepter explicitement les droits non vérifiés pour une instance privée, y compris en production.');
         $this->addOption(
             'local-unverified',
             null,
@@ -130,7 +131,8 @@ if ($localUnverified && $this->environment !== 'dev') {
 
 $effectiveBlockers = $blockers;
 
-if ($localUnverified && $this->environment === 'dev') {
+$privateUnverified = (bool) $input->getOption('private-unverified');
+if ($privateUnverified || ($localUnverified && $this->environment === 'dev')) {
     $rightsBlocker = 'Droits de réutilisation du corpus non établis (résumés et traductions compris).';
 
     $effectiveBlockers = array_values(array_filter(
@@ -139,7 +141,9 @@ if ($localUnverified && $this->environment === 'dev') {
     ));
 
     $output->writeln(
-        '<comment>Mode local : droits non vérifiés, aucune autorisation de publication.</comment>'
+        $privateUnverified
+            ? '<comment>Dérogation privée explicite : droits non vérifiés, aucune validation des droits ni autorisation de redistribution.</comment>'
+            : '<comment>Mode local : droits non vérifiés, aucune autorisation de publication.</comment>'
     );
 }
         foreach ($blockers as $blocker) $output->writeln('<comment>BLOCAGE AVANT IMPORT : '.htmlspecialchars($blocker, ENT_NOQUOTES).'</comment>');

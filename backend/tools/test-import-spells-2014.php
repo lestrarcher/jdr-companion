@@ -155,11 +155,21 @@ try {
     $check(str_contains($dryOutput, '1235 à créer | 0 existantes | 1170 base | 65 TCoE'), 'Full association dry-run');
     $tester->execute(['--dry-run'=>true]);
     $check($tester->getDisplay() === $dryOutput, 'Explicit and default dry-run identical');
+    foreach (['dev', 'prod'] as $environment) {
+        $privateTester = new CommandTester(new ImportSpells2014Command($em, dirname(__DIR__), $environment));
+        $check($privateTester->execute([]) === 1, 'Rights refusal remains the default in '.$environment);
+        $check($privateTester->execute(['--private-unverified'=>true, '--dry-run'=>true]) === 0, 'Explicit private dry run accepted in '.$environment);
+        $check(str_contains($privateTester->getDisplay(), 'Dérogation privée explicite'), 'Private exception is visible');
+        $check((int)$db->fetchOne('SELECT COUNT(*) FROM spell_definition') === 2, 'Private dry run never imports corpus');
+        $check($privateTester->execute(['--local-unverified'=>true]) === ($environment === 'dev' ? 0 : 1), 'Local exception retains environment restriction');
+    }
     $collision = $make($base['slug_en'],'fixture:occupied');
     $planner->insertMissing([$collision]);
     $tester->execute([]);
     $check(str_contains($tester->getDisplay(),'1 conflits') && $tester->getStatusCode() === 1, 'Dry-run detects live DB collision, not only input errors');
     $check((int)$db->fetchOne('SELECT COUNT(*) FROM spell_definition') === 3, 'Collision dry-run never writes');
+    $check($privateTester->execute(['--private-unverified'=>true]) === 1
+        && str_contains($privateTester->getDisplay(), '1 conflits'), 'Private exception never bypasses identity conflicts');
     $db->rollBack();
     $check($before === $fingerprint(), 'Every public table unchanged');
     echo "OK: $checks spell import assertions; synthetic temporary fixtures only, no --apply.\n";
