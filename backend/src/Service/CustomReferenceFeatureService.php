@@ -58,6 +58,9 @@ final class CustomReferenceFeatureService
             unset($payload['activationType'],$payload['visible']);
             $current=['name'=>$row['name']??'','description'=>$row['description']??null,'resourceDefinitionId'=>isset($row['resource_definition_id'])?(int)$row['resource_definition_id']:null];
             $data=$this->validate($payload,$current);
+            if ($row && $data['resourceDefinitionId'] !== $current['resourceDefinitionId'] && $this->isUsed($id)) {
+                throw new ConflictHttpException('Cette capacité est utilisée : sa relation à une ressource est figée.');
+            }
             $this->validateResource($data['resourceDefinitionId'],$actor);
             if ($official && $data['resourceDefinitionId']!==null && !$this->db->fetchOne("SELECT 1 FROM trackable_resource_definition WHERE id=? AND origin='OFFICIAL' AND owner_id IS NULL",[$data['resourceDefinitionId']])) throw new BadRequestHttpException('Une capacité officielle exige une ressource officielle.');
             $columns=['name'=>$data['name'],'description'=>$data['description'],'resource_definition_id'=>$data['resourceDefinitionId'],'activation_type'=>$activation,'visible'=>$visible?'true':'false','updated_at'=>$this->now()];
@@ -118,9 +121,10 @@ final class CustomReferenceFeatureService
                 'resourceDefinitionId' => $row['resource_definition_id'] === null ? null : (int) $row['resource_definition_id'],
             ];
             $data = $this->validate($payload, $current);
+            if ($data['resourceDefinitionId'] !== $current['resourceDefinitionId'] && $this->isUsed($id)) {
+                throw new ConflictHttpException('Cette capacité est utilisée : sa relation à une ressource est figée.');
+            }
             $this->validateResource($data['resourceDefinitionId'], $owner);
-
-
             $this->db->update('character_feature_definition', [
                 'name' => $data['name'], 'description' => $data['description'],
                 'resource_definition_id' => $data['resourceDefinitionId'], 'updated_at' => $this->now(),

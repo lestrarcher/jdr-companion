@@ -161,6 +161,32 @@ try {
         $check($request('PATCH', '/'.$feature['id'], ['resourceDefinitionId' => $legacyId])[0] === 200, 'Same ID is not mechanical change '.$usage);
     }
 
+    // The editor must enforce the same direct-resource guard, in both scopes.
+    $editor = new App\Service\CustomReferenceFeatureService($db);
+    $admin = (new User())->setEmail('editor@custom-feature.invalid')->setPassword('unused')->setRoles([App\Service\SpellCatalogue::ADMIN_ROLE]);
+    $em->persist($admin); $em->flush();
+    foreach ([false, true] as $officialScope) {
+        $actor = $officialScope ? $admin : $a;
+        $editorFeature = $editor->saveEditor(null, ['slug'=>'editor-guard-'.($officialScope ? 'official' : 'personal'), 'name'=>'Editor guard', 'resourceDefinitionId'=>$legacyId], $actor, $officialScope);
+        foreach ([null, $legacyId] as $resourceId) {
+            $saved = $editor->saveEditor($editorFeature['id'], ['resourceDefinitionId'=>$resourceId], $actor, $officialScope);
+            $check(($saved['resourceDefinition']['id'] ?? null) === $resourceId, 'Unused editor resource transition');
+        }
+        $editorRule = CharacterFeatureRule::forClass($em->find(CharacterFeatureDefinition::class, $editorFeature['id']), $em->find(CharacterClass::class, $source->getId()), 1);
+        $em->persist($editorRule); $em->flush();
+        $beforeRow = $db->fetchAssociative('SELECT * FROM character_feature_definition WHERE id=?', [$editorFeature['id']]);
+        $refused = false;
+        try { $editor->saveEditor($editorFeature['id'], ['name'=>'Must not persist', 'description'=>'Nor this', 'resourceDefinitionId'=>null, 'visible'=>false], $actor, $officialScope); }
+        catch (Symfony\Component\HttpKernel\Exception\ConflictHttpException $error) { $refused = $error->getStatusCode() === 409; }
+        $check($refused, 'Used mixed editor save returns 409');
+        $check($beforeRow === $db->fetchAssociative('SELECT * FROM character_feature_definition WHERE id=?', [$editorFeature['id']]), 'Rejected editor save preserves every column');
+        $saved = $editor->saveEditor($editorFeature['id'], ['name'=>'Allowed description', 'description'=>'Allowed'], $actor, $officialScope);
+        $check($saved['name'] === 'Allowed description' && $saved['description'] === 'Allowed', 'Used editor descriptive changes allowed');
+        $sameResourceName = 'Same resource '.($officialScope ? 'official' : 'personal');
+        $saved = $editor->saveEditor($editorFeature['id'], ['name'=>$sameResourceName, 'resourceDefinitionId'=>$legacyId], $actor, $officialScope);
+        $check($saved['name'] === $sameResourceName && $saved['resourceDefinition']['id'] === $legacyId, 'Used editor identical resource allowed');
+    }
+
     // A resource-only historical trace must NOT count as Feature usage.
     [$status, $body] = $request('POST', $resourcePath, ['name' => 'Historical resource']);
     $historicalResource = $body['resource'];
