@@ -25,7 +25,7 @@ if [[ -n "$(git status --porcelain)" ]]; then
 fi
 
 echo "Construction du frontend Angular..."
-docker compose exec -T frontend npm run build
+docker compose -p jdr-companion-deploy run --rm --no-deps --build frontend sh -c 'npm ci && npm run build'
 
 echo "Création de l’archive frontend..."
 tar -czf "$FRONTEND_ARCHIVE" \
