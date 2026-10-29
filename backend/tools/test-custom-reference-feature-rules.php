@@ -190,8 +190,10 @@ try {
     $check($status===201,'Composition feature create'); $feature=$body['feature'];
     $assignment=$create($payload('class',$sourceIds['a']['class'],$feature['id']));
     $fp='/reference/custom/features/'.$feature['id']; $rp='/reference/custom/resources/'.$resource['id'];
-    $check($request('PATCH',$fp,['resourceDefinitionId'=>null])[0]===200,'Used Feature resource relation is editable');
-    $check($request('PATCH',$fp,['resourceDefinitionId'=>$resource['id']])[0]===200,'Resource relation can be restored without recreating it');
+    $featureBefore = $db->fetchAssociative('SELECT * FROM character_feature_definition WHERE id=?', [$feature['id']]);
+    $check($request('PATCH',$fp,['resourceDefinitionId'=>null])[0]===409,'Used Feature resource relation is protected');
+    $check($db->fetchAssociative('SELECT * FROM character_feature_definition WHERE id=?', [$feature['id']]) === $featureBefore,'Rejected resource detachment preserves every feature field');
+    $check($request('PATCH',$fp,['resourceDefinitionId'=>$resource['id']])[0]===200,'Unchanged resource relation remains editable');
     $check($request('DELETE',$fp)[0]===409,'Rule blocks Feature delete');
     $check($request('PATCH',$rp,['baseMaximum'=>7])[0]===409 && $request('DELETE',$rp)[0]===409,'Feature freezes Resource');
     $check($request('DELETE','/'.$assignment['id'])[0]===204,'Unused Rule removal');

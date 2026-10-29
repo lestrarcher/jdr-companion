@@ -5,7 +5,6 @@ import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
 import { SpellInitialization } from './spell-initialization';
 import { CharacterSpells } from './character-spells';
 import { provideRouter } from '@angular/router';
-import { By } from '@angular/platform-browser';
 
 describe('Initial spell choices', () => {
   let http: HttpTestingController;
@@ -28,8 +27,8 @@ describe('Initial spell choices', () => {
   }
   it('shows separate policy quotas and candidates', () => {
     const f = mount(); http.expectOne(url).flush(data()); f.detectChanges();
-    expect(f.nativeElement.textContent).toContain('Quota : 3');
-    expect(f.nativeElement.textContent).toContain('Quota : 6');
+    const quotas = Array.from(f.nativeElement.querySelectorAll('.category-tabs strong')) as HTMLElement[];
+    expect(quotas.map(element => element.textContent)).toEqual(['0/3', '0/6']);
     expect(f.componentInstance.categories()[0].spells.map(s=>s.id)).toEqual([11]);
     expect(f.componentInstance.categories()[1].spells.map(s=>s.id)).toEqual([12]);
   });
@@ -42,7 +41,8 @@ describe('Initial spell choices', () => {
     request.flush({acquisitionIds:[9],createdAcquisitionIds:[9],replayedAcquisitionIds:[]});
     http.expectOne(url).flush(data(2)); f.detectChanges();
     expect(saved).toHaveBeenCalledTimes(1); expect(c.categories()[0].remaining).toBe(2);
-    expect(f.nativeElement.textContent).toContain('Acquisition enregistrée');
+    expect(f.nativeElement.querySelector('.category-tabs strong').textContent).toBe('1/3');
+    expect(c.selection()).toEqual({});
   });
   it('preserves selection and displays backend refusal', () => {
     const f = mount(); http.expectOne(url).flush(data()); const c = f.componentInstance;
@@ -75,13 +75,13 @@ describe('Initial spell choices', () => {
     expect(c.error()).toBe('Unavailable');
     c.toggle(category.key,11); c.save(category); http.expectNone(url);
   });
-  it('refreshes the existing spell list and keeps all management links', () => {
+  it('links to dedicated initialization and keeps all management links', () => {
     const f=TestBed.createComponent(CharacterSpells);
     f.componentRef.setInput('character',{id:100,totalLevel:1,resources:[]}); f.componentRef.setInput('campaignId',1); f.detectChanges();
     const statusUrl='/api/characters/100/spell-acquisitions';
     http.expectOne(statusUrl).flush({policies:[]}); http.expectOne(url).flush(data()); f.detectChanges();
-    const child=f.debugElement.query(By.directive(SpellInitialization)).componentInstance as SpellInitialization;
-    child.saved.emit(); f.detectChanges(); http.expectOne(statusUrl).flush({policies:[]});
+    http.expectOne('/api/characters/100/feature-spells').flush({known:[],pending:[]}); f.detectChanges();
+    expect(f.nativeElement.querySelector('.initialization-banner a').getAttribute('href')).toBe('/campaigns/1/characters/100/spell-initialization');
     const links=Array.from(f.nativeElement.querySelectorAll('.spell-action-links a')) as HTMLAnchorElement[];
     expect(links.map(a=>a.getAttribute('href'))).toEqual(['/campaigns/1/characters/100/spellbook','/campaigns/1/characters/100/spell-revision','/campaigns/1/characters/100/spell-substitutions']);
     http.expectNone(url);

@@ -15,7 +15,8 @@ describe('GM acquisition revisions',()=>{
     http=TestBed.inject(HttpTestingController);
     const fixture=TestBed.createComponent(SpellRevision); const component=fixture.componentInstance;
     http.expectOne(base).flush({policies:[{className:'Wizard',policyIds:[3]}]});
-    component.policyId=3; component.load(); http.expectOne(base+'/3/revision').flush(data); fixture.detectChanges();
+    component.policyId=3; component.load(); http.expectOne(base+'/3/revision').flush(data);
+    http.expectOne(base+'/3').flush({formatVersion:1}); fixture.detectChanges();
     return component;
   }
   it('requires confirmation and reason before replacing a selection',()=>{
@@ -23,7 +24,8 @@ describe('GM acquisition revisions',()=>{
     e.confirmed=true;e.save();http.expectNone(r=>r.method==='POST');
   });
   it('sends the expected current identities and an explicit override flag',()=>{
-    const e=editor();e.reason='Explicit ruling';e.overrideRules=true;e.targetPolicyId=5;e.confirmed=true;
+    const e=editor();e.reason='Explicit ruling';e.overrideRules=true;e.targetPolicyId=5;e.targetChanged();
+    http.expectOne(base+'/5').flush({formatVersion:1});e.confirmed=true;
     e.save();e.save();const req=http.expectOne(r=>r.method==='POST');
     expect(req.request.body).toEqual({targetPolicyId:5,spellIds:[7],expectedAcquisitionIds:[4],reason:'Explicit ruling',overrideRules:true,confirmed:true});
     req.flush({message:'Stale selection'},{status:409,statusText:'Conflict'});
@@ -37,9 +39,11 @@ describe('GM acquisition revisions',()=>{
     expect(e.policyId).toBe(3);http.expectNone(base+'/5/revision');expect(e.canLeavePreparation()).toBe(false);
   });
   it('keeps target policy after success and reloads the journal',()=>{
-    const e=editor();e.reason='Correction';e.targetPolicyId=5;e.confirmed=true;e.save();
+    const e=editor();e.reason='Correction';e.targetPolicyId=5;e.targetChanged();
+    http.expectOne(base+'/5').flush({formatVersion:1});e.confirmed=true;e.save();
     http.expectOne(r=>r.method==='POST').flush({revisionId:2});
     http.expectOne(base+'/5/revision').flush({...data,history:[{id:2,reason:'Correction',override_rules:false,decided_at:'today',retired_count:1,created_count:1}]});
+    http.expectOne(base+'/5').flush({formatVersion:1});
     expect(e.policyId).toBe(5);expect(e.options()?.history.length).toBe(1);
   });
 });
