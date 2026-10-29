@@ -18,6 +18,7 @@ final readonly class CharacterResourceResolver
         private TrackableResourceRuleRepository $ruleRepository,
         private CharacterAbilityCalculator $abilityCalculator,
         private CharacterFeatureResolver $featureResolver,
+        private ?\Doctrine\ORM\EntityManagerInterface $entityManager = null,
     ) {
     }
 
@@ -80,6 +81,24 @@ final readonly class CharacterResourceResolver
         }
 
         $resources = [];
+
+        // Grant-owned pools are additional resources of the applicable feature.
+        // Existing external pools keep their original attribution rules.
+        if ($this->entityManager !== null) {
+            $featureIds = array_map(static fn($rule) => $rule->getFeatureDefinition()->getId(),
+                array_values($this->featureResolver->resolve($character, $progressionValues)));
+            if ($featureIds !== []) {
+                $ids = $this->entityManager->getConnection()->fetchFirstColumn(
+                    'SELECT g.managed_resource_id FROM feature_spell_grant g JOIN character_feature_spell a ON a.grant_id=g.id WHERE a.character_id=? AND a.active=true AND g.enabled=true AND g.unlock_level<=? AND g.resource_definition_id=g.managed_resource_id AND g.feature_id IN ('.implode(',', array_fill(0, count($featureIds), '?')).')',
+                    [$character->getId(), $character->getTotalLevel(), ...$featureIds]);
+                foreach ($ids as $id) {
+                    $definition = $this->entityManager->find(TrackableResourceDefinition::class, (int)$id);
+                    if ($definition !== null && ReferenceVisibility::allows($definition, $character->getCampaign()->getOwner())) {
+                        $definitions[$definition->getSlug()] = $definition;
+                    }
+                }
+            }
+        }
 
         foreach ($definitions as $slug => $definition) {
             $resources[$slug] = new ResolvedCharacterResource(

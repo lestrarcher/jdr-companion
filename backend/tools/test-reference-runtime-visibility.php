@@ -11,7 +11,7 @@ use Symfony\Component\HttpFoundation\{Request, Session\Session, Session\Storage\
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 
 require __DIR__.'/../vendor/autoload.php';
-require __DIR__.'/training-presenter-fixture.php';
+require __DIR__.'/spell-cast-services-fixture.php';
 (new Symfony\Component\Dotenv\Dotenv())->bootEnv(__DIR__.'/../.env');
 putenv('SHELL_VERBOSITY=-1');
 $_SERVER['SHELL_VERBOSITY'] = $_ENV['SHELL_VERBOSITY'] = -1;
@@ -39,6 +39,9 @@ try {
         $db->executeStatement(preg_replace(['/^CREATE TABLE /', '/^CREATE SEQUENCE /'], ['CREATE TEMP TABLE ', 'CREATE TEMP SEQUENCE '], $sql));
     }
     foreach ($metadata as $meta) $check($db->fetchOne('SELECT relpersistence FROM pg_class WHERE oid = to_regclass(?)', [$meta->getTableName()]) === 't', 'Temporary table '.$meta->getTableName());
+    foreach (['feature_spell_grant', 'character_feature_spell'] as $table) {
+        $db->executeStatement('CREATE TEMP TABLE '.$table.' (LIKE public.'.$table.')');
+    }
 
     $users = []; $campaigns = []; $characters = []; $states = [];
     foreach (['a', 'b'] as $key) {
@@ -71,7 +74,7 @@ try {
         $feature = $save(new CharacterFeatureDefinition('feature-'.$key, 'Feature '.$key));
         $save(CharacterFeatureRule::forClass($feature, $class, 1), $key);
         $save(TrackableResourceRule::forClass($resource('resource-'.$key), $class, 1), $key);
-        $action = $save((new CharacterActionDefinition('action-'.$key, 'Action '.$key, CharacterActionHandlerType::Aid))->setRequiresPreparation(true));
+        $action = $save((new CharacterActionDefinition('action-'.$key, 'Action '.$key, CharacterActionHandlerType::ArcaneRecovery))->setRequiresPreparation(true));
         $save(new CharacterActionClassRule($action, $class, 1), $key);
     }
     $em->flush();
@@ -89,7 +92,7 @@ try {
     $sync = new CharacterSessionStateSynchronizer($hp, $hpState, $resources, new CharacterSessionStateRepository($registry), $slotState);
     $factory = new CharacterSessionStateFactory($hp, $resources, $slots, $effectRepo);
     $profile = new CharacterProfileSerializer($ability, $features, $resources, $hp, $slots, $actions, trainingPresenterForRegistry($registry));
-    $serializer = new CharacterSessionStateSerializer($profile, $hpState, $effectRepo, $slotState);
+    $serializer = new CharacterSessionStateSerializer($profile, $hpState, $effectRepo, $slotState, spellConcurrencyServices($registry)['directory']);
     $rest = new CharacterRestService($hp, $hpState, $resources, $sync, $slots, $definitions, $ability, $effectRepo, new CharacterActiveEffectService($hpState), $em);
     $levelUp = new CharacterLevelUpService($em, new CharacterClassLevelRuleRepository($registry), $sync, new CharacterMulticlassEligibilityService($ability), $ability, trainingServiceForRegistry($registry), trainingPresenterForRegistry($registry));
     foreach (['a', 'b'] as $key) {
@@ -119,7 +122,7 @@ try {
             $slug = 'edge-'.$ruleScope.'-'.$targetScope;
             $f = $save(new CharacterFeatureDefinition($slug, $slug), $targetScope);
             $r = $resource($slug, $targetScope);
-            $a = $save(new CharacterActionDefinition($slug, $slug, CharacterActionHandlerType::Aid), $targetScope);
+            $a = $save(new CharacterActionDefinition($slug, $slug, CharacterActionHandlerType::ArcaneRecovery), $targetScope);
             $save(CharacterFeatureRule::forClass($f, $class, 1), $ruleScope);
             $save(TrackableResourceRule::forClass($r, $class, 1), $ruleScope);
             $save(new CharacterActionClassRule($a, $class, 1), $ruleScope);
@@ -228,7 +231,7 @@ try {
     foreach (['a', 'b'] as $key) {
         $save(CharacterFeatureRule::forClass($save(new CharacterFeatureDefinition('level-feature-'.$key, 'Level '.$key)), $class, 4), $key);
         $save(TrackableResourceRule::forClass($resource('level-resource-'.$key), $class, 4), $key);
-        $save(new CharacterActionClassRule($save(new CharacterActionDefinition('level-action-'.$key, 'Level '.$key, CharacterActionHandlerType::Aid)), $class, 4), $key);
+        $save(new CharacterActionClassRule($save(new CharacterActionDefinition('level-action-'.$key, 'Level '.$key, CharacterActionHandlerType::ArcaneRecovery)), $class, 4), $key);
     }
     $em->flush();
     $beforeStates = array_map(static fn ($s) => [$s->getState(), $s->getAccessToken(), $s->isParticipating()], $states['a']);
@@ -266,7 +269,7 @@ try {
                 $f = $save(new CharacterFeatureDefinition($slug, $slug));
                 $save(CharacterFeatureRule::{'for'.$type}($f, $source, 1), $ruleScope);
                 if ($type !== 'Progression') $save(TrackableResourceRule::{'for'.$type}($resource($slug), $source, 1), $ruleScope);
-                if ($type === 'Class') $save(new CharacterActionClassRule($save(new CharacterActionDefinition($slug, $slug, CharacterActionHandlerType::Aid)), $sourceClass, 1), $ruleScope);
+                if ($type === 'Class') $save(new CharacterActionClassRule($save(new CharacterActionDefinition($slug, $slug, CharacterActionHandlerType::ArcaneRecovery)), $sourceClass, 1), $ruleScope);
             }
         }
         $em->flush();
@@ -293,12 +296,12 @@ try {
     }
     $recovery = $resource('arcane-recovery'); $recovery->setBaseMaximum(1);
     $save(TrackableResourceRule::forClass($recovery, $wizard, 1));
-    $inactive = $save((new CharacterActionDefinition('inactive', 'Inactive', CharacterActionHandlerType::Aid))->setActive(false));
+    $inactive = $save((new CharacterActionDefinition('inactive', 'Inactive', CharacterActionHandlerType::ArcaneRecovery))->setActive(false));
     $save(new CharacterActionClassRule($inactive, $wizard, 1));
-    $locked = $save(new CharacterActionDefinition('too-high', 'Too high', CharacterActionHandlerType::Aid));
+    $locked = $save(new CharacterActionDefinition('too-high', 'Too high', CharacterActionHandlerType::ArcaneRecovery));
     $save(new CharacterActionClassRule($locked, $wizard, 20));
     $em->flush();
-    $check($keys($actions->resolve($caster)) === ['aid', 'arcane-recovery', 'heroes-feast'], 'Controlled actions active and level conditions unchanged');
+    $check($keys($actions->resolve($caster)) === ['arcane-recovery'], 'Controlled actions active and level conditions unchanged');
     $casterState = new CharacterSessionState($states['a'][1]->getGameSession(), $caster, $factory->create($caster));
     $em->persist($casterState); $em->flush();
     $casterToken = $casterState->getAccessToken(); $casterId = $caster->getId();
@@ -326,18 +329,22 @@ try {
     $check($status === 422, 'Foreign action cannot be prepared via token');
     [$status, $body] = $request('/public/characters/'.$casterToken);
     $actionPath = '/public/characters/'.$casterToken.'/actions/';
-    [$status, $body] = $request($actionPath.'prepared', 'PATCH', ['prepared' => ['aid', 'heroes-feast'], 'revision' => $body['revision']]);
-    $check($status === 200 && $body['state']['characterActions']['prepared'] === ['aid', 'heroes-feast'], 'Official actions preparation through scoped resolver');
-    $before = $body['state'];
-    [$status, $body] = $request($actionPath.'aid', 'POST', ['spellSlotLevel' => 2, 'targetIds' => [$casterId], 'revision' => $body['revision']]);
-    $check($status === 200, 'Aid controller and handler');
-    $check($entries($body['state'])['spell-slot-2']['currentValue'] === $entries($before)['spell-slot-2']['currentValue'] - 1, 'Aid consumes slot');
-    $check($body['state']['hitPoints']['current'] === $before['hitPoints']['current'] + 5, 'Aid HP effect');
-    $before = $body['state'];
-    [$status, $body] = $request($actionPath.'heroes-feast', 'POST', ['hitPointBonus' => 10, 'targetIds' => [$casterId], 'revision' => $body['revision']]);
-    $check($status === 200, 'Heroes Feast controller and handler');
-    $check($entries($body['state'])['spell-slot-6']['currentValue'] === $entries($before)['spell-slot-6']['currentValue'] - 1, 'Heroes Feast consumes slot');
-    $check($body['state']['hitPoints']['current'] === $before['hitPoints']['current'] + 10, 'Heroes Feast HP effect');
+    $before = $body['state']; $revision = $body['revision'];
+    [$status] = $request($actionPath.'prepared', 'PATCH', ['prepared' => ['aid', 'heroes-feast'], 'revision' => $revision]);
+    $check($status === 422, 'Retired actions cannot be prepared');
+    foreach (['aid', 'heroes-feast'] as $retired) {
+        [$status] = $request($actionPath.$retired, 'POST', ['revision' => $revision]);
+        $check($status === 410, 'Retired action endpoint: '.$retired);
+    }
+    [$status, $body] = $request('/public/characters/'.$casterToken);
+    $check($status === 200 && $body['state'] === $before && $body['revision'] === $revision, 'Retired actions leave state and revision unchanged');
+    // Spend a synthetic slot directly: Arcane Recovery no longer depends on an old Aid cast.
+    $managedCasterState = $em->getRepository(CharacterSessionState::class)->findOneBy(['accessToken' => $casterToken]);
+    $state = $managedCasterState->getState();
+    foreach ($state['resources'] as &$entry) if ($entry['id'] === 'spell-slot-2') --$entry['currentValue'];
+    unset($entry);
+    $managedCasterState->setState($state); $em->flush();
+    [$status, $body] = $request('/public/characters/'.$casterToken);
     $before = $body['state'];
     [$status, $body] = $request($actionPath.'arcane-recovery', 'POST', ['slots' => [2 => 1], 'revision' => $body['revision']]);
     $check($status === 200, 'Arcane Recovery controller and handler '.json_encode($body));

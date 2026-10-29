@@ -93,6 +93,10 @@ export class PlayerLevelUp implements OnInit {
       }),
     );
 
+  protected readonly loadSpells = (classId: number, subclassId: number | null) =>
+    this.characterSessionStateApi.getLevelUpOptions(this.accessToken, classId, subclassId)
+      .pipe(map(options => options.spellPreview));
+
   protected readonly playerPortalRoute = [
     '/campaigns',
     this.campaignId,

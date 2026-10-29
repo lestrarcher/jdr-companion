@@ -1,0 +1,49 @@
+{
+  "schema_version": "1.1",
+  "dataset": "jdr-companion-custom-spells-staging",
+  "count": 1,
+  "spells": [
+    {
+      "import_key": "custom:clerc-des-brumes:faim-des-brumes",
+      "name_fr": "Faim des Brumes",
+      "name_en": "Hunger of the Mists",
+      "level": 3,
+      "school": "invocation",
+      "casting_time": "1 action",
+      "range": "45 m",
+      "components": [
+        "V",
+        "S",
+        "M"
+      ],
+      "concentration": true,
+      "ritual": false,
+      "duration": "Concentration, jusqu’à 1 minute",
+      "material": null,
+      "classes": null,
+      "description": null,
+      "higher_level": null,
+      "source_book": null,
+      "source_book_verified": false,
+      "content_source": "user-homebrew-based-on-hunger-of-hadar",
+      "srd_2014_index": null,
+      "srd_2014_url": null,
+      "srd_description_license": null,
+      "origin": "CUSTOM",
+      "ruleset": "2014",
+      "slug_en": "hunger-of-the-mists",
+      "description_short_fr": "Une sphère de brumes glaciales et obscures de 6 m de rayon apparaît à portée. Les créatures qui commencent leur tour dans la zone subissent 2d6 dégâts de froid. Celles qui terminent leur tour dans la zone effectuent un jet de sauvegarde de Dextérité et subissent 2d6 dégâts nécrotiques en cas d'échec. La zone reprend les autres effets de Voracité de Hadar, sous réserve de validation par le MJ.",
+      "description_short_source": "user-homebrew",
+      "source_file": null,
+      "aidedd_url": null,
+      "alias_fr": null,
+      "enrichment_status": "custom-draft",
+      "based_on_import_key": "aidedd-2014:voracite-de-hadar",
+      "subclass_name_fr": "Clerc des Brumes",
+      "subclass_link_status": "to-resolve",
+      "owner": "to-assign-on-import",
+      "publication_status": "private-draft",
+      "rules_note": "Reprendre les effets non liés aux types de dégâts du sort original après validation."
+    }
+  ]
+}

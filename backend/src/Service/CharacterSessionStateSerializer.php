@@ -14,6 +14,7 @@ final readonly class CharacterSessionStateSerializer
         private CharacterHitPointStateService $hitPointStateService,
         private CharacterActiveEffectRepository $activeEffectRepository,
         private CharacterSpellSlotStateService $spellSlotStateService,
+        private PlayerSpellDirectory $spellDirectory,
     ) {
     }
 
@@ -25,6 +26,7 @@ final readonly class CharacterSessionStateSerializer
         $character = $state->getCharacter();
         $gameSession = $state->getGameSession();
         $sessionState = $state->getState();
+        unset($sessionState[SpellCastReceipts::STATE_KEY]);
         $profile = $this->profileSerializer->serialize($character, $this->extractProgressionValues($sessionState));
         $maximums = $this->spellSlotStateService->effectiveMaximums($character, $sessionState);
         $resources = [];
@@ -71,6 +73,7 @@ final readonly class CharacterSessionStateSerializer
                 'status' => $gameSession->getStatus(),
             ],
             'character' => $profile,
+            'spells' => $this->spellDirectory->forCharacter($character, $sessionState),
             'activeEffects' => array_map(
                 static fn ($effect): array => [
                     'id' => $effect->getId(),

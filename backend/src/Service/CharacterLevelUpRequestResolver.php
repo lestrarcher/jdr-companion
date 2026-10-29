@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Dto\LevelAdvancementSelection;
+use App\Dto\LevelUpSpellChoices;
 use App\Entity\CharacterClass;
 use App\Entity\CharacterSubclass;
 use App\Entity\Feat;
@@ -28,11 +29,13 @@ final readonly class CharacterLevelUpRequestResolver
      *     advancement: LevelAdvancementSelection|null,
      *     hitPointGainMethod: HitPointGainMethod,
      *     hitPointGain: int|null,
-     *     training: array<string, mixed>
+     *     training: array<string, mixed>,
+     *     spellChoices: list<array{policyId: int, spellId: int, ruleId: int|null, replacesAcquisitionId?: int, replacementConfirmed?: bool}>|null
      * }
      */
     public function resolve(array $payload, \App\Entity\Character $character): array
     {
+        $spellChoices = LevelUpSpellChoices::fromPayload($payload);
         foreach ([CharacterClass::class => $payload['classId'] ?? null, CharacterSubclass::class => $payload['subclassId'] ?? null,
             Feat::class => is_array($payload['advancement'] ?? null) ? ($payload['advancement']['featId'] ?? null) : null] as $type => $rawId) {
             $id = $this->integer($rawId);
@@ -77,6 +80,7 @@ final readonly class CharacterLevelUpRequestResolver
         if (!is_array($training) || ($training !== [] && array_is_list($training))) throw new \InvalidArgumentException('Objet training attendu.');
 
         return [
+            'spellChoices' => $spellChoices,
             'training' => $training,
             'characterClass' => $characterClass,
             'subclass' => $subclass,

@@ -23,5 +23,5 @@ export interface CustomBackground extends BackgroundPayload {
   origin: 'OFFICIAL' | 'CUSTOM';
   mechanicsLocked: boolean;
 }
-export interface BackgroundOption { id: number; name: string; slug: string; type: 'SKILL' | 'TOOL' | null }
+export interface BackgroundOption { origin?: 'OFFICIAL' | 'CUSTOM'; id: number; name: string; slug: string; type: 'SKILL' | 'TOOL' | null }
 export interface BackgroundOptions { proficiencies: BackgroundOption[]; languages: BackgroundOption[] }

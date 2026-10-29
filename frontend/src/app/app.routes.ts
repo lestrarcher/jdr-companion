@@ -27,11 +27,21 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'campaigns/:campaignId/sessions/:sessionId/player/:accessToken/spellbook',
+    loadComponent: () => import('./features/player-spellbook/player-spellbook').then(component => component.PlayerSpellbook),
+  },
+  {
+    path: 'campaigns/:campaignId/sessions/:sessionId/player/:accessToken/prepare-spells',
+    loadComponent: () => import('./features/player-spell-preparation/player-spell-preparation').then(component => component.PlayerSpellPreparationPage),
+    canDeactivate: [preparationGuard],
+  },
+  {
     path: 'campaigns/:campaignId/sessions/:sessionId/player/:accessToken',
     loadComponent: () =>
       import('./features/player-portal/player-portal').then(
         component => component.PlayerPortal,
       ),
+    canDeactivate: [preparationGuard],
   },
   {
     path: '',
@@ -40,10 +50,25 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       {
-        path: 'custom-content',
-        loadComponent: () =>
-          import('./features/custom-content/custom-content').then(component => component.CustomContent),
+        path: 'dnd/spell-policies',
+        loadComponent: () => import('./features/spell-policies/spell-policies').then(component => component.SpellPolicies),
+        canDeactivate: [preparationGuard],
       },
+      {
+        path: 'custom-content',
+        redirectTo: 'dnd/reference', pathMatch: 'full',
+      },
+      {
+        path: 'dnd/reference',
+        loadComponent: () =>
+          import('./features/dnd-reference/feature-manager/feature-manager')
+            .then(component => component.FeatureManager),
+      },
+        {
+          path: 'dnd/reference/official',
+          data: { referenceScope: 'official' },
+          loadComponent: () => import('./features/dnd-reference/feature-manager/feature-manager').then(component => component.FeatureManager),
+        },
       {
         path: 'campaigns',
         loadComponent: () =>
@@ -59,10 +84,40 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'campaigns/:campaignId/characters/:characterId/spell-substitutions',
+        canDeactivate: [preparationGuard],
+        loadComponent: () => import('./features/character-spellbook/spell-substitutions').then(component => component.SpellSubstitutions),
+      },
+      {
+        path: 'campaigns/:campaignId/characters/:characterId/spell-revision',
+        canDeactivate: [preparationGuard],
+        loadComponent: () => import('./features/character-spellbook/spell-revision').then(component => component.SpellRevision),
+      },
+      {
+        path: 'campaigns/:campaignId/characters/:characterId/spellbook',
+        canDeactivate: [preparationGuard],
+        loadComponent: () => import('./features/character-spellbook/character-spellbook').then(component => component.CharacterSpellbook),
+      },
+      {
         path: 'campaigns/:campaignId/characters/new',
         loadComponent: () =>
           import('./features/character-builder/character-builder').then(
             component => component.CharacterBuilder,
+          ),
+      },
+      {
+        path: 'campaigns/:campaignId/characters/:characterId/spell-initialization',
+        loadComponent: () => import('./features/spell-initialization-page/spell-initialization-page').then(component => component.SpellInitializationPage),
+      },
+      {
+        path: 'campaigns/:campaignId/characters/:characterId/level-up',
+        loadComponent: () => import('./features/character-level-up-page/character-level-up-page').then(component => component.CharacterLevelUpPage),
+      },
+      {
+        path: 'campaigns/:campaignId/characters/:characterId',
+        loadComponent: () =>
+          import('./features/character-detail/character-detail').then(
+            component => component.CharacterDetail,
           ),
       },
       {

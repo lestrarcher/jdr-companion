@@ -29,7 +29,7 @@
             <div class="session-indicators">
               <span class="live-badge">
                 <span aria-hidden="true"></span>
-                {{ canEdit() ? 'En cours' : 'Lecture seule' }}
+                {{ spellCasting() ? 'Lancement…' : canEdit() ? 'En cours' : 'Lecture seule' }}
               </span>
 
               <span [hidden]="!canEdit()" class="save-status" [class.save-status-error]="saveStatus() === 'error'" aria-live="polite">
@@ -150,12 +150,24 @@
 
                 <div class="tracker-layout">
                   <app-character-vitals [readonly]="!canEdit()" [character]="currentCharacter" />
-                  <app-character-resources [readonly]="!canEdit()" [resources]="sortedResources()" [hasSupplement]="hasTinkering()" [tinkeringNotes]="tinkeringEditor">
-                    @if (hasTinkering() && !tinkeringResources().length) {
-                      <app-magical-tinkering-notes [notes]="tinkeringNotes()" [token]="accessToken" [revision]="serverRevision"
-                        [editable]="sessionStatus() === 'live'" [busy]="saveStatus() === 'saving'" (refreshed)="refreshTinkering()" />
-                    }
-                  </app-character-resources>
+                  <div class="spell-resource-column">
+                    <section class="magic-section" aria-labelledby="magic-section-title">
+                      <div class="magic-section__heading">
+                        <span class="magic-section__eyebrow">Magie</span>
+                        <h2 id="magic-section-title">Emplacements &amp; sorts</h2>
+                      </div>
+                      <app-spell-slot-bar [groups]="spellSlotGroups()" [showCantrips]="true" [selectedPool]="selectedSpellPool()" (filterSelected)="toggleSpellPool($event)" />
+                      <app-spell-quick-list [spells]="playerSpells()" mode="play" [levelFilter]="spellLevelFilter()"
+                        [disabled]="!canEdit() || saveStatus() === 'saving' || saveStatus() === 'error' || !!pendingRestRequest() || preparationPending()"
+                        (selected)="openQuickSpell($event)" />
+                    </section>
+                    <app-character-resources [readonly]="!canEdit()" [resources]="trackerResources()" [hasSupplement]="hasTinkering()" [tinkeringNotes]="tinkeringEditor">
+                      @if (hasTinkering() && !tinkeringResources().length) {
+                        <app-magical-tinkering-notes [notes]="tinkeringNotes()" [token]="accessToken" [revision]="serverRevision"
+                          [editable]="sessionStatus() === 'live'" [busy]="saveStatus() === 'saving'" (refreshed)="refreshTinkering()" />
+                      }
+                    </app-character-resources>
+                  </div>
                 </div>
 
                 @if (flexibleCastingAction(); as action) {
@@ -243,13 +255,7 @@
               }
 
               @case ('spells') {
-                <section class="spells-placeholder">
-                  <header class="spells-placeholder__header"><span class="eyebrow">Grimoire</span><h2>Sorts et incantations</h2><p>Les sorts connus, préparés et leurs emplacements seront bientôt accessibles ici.</p></header>
-                  <div class="spells-placeholder__layout">
-                    <div class="spells-placeholder__panel"><span class="eyebrow">Magie</span><h3>Répertoire des sorts</h3><div class="spells-placeholder__empty"><span aria-hidden="true">✧</span><strong>Bientôt disponible</strong><p>Vos sorts apparaîtront ici.</p></div></div>
-                    <div class="spells-placeholder__panel"><span class="eyebrow">Ressources magiques</span><h3>Emplacements de sorts</h3><div class="spells-placeholder__empty"><span aria-hidden="true">◇</span><strong>Bientôt disponible</strong><p>Suivi des emplacements et de leur récupération.</p></div></div>
-                  </div>
-                </section>
+                <!-- Kept mounted below the switch so an uncertain command survives tab changes. -->
               }
               @case ('possessions') {
                 <div class="possessions-sections">
@@ -257,6 +263,19 @@
                   <app-character-magic-items [readonly]="!canEdit()" [accessToken]="accessToken" />
                 </div>
               }
+            }
+            @if (spellsVisited()) {
+              <app-player-spells [spells]="playerSpells()" [accessToken]="accessToken" [revision]="serverRevision"
+                [resources]="characterState()?.resources ?? []"
+                [panelVisible]="activeTab() === 'spells'"
+                [quickSelection]="quickSpellSelection()" [levelFilter]="spellLevelFilter()"
+                [readonly]="!canEdit()" [prioritizePreparation]="activeTab() === 'spells'"
+                [castingBlocked]="saveStatus() === 'saving' || saveStatus() === 'error' || !!pendingRestRequest() || preparationPending()"
+                (casting)="spellCasting.set($event)" (castCompleted)="adoptSpellCast($event)" (changed)="refreshSpells()">
+                @if (activeTab() === 'spells') {
+                  <app-spell-slot-bar spell-slots [groups]="spellSlotGroups()" [showCantrips]="true" [selectedPool]="selectedSpellPool()" (filterSelected)="toggleSpellPool($event)" />
+                }
+              </app-player-spells>
             }
           </div>
         </div>
@@ -280,15 +299,6 @@
     />
   }
 
-  @if (canEdit() && activeAction()?.handlerType === 'aid') {
-    <app-aid-action-modal
-      [spellSlots]="aidSpellSlots()"
-      [targets]="aidTargets()"
-      (closed)="closeAction()"
-      (confirmed)="useAid($event)"
-    />
-  }
-
   @if (canEdit() && activeAction()?.handlerType === 'flexible-casting') {
     <app-flexible-casting-action-modal
       [resources]="characterState()?.resources ?? []"
@@ -296,14 +306,6 @@
       [error]="flexibleCastingError()"
       (closed)="closeAction()"
       (confirmed)="useFlexibleCasting($event)"
-    />
-  }
-
-  @if (canEdit() && activeAction()?.handlerType === 'heroes-feast') {
-    <app-heroes-feast-action-modal
-      [targets]="aidTargets()"
-      (closed)="closeAction()"
-      (confirmed)="useHeroesFeast($event)"
     />
   }
 

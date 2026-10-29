@@ -47,6 +47,8 @@ final class CharacterLevelUpController extends AbstractController
         int $characterId,
         CharacterRepository $characterRepository,
         CharacterLevelUpOptionsService $optionsService,
+        Request $request,
+        \App\Service\CharacterLevelUpSpellPreview $spellPreview,
     ): JsonResponse {
         $this->denyAccessUnlessGranted(
             CampaignVoter::MANAGE,
@@ -64,7 +66,9 @@ final class CharacterLevelUpController extends AbstractController
         }
 
         try {
-            return $this->json($optionsService->getOptions($character));
+            $options = $optionsService->getOptions($character);
+            $options['spellPreview'] = $spellPreview->preview($character, $request->query->all());
+            return $this->json($options);
         } catch (\DomainException $exception) {
             return $this->validationError($exception->getMessage());
         }
@@ -136,6 +140,7 @@ final class CharacterLevelUpController extends AbstractController
                 hitPointGain:
                     $selection['hitPointGain'],
                 training: $selection['training'],
+                spellChoices: $selection['spellChoices'],
             );
         } catch (\LogicException|\DomainException $exception) {
             return $this->validationError(

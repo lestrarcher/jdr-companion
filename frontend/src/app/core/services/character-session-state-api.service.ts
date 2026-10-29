@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable, map } from 'rxjs';
+import type { SpellCastingAvailability } from '../models/spell-cast.model';
 
 import {
   CharacterSessionStatePayload,
@@ -50,7 +51,33 @@ interface CharacterActionTargetsResponse {
   targets: CharacterActionTarget[];
 }
 
+export interface PlayerSpell {
+  castingAvailability?: SpellCastingAvailability;
+  key?: string;
+  policyId?: number | null;
+  alwaysPrepared?: boolean;
+  details?: {
+    importKey?: string | null;
+    description: string; higherLevels: string | null; castingTime: string; range: string; duration: string;
+    verbal: boolean; somatic: boolean; material: boolean; materialDescription: string | null;
+    concentration: boolean; ritual: boolean;
+  };
+  spellId: number;
+  name: string;
+  level: number | null;
+  school: string | null;
+  source: string;
+  sourceType: 'class' | 'subclass' | 'feature';
+  castingAbility: string | null;
+  spellSaveDc: number | null;
+  spellAttackBonus: number | null;
+  known: boolean;
+  inSpellbook: boolean;
+  prepared: boolean | null;
+}
+
 export interface CharacterSessionStateApiResponse {
+  spells: PlayerSpell[];
   id: number;
   revision: number;
 
@@ -181,16 +208,6 @@ export class CharacterSessionStateApiService {
   {
     return this.http.get<CharacterActionTargetsResponse>(`${this.apiUrl}/public/characters/${accessToken}/action-targets`)
       .pipe(map(response => response.targets));
-  }
-
-  useAid( accessToken: string, spellSlotLevel: number, targetIds: number[], revision: number): Observable<CharacterSessionStateApiResponse>
-  {
-    return this.http.post<CharacterSessionStateApiResponse>(`${this.apiUrl}/public/characters/${accessToken}/actions/aid`, { spellSlotLevel, targetIds, revision });
-  }
-
-  useHeroesFeast(accessToken: string, hitPointBonus: number, targetIds: number[], revision: number): Observable<CharacterSessionStateApiResponse>
-  {
-    return this.http.post<CharacterSessionStateApiResponse>(`${this.apiUrl}/public/characters/${accessToken}/actions/heroes-feast`, { hitPointBonus, targetIds, revision });
   }
 
   createFlexibleCastingSlot(accessToken: string, level: number, revision: number): Observable<CharacterSessionStateApiResponse> {

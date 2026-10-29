@@ -1,0 +1,75 @@
+.player-spells[hidden] { display: none; }
+:host { display: block; min-width: 0; color: var(--text-primary, #ece8df); }
+.cast-open, .cast-pending button { min-height: 44px; padding: .5rem .8rem; border: 1px solid #a78b59; border-radius: .5rem; background: #32303b; justify-self: start; }
+.cast-pending { display: grid; gap: .6rem; overflow-wrap: anywhere; }
+* { box-sizing: border-box; }
+.player-spells { display: grid; gap: 1.25rem; min-width: 0; }
+h2, h3, h4, p { margin: 0; }
+h2 { font-size: clamp(1.3rem, 4vw, 1.8rem); }
+h3 { font-size: 1.08rem; }
+.eyebrow { color: #cdb482; font-size: .68rem; text-transform: uppercase; letter-spacing: .16em; }
+.magic-heading { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.spell-count { color: #c4beb4; font-size: .75rem; white-space: nowrap; }
+button, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled, fieldset:disabled button, fieldset:disabled select { cursor: default; opacity: .55; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid #e5c78e; outline-offset: 3px; }
+.quickbar-shell { min-width: 0; padding: .85rem; border: 1px solid #a78b594a; border-radius: 1rem; background: linear-gradient(145deg, #27242d, #141a22); }
+.spell-modifiers { display: flex; gap: .5rem; margin-top: .75rem; }
+.spell-modifiers:empty { display: none; }
+.spell-summary, .spell-text, .spell-section, fieldset { border: 1px solid #a8a0b32e; border-radius: .85rem; background: #171c2699; padding: 1rem; min-width: 0; }
+.detail-heading { display: flex; gap: .8rem; align-items: center; }
+.detail-heading h3 { font-size: 1.35rem; margin: .3rem 0; }
+.detail-heading p { color: #b9b5c1; font-size: .8rem; }
+.detail-icon { display: grid; place-items: center; flex: 0 0 3rem; height: 3rem; border: 1px solid #c6ac7955; border-radius: .65rem; color: #d1b580; font-size: 2rem; }
+.spell-tags { display: flex; gap: .4rem; flex-wrap: wrap; margin: .6rem 0; }
+.spell-tags span { font-size: .65rem; padding: .25rem .55rem; border: 1px solid #aaa1bb45; border-radius: 2rem; color: #d4cbdc; }
+.spell-tags .prepared-tag { border-color: #8cc2a46b; color: #a7dbc2; }
+.spell-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem .8rem; padding: .6rem 0 0; margin: 0; border-top: 1px solid #a8a0b326; }
+dt { font-size: .65rem; color: #ada8b6; margin-bottom: .3rem; }
+dd { margin: 0; font-size: .85rem; overflow-wrap: anywhere; }
+.spell-description { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .88rem; line-height: 1.7; color: #dfdbe3; }
+.spell-details h4 { margin: 1rem 0 .35rem; color: #dcc390; font-size: .85rem; }
+.components { margin-top: 1rem; font-size: .75rem; color: #b9b5c1; line-height: 1.6; }
+.spell-sections { display: grid; gap: .85rem; min-width: 0; }
+.spell-section h3 { display: flex; justify-content: space-between; gap: .5rem; }
+.spell-section h3 span { color: #c7b38c; }
+.section-description, .section-empty { margin: .6rem 0 .85rem; color: #b7b2bf; font-size: .75rem; line-height: 1.5; }
+.spell-row { display: flex; align-items: center; text-align: left; gap: .6rem; width: 100%; min-height: 3.5rem; padding: .55rem .2rem; background: transparent; border: 0; border-top: 1px solid #a8a0b326; }
+.spell-row:hover, .spell-row[aria-pressed=true] { background: #a8a0b312; }
+.row-icon { font-size: 1.3rem; color: #cdb88f; flex: 0 0 1.5rem; text-align: center; }
+.row-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.row-text strong { display: block; font-size: .8rem; font-weight: 500; }
+.row-text small, .row-level small { display: block; margin-top: .2rem; color: #aaa6b3; font-size: .63rem; }
+.row-level { text-align: right; font-size: .65rem; flex: 0 0 auto; color: #cfbc97; }
+.row-level small { color: #a7dbc2; }
+.choices-section { display: grid; gap: .85rem; }
+.choices-section > p, fieldset p { font-size: .8rem; line-height: 1.5; color: #b9b5c1; }
+fieldset { margin: 0; }
+legend { max-width: 100%; padding: 0 .35rem; font-size: .85rem; color: #ddc496; }
+fieldset > label { display: block; margin: .85rem 0 .4rem; font-size: .8rem; }
+.choice-controls { display: grid; gap: .65rem; }
+select { width: 100%; min-width: 0; min-height: 2.75rem; background: #232837; border: 1px solid #a8a0b34a; border-radius: .45rem; padding: .5rem; font-size: .85rem; }
+.choice-controls button, .notice button { min-height: 2.75rem; padding: .6rem .85rem; border: 1px solid #d5b67966; border-radius: .45rem; background: #463b2a; font-size: .8rem; }
+.preparation-grid { display: grid; gap: .5rem; margin-top: .85rem; }
+.preparation-choice { display: flex; align-items: center; gap: .65rem; min-height: 3rem; padding: .65rem; border: 1px solid #a8a0b326; border-radius: .5rem; cursor: pointer; font-size: .82rem; }
+.preparation-choice.is-prepared { border-color: #80b89e66; background: #568e7414; }
+.preparation-choice input { width: 1.1rem; height: 1.1rem; flex-shrink: 0; accent-color: #a8c9b6; }
+.preparation-choice small { display: block; margin-top: .25rem; font-size: .65rem; color: #b0acb9; }
+fieldset:disabled .preparation-choice { cursor: default; }
+.notice, .empty-state { padding: .85rem 1rem; border: 1px solid #a8a0b32e; border-radius: .65rem; color: #c8c3d0; font-size: .85rem; line-height: 1.5; }
+.notice--error { color: #f1b5ac; border-color: #b06c6255; }
+.notice button { margin-top: .65rem; }
+@media (min-width: 640px) {
+  .spell-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .preparation-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .choice-controls { grid-template-columns: minmax(0, 1fr) auto; margin-top: .45rem; }
+}
+@media (min-width: 1100px) { .spell-sections { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.spell-details { display: grid; gap: .65rem; min-width: 0; }
+.spell-summary { padding: .85rem; }
+.detail-heading > div { min-width: 0; overflow-wrap: anywhere; }
+.spellbook-link { display: grid; place-items: center; min-width: 44px; min-height: 44px; margin-left: auto; color: #ddc496; border: 1px solid #d5b67966; border-radius: .5rem; }
+.spellbook-link svg { width: 1.5rem; height: 1.5rem; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; }
+.spellbook-link:focus-visible { outline: 2px solid #e5c78e; outline-offset: 3px; }
+.preparation-link { display: inline-flex; align-items: center; width: fit-content; margin-left: 0; padding: 0 .75rem; }

@@ -43,23 +43,6 @@ $request = static function (string $method, string $suffix = '', array|string|nu
     return [$response->getStatusCode(), json_decode($response->getContent(), true)];
 };
 try {
-    $db->beginTransaction(); $db->executeStatement('SET TRANSACTION READ ONLY');
-    $owner1 = $em->find(User::class, 1); $login($owner1);
-    [$status, $body] = $request('GET');
-    $ids = array_column($body['features'] ?? [], 'id'); sort($ids);
-    $check($status === 200 && $ids === [247, 248, 249], 'Real owner1 list: only three CUSTOM features');
-    foreach ([247 => 54, 248 => 55, 249 => 56] as $featureId => $resourceId) {
-        [$status, $body] = $request('GET', '/'.$featureId);
-        $resource = $db->fetchAssociative('SELECT * FROM trackable_resource_definition WHERE id=?', [$resourceId]);
-        $check($status === 200 && $body['feature']['resourceDefinition'] === [
-            'id' => $resourceId, 'name' => $resource['name'], 'slug' => $resource['slug'], 'origin' => 'CUSTOM',
-        ], 'Real feature resource serialization '.$featureId);
-        $check((int) $db->fetchOne('SELECT count(*) FROM character_feature_rule WHERE feature_definition_id=?', [$featureId]) > 0, 'Real feature used: relation frozen and delete blocked '.$featureId);
-    }
-    $legacy = $db->fetchAssociative('SELECT * FROM trackable_resource_definition WHERE id=4');
-    $check($legacy['origin'] === 'OFFICIAL' && (bool) $legacy['custom'], 'Real resource 4 OFFICIAL despite legacy custom=true');
-    $db->rollBack(); $em->clear();
-
     $db->beginTransaction();
     foreach ((new Doctrine\ORM\Tools\SchemaTool($em))->getCreateSchemaSql($em->getMetadataFactory()->getAllMetadata()) as $sql) {
         $db->executeStatement(preg_replace(['/^CREATE TABLE /', '/^CREATE SEQUENCE /'], ['CREATE TEMP TABLE ', 'CREATE TEMP SEQUENCE '], $sql));
@@ -67,9 +50,11 @@ try {
     foreach ($em->getMetadataFactory()->getAllMetadata() as $meta) {
         $check($db->fetchOne('SELECT relpersistence FROM pg_class WHERE oid=to_regclass(?)', [$meta->getTableName()]) === 't', 'Isolated '.$meta->getTableName());
     }
-    // Exact copy of the real official legacy resource, only in the isolated table.
-    $db->executeStatement('INSERT INTO pg_temp.trackable_resource_definition SELECT (jsonb_populate_record(NULL::pg_temp.trackable_resource_definition, to_jsonb(r))).* FROM public.trackable_resource_definition r WHERE id=4');
-    $db->executeStatement('ALTER TABLE pg_temp.trackable_resource_definition ALTER COLUMN id RESTART WITH 100');
+    // Synthetic legacy flag: visibility must follow origin, not custom=true.
+    $legacy = new TrackableResourceDefinition('fixture-legacy-official', 'Legacy official', ResourceRechargeType::LongRest);
+    $legacy->setCustom(true);
+    $em->persist($legacy); $em->flush();
+    $legacyId = $legacy->getId();
     $a = (new User())->setEmail('a@custom-feature.invalid')->setPassword('unused');
     $b = (new User())->setEmail('b@custom-feature.invalid')->setPassword('unused');
     $official = (new CharacterFeatureDefinition('official-feature', 'Official'))->setCustom(true);
@@ -90,14 +75,18 @@ try {
     $foreign = $create('Foreign', $rb['id']);
     $login($a);
     $own = $create(' Zeta ');
-    $alpha = $create('Alpha', 4);
+    $alpha = $create('Alpha', $legacyId);
     $alpha2 = $create('Alpha', $ra['id']);
     [$status, $body] = $request('GET');
     $check($status === 200 && array_column($body['features'], 'id') === [$alpha['id'], $alpha2['id'], $own['id']], 'Owned-only name/id ordering, duplicate names');
     $check($request('GET', '?ownerId='.$b->getId())[1] === $body, 'Query cannot change ownership');
     $check($own['resourceDefinition'] === null && $own['name'] === 'Zeta', 'Descriptive feature without resource');
-    $check($alpha['resourceDefinition']['id'] === 4 && $alpha['resourceDefinition']['origin'] === 'OFFICIAL', 'Link to actual official resource 4 copy, ignoring legacy bool');
+    $check($alpha['resourceDefinition']['id'] === $legacyId && $alpha['resourceDefinition']['origin'] === 'OFFICIAL', 'Official resource visibility ignores legacy custom flag');
     $check($alpha2['resourceDefinition']['id'] === $ra['id'] && $alpha2['resourceDefinition']['origin'] === 'CUSTOM', 'Link to same-owner custom resource');
+    [$status, $body] = $request('GET', '/'.$alpha2['id']);
+    $check($status === 200 && $body['feature']['resourceDefinition'] === [
+        'id'=>$ra['id'], 'name'=>$ra['name'], 'slug'=>$ra['slug'], 'origin'=>'CUSTOM',
+    ], 'Owned feature GET serializes the complete personal resource reference');
     $row = $db->fetchAssociative('SELECT * FROM character_feature_definition WHERE id=?', [$own['id']]);
     $check($row['origin'] === 'CUSTOM' && (int) $row['owner_id'] === $a->getId(), 'Server origin/owner');
     $check($row['activation_type'] === 'passive' && (bool) $row['visible'], 'Server presentation defaults');
@@ -131,7 +120,7 @@ try {
         $check($request('POST', '', $payload)[0] === 400, 'Invalid feature payload');
     }
     // All permitted transitions, including detachment and same-ID round trips.
-    foreach ([4, $ra['id'], 4, null, $ra['id'], null] as $resourceId) {
+    foreach ([$legacyId, $ra['id'], $legacyId, null, $ra['id'], null] as $resourceId) {
         [$status, $body] = $request('PATCH', '/'.$own['id'], ['resourceDefinitionId' => $resourceId]);
         $check($status === 200 && ($body['feature']['resourceDefinition']['id'] ?? null) === $resourceId, 'Unused relation transition');
         $check($body['feature']['slug'] === $own['slug'], 'Immutable slug');
@@ -152,7 +141,7 @@ try {
 
     // Own rules, a progression rule, and an inconsistent foreign rule all block usage.
     foreach (['class', 'progression', 'foreign-rule'] as $usage) {
-        $feature = $create('Used '.$usage, 4);
+        $feature = $create('Used '.$usage, $legacyId);
         $a = $em->find(User::class, $a->getId()); $b = $em->find(User::class, $b->getId());
         $entity = $em->find(CharacterFeatureDefinition::class, $feature['id']);
         if ($usage === 'progression') {
@@ -169,7 +158,33 @@ try {
         $check($beforeRow === $db->fetchAssociative('SELECT * FROM character_feature_definition WHERE id=?', [$feature['id']]), 'Used PATCH fully atomic '.$usage);
         $check($request('DELETE', '/'.$feature['id'])[0] === 409, 'Used DELETE '.$usage);
         $check($request('PATCH', '/'.$feature['id'], ['name' => 'Edited '.$usage, 'description' => 'Allowed'])[0] === 200, 'Used description allowed '.$usage);
-        $check($request('PATCH', '/'.$feature['id'], ['resourceDefinitionId' => 4])[0] === 200, 'Same ID is not mechanical change '.$usage);
+        $check($request('PATCH', '/'.$feature['id'], ['resourceDefinitionId' => $legacyId])[0] === 200, 'Same ID is not mechanical change '.$usage);
+    }
+
+    // The editor must enforce the same direct-resource guard, in both scopes.
+    $editor = new App\Service\CustomReferenceFeatureService($db);
+    $admin = (new User())->setEmail('editor@custom-feature.invalid')->setPassword('unused')->setRoles([App\Service\SpellCatalogue::ADMIN_ROLE]);
+    $em->persist($admin); $em->flush();
+    foreach ([false, true] as $officialScope) {
+        $actor = $officialScope ? $admin : $a;
+        $editorFeature = $editor->saveEditor(null, ['slug'=>'editor-guard-'.($officialScope ? 'official' : 'personal'), 'name'=>'Editor guard', 'resourceDefinitionId'=>$legacyId], $actor, $officialScope);
+        foreach ([null, $legacyId] as $resourceId) {
+            $saved = $editor->saveEditor($editorFeature['id'], ['resourceDefinitionId'=>$resourceId], $actor, $officialScope);
+            $check(($saved['resourceDefinition']['id'] ?? null) === $resourceId, 'Unused editor resource transition');
+        }
+        $editorRule = CharacterFeatureRule::forClass($em->find(CharacterFeatureDefinition::class, $editorFeature['id']), $em->find(CharacterClass::class, $source->getId()), 1);
+        $em->persist($editorRule); $em->flush();
+        $beforeRow = $db->fetchAssociative('SELECT * FROM character_feature_definition WHERE id=?', [$editorFeature['id']]);
+        $refused = false;
+        try { $editor->saveEditor($editorFeature['id'], ['name'=>'Must not persist', 'description'=>'Nor this', 'resourceDefinitionId'=>null, 'visible'=>false], $actor, $officialScope); }
+        catch (Symfony\Component\HttpKernel\Exception\ConflictHttpException $error) { $refused = $error->getStatusCode() === 409; }
+        $check($refused, 'Used mixed editor save returns 409');
+        $check($beforeRow === $db->fetchAssociative('SELECT * FROM character_feature_definition WHERE id=?', [$editorFeature['id']]), 'Rejected editor save preserves every column');
+        $saved = $editor->saveEditor($editorFeature['id'], ['name'=>'Allowed description', 'description'=>'Allowed'], $actor, $officialScope);
+        $check($saved['name'] === 'Allowed description' && $saved['description'] === 'Allowed', 'Used editor descriptive changes allowed');
+        $sameResourceName = 'Same resource '.($officialScope ? 'official' : 'personal');
+        $saved = $editor->saveEditor($editorFeature['id'], ['name'=>$sameResourceName, 'resourceDefinitionId'=>$legacyId], $actor, $officialScope);
+        $check($saved['name'] === $sameResourceName && $saved['resourceDefinition']['id'] === $legacyId, 'Used editor identical resource allowed');
     }
 
     // A resource-only historical trace must NOT count as Feature usage.
@@ -225,4 +240,4 @@ try {
     $check($before === $snapshot(), 'All public fingerprints unchanged');
     $kernel->shutdown();
 }
-echo "OK: $checks custom feature CRUD assertions; owner1 READ ONLY; isolated fixtures rolled back.\n";
+echo "OK: $checks custom feature CRUD assertions; isolated fixtures rolled back.\n";

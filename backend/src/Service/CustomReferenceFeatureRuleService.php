@@ -21,7 +21,82 @@ final class CustomReferenceFeatureRuleService
     ];
     private const FIELDS = ['featureDefinitionId', 'sourceType', 'sourceId', 'unlockLevel', 'progressionThreshold'];
 
-    public function __construct(private readonly Connection $db) {}
+    public function __construct(private readonly Connection $db, private readonly ?FeatureSpellGrantReconciler $reconciler = null) {}
+
+    public function editorList(User $actor,bool $official,?int $targetId=null): array
+    {
+        if ($official) $this->editorAdmin($actor);
+        $rows=$this->db->fetchAllAssociative("SELECT * FROM character_feature_rule WHERE (origin='OFFICIAL' AND owner_id IS NULL)".($official?'':" OR (origin='CUSTOM' AND owner_id=:owner)").' ORDER BY id',$official?[]:['owner'=>$actor->getId()]);
+        $result=[];
+        foreach($rows as $row) {
+            if ($targetId!==null && (int)$row['feature_definition_id']!==$targetId) continue;
+            if ($this->serialize($row)!==null) $result[]=$this->editorView($row,$official);
+        }
+        return ['rules'=>$result];
+    }
+
+    private function editorAdmin(User $actor): void
+    {
+        if (!in_array(SpellCatalogue::ADMIN_ROLE,$actor->getRoles(),true)) throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException('Administration officielle requise.');
+    }
+
+    private function editorView(array $row,bool $official): array
+    {
+        $data=$this->data($row); $view=$this->serialize($row);
+        $out=['id'=>(int)$row['id'],'origin'=>$row['origin'],'editable'=>$official?$row['origin']==='OFFICIAL':$row['origin']==='CUSTOM',
+            'sourceType'=>$data['sourceType'],'sourceId'=>$data['sourceId'],'sourceName'=>$view['source']['name'],
+            'unlockLevel'=>$data['unlockLevel'],'progressionThreshold'=>$data['progressionThreshold'],'displayOrder'=>(int)$row['display_order']];
+        $f=$this->db->fetchAssociative('SELECT id,slug,name,activation_type,resource_definition_id FROM character_feature_definition WHERE id=?',[$data['featureDefinitionId']]);
+        $out['feature']=['id'=>(int)$f['id'],'slug'=>$f['slug'],'name'=>$f['name'],'activationType'=>$f['activation_type'],'hasResource'=>$f['resource_definition_id']!==null];
+        return $out;
+    }
+
+    public function saveEditor(?int $id,array $payload,User $actor,bool $official,bool $delete=false): ?array
+    {
+        if ($official) $this->editorAdmin($actor);
+        return $this->write(function() use($id,$payload,$actor,$official,$delete) {
+            $this->lockUsage();
+            $row=$id===null?null:$this->db->fetchAssociative('SELECT * FROM character_feature_rule WHERE id=? FOR UPDATE',[$id]);
+            if ($id!==null) {
+                if (!$row || ($row['origin']==='CUSTOM' && (int)$row['owner_id']!==$actor->getId()) || ($official && $row['origin']!=='OFFICIAL') || $this->serialize($row)===null) throw new NotFoundHttpException('Attribution indisponible.');
+                if (!$official && $row['origin']!=='CUSTOM') throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException('Attribution officielle en lecture seule.');
+            }
+            if ($delete) {
+                if (!$row) throw new NotFoundHttpException();
+                if ($this->editorUsed($row)) throw new ConflictHttpException('Attribution utilisée.');
+                $this->db->delete('character_feature_rule',['id'=>$id]); return null;
+            }
+            $extra=array_key_exists('displayOrder',$payload)?$payload['displayOrder']:($row?(int)$row['display_order']:0);
+            if (!$this->integer($extra,0,2147483647)) throw new BadRequestHttpException('Paramètre displayOrder invalide.');
+            unset($payload['displayOrder']);
+            $data=$this->validate($payload,$row?$this->data($row):null,$actor);
+            if ($official && ($this->reference('character_feature_definition',$data['featureDefinitionId'],null)===null || $this->reference(self::SOURCES[$data['sourceType']][0],$data['sourceId'],null)===null)) throw new BadRequestHttpException('Une attribution officielle exige des dépendances officielles.');
+            $columns=$this->columns($data)+['display_order'=>$extra];
+            if ($row) {
+                $this->db->update('character_feature_rule',$columns,['id'=>$id]);
+            } else {
+                $this->db->insert('character_feature_rule',$columns+['origin'=>$official?'OFFICIAL':'CUSTOM','owner_id'=>$official?null:$actor->getId()]);
+                $id=(int)$this->db->lastInsertId();
+            }
+            $this->reconciler?->reconcile(array_values(array_unique([$data['featureDefinitionId'], (int)($row['feature_definition_id'] ?? $data['featureDefinitionId'])])));
+            return $this->editorView($this->db->fetchAssociative('SELECT * FROM character_feature_rule WHERE id=?',[$id]),$official);
+        });
+    }
+
+    private function editorUsed(array $row): bool
+    {
+        if ($row['origin']==='CUSTOM') return $this->countCharacters($row)>0;
+        $data=$this->data($row);
+        $condition=match($data['sourceType']) {
+            'class'=>'EXISTS (SELECT 1 FROM character_class_level l WHERE l.character_id=c.id AND l.character_class_id=:source)',
+            'subclass'=>'EXISTS (SELECT 1 FROM character_class_level l WHERE l.character_id=c.id AND l.subclass_id=:source)',
+            'race'=>'c.race_id IN (WITH RECURSIVE races AS (SELECT id FROM character_race WHERE id=:source UNION SELECT r.id FROM character_race r JOIN races p ON r.parent_race_id=p.id) SELECT id FROM races)',
+            'feat'=>'EXISTS (SELECT 1 FROM character_feat f WHERE f.character_id=c.id AND f.feat_id=:source)',
+            'progression'=>'EXISTS (SELECT 1 FROM character_progression p WHERE p.character_id=c.id AND p.progression_definition_id=:source)',
+        };
+        return (bool)$this->db->fetchOne('SELECT 1 FROM "character" c WHERE '.$condition.' LIMIT 1',['source'=>$data['sourceId']]);
+    }
+
 
     public function list(User $owner): array
     {
@@ -49,7 +124,9 @@ final class CustomReferenceFeatureRuleService
             $this->db->insert('character_feature_rule', $this->columns($data) + [
                 'origin' => 'CUSTOM', 'owner_id' => $owner->getId(), 'display_order' => 0,
             ]);
-            return $this->get((int) $this->db->lastInsertId(), $owner);
+            $id = (int)$this->db->lastInsertId();
+            $this->reconciler?->reconcile([$data['featureDefinitionId']]);
+            return $this->get($id, $owner);
         });
     }
 
@@ -62,9 +139,9 @@ final class CustomReferenceFeatureRuleService
             $current = $this->data($row);
             $data = $this->validate($payload, $current, $owner);
             if ($data !== $current) {
-                if ($this->countCharacters($row) > 0) throw new ConflictHttpException('Cette attribution est utilisée : sa structure est figée.');
                 $this->db->update('character_feature_rule', $this->columns($data), ['id' => $id]);
             }
+            $this->reconciler?->reconcile(array_values(array_unique([$current['featureDefinitionId'], $data['featureDefinitionId']])));
             return $this->get($id, $owner);
         });
     }
@@ -162,6 +239,11 @@ final class CustomReferenceFeatureRuleService
         }
         if ($this->reference(self::SOURCES[$data['sourceType']][0], $data['sourceId'], $owner->getId()) === null) {
             throw new BadRequestHttpException('La source sélectionnée est indisponible.');
+        }
+        if ($data['sourceType'] === 'progression' && $this->db->fetchOne(
+            "SELECT 1 FROM feature_spell_grant WHERE feature_id=? AND mode='choice'", [$data['featureDefinitionId']],
+        )) {
+            throw new BadRequestHttpException('Une progression ne peut accorder que des sorts fixes.');
         }
         return $data;
     }

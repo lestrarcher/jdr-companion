@@ -33,15 +33,7 @@ final readonly class CharacterFeatureResolver
     ): array {
         $resolvedRules = [];
 
-        $owner = $character->getCampaign()->getOwner();
-        foreach ($this->ruleRepository->findVisibleForOwner($owner) as $rule) {
-            if (!ReferenceVisibility::allows($rule, $owner)) {
-                continue;
-            }
-            if (!$this->isRuleApplicable($character, $rule, $progressionValues)) {
-                continue;
-            }
-
+        foreach ($this->applicableRules($character, $progressionValues) as $rule) {
             $slug = $rule->getFeatureDefinition()->getSlug();
             $currentRule = $resolvedRules[$slug] ?? null;
 
@@ -78,6 +70,31 @@ final readonly class CharacterFeatureResolver
         return $resolvedRules;
     }
 
+    /** All applicable attributions, before the historical one-rule-per-feature reduction.
+     * @param array<string,int> $progressionValues
+     * @return list<CharacterFeatureRule>
+     */
+    public function applicableRules(Character $character, array $progressionValues = []): array
+    {
+        $owner = $character->getCampaign()->getOwner();
+        return array_values(array_filter($this->ruleRepository->findVisibleForOwner($owner),
+            fn(CharacterFeatureRule $rule): bool => ReferenceVisibility::allows($rule, $owner)
+                && $this->isRuleApplicable($character, $rule, $progressionValues)));
+    }
+
+    /** Source ownership for persisted acquisitions, never runtime permission. */
+    public function acquisitionRules(Character $character): array
+    {
+        $owner = $character->getCampaign()->getOwner();
+        return array_values(array_filter($this->ruleRepository->findVisibleForOwner($owner),
+            fn(CharacterFeatureRule $rule): bool => ReferenceVisibility::allows($rule, $owner)
+                && ($rule->getProgressionDefinition() !== null
+                    ? ($rule->getProgressionDefinition()->isIrreversible()
+                        ? $this->isRuleApplicable($character, $rule, [])
+                        : $character->hasProgression($rule->getProgressionDefinition()))
+                    : $this->isRuleApplicable($character, $rule, []))));
+    }
+
     private function shouldReplaceRule(
         CharacterFeatureRule $currentRule,
         CharacterFeatureRule $rule,
@@ -108,6 +125,16 @@ final readonly class CharacterFeatureResolver
         if ($progression !== null) {
             $slug = $progression->getSlug();
             $threshold = $rule->getProgressionThreshold();
+
+            if ($progression->isIrreversible()) {
+                foreach ($character->getProgressions() as $assignment) {
+                    if ($assignment->getProgressionDefinition() === $progression) {
+                        $maximum = $assignment->getMaximumReached();
+                        return $threshold !== null && $maximum !== null && $maximum >= $threshold;
+                    }
+                }
+                return false;
+            }
 
             return $character->hasProgression($progression)
                 && $threshold !== null

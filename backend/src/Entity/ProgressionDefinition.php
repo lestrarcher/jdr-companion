@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Enum\ReferenceOrigin;
+use App\Enum\Ability;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -37,6 +38,18 @@ class ProgressionDefinition
         return $this->owner;
     }
 
+    /** Mark a newly created reference as owned by this MJ. Never transfer ownership. */
+    public function markAsPersonalReference(User $owner): static
+    {
+        if ($this->id !== null || $this->origin !== ReferenceOrigin::Official || $this->owner !== null) {
+            throw new \LogicException('Only new references can be marked as personal.');
+        }
+        $this->origin = ReferenceOrigin::Custom;
+        $this->owner = $owner;
+        $this->setCustom(true);
+        return $this;
+    }
+
     // No independent setters: custom creation is deliberately not exposed yet.
     #[ORM\PrePersist]
     #[ORM\PreUpdate]
@@ -67,6 +80,33 @@ class ProgressionDefinition
 
     #[ORM\Column(nullable: true)]
     private ?int $maximumValue = null;
+
+    #[ORM\Column(enumType: Ability::class, nullable: true)]
+    private ?Ability $defaultCastingAbility = null;
+
+    #[ORM\Column(options: ['default' => false])]
+    private bool $irreversible = false;
+
+    public function isIrreversible(): bool { return $this->irreversible; }
+
+    public function setIrreversible(bool $irreversible): self
+    {
+        $this->irreversible = $irreversible;
+        $this->touch();
+        return $this;
+    }
+
+    public function getDefaultCastingAbility(): ?Ability
+    {
+        return $this->defaultCastingAbility;
+    }
+
+    public function setDefaultCastingAbility(?Ability $ability): self
+    {
+        $this->defaultCastingAbility = $ability;
+        $this->touch();
+        return $this;
+    }
 
     #[ORM\Column(length: 20, nullable: true)]
     private ?string $accentColor = null;

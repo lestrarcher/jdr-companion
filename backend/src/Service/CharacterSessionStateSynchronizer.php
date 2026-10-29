@@ -94,7 +94,7 @@ final readonly class CharacterSessionStateSynchronizer
      * @param array<string, mixed> $state
      * @return array<string, int>
      */
-    public function extractProgressionValues(array $state): array
+    public static function extractProgressionValues(array $state): array
     {
         $progressions = $state['progressions'] ?? [];
 
@@ -223,9 +223,35 @@ final readonly class CharacterSessionStateSynchronizer
      *     resources: array<string, int>
      * }}> $snapshots
      */
+    public function levelUpHitPointDelta(Character $character, int $gain, int $afterModifier): int
+    {
+        $beforeModifier = $this->hitPointCalculator->calculate($character)->constitutionModifier;
+        $delta = max(1, $gain + $afterModifier);
+        foreach ($character->getClassLevels() as $level) {
+            $historicalGain = $level->getHitPointGain();
+            if ($historicalGain !== null) {
+                $delta += max(1, $historicalGain + $afterModifier) - max(1, $historicalGain + $beforeModifier);
+                continue;
+            }
+            // Prove that every possible die result gives the same difference;
+            // never choose or persist a replacement for the missing historical gain.
+            $difference = null;
+            for ($possibleGain = 1; $possibleGain <= $level->getCharacterClass()->getHitDie(); ++$possibleGain) {
+                $candidate = max(1, $possibleGain + $afterModifier) - max(1, $possibleGain + $beforeModifier);
+                if ($difference !== null && $candidate !== $difference) {
+                    throw new \DomainException('Impossible de synchroniser les PV : l’historique des gains de PV doit être régularisé avant de poursuivre la montée de niveau.');
+                }
+                $difference = $candidate;
+            }
+            $delta += $difference;
+        }
+        return $delta;
+    }
+
     public function synchronizeAfterLevelUp(
         Character $character,
         array $snapshots,
+        ?int $hitPointDelta = null,
     ): void {
         foreach ($snapshots as $snapshot) {
             $sessionState = $snapshot['sessionState'];
@@ -237,6 +263,7 @@ final readonly class CharacterSessionStateSynchronizer
                 $state,
                 $before['hitPoints'],
                 $after['hitPoints'],
+                $hitPointDelta,
             );
 
             $state['hitDice'] = $this->applyPoolDeltas(
@@ -264,9 +291,18 @@ final readonly class CharacterSessionStateSynchronizer
      */
     private function applyHitPointDelta(
         array $state,
-        int $beforeMaximum,
-        int $afterMaximum,
+        ?int $beforeMaximum,
+        ?int $afterMaximum,
+        ?int $knownDelta = null,
     ): array {
+        if ($beforeMaximum === null || $afterMaximum === null) {
+            if ($knownDelta === null || $knownDelta < 0) {
+                throw new \DomainException('Impossible de synchroniser les PV : l’historique des gains de PV doit être régularisé avant de poursuivre la montée de niveau.');
+            }
+            // The maximum remains unknown. Preserve damage and all other state fields.
+            $state['hitPoints']['current'] = (int) ($state['hitPoints']['current'] ?? 0) + $knownDelta;
+            return $state;
+        }
         $current = (int) ($state['hitPoints']['current'] ?? 0);
         $delta = $afterMaximum - $beforeMaximum;
 

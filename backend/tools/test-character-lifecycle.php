@@ -372,6 +372,69 @@ try {
         $check(array_map(static fn ($entry) => $entry[0]->getState(), $sessions) === $before, 'Assignment synchronization is idempotent');
     }
 
+    // Legacy incomplete HP histories: refuse only an indeterminate differential.
+    foreach ([
+        [false, true, 10, false, false, false],
+        [true, true, 10, false, false, false],
+        [true, true, 10, true, false, false],
+        [true, true, 6, true, false, true],
+        [true, false, 6, true, false, false],
+        [false, false, 10, false, false, false],
+        [true, true, 10, false, true, false],
+        [true, true, 6, true, true, true],
+    ] as [$incomplete, $withSession, $constitution, $asi, $multiclass, $refused]) {
+        $s = $services();
+        [$character, $wizard, $campaign] = $fixture($s, $asi ? 3 : 2);
+        $character->getAbilityScore(Ability::Constitution)->setBaseValue($constitution);
+        if ($multiclass) {
+            $fighter = $s['em']->getRepository(CharacterClass::class)->findOneBy(['slug' => 'fighter']);
+            $extra = new CharacterClassLevel($character, $fighter, $character->getNextLevelPosition(), null, 6, HitPointGainMethod::Average);
+            $character->addClassLevel($extra); $s['em']->persist($extra);
+        }
+        $s['em']->flush();
+        if ($incomplete) {
+            $historical = $character->getClassLevels()->first();
+            $db->executeStatement('UPDATE character_class_level SET hit_point_gain = NULL, hit_point_gain_method = NULL WHERE id = ?', [$historical->getId()]);
+            $s['em']->refresh($historical);
+        }
+        $session = null;
+        $state = ['hitPoints' => ['current' => 2, 'temporary' => 7, 'maximum' => null, 'maximumAdjustment' => 3],
+            'hitDice' => [['id' => 'd6', 'current' => 1]],
+            'resources' => [['id' => 'historical-resource', 'currentValue' => 2]],
+            'progressions' => [['id' => 'historical-progress', 'currentValue' => 5]]];
+        if ($withSession) {
+            $game = new GameSession($campaign, 'hp-regression', 'HP regression');
+            $session = new CharacterSessionState($game, $character, $state);
+            $session->setLevelUpAllowed(true);
+            $s['em']->persist($game); $s['em']->persist($session); $s['em']->flush();
+            $state = $session->getState();
+        }
+        $beforeLevel = $character->getTotalLevel();
+        $choice = $asi ? ASI::increaseOneAbility(Ability::Constitution) : null;
+        $beforeTables = [];
+        foreach (['character_class_level', 'character_ability_adjustment', 'character_session_state', 'character_spell_acquisition'] as $table) {
+            $beforeTables[$table] = $db->fetchAllAssociative('SELECT * FROM '.$table.' ORDER BY id');
+        }
+        try {
+            $s['levelUp']->levelUp($character, $wizard, advancement: $choice);
+            $check(!$refused, 'Indeterminate HP delta must be refused');
+        } catch (DomainException $exception) {
+            $check($refused && str_contains($exception->getMessage(), 'historique des gains de PV'), 'Explicit HP history business error');
+            $check($character->getTotalLevel() === $beforeLevel && $character->getAbilityAdjustments()->isEmpty(), 'HP refusal precedes aggregate mutation');
+            foreach ($beforeTables as $table => $rows) $check($db->fetchAllAssociative('SELECT * FROM '.$table.' ORDER BY id') === $rows, 'HP refusal preserves '.$table);
+            $check($session->getState() == $state && $session->isLevelUpAllowed(), 'HP refusal preserves session and authorization');
+            continue;
+        }
+        $check($character->getTotalLevel() === $beforeLevel + 1, 'Reliable or sessionless level-up succeeds');
+        $check(($s['hp']->calculate($character)->maximumValue === null) === $incomplete, 'Unknown maximum remains unknown');
+        if ($session !== null) {
+            $expectedGain = $asi ? 5 + $beforeLevel : 4;
+            $check($session->getState()['hitPoints'] == array_replace($state['hitPoints'], ['current' => 2 + $expectedGain]), 'HP differential preserves damage, temporary HP and nullable metadata');
+            $check($session->getState()['progressions'] === $state['progressions'], 'HP synchronization preserves progression');
+            $check(in_array($state['resources'][0], $session->getState()['resources'], true), 'HP synchronization preserves historical resource');
+        }
+    }
+
     echo "OK: $checks character lifecycle assertions; temporary tables rolled back.\n";
 } finally {
     while ($db->isTransactionActive()) $db->rollBack();

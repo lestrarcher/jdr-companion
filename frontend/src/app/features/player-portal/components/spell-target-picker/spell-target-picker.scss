@@ -1,0 +1,7 @@
+fieldset { border: 0; padding: 0; margin: .75rem 0; min-width: 0; }
+legend, p { font-size: .8rem; color: #cdb482; }
+.targets { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: .4rem; }
+label { display: flex; align-items: center; gap: .5rem; min-height: 44px; padding: .3rem .5rem; border: 1px solid #716b8066; border-radius: .5rem; }
+input { accent-color: #dfbf80; }
+button { min-height: 44px; padding: .5rem; border: 1px solid #a78b5980; border-radius: .5rem; background: #232837; color: inherit; font: inherit; }
+input:focus-visible, button:focus-visible { outline: 2px solid #dfbf80; outline-offset: 3px; }

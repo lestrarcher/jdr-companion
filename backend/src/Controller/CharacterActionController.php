@@ -9,8 +9,6 @@ use App\Entity\GameSession;
 use App\Enum\CharacterActionHandlerType;
 use App\Service\CharacterAction\CharacterFlexibleCastingActionService;
 use App\Repository\CharacterSessionStateRepository;
-use App\Service\CharacterAction\CharacterAidActionService;
-use App\Service\CharacterAction\CharacterHeroesFeastActionService;
 use App\Service\CharacterAction\CharacterArcaneRecoveryActionService;
 use App\Service\CharacterActionResolver;
 use App\Service\CharacterSessionStateSerializer;
@@ -140,112 +138,14 @@ final class CharacterActionController extends AbstractController
         ]);
     }
 
+    // Tombstones for older clients: no mutation, resource consumption or automatic forwarding.
     #[Route('/public/characters/{accessToken}/actions/aid', name: 'api_public_character_action_aid', requirements: ['accessToken' => '[a-f0-9]{64}'], methods: ['POST'])]
-    public function useAid(
-        string $accessToken,
-        Request $request,
-        PlayerCharacterAccess $playerAccess,
-        CharacterSessionStateRepository $stateRepository,
-        CharacterAidActionService $aidActionService,
-        EntityManagerInterface $entityManager,
-    ): JsonResponse {
-        $casterState = $playerAccess->requireParticipating($accessToken);
-
-        if ($casterState->getGameSession()->getStatus() !== GameSession::STATUS_LIVE) {
-            return $this->json(['message' => 'Cette session n’est pas ouverte.'], Response::HTTP_CONFLICT);
-        }
-
-        try {
-            $payload = $request->toArray();
-        } catch (JsonException) {
-            return $this->json(['message' => 'Le corps JSON est invalide.'], Response::HTTP_BAD_REQUEST);
-        }
-
-        $spellSlotLevel = $payload['spellSlotLevel'] ?? null;
-        $targetIds = $payload['targetIds'] ?? null;
-        $revision = $payload['revision'] ?? null;
-
-        if (!is_int($spellSlotLevel) || $spellSlotLevel < 2) {
-            return $this->json(['message' => 'Le niveau d’emplacement est invalide.'], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
-
-        $validationError = $this->validateTargets($targetIds, 3, 'Aide');
-
-        if ($validationError !== null) {
-            return $validationError;
-        }
-
-        if (!is_int($revision) || $revision < 1) {
-            return $this->json(['message' => 'Une révision entière positive est requise.'], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
-
-        if ($casterState->getRevision() !== $revision) {
-            return $this->json(['message' => 'Le personnage a été modifié ailleurs. Rechargez son état.'], Response::HTTP_CONFLICT);
-        }
-
-        return $this->executeHitPointBoostAction(
-            casterState: $casterState,
-            targetIds: array_values(array_unique($targetIds)),
-            revision: $revision,
-            stateRepository: $stateRepository,
-            entityManager: $entityManager,
-            action: fn (array $targetStates) => $aidActionService->apply($casterState, $spellSlotLevel, $targetStates),
-        );
-    }
-
     #[Route('/public/characters/{accessToken}/actions/heroes-feast', name: 'api_public_character_action_heroes_feast', requirements: ['accessToken' => '[a-f0-9]{64}'], methods: ['POST'])]
-    public function useHeroesFeast(
-        string $accessToken,
-        Request $request,
-        PlayerCharacterAccess $playerAccess,
-        CharacterSessionStateRepository $stateRepository,
-        CharacterHeroesFeastActionService $heroesFeastActionService,
-        EntityManagerInterface $entityManager,
-    ): JsonResponse {
-        $casterState = $playerAccess->requireParticipating($accessToken);
-
-        if ($casterState->getGameSession()->getStatus() !== GameSession::STATUS_LIVE) {
-            return $this->json(['message' => 'Cette session n’est pas ouverte.'], Response::HTTP_CONFLICT);
-        }
-
-        try {
-            $payload = $request->toArray();
-        } catch (JsonException) {
-            return $this->json(['message' => 'Le corps JSON est invalide.'], Response::HTTP_BAD_REQUEST);
-        }
-
-        $hitPointBonus = $payload['hitPointBonus'] ?? null;
-        $targetIds = $payload['targetIds'] ?? null;
-        $revision = $payload['revision'] ?? null;
-
-        if (!is_int($hitPointBonus) || $hitPointBonus < 2 || $hitPointBonus > 20) {
-            return $this->json(['message' => 'Le résultat des 2d10 doit être compris entre 2 et 20.'], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
-
-        $validationError = $this->validateTargets($targetIds, 12, 'Festin des héros');
-
-        if ($validationError !== null) {
-            return $validationError;
-        }
-
-        if (!is_int($revision) || $revision < 1) {
-            return $this->json(['message' => 'Une révision entière positive est requise.'], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
-
-        if ($casterState->getRevision() !== $revision) {
-            return $this->json(['message' => 'Le personnage a été modifié ailleurs. Rechargez son état.'], Response::HTTP_CONFLICT);
-        }
-
-        return $this->executeHitPointBoostAction(
-            casterState: $casterState,
-            targetIds: array_values(array_unique($targetIds)),
-            revision: $revision,
-            stateRepository: $stateRepository,
-            entityManager: $entityManager,
-            action: fn (array $targetStates) => $heroesFeastActionService->apply($casterState, $hitPointBonus, $targetStates),
-        );
+    public function retiredHitPointSpell(string $accessToken, PlayerCharacterAccess $playerAccess): JsonResponse
+    {
+        $playerAccess->requireParticipating($accessToken);
+        return $this->json(['message' => 'Ce parcours est retiré. Rechargez le portail et lancez ce sort depuis le répertoire des sorts.'], Response::HTTP_GONE);
     }
-
     #[Route('/public/characters/{accessToken}/actions/flexible-casting/create-spell-slot', name: 'api_public_character_action_flexible_casting_create', requirements: ['accessToken' => '[a-f0-9]{64}'], methods: ['POST'])]
     public function createFlexibleCastingSlot(string $accessToken, Request $request, PlayerCharacterAccess $playerAccess, CharacterActionResolver $actionResolver, CharacterFlexibleCastingActionService $castingService, EntityManagerInterface $entityManager): JsonResponse
     {
@@ -363,74 +263,4 @@ final class CharacterActionController extends AbstractController
         }
     }
 
-    private function validateTargets(mixed $targetIds, int $maximumTargets, string $actionName): ?JsonResponse
-    {
-        if (!is_array($targetIds) || $targetIds === [] || count($targetIds) > $maximumTargets) {
-            return $this->json(['message' => sprintf('%s doit cibler entre une et %d créatures.', $actionName, $maximumTargets)], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
-
-        foreach ($targetIds as $targetId) {
-            if (!is_int($targetId)) {
-                return $this->json(['message' => 'Les identifiants de cibles sont invalides.'], Response::HTTP_UNPROCESSABLE_ENTITY);
-            }
-        }
-
-        if (count(array_unique($targetIds)) !== count($targetIds)) {
-            return $this->json(['message' => sprintf('%s doit cibler des créatures différentes.', $actionName)], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
-
-        return null;
-    }
-
-    /**
-     * @param list<int> $targetIds
-     * @param callable(list<CharacterSessionState>): void $action
-     */
-    private function executeHitPointBoostAction(
-        CharacterSessionState $casterState,
-        array $targetIds,
-        int $revision,
-        CharacterSessionStateRepository $stateRepository,
-        EntityManagerInterface $entityManager,
-        callable $action,
-    ): JsonResponse {
-        try {
-            return $entityManager->wrapInTransaction(function () use ($entityManager, $casterState, $targetIds, $revision, $stateRepository, $action): JsonResponse {
-                $entityManager->lock($casterState->getGameSession(), LockMode::PESSIMISTIC_READ);
-                $entityManager->refresh($casterState->getGameSession());
-
-                if ($casterState->getGameSession()->getStatus() !== GameSession::STATUS_LIVE) {
-                    return $this->json(['message' => 'Cette session n’est pas ouverte.'], Response::HTTP_CONFLICT);
-                }
-
-                $entityManager->lock($casterState, LockMode::OPTIMISTIC, $revision);
-
-                $targetStates = [];
-
-                foreach ($targetIds as $targetId) {
-                    $targetState = $stateRepository->findOneBy([
-                        'gameSession' => $casterState->getGameSession(),
-                        'character' => $targetId,
-                        'participating' => true,
-                    ]);
-
-                    if (!$targetState instanceof CharacterSessionState) {
-                        return $this->json(['message' => 'Une cible ne participe pas à cette session.'], Response::HTTP_UNPROCESSABLE_ENTITY);
-                    }
-
-                    $entityManager->lock($targetState, LockMode::PESSIMISTIC_WRITE);
-                    $targetStates[] = $targetState;
-                }
-
-                $action($targetStates);
-                $entityManager->flush();
-
-                return $this->json($this->sessionStateSerializer->serialize($casterState));
-            });
-        } catch (OptimisticLockException) {
-            return $this->json(['message' => 'Le personnage a été modifié ailleurs. Rechargez son état.'], Response::HTTP_CONFLICT);
-        } catch (\DomainException $exception) {
-            return $this->json(['message' => $exception->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
-    }
 }

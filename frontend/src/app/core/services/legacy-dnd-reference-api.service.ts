@@ -1,0 +1,525 @@
+import { HttpClient } from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
+import { map, Observable } from 'rxjs';
+
+export type AbilityKey =
+  | 'strength'
+  | 'dexterity'
+  | 'constitution'
+  | 'intelligence'
+  | 'wisdom'
+  | 'charisma';
+
+export type SpellcastingProgression =
+  | 'none'
+  | 'full'
+  | 'half'
+  | 'artificer'
+  | 'third'
+  | 'pact';
+
+export interface AbilityReference {
+  value: AbilityKey;
+  label: string;
+  abbreviation: string;
+}
+
+export interface SpellcastingProgressionChoice {
+  value: SpellcastingProgression;
+  label: string;
+}
+
+export interface RaceAbilityModifierReference {
+  id: number;
+  sourceRaceId: number;
+  sourceRaceName?: string;
+  ability: AbilityKey | null;
+  abilityLabel?: string | null;
+  abilityAbbreviation?: string | null;
+  value: number;
+  choiceKey: string | null;
+  requiresChoice: boolean;
+}
+
+export interface RaceParentReference {
+  id: number;
+  name: string;
+}
+
+export interface RaceMetadataReference {
+  sizeOptions: string[] | null;
+  walkingSpeed: number | null;
+  movementSpeeds: Partial<Record<'swim' | 'fly' | 'climb', number | null>> | null;
+  languages: string[] | null;
+  languageChoiceCount: number | null;
+  senses: Partial<Record<'darkvision' | 'blindsight' | 'tremorsense' | 'truesight', number | null>> | null;
+  damageResistances: string[] | null;
+  damageImmunities: string[] | null;
+  conditionImmunities: string[] | null;
+}
+
+export interface EffectiveRaceMetadataReference {
+  sizeOptions: string[];
+  walkingSpeed: number | null;
+  movementSpeeds: Partial<Record<'swim' | 'fly' | 'climb', number>>;
+  languages: string[];
+  languageChoiceCount: number;
+  senses: Partial<Record<'darkvision' | 'blindsight' | 'tremorsense' | 'truesight', number>>;
+  damageResistances: string[];
+  damageImmunities: string[];
+  conditionImmunities: string[];
+}
+
+export interface RaceReference {
+  origin?: 'OFFICIAL' | 'CUSTOM';
+  editable?: boolean;
+  deletable?: boolean;
+  id: number;
+  slug: string;
+  name: string;
+  selectable: boolean;
+  metadata?: RaceMetadataReference;
+  effectiveMetadata?: EffectiveRaceMetadataReference;
+  description?: string | null;
+  custom?: boolean;
+  parentRaceId?: number | null;
+  parentRace?: RaceParentReference | null;
+  featChoiceCount: number;
+  inheritedFeatChoiceCount?: number;
+  abilityModifiers: RaceAbilityModifierReference[];
+  inheritedAbilityModifiers?: RaceAbilityModifierReference[];
+}
+
+export interface ClassReference {
+  editable?: boolean;
+  deletable?: boolean;
+  id: number;
+  slug: string;
+  name: string;
+  hitDie: number;
+  subclassSelectionLevel: number;
+  spellcastingProgression: SpellcastingProgression;
+  spellcastingProgressionLabel?: string;
+  description?: string | null;
+  custom?: boolean;
+}
+
+export interface SubclassReference {
+  editable?: boolean;
+  deletable?: boolean;
+  id: number;
+  classId: number;
+  className?: string;
+  slug: string;
+  name: string;
+  description?: string | null;
+  spellcastingProgression: SpellcastingProgression | null;
+  custom?: boolean;
+}
+
+export interface FeatReference {
+  editable?: boolean;
+  deletable?: boolean;
+  id: number;
+  slug: string;
+  name: string;
+  description: string | null;
+  repeatable: boolean;
+  requiresAbilityChoice: boolean;
+  chosenAbilityIncrease: number;
+  allowedAbilities: AbilityKey[];
+  custom: boolean;
+}
+
+export interface ProgressionStageReference {
+  id: number;
+  label: string;
+  description: string | null;
+  minimumValue: number;
+  maximumValue: number | null;
+  iconUrl: string | null;
+  displayOrder: number;
+}
+
+export interface ProgressionReference {
+  irreversible?: boolean;
+  defaultCastingAbility?: string | null;
+  editable?: boolean;
+  deletable?: boolean;
+  id: number;
+  slug: string;
+  name: string;
+  description: string | null;
+  minimumValue: number;
+  maximumValue: number | null;
+  accentColor: string | null;
+  gainLabel: string | null;
+  spendLabel: string | null;
+  custom: boolean;
+  bulkAdjustmentEnabled: boolean;
+  stages: ProgressionStageReference[];
+  adjustmentRules: ProgressionAdjustmentRuleReference[];
+}
+
+export interface SaveProgressionAdjustmentRulePayload {
+  direction: 'gain' | 'loss';
+  triggerType: string | null;
+  description: string;
+  adjustmentLabel: string;
+  displayOrder: number;
+}
+
+export interface ProgressionAdjustmentRuleReference extends SaveProgressionAdjustmentRulePayload {
+  id: number;
+}
+
+export interface DndReferenceResponse {
+  abilities: AbilityReference[];
+  races: RaceReference[];
+  classes: ClassReference[];
+  subclasses: SubclassReference[];
+  feats: FeatReference[];
+}
+
+export interface ClassListResponse {
+  classes: ClassReference[];
+  hitDice: number[];
+  spellcastingProgressions: SpellcastingProgressionChoice[];
+}
+
+export interface SaveClassPayload {
+  slug: string;
+  name: string;
+  hitDie: number;
+  subclassSelectionLevel: number;
+  spellcastingProgression: SpellcastingProgression;
+  description?: string | null;
+  custom?: boolean;
+}
+
+export type UpdateClassPayload = Partial<SaveClassPayload>;
+
+export interface RaceListResponse {
+  races: RaceReference[];
+  abilities: AbilityReference[];
+}
+
+export interface SaveRaceAbilityModifierPayload {
+  ability: AbilityKey | null;
+  value: number;
+  choiceKey?: string | null;
+}
+
+export interface SaveRacePayload extends Partial<RaceMetadataReference> {
+  selectable?: boolean;
+  slug: string;
+  name: string;
+  description?: string | null;
+  parentRaceId: number | null;
+  featChoiceCount: number;
+  custom?: boolean;
+  abilityModifiers: SaveRaceAbilityModifierPayload[];
+}
+
+export type UpdateRacePayload = Partial<
+  Omit<SaveRacePayload, 'abilityModifiers'>
+>;
+
+export interface SubclassListResponse {
+  subclasses: SubclassReference[];
+  spellcastingProgressions: SpellcastingProgressionChoice[];
+}
+
+export interface SaveSubclassPayload {
+  classId: number;
+  slug: string;
+  name: string;
+  description?: string | null;
+  spellcastingProgression?: SpellcastingProgression | null;
+  custom?: boolean;
+}
+
+export interface FeatListResponse {
+  feats: FeatReference[];
+  abilities: AbilityReference[];
+}
+
+export interface SaveFeatPayload {
+  slug: string;
+  name: string;
+  description: string | null;
+  repeatable: boolean;
+  requiresAbilityChoice: boolean;
+  chosenAbilityIncrease: number;
+  allowedAbilities: AbilityKey[];
+  custom: boolean;
+}
+
+export interface ProgressionListResponse {
+  progressions: ProgressionReference[];
+}
+
+export interface SaveProgressionPayload {
+  irreversible?: boolean;
+  defaultCastingAbility?: string | null;
+  slug: string;
+  name: string;
+  description: string | null;
+  minimumValue: number;
+  maximumValue: number | null;
+  accentColor: string | null;
+  gainLabel: string | null;
+  spendLabel: string | null;
+  bulkAdjustmentEnabled: boolean;
+  custom: boolean;
+}
+
+export interface SaveProgressionStagePayload {
+  label: string;
+  description: string | null;
+  minimumValue: number;
+  maximumValue: number | null;
+  iconUrl: string | null;
+  displayOrder: number;
+}
+
+@Injectable({ providedIn: 'root' })
+export class DndReferenceApiService {
+  private readonly http = inject(HttpClient);
+  private readonly apiUrl = '/api/dnd';
+
+  createProgressionAdjustmentRule(progressionId: number, payload: SaveProgressionAdjustmentRulePayload): Observable<ProgressionReference> {
+    return this.http.post<{ progression: ProgressionReference }>(`${this.apiUrl}/progressions/${progressionId}/adjustment-rules`, payload)
+      .pipe(map(response => response.progression));
+  }
+
+  updateProgressionAdjustmentRule(progressionId: number, ruleId: number, payload: Partial<SaveProgressionAdjustmentRulePayload>): Observable<ProgressionReference> {
+    return this.http.patch<{ progression: ProgressionReference }>(`${this.apiUrl}/progressions/${progressionId}/adjustment-rules/${ruleId}`, payload)
+      .pipe(map(response => response.progression));
+  }
+
+  deleteProgressionAdjustmentRule(progressionId: number, ruleId: number): Observable<ProgressionReference> {
+    return this.http.delete<{ progression: ProgressionReference }>(`${this.apiUrl}/progressions/${progressionId}/adjustment-rules/${ruleId}`)
+      .pipe(map(response => response.progression));
+  }
+
+  getReference(): Observable<DndReferenceResponse> {
+    return this.http.get<DndReferenceResponse>(`${this.apiUrl}/reference`);
+  }
+
+  getCampaignReference(campaignId: number): Observable<DndReferenceResponse> {
+    return this.http.get<DndReferenceResponse>(`/api/campaigns/${campaignId}/dnd/reference`);
+  }
+
+  getCampaignProgressions(campaignId: number): Observable<ProgressionListResponse> {
+    return this.http.get<ProgressionListResponse>(`/api/campaigns/${campaignId}/dnd/progressions`);
+  }
+
+  getClasses(): Observable<ClassListResponse> {
+    return this.http.get<ClassListResponse>(`${this.apiUrl}/classes`);
+  }
+
+  createClass(payload: SaveClassPayload): Observable<ClassReference> {
+    return this.http
+      .post<{ message: string; class: ClassReference }>(
+        `${this.apiUrl}/classes`,
+        payload,
+      )
+      .pipe(map(response => response.class));
+  }
+
+  updateClass(
+    classId: number,
+    payload: UpdateClassPayload,
+  ): Observable<ClassReference> {
+    return this.http
+      .patch<{ message: string; class: ClassReference }>(
+        `${this.apiUrl}/classes/${classId}`,
+        payload,
+      )
+      .pipe(map(response => response.class));
+  }
+
+  getRaces(): Observable<RaceListResponse> {
+    return this.http.get<RaceListResponse>(`${this.apiUrl}/races`);
+  }
+
+  createRace(payload: SaveRacePayload): Observable<RaceReference> {
+    return this.http
+      .post<{ message: string; race: RaceReference }>(
+        `${this.apiUrl}/races`,
+        payload,
+      )
+      .pipe(map(response => response.race));
+  }
+
+  updateRace(
+    raceId: number,
+    payload: UpdateRacePayload,
+  ): Observable<RaceReference> {
+    return this.http
+      .patch<{ message: string; race: RaceReference }>(
+        `${this.apiUrl}/races/${raceId}`,
+        payload,
+      )
+      .pipe(map(response => response.race));
+  }
+
+  addRaceAbilityModifier(
+    raceId: number,
+    payload: SaveRaceAbilityModifierPayload,
+  ): Observable<RaceReference> {
+    return this.http
+      .post<{ message: string; race: RaceReference }>(
+        `${this.apiUrl}/races/${raceId}/ability-modifiers`,
+        payload,
+      )
+      .pipe(map(response => response.race));
+  }
+
+  getSubclasses(): Observable<SubclassListResponse> {
+    return this.http.get<SubclassListResponse>(
+      `${this.apiUrl}/subclasses`,
+    );
+  }
+
+  createSubclass(
+    payload: SaveSubclassPayload,
+  ): Observable<{ subclass: SubclassReference }> {
+    return this.http.post<{ subclass: SubclassReference }>(
+      `${this.apiUrl}/subclasses`,
+      payload,
+    );
+  }
+
+  updateSubclass(
+    subclassId: number,
+    payload: Partial<SaveSubclassPayload>,
+  ): Observable<{ subclass: SubclassReference }> {
+    return this.http.patch<{ subclass: SubclassReference }>(
+      `${this.apiUrl}/subclasses/${subclassId}`,
+      payload,
+    );
+  }
+
+  getFeats(): Observable<FeatListResponse> {
+    return this.http.get<FeatListResponse>(
+      `${this.apiUrl}/feats`,
+    );
+  }
+
+  createFeat(
+    payload: SaveFeatPayload,
+  ): Observable<{ feat: FeatReference }> {
+    return this.http.post<{ feat: FeatReference }>(
+      `${this.apiUrl}/feats`,
+      payload,
+    );
+  }
+
+  updateFeat(
+    featId: number,
+    payload: Partial<SaveFeatPayload>,
+  ): Observable<{ feat: FeatReference }> {
+    return this.http.patch<{ feat: FeatReference }>(
+      `${this.apiUrl}/feats/${featId}`,
+      payload,
+    );
+  }
+
+  deleteFeat(
+    featId: number,
+  ): Observable<{ message: string }> {
+    return this.http.delete<{ message: string }>(
+      `${this.apiUrl}/feats/${featId}`,
+    );
+  }
+
+  getProgressions(): Observable<ProgressionListResponse> {
+    return this.http.get<ProgressionListResponse>(
+      `${this.apiUrl}/progressions`,
+    );
+  }
+
+  createProgression(
+    payload: SaveProgressionPayload,
+  ): Observable<ProgressionReference> {
+    return this.http
+      .post<{
+        message: string;
+        progression: ProgressionReference;
+      }>(
+        `${this.apiUrl}/progressions`,
+        payload,
+      )
+      .pipe(map(response => response.progression));
+  }
+
+  updateProgression(
+    progressionId: number,
+    payload: Partial<SaveProgressionPayload>,
+  ): Observable<ProgressionReference> {
+    return this.http
+      .patch<{
+        message: string;
+        progression: ProgressionReference;
+      }>(
+        `${this.apiUrl}/progressions/${progressionId}`,
+        payload,
+      )
+      .pipe(map(response => response.progression));
+  }
+
+  deleteProgression(
+    progressionId: number,
+  ): Observable<{ message: string }> {
+    return this.http.delete<{ message: string }>(
+      `${this.apiUrl}/progressions/${progressionId}`,
+    );
+  }
+
+  createProgressionStage(
+    progressionId: number,
+    payload: SaveProgressionStagePayload,
+  ): Observable<ProgressionReference> {
+    return this.http
+      .post<{
+        message: string;
+        progression: ProgressionReference;
+      }>(
+        `${this.apiUrl}/progressions/${progressionId}/stages`,
+        payload,
+      )
+      .pipe(map(response => response.progression));
+  }
+
+  updateProgressionStage(
+    progressionId: number,
+    stageId: number,
+    payload: Partial<SaveProgressionStagePayload>,
+  ): Observable<ProgressionReference> {
+    return this.http
+      .patch<{
+        message: string;
+        progression: ProgressionReference;
+      }>(
+        `${this.apiUrl}/progressions/${progressionId}/stages/${stageId}`,
+        payload,
+      )
+      .pipe(map(response => response.progression));
+  }
+
+  deleteProgressionStage(
+    progressionId: number,
+    stageId: number,
+  ): Observable<ProgressionReference> {
+    return this.http
+      .delete<{
+        message: string;
+        progression: ProgressionReference;
+      }>(
+        `${this.apiUrl}/progressions/${progressionId}/stages/${stageId}`,
+      )
+      .pipe(map(response => response.progression));
+  }
+}

@@ -1,0 +1,127 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Service;
+
+use App\Entity\CharacterSessionState;
+use Doctrine\DBAL\LockMode;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
+use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
+
+/** Single transaction boundary for casting costs, effects and replay receipts. */
+final readonly class CharacterSpellCastExecutor
+{
+    public function __construct(
+        private EntityManagerInterface $em,
+        private CharacterSpellCastCommandValidator $validator,
+        private CharacterSpellHitPointEffects $effects,
+    ) {}
+
+    /**
+     * Owns the transaction; call with a managed session and no pending unrelated writes.
+     * @return array{cast:array,revision:int,state:array,replayed:bool} Returned only after commit.
+     */
+    public function execute(CharacterSessionState $session, array $command): array
+    {
+        $db = $this->em->getConnection();
+        if ($db->isTransactionActive()) {
+            throw new \LogicException('Spell execution must own its transaction.');
+        }
+        $mutated = false;
+        $db->beginTransaction();
+        try {
+            $result = (function () use ($session, $command, &$mutated): array {
+                try {
+                    $command = SpellCastReceipts::normalizeCommand($command);
+                } catch (\InvalidArgumentException $error) {
+                    throw new UnprocessableEntityHttpException('invalid_command', $error);
+                }
+                $this->effects->lockCharacters($session, $command);
+                PlayerCharacterAccess::lockForMutation($this->em, $session);
+                $state = $session->getState();
+                try {
+                    $receiptStatus = SpellCastReceipts::compare($state, $command);
+                } catch (\UnexpectedValueException $error) {
+                    throw new ConflictHttpException($error->getMessage(), $error);
+                }
+                if ($receiptStatus === 'conflict') {
+                    throw new ConflictHttpException('request_id_conflict');
+                }
+                if ($receiptStatus === 'identical') {
+                    return [
+                        'cast'=>$state[SpellCastReceipts::STATE_KEY][$command['requestId']]['cast'],
+                        'revision'=>$session->getRevision(),
+                        'state'=>$state,
+                        'replayed'=>true,
+                    ];
+                }
+                $revision = $command['revision'];
+                if ($session->getRevision() !== $revision) {
+                    throw new ConflictHttpException('stale_revision');
+                }
+                $this->em->lock($session, LockMode::OPTIMISTIC, $revision);
+                $validation = $this->validator->validate($session->getCharacter(), $state, $command);
+                if ($validation['valid'] !== true) {
+                    throw new UnprocessableEntityHttpException($validation['reason'] ?? 'cast_not_allowed');
+                }
+                $effect = $this->effects->prepare($session, $command, $validation);
+                $method = $validation['method'];
+                if (in_array($method, ['standard-slot', 'pact-slot', 'resource', 'arcanum'], true)) {
+                    $slug = $validation['poolSlug'];
+                    $cost = $validation['cost'];
+                    $expectedSlug = $method === 'standard-slot' ? 'spell-slot-'.$validation['castingLevel'] : 'warlock-pact-slots';
+                    if ($method === 'arcanum') {
+                        if (($validation['source']['sourceType'] ?? null) !== 'class'
+                            || $validation['castingLevel'] < 6 || $validation['castingLevel'] > 9) {
+                            throw new UnprocessableEntityHttpException('invalid_cast_cost');
+                        }
+                        $expectedSlug = 'mystic-arcanum-'.$validation['castingLevel'].'-use';
+                    }
+                    if ($method === 'resource'
+                        ? (($validation['source']['sourceType'] ?? null) !== 'feature'
+                            || !is_string($slug) || $slug === '' || str_starts_with($slug, 'spell-slot-') || $slug === 'warlock-pact-slots'
+                            || !is_int($cost) || $cost < 1 || $cost > 2147483647)
+                        : ($slug !== $expectedSlug || $cost !== 1)) {
+                        throw new UnprocessableEntityHttpException('invalid_cast_cost');
+                    }
+                    $indices = [];
+                    foreach ($state['resources'] ?? [] as $index => $resource) {
+                        if (is_array($resource) && ($resource['id'] ?? null) === $slug) $indices[] = $index;
+                    }
+                    if (count($indices) !== 1) throw new UnprocessableEntityHttpException('invalid_counter');
+                    $index = $indices[0];
+                    $remaining = $state['resources'][$index]['currentValue'] ?? null;
+                    if (!is_int($remaining) || $remaining < $cost) throw new UnprocessableEntityHttpException('invalid_counter');
+                    $state['resources'][$index]['currentValue'] = $remaining - $cost;
+                } elseif (!in_array($method, ['cantrip', 'ritual'], true)
+                    || $validation['poolSlug'] !== null || $validation['cost'] !== 0) {
+                    throw new UnprocessableEntityHttpException('invalid_cast_cost');
+                }
+                $cast = array_intersect_key($validation, array_flip(['source','method','castingLevel','poolSlug','cost']));
+                $state[SpellCastReceipts::STATE_KEY][$command['requestId']] = SpellCastReceipts::create($command, $cast);
+                $mutated = true;
+                // The receipt makes zero-cost acceptance a durable state change too.
+                $session->setState($state);
+                // Apply after setting cost + receipt, so self-targeting preserves both.
+                $this->effects->apply($session, $effect);
+                $this->em->flush();
+                return [
+                    'cast'=>$cast,
+                    'revision'=>$session->getRevision(),
+                    'state'=>$session->getState(),
+                    'replayed'=>false,
+                ];
+            })();
+            $db->commit();
+            return $result;
+        } catch (\Throwable $error) {
+            // A failed COMMIT may already have ended the database transaction.
+            if ($db->isTransactionActive()) $db->rollBack();
+            // Never leave a failed flush/commit's mutated objects reusable.
+            if ($mutated && $this->em->isOpen()) $this->em->close();
+            throw $error;
+        }
+    }
+}

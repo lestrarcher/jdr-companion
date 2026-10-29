@@ -1,0 +1,31 @@
+<main class="level-up-page">
+  <a class="back-link" [routerLink]="backRoute">← Retour au personnage</a>
+  <header class="level-up-heading">
+    <p class="eyebrow">PROGRESSION</p>
+    <h1>Montée de niveau@if (profile(); as character) { — {{ character.name }} }</h1>
+  </header>
+
+  @if (loading()) {
+    <p class="page-state">Chargement des possibilités d’évolution…</p>
+  } @else if (profile(); as character) {
+    @if (options(); as available) {
+      @if (available.canLevelUp) {
+        <app-character-level-up
+          [character]="character"
+          [options]="available"
+          [abilities]="available.abilities"
+          [feats]="available.feats"
+          [submitting]="submitting()"
+          [trainingPreview]="loadTraining"
+          [spellPreview]="loadSpells"
+          [qualifySpell]="qualifySpell"
+          (submitted)="submitLevelUp($event)"
+          (cancelled)="cancel()"
+        />
+      } @else {
+        <p class="page-state">Ce personnage ne peut pas monter de niveau actuellement.</p>
+      }
+    }
+  }
+  @if (error()) { <p class="page-error" role="alert">{{ error() }}</p> }
+</main>

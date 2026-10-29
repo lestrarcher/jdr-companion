@@ -35,6 +35,11 @@ final readonly class CharacterActionResolver
             }
 
             $definition = $rule->getActionDefinition();
+            // These handlers have moved to the spell catalogue. Keep persisted definitions
+            // readable, but never expose them as preparable/executable character actions.
+            if (in_array($definition->getHandlerType(), [\App\Enum\CharacterActionHandlerType::Aid, \App\Enum\CharacterActionHandlerType::HeroesFeast], true)) {
+                continue;
+            }
 
             $actions[$definition->getSlug()] = $definition;
         }

@@ -1,0 +1,549 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Politiques de magie{% endblock %}
+
+{% block body %}
+    {% set isPreview = app.request.query.has('preset') or app.request.query.has('template') %}
+    {% set initialTab = isPreview or error ? 'create' : 'official' %}
+    {% set query = app.request.query %}
+    {% set selectedPreset = query.get('preset', 'artificer') %}
+    {% set selectedSourceId = query.get('sourceId', '') %}
+    {% set selectedListClassId = query.get('listClassId', '') %}
+    {% set savedPolicies = options.policies|default([]) %}
+
+    <div class="spell-policy-admin" id="spell-policy-admin" data-initial-tab="{{ initialTab }}">
+        <header class="spell-policy-header">
+            <div>
+                <h1>Politiques de magie</h1>
+                <p>Définir les règles officielles de lancement de sorts et consulter leurs versions.</p>
+            </div>
+        </header>
+
+        {% if options.migrationRequired %}
+            <p class="spell-policy-alert" role="status">L’édition 13C attend l’application autorisée de sa migration.</p>
+        {% endif %}
+
+
+        {% for message in app.flashes('success') %}
+            <p class="spell-policy-alert" role="status">{{ message }}</p>
+        {% endfor %}
+
+        <nav class="spell-policy-tabs" aria-label="Gestion des politiques de magie">
+            <button type="button" class="spell-policy-tab" data-tab="official" aria-controls="spell-policy-official">Politiques officielles</button>
+            <button type="button" class="spell-policy-tab" data-tab="create" aria-controls="spell-policy-create">Nouvelle politique</button>
+            <button type="button" class="spell-policy-tab" data-tab="history" aria-controls="spell-policy-history">Historique</button>
+        </nav>
+
+        <section id="spell-policy-official" class="spell-policy-view" data-view="official" aria-label="Politiques officielles">
+            <div class="spell-policy-section-heading">
+                <div>
+                    <h2>Politiques enregistrées</h2>
+                    <p>Les personnages utilisent les versions définies par l’administration.</p>
+                </div>
+                <button type="button" class="spell-policy-action" data-switch-tab="create">Créer une politique</button>
+            </div>
+
+            {% if options.policies is empty %}
+                <div class="spell-policy-empty">
+                    <h3>Aucune politique enregistrée</h3>
+                    <p>Crée une première politique à partir d’un modèle officiel.</p>
+                    <button type="button" class="spell-policy-action" data-switch-tab="create">Commencer</button>
+                </div>
+            {% else %}
+                <div class="spell-policy-cards">
+                    {% for policy in options.policies %}
+                        <article class="spell-policy-card">
+                            <div class="spell-policy-card-heading">
+                                <div>
+                                    <h3>{{ policy.sourceName }}</h3>
+                                    <span class="spell-policy-muted">{{ policy.document.policy.key|default('Politique de magie') }}</span>
+                                </div>
+                                <span class="spell-policy-version">v{{ policy.version }}</span>
+                            </div>
+                            <div class="spell-policy-facts">
+                                <span>Caractéristique : <strong>{{ policy.document.policy.ability|default('Non renseignée') }}</strong></span>
+                                <span>Apprentissage : <strong>{{ policy.document.policy.learningStyle|default('Non renseigné') }}</strong></span>
+                            </div>
+                            <details>
+                                <summary>Consulter la définition</summary>
+                                <pre class="spell-policy-json">{{ policy.document|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre>
+                            </details>
+                        </article>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </section>
+
+        <section id="spell-policy-create" class="spell-policy-view" data-view="create" aria-label="Nouvelle politique" hidden>
+            <div class="spell-policy-section-heading">
+                <div>
+                    <h2>Nouvelle politique officielle</h2>
+                    <p>Prépare une définition, contrôle le résultat, puis enregistre une nouvelle version.</p>
+                </div>
+            </div>
+
+            <div class="spell-policy-notice">
+                <strong>Politiques personnalisées des MJ</strong>
+                <p>Les MJ disposent de leur propre création homebrew. Les formulaires ci-dessous concernent uniquement le référentiel officiel de l’administration.</p>
+            </div>
+
+            <div class="spell-policy-steps">
+                <section class="spell-policy-panel">
+                    <h3><span class="spell-policy-step">1</span> Choisir un point de départ</h3>
+                    <div class="spell-policy-choice">
+                        <label><input type="radio" name="creation-mode" value="preset" checked> Modèle officiel</label>
+                        <label><input type="radio" name="creation-mode" value="third"> Tiers-lanceur configurable</label>
+                    </div>
+
+                    <form method="get" id="spell-policy-preset-form" class="spell-policy-fields">
+                        <label for="official-spell-preset">Modèle de magie</label>
+                        <select name="preset" id="official-spell-preset" required>
+                            <option value="artificer" {{ selectedPreset == 'artificer' ? 'selected' }}>Artificier</option>
+                            <option value="wizard" {{ selectedPreset == 'wizard' ? 'selected' }}>Magicien</option>
+                            <option value="warlock" {{ selectedPreset == 'warlock' ? 'selected' }}>Occultiste</option>
+                            <option value="druid" {{ selectedPreset == 'druid' ? 'selected' }}>Druide</option>
+                            <option value="sorcerer" {{ selectedPreset == 'sorcerer' ? 'selected' }}>Ensorceleur</option>
+                            <option value="eldritch-knight" {{ selectedPreset == 'eldritch-knight' ? 'selected' }}>Chevalier occulte (2014)</option>
+                        </select>
+
+                        <label for="official-spell-source">Référence correspondante</label>
+                        <select id="official-spell-source" disabled aria-describedby="official-source-help">
+                            {% for ref in options.classes %}
+                                <option value="class:{{ ref.id }}" data-name="{{ ref.name|lower }}">{{ ref.name }} (classe)</option>
+                            {% endfor %}
+                            {% for ref in options.subclasses %}
+                                <option value="subclass:{{ ref.id }}" data-name="{{ ref.name|lower }}">{{ ref.name }} (sous-classe)</option>
+                            {% endfor %}
+                        </select>
+                        <small id="official-source-help" class="spell-policy-muted">Déterminée automatiquement par le modèle choisi.</small>
+                        <input type="hidden" name="sourceId" id="official-source-id">
+                        <input type="hidden" name="sourceType" id="official-source-type">
+
+                        <label class="spell-policy-check"><input type="checkbox" name="tasha" value="1" {{ query.get('tasha') == '1' ? 'checked' }}> Activer les remplacements facultatifs Tasha, si applicables</label>
+                        <button type="submit" class="spell-policy-action">Prévisualiser le modèle</button>
+                    </form>
+
+                    <form method="get" id="spell-policy-third-form" class="spell-policy-fields" hidden>
+                        <input type="hidden" name="template" value="restricted-third">
+
+                        <label for="template-source">Sous-classe concernée</label>
+                        <select name="sourceId" id="template-source" required>
+                            {% for ref in options.subclasses %}
+                                <option value="{{ ref.id }}" {{ selectedSourceId == ref.id ~ '' ? 'selected' }}>{{ ref.name }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <label for="template-list-class">Liste de sorts</label>
+                        <select name="listClassId" id="template-list-class" required>
+                            {% for ref in options.classes %}
+                                <option value="{{ ref.id }}" {{ selectedListClassId ? (selectedListClassId == ref.id ~ '' ? 'selected') : (ref.name == 'Magicien' ? 'selected') }}>{{ ref.name }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <div class="spell-policy-two-cols">
+                            <div>
+                                <label for="template-key">Identifiant</label>
+                                <input type="text" name="key" id="template-key" value="{{ query.get('key', 'magie-personnalisee')|e('html_attr') }}" pattern="[a-z0-9][a-z0-9-]*" maxlength="80" required>
+                            </div>
+                            <div>
+                                <label for="template-version">Version</label>
+                                <input type="number" name="version" id="template-version" value="{{ query.get('version', 1) }}" min="1" required>
+                            </div>
+                        </div>
+
+                        <fieldset>
+                            <legend>Écoles de magie autorisées</legend>
+                            <div class="spell-policy-checkbox-grid">
+                                {% for value, label in {
+                                    'abjuration': 'Abjuration',
+                                    'conjuration': 'Invocation',
+                                    'divination': 'Divination',
+                                    'enchantment': 'Enchantement',
+                                    'evocation': 'Évocation',
+                                    'illusion': 'Illusion',
+                                    'necromancy': 'Nécromancie',
+                                    'transmutation': 'Transmutation'
+                                } %}
+                                    <label><input type="checkbox" name="schools[]" value="{{ value }}" {{ query.has('template') ? (value in query.all('schools') ? 'checked') : (value in ['abjuration', 'evocation'] ? 'checked') }}> {{ label }}</label>
+                                {% endfor %}
+                            </div>
+                        </fieldset>
+
+                        <fieldset>
+                            <legend>Niveaux autorisant un choix hors des écoles</legend>
+                            <p class="spell-policy-muted">Seuls les niveaux accordant un nouveau sort peuvent être utilisés.</p>
+                            <div class="spell-policy-checkbox-grid">
+                                {% for level in 3..20 %}
+                                    <label><input type="checkbox" name="unrestrictedLevels[]" value="{{ level }}" {{ query.has('template') ? (level ~ '' in query.all('unrestrictedLevels') ? 'checked') : (level in [3, 8, 14, 20] ? 'checked') }}> Niveau {{ level }}</label>
+                                {% endfor %}
+                            </div>
+                        </fieldset>
+
+                        <button type="submit" class="spell-policy-action">Prévisualiser la progression</button>
+                    </form>
+                </section>
+
+                <section class="spell-policy-panel" id="spell-policy-preview">
+                    <h3><span class="spell-policy-step">2</span> Vérifier et enregistrer</h3>
+                    {% if error %}
+                        <div class="spell-policy-error-box" id="spell-policy-save-error" role="alert" tabindex="-1">
+                            <div class="spell-policy-error-title"><span aria-hidden="true">⚠</span> Impossible d’enregistrer la politique</div>
+                            <p>{{ error }}</p>
+                            {% if 'Version strictement supérieure' in error %}
+                                <p>Cette version existe déjà. Choisis une version supérieure à la dernière version enregistrée, puis réessaie.</p>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                    <div class="spell-policy-version-notice" id="spell-policy-version-notice" hidden aria-live="polite">
+                        <strong id="spell-policy-version-heading"></strong>
+                        <p id="spell-policy-version-description"></p>
+                        <label for="spell-policy-next-version">Version à enregistrer</label>
+                        <input type="number" id="spell-policy-next-version" min="1" step="1" inputmode="numeric">
+                    </div>
+                    {% if isPreview and document is not empty %}
+                        <p class="spell-policy-notice">Le brouillon est prêt. Contrôle sa progression avant l’enregistrement.</p>
+                        <div id="spell-policy-readable-preview" class="spell-policy-readable-preview" aria-live="polite">
+                            <p class="spell-policy-muted">Lecture de la progression…</p>
+                        </div>
+                    {% else %}
+                        <p class="spell-policy-muted">Choisis un modèle, puis clique sur « Prévisualiser ». La progression apparaîtra ici.</p>
+                    {% endif %}
+
+                    <form method="post" id="spell-policy-save-form">
+                        <input type="hidden" name="_token" value="{{ csrf_token('spell_policies') }}">
+                        <input type="hidden" name="kind" value="policy">
+
+                        <details class="spell-policy-advanced">
+                            <summary>Configuration JSON avancée</summary>
+                            <p class="spell-policy-muted">Réservée à l’administration. Une nouvelle version ne migre pas les personnages existants.</p>
+                            <label for="policy-document">Définition complète</label>
+                            <textarea name="document" id="policy-document" rows="14" spellcheck="false" required>{{ document }}</textarea>
+                        </details>
+
+                        <button type="submit" id="spell-policy-save-button" class="spell-policy-action" {{ options.migrationRequired or document is empty ? 'disabled' }}>Enregistrer la politique officielle</button>
+                    </form>
+                </section>
+            </div>
+        </section>
+
+        <section id="spell-policy-history" class="spell-policy-view" data-view="history" aria-label="Historique" hidden>
+            <h2>Historique des définitions</h2>
+            <p class="spell-policy-muted">Chaque version reste consultable. Les personnages existants ne sont pas migrés automatiquement.</p>
+
+            {% for policy in options.policies %}
+                <details class="spell-policy-history-item">
+                    <summary>{{ policy.sourceName }} — version {{ policy.version }}</summary>
+                    <pre class="spell-policy-json">{{ policy.document|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre>
+                </details>
+            {% else %}
+                <p>Aucune version enregistrée.</p>
+            {% endfor %}
+
+            {% if options.substitutions is not empty %}
+                <h3>Règles de substitution enregistrées</h3>
+                {% for rule in options.substitutions %}
+                    <details class="spell-policy-history-item">
+                        <summary>Substitution {{ rule.id }} — version {{ rule.version }}</summary>
+                        <pre class="spell-policy-json">{{ rule.document|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre>
+                    </details>
+                {% endfor %}
+            {% endif %}
+        </section>
+    </div>
+
+    <style>
+        .spell-policy-admin { max-width: 1120px; margin: 0 auto; }
+        .spell-policy-header { margin-bottom: 24px; }
+        .spell-policy-header h1 { margin-bottom: 8px; }
+        .spell-policy-header p, .spell-policy-muted, .spell-policy-section-heading p { color: var(--text-muted, #748093); }
+        .spell-policy-tabs { display: flex; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid #d9dfe8; margin: 20px 0 26px; }
+        .spell-policy-tab { border: 0; border-bottom: 3px solid transparent; background: transparent; padding: 12px 16px; cursor: pointer; color: inherit; font: inherit; }
+        .spell-policy-tab[aria-selected="true"] { border-bottom-color: #6579b8; font-weight: 700; }
+        .spell-policy-view[hidden], .spell-policy-fields[hidden] { display: none !important; }
+        .spell-policy-section-heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+        .spell-policy-section-heading h2 { margin: 0 0 6px; }
+        .spell-policy-section-heading p { margin: 0; }
+        .spell-policy-action { padding: 10px 16px; border-radius: 8px; border: 1px solid #6579b8; background: #6579b8; color: #fff; cursor: pointer; font: inherit; }
+        .spell-policy-action:disabled { opacity: .45; cursor: not-allowed; }
+        .spell-policy-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 16px; }
+        .spell-policy-card, .spell-policy-panel, .spell-policy-empty, .spell-policy-history-item { border: 1px solid #d9dfe8; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+        .spell-policy-card-heading { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+        .spell-policy-card-heading h3 { margin: 0 0 6px; }
+        .spell-policy-version { border-radius: 20px; background: #e9edf7; color: #37456c; padding: 4px 10px; white-space: nowrap; }
+        .spell-policy-facts { display: flex; flex-direction: column; gap: 6px; margin: 18px 0; font-size: .9em; }
+        .spell-policy-steps { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+        .spell-policy-steps > .spell-policy-panel { min-width: 0; }
+        .spell-policy-panel h3 { margin-top: 0; }
+        .spell-policy-step { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #e9edf7; color: #37456c; margin-right: 8px; }
+        .spell-policy-choice { display: flex; gap: 14px; flex-wrap: wrap; margin: 16px 0; }
+        .spell-policy-fields { display: flex; flex-direction: column; gap: 10px; }
+        .spell-policy-fields select, #policy-document { box-sizing: border-box; max-width: 100%; }
+        .spell-policy-fields select, .spell-policy-fields input[type="text"], .spell-policy-fields input[type="number"] { width: 100%; padding: 10px 12px; border: 1px solid #64748b; border-radius: 7px; background: #19232f; color: #f3f6fb; color-scheme: dark; }
+        .spell-policy-fields select option { background: #19232f; color: #f3f6fb; }
+        .spell-policy-fields select:disabled { opacity: .85; cursor: not-allowed; }
+        .spell-policy-fields select:focus-visible, .spell-policy-fields input:focus-visible, #policy-document:focus-visible { outline: 2px solid #8ea6f2; outline-offset: 2px; }
+        .spell-policy-fields input[type="checkbox"], .spell-policy-fields input[type="radio"] { accent-color: #8296dd; }
+        .spell-policy-fields small { display: block; margin-top: -5px; }
+        .spell-policy-two-cols { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
+        .spell-policy-two-cols > div { display: flex; flex-direction: column; gap: 8px; }
+        .spell-policy-checkbox-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+        .spell-policy-fields fieldset { border: 1px solid #d9dfe8; border-radius: 8px; padding: 12px; margin: 8px 0; }
+        .spell-policy-fields fieldset label, .spell-policy-check { font-weight: 400; }
+        .spell-policy-notice, .spell-policy-alert { border-left: 3px solid #6579b8; background: rgba(101, 121, 184, .09); padding: 12px 16px; margin: 16px 0; }
+        .spell-policy-notice p { margin: 6px 0 0; }
+        .spell-policy-alert-error { border-color: #bb4d4d; }
+        .spell-policy-error-box { border: 1px solid #e77c7c; border-left: 5px solid #ef5350; background: rgba(185, 45, 45, .18); color: #ffe5e5; border-radius: 9px; padding: 16px 18px; margin: 16px 0; }
+        .spell-policy-error-box:focus { outline: 2px solid #ffaaaa; outline-offset: 3px; }
+        .spell-policy-error-title { font-size: 1.05em; font-weight: 750; display: flex; gap: 9px; align-items: center; }
+        .spell-policy-error-box p { margin: 8px 0 0; }
+        .spell-policy-version-notice { border: 1px solid #64748b; border-radius: 9px; padding: 14px 16px; margin: 14px 0; background: rgba(101, 121, 184, .10); }
+        .spell-policy-version-notice[hidden] { display: none !important; }
+        .spell-policy-version-notice p { margin: 7px 0 12px; color: #b9c7d9; }
+        .spell-policy-version-notice label { display: block; margin-bottom: 6px; }
+        #spell-policy-next-version { max-width: 150px; width: 100%; padding: 9px 12px; border: 1px solid #64748b; border-radius: 7px; background: #19232f; color: #f3f6fb; color-scheme: dark; }
+        .spell-policy-advanced { margin: 16px 0; }
+        .spell-policy-advanced summary, .spell-policy-card summary, .spell-policy-history-item summary { cursor: pointer; }
+        #policy-document { display: block; width: 100%; margin: 10px 0 18px; padding: 12px; background: #19232f; color: #f3f6fb; border: 1px solid #64748b; border-radius: 8px; color-scheme: dark; font-family: ui-monospace, Consolas, monospace; font-size: 12px; line-height: 1.5; }
+        .spell-policy-json { overflow: auto; max-height: 420px; padding: 14px; border-radius: 8px; background: rgba(127, 140, 160, .09); font-size: 12px; }
+        .spell-policy-history-item { padding: 14px 18px; }
+        .spell-policy-readable-preview { margin: 16px 0 22px; }
+        .spell-policy-preview-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 14px 0 20px; }
+        .spell-policy-preview-fact { padding: 12px; border: 1px solid #64748b; border-radius: 8px; }
+        .spell-policy-preview-fact span { display: block; font-size: .82em; color: #aebbcf; margin-bottom: 5px; }
+        .spell-policy-preview-fact strong { display: block; overflow-wrap: anywhere; }
+        .spell-policy-table-wrap { width: 100%; overflow-x: auto; border: 1px solid #64748b; border-radius: 8px; }
+        .spell-policy-progress-table { width: 100%; border-collapse: collapse; min-width: 570px; font-size: .9em; }
+        .spell-policy-progress-table th, .spell-policy-progress-table td { padding: 9px 12px; text-align: center; border-bottom: 1px solid rgba(148, 163, 184, .25); }
+        .spell-policy-progress-table th { background: rgba(101, 121, 184, .18); white-space: nowrap; }
+        .spell-policy-progress-table tr:last-child td { border-bottom: 0; }
+        .spell-policy-progress-table tr:hover td { background: rgba(101, 121, 184, .09); }
+        .spell-policy-advanced { margin-top: 22px; border-top: 1px solid #64748b; padding-top: 16px; }
+        @media (max-width: 800px) { .spell-policy-preview-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 480px) { .spell-policy-checkbox-grid, .spell-policy-two-cols { grid-template-columns: 1fr; } }
+    </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const root = document.getElementById('spell-policy-admin');
+            if (!root) return;
+
+            const tabs = [...root.querySelectorAll('[data-tab]')];
+            const views = [...root.querySelectorAll('[data-view]')];
+
+            function showTab(name) {
+                tabs.forEach(tab => {
+                    const active = tab.dataset.tab === name;
+                    tab.setAttribute('aria-selected', String(active));
+                    tab.tabIndex = active ? 0 : -1;
+                });
+                views.forEach(view => { view.hidden = view.dataset.view !== name; });
+            }
+
+            tabs.forEach(tab => tab.addEventListener('click', () => showTab(tab.dataset.tab)));
+            root.querySelectorAll('[data-switch-tab]').forEach(button => {
+                button.addEventListener('click', () => showTab(button.dataset.switchTab));
+            });
+            showTab(root.dataset.initialTab || 'official');
+            const saveError = document.getElementById('spell-policy-save-error');
+            if (saveError) {
+                requestAnimationFrame(() => {
+                    saveError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    saveError.focus({ preventScroll: true });
+                });
+            }
+
+            const preset = document.getElementById('official-spell-preset');
+            const source = document.getElementById('official-spell-source');
+            const sourceId = document.getElementById('official-source-id');
+            const sourceType = document.getElementById('official-source-type');
+            const presetMap = {
+                artificer: ['class', 'artificier'],
+                wizard: ['class', 'magicien'],
+                warlock: ['class', 'occultiste'],
+                druid: ['class', 'druide'],
+                sorcerer: ['class', 'ensorceleur'],
+                'eldritch-knight': ['subclass', 'chevalier occulte']
+            };
+
+            function synchronizeSource() {
+                const [type, name] = presetMap[preset.value] || [];
+                const match = [...source.options].find(option => {
+                    return option.value.startsWith(`${type}:`) && option.dataset.name === name;
+                });
+                if (match) source.value = match.value;
+                const [selectedType, selectedId] = source.value.split(':');
+                sourceType.value = selectedType || '';
+                sourceId.value = selectedId || '';
+            }
+
+            preset.addEventListener('change', synchronizeSource);
+            synchronizeSource();
+
+            // The server sends the exact JSON used by the save form. The summary is read-only.
+            // Versions persistées exposées par le contrôleur (sans toucher au backend).
+            const savedVersions = [
+                {% for item in savedPolicies %}
+                    {
+                        sourceType: {{ item.document.sourceType|default(null)|json_encode|raw }},
+                        sourceId: {{ item.document.sourceId|default(null)|json_encode|raw }},
+                        key: {{ item.document.policy.key|default(null)|json_encode|raw }},
+                        version: {{ item.version|default(item.document.policy.version|default(0))|json_encode|raw }}
+                    }{{ not loop.last ? ',' }}
+                {% endfor %}
+            ];
+            const documentField = document.getElementById('policy-document');
+            const preview = document.getElementById('spell-policy-readable-preview');
+            const versionNotice = document.getElementById('spell-policy-version-notice');
+            const versionHeading = document.getElementById('spell-policy-version-heading');
+            const versionDescription = document.getElementById('spell-policy-version-description');
+            const versionInput = document.getElementById('spell-policy-next-version');
+            const saveButton = document.getElementById('spell-policy-save-button');
+
+            function updateVersionInDocument(value) {
+                if (!documentField || !Number.isSafeInteger(value) || value < 1) return;
+                try {
+                    const payload = JSON.parse(documentField.value);
+                    if (!payload.policy || typeof payload.policy !== 'object') return;
+                    payload.policy.version = value;
+                    documentField.value = JSON.stringify(payload, null, 4);
+                    const fact = document.querySelector('[data-policy-version-value]');
+                    if (fact) fact.textContent = String(value);
+                } catch (_) {
+                    // JSON invalide : la validation côté serveur reste l'autorité.
+                }
+            }
+
+            if (documentField && documentField.value.trim()) {
+                try {
+                    const payload = JSON.parse(documentField.value);
+                    const key = payload.policy?.key;
+                    const matches = savedVersions.filter(item =>
+                        item.sourceType === payload.sourceType &&
+                        String(item.sourceId) === String(payload.sourceId) &&
+                        item.key === key
+                    );
+                    const latest = Math.max(0, ...matches.map(item => Number(item.version) || 0));
+                    const current = Number(payload.policy?.version) || 1;
+                    const next = Math.max(current, latest + 1);
+                    versionNotice.hidden = false;
+                    versionInput.min = String(latest + 1);
+                    versionInput.value = String(next);
+                    versionHeading.textContent = latest ? `Version ${latest} déjà enregistrée` : 'Première version de cette politique';
+                    versionDescription.textContent = latest
+                        ? `Une nouvelle version doit être au minimum la version ${latest + 1}. Les anciennes versions restent conservées.`
+                        : 'Aucune version enregistrée pour cette politique et cette référence.';
+                    updateVersionInDocument(next);
+                    if (saveButton) saveButton.textContent = latest ? 'Enregistrer une nouvelle version' : 'Enregistrer la politique officielle';
+                    versionInput.addEventListener('change', () => {
+                        const value = Number(versionInput.value);
+                        if (Number.isSafeInteger(value) && value > latest) updateVersionInDocument(value);
+                    });
+                } catch (_) {
+                    versionNotice.hidden = true;
+                }
+            }
+
+            if (preview && documentField && documentField.value.trim()) {
+                try {
+                    const payload = JSON.parse(documentField.value);
+                    const policy = payload.policy || {};
+                    const levels = Array.isArray(policy.levels) ? policy.levels : [];
+                    const rules = Array.isArray(payload.rules) ? payload.rules : [];
+                    const restricted = rules.find(rule => rule.key === 'restricted');
+                    const schools = restricted?.parameters?.schools || [];
+                    const labels = {
+                        intelligence: 'Intelligence', wisdom: 'Sagesse', charisma: 'Charisme',
+                        abjuration: 'Abjuration', conjuration: 'Invocation', divination: 'Divination',
+                        enchantment: 'Enchantement', evocation: 'Évocation', illusion: 'Illusion',
+                        necromancy: 'Nécromancie', transmutation: 'Transmutation'
+                    };
+                    const fact = (title, value) => {
+                        const el = document.createElement('div');
+                        el.className = 'spell-policy-preview-fact';
+                        const name = document.createElement('span');
+                        name.textContent = title;
+                        const content = document.createElement('strong');
+                        content.textContent = String(value);
+                        el.append(name, content);
+                        return el;
+                    };
+                    const facts = document.createElement('div');
+                    facts.className = 'spell-policy-preview-facts';
+                    facts.append(
+                        fact('Politique', policy.key || 'Non renseignée'),
+                        fact('Version', policy.version ?? '—'),
+                        fact('Incantation', labels[policy.ability] || policy.ability || '—'),
+                        fact('Apprentissage', policy.learningStyle || '—'),
+                        fact('Écoles limitées', schools.length ? schools.map(s => labels[s] || s).join(', ') : 'Aucune restriction')
+                    );
+                    facts.children[1]?.querySelector('strong')?.setAttribute('data-policy-version-value', '');
+                    preview.replaceChildren(facts);
+                    if (levels.length) {
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'spell-policy-table-wrap';
+                        const table = document.createElement('table');
+                        table.className = 'spell-policy-progress-table';
+                        const thead = document.createElement('thead');
+                        const header = document.createElement('tr');
+                        ['Niveau', 'Sort max.', 'Tours de magie', 'Sorts connus', 'Grimoire (+)', 'Remplacements'].forEach(label => {
+                            const th = document.createElement('th');
+                            th.textContent = label;
+                            header.append(th);
+                        });
+                        thead.append(header);
+                        const tbody = document.createElement('tbody');
+                        levels.forEach((level, index) => {
+                            const tr = document.createElement('tr');
+                            [index + 1, level.maxSpellLevel, level.cantrips, level.known, level.bookAdditions, level.replacements].forEach(value => {
+                                const td = document.createElement('td');
+                                td.textContent = value === null || value === undefined ? '—' : String(value);
+                                tr.append(td);
+                            });
+                            tbody.append(tr);
+                        });
+                        table.append(thead, tbody);
+                        wrapper.append(table);
+                        preview.append(wrapper);
+                    }
+                } catch (error) {
+                    preview.textContent = 'Impossible de lire le brouillon JSON. Vérifie sa structure dans la configuration avancée.';
+                }
+            }
+
+            const saveForm = document.getElementById('spell-policy-save-form');
+            saveForm?.addEventListener('submit', event => {
+                if (!versionNotice.hidden) {
+                    const value = Number(versionInput.value);
+                    const min = Number(versionInput.min);
+                    if (!Number.isSafeInteger(value) || value < min) {
+                        event.preventDefault();
+                        versionInput.setCustomValidity(`La version doit être au minimum ${min}.`);
+                        versionInput.reportValidity();
+                        versionInput.focus();
+                        return;
+                    }
+                    versionInput.setCustomValidity('');
+                    updateVersionInDocument(value);
+                }
+            });
+            versionInput?.addEventListener('input', () => versionInput.setCustomValidity(''));
+
+            const presetForm = document.getElementById('spell-policy-preset-form');
+            const thirdForm = document.getElementById('spell-policy-third-form');
+            function showCreationMode(mode) {
+                presetForm.hidden = mode !== 'preset';
+                thirdForm.hidden = mode !== 'third';
+            }
+            root.querySelectorAll('input[name="creation-mode"]').forEach(radio => {
+                radio.addEventListener('change', () => {
+                    if (radio.checked) showCreationMode(radio.value);
+                });
+            });
+
+            const requestedMode = new URLSearchParams(window.location.search).has('template') ? 'third' : 'preset';
+            const selectedRadio = root.querySelector(`input[name="creation-mode"][value="${requestedMode}"]`);
+            if (selectedRadio) selectedRadio.checked = true;
+            showCreationMode(requestedMode);
+        });
+    </script>
+{% endblock %}

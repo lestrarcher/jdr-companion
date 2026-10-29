@@ -132,6 +132,15 @@ try {
     ]];
     $session->setState($server);
     $server = $session->getState(); // Includes the character-wide inspiration projection.
+    $receiptId='7a00a010-0000-4000-8000-000000000001';
+    $receiptCommand=['revision'=>1,'requestId'=>$receiptId,'sourceKey'=>'acquisition:123','method'=>'standard-slot','castingLevel'=>1];
+    $receiptCast=['source'=>['key'=>'acquisition:123','spellId'=>12,'policyId'=>1,'sourceType'=>'class'],
+        'method'=>'standard-slot','castingLevel'=>1,'poolSlug'=>'spell-slot-1','cost'=>1];
+    $receipts=[$receiptId=>\App\Service\SpellCastReceipts::create($receiptCommand,$receiptCast)];
+    $withReceipts=$server+['spellCastReceipts'=>$receipts];
+    $session->setState($withReceipts);
+    $check($updater->merge($session,[])['spellCastReceipts']===$receipts,'Merge preserves server receipts');
+    $session->setState($server);
     $reject = static function (array $patch, int $status) use ($updater, $session, $check): void {
         $before = $session->getState();
         try {
@@ -176,9 +185,22 @@ try {
         $check($pool($result, 'spell-slot-1')['currentValue'] === $current, 'Current above natural maximum is preserved');
         $check($pool($result, 'spell-slot-5') === $server['resources'][1], 'Exhausted temporary pool remains valid');
     }
+    $session->setState($withReceipts);
+    foreach ([[],null,$receipts] as $replacement) $reject(['spellCastReceipts'=>$replacement],422);
+    $session->setState($server);
     $reject(['resources' => [['id' => 'spell-slot-5', 'currentValue' => 1]]], 403);
     $profileSerializer = new CharacterProfileSerializer($ability, $features, $resources, $hp, new CharacterSpellSlotCalculator(), new CharacterActionResolver(new CharacterActionClassRuleRepository($registry)), trainingPresenterForRegistry($registry));
-    $serializer = new CharacterSessionStateSerializer($profileSerializer, new CharacterHitPointStateService($hp), new CharacterActiveEffectRepository($registry), $slots);
+    $catalogue = new \App\Service\SpellCatalogue($db);
+    $spellAccess = new \App\Service\CharacterSpellAccessResolver($catalogue, new \App\Service\SpellSubclassGrants($db, $catalogue), $resources);
+    $acquisitions = new \App\Service\CharacterSpellAcquisitions($em, $spellAccess, $ability);
+    $directory = new \App\Service\PlayerSpellDirectory($db, $em, new \App\Service\CharacterFeatureSpellService($db, $features, $ability), $ability,
+        $spellAccess, $acquisitions, new \App\Service\CharacterSpellPreparation($acquisitions, $ability), $catalogue,
+        new \App\Service\CharacterSpellAvailabilityContext(new CharacterSpellSlotCalculator(), $slots, $resources, new TrackableResourceDefinitionRepository($registry)));
+    $serializer = new CharacterSessionStateSerializer($profileSerializer, new CharacterHitPointStateService($hp), new CharacterActiveEffectRepository($registry), $slots, $directory);
+    $session->setState($withReceipts);
+    foreach ([false,true] as $includeToken) $check(!array_key_exists('spellCastReceipts',$serializer->serialize($session,$includeToken)['state']),'Serializer hides internal receipts');
+    $check(!str_contains(json_encode($directory->forCharacter($character,$withReceipts)),'spellCastReceipts'),'Directory never exposes receipt map');
+    $check($session->getState()['spellCastReceipts']===$receipts,'Serialization preserves internal receipt map');
     $naturalProfile = $profileSerializer->serialize($character);
     $naturalResources = array_column($naturalProfile['resources'], null, 'slug');
     $check($naturalResources['spell-slot-1']['maximum'] === 4 && !isset($naturalResources['spell-slot-5']), 'Standalone profile exposes natural slots only');
@@ -218,11 +240,14 @@ try {
     $em->flush();
     $hpState = new CharacterHitPointStateService($hp);
     $rest = new CharacterRestService($hp, $hpState, $resources, $sync, new CharacterSpellSlotCalculator(), new TrackableResourceDefinitionRepository($registry), $ability, new CharacterActiveEffectRepository($registry), new CharacterActiveEffectService($hpState), $em);
-    require __DIR__ . '/test-fougue-scenarios.php';
-    require __DIR__ . '/test-lay-on-hands-scenarios.php';
-    require __DIR__ . '/test-cleric-domain-resource-scenarios.php';
-    require __DIR__ . '/test-gem-flight-scenarios.php';
-    require __DIR__ . '/test-ftd-resource-scenarios.php';
+    require __DIR__ . '/test-pact-slot-cases.php';
+    if (!in_array('--slots-only', $argv, true)) {
+        require __DIR__ . '/test-fougue-scenarios.php';
+        require __DIR__ . '/test-lay-on-hands-scenarios.php';
+        require __DIR__ . '/test-cleric-domain-resource-scenarios.php';
+        require __DIR__ . '/test-gem-flight-scenarios.php';
+        require __DIR__ . '/test-ftd-resource-scenarios.php';
+    }
     foreach ([[1, 2], [2, 0], [1, 5]] as [$bonus, $current]) {
         foreach ([1, 0] as $temporaryCurrent) {
             $initial = ['hitPoints' => ['current' => 8], 'progressions' => [['id' => 'story', 'currentValue' => 7]], 'resources' => [
@@ -237,9 +262,11 @@ try {
                 ['id' => 'spell-slot-custom', 'currentValue' => 2],
             ]];
             foreach ([RestRequest::TYPE_SHORT_REST, RestRequest::TYPE_LONG_REST] as $type) {
+                $initial['spellCastReceipts']=$receipts;
                 $session->setState($initial);
                 $rest->apply($session, $type);
                 $result = $session->getState();
+                $check($result['spellCastReceipts']===$receipts,'Both rests preserve receipts');
                 $long = $type === RestRequest::TYPE_LONG_REST;
                 $check($pool($result, 'spell-slot-1') === ($long ? ['id' => 'spell-slot-1', 'currentValue' => 4] : $initial['resources'][0]), 'Rest preserves effective slots or restores natural maximum');
                 $check($slots->effectiveMaximums($character, $result)[1] === ($long ? 4 : 4 + $bonus), 'Rest maximum matches expected');
@@ -442,7 +469,7 @@ try {
     $check($response->getStatusCode() === 409, 'Stale revision after locked refresh rejected');
     $stored = json_decode($db->fetchOne('SELECT state FROM character_session_state WHERE id = ?', [$session->getId()]), true, 512, JSON_THROW_ON_ERROR);
     $check($stored === $httpState, 'Revision conflict does not spend points or create slots');
-    echo "OK: $checks assertions; slot lifecycle, Flexible Casting, Fougue and controller scenarios passed.\n";
+    echo "OK: $checks assertions; slot lifecycle, Pact Magic, Flexible Casting and controller scenarios passed.\n";
 } finally {
     while ($db->isTransactionActive()) $db->rollBack();
     $kernel->shutdown();

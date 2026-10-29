@@ -1,0 +1,93 @@
+<main [attr.aria-busy]="loading() || saving()" [class.has-confirmation]="view()?.spellPreparationAllowed && view()?.editable && plans().length > 0">
+  <nav class="page-actions" aria-label="Navigation de préparation">
+    <a class="back-link" [routerLink]="['..']" [queryParams]="{ tab: 'spells' }" [state]="{ skipSpellPreparationRedirect: true }">← Retour aux sorts</a>
+    <button type="button" class="reload" aria-label="Actualiser les données" [disabled]="loading() || saving()" (click)="reload()"><span aria-hidden="true">↻</span> Actualiser</button>
+  </nav>
+  <h1>Préparer mes sorts</h1>
+  <p class="intro">Vos sorts actuels restent actifs jusqu’à confirmation.</p>
+  @if (loading()) { <p role="status">Chargement…</p> }
+  @if (error()) { <p class="notice error" role="alert">{{ error() }}</p> }
+  @if (conflict()) {
+    <p class="notice" role="alert">Le personnage a changé ou la préparation n’est plus disponible. Votre brouillon est conservé. Actualisez les données avant de confirmer.</p>
+  }
+  @if (view(); as data) {
+    @for (warning of data.warnings; track warning) { <p class="notice">{{ warning }}</p> }
+    @if (!data.spellPreparationAllowed) {
+      <p class="notice locked" role="status">Préparation verrouillée jusqu’au prochain repos long.</p>
+    } @else if (!data.editable) {
+      <p class="notice" role="status">La session est fermée : consultation uniquement.</p>
+    }
+    @for (plan of plans(); track plan.policyId) {
+      <section class="policy" [attr.aria-labelledby]="'policy-' + plan.policyId">
+        <header class="policy-heading">
+        <h2 [id]="'policy-' + plan.policyId">{{ plan.source }}</h2>
+        <p class="counter" [class.error]="selected(plan.policyId).length > plan.maximum" aria-live="polite">
+          {{ selected(plan.policyId).length }} / {{ plan.maximum }} préparés
+        </p>
+        </header>
+        @if (selected(plan.policyId).length > plan.maximum) {
+          @if (data.spellPreparationAllowed) {
+            <p class="error" role="alert">Quota dépassé : {{ selected(plan.policyId).length - plan.maximum }} sort(s) en trop. Choisissez les sorts à conserver avant de confirmer.</p>
+          } @else {
+            <p class="notice" role="status">Maximum actuel dépassé de {{ selected(plan.policyId).length - plan.maximum }} sort(s). Vos sorts restent utilisables ; ajustez votre sélection au prochain repos long si le dépassement persiste.</p>
+          }
+        }
+        @if (plan.blocked) { <p class="notice">Préparation indisponible : vérifiez la configuration avec le MJ.</p> }
+        @for (group of plan.groups; track group.level) {
+          <h3>Niveau {{ group.level }}</h3>
+          <div class="preparation-grid">
+            @for (spell of group.spells; track spell.id) {
+              <div class="spell-choice" [class.is-prepared]="selected(plan.policyId).includes(spell.id)">
+                @if (data.spellPreparationAllowed && data.editable) {
+                <label class="selection-row">
+                  <input type="checkbox" [checked]="selected(plan.policyId).includes(spell.id)"
+                    [disabled]="!editable() || plan.blocked" (change)="toggle(plan, spell.id)">
+                  <span>{{ spell.name }}</span>
+                </label>
+                } @else {
+                  <div class="selection-row readonly-selection">
+                    <span class="selection-indicator" aria-hidden="true">{{ selected(plan.policyId).includes(spell.id) ? '✓' : '–' }}</span>
+                    <span>{{ spell.name }}<span class="sr-only"> — {{ selected(plan.policyId).includes(spell.id) ? 'Préparé' : 'Non préparé' }}</span></span>
+                  </div>
+                }
+                @if (spellDetails(plan.policyId, spell.id); as detail) {
+                  <button type="button" class="detail-button" [attr.aria-label]="'Détails : ' + spell.name" (click)="openDetails(detail, $event)"><span aria-hidden="true">ⓘ</span></button>
+                }
+              </div>
+            }
+          </div>
+        } @empty { <p>Aucun sort éligible pour cette classe.</p> }
+      </section>
+    } @empty { <p>Aucune préparation de sorts disponible pour ce personnage.</p> }
+    @if (alwaysPrepared().length > 0) {
+      <section class="policy always-prepared">
+        <h2>Toujours préparés</h2>
+        <p>Automatiques, hors quota.</p>
+        @for (spell of alwaysPrepared(); track spell.key ?? $index) {
+          <div class="spell-choice is-prepared">
+            <div class="selection-row"><span class="selection-indicator" aria-hidden="true">✓</span><span>{{ spell.name }}<small>{{ spell.source }} · Niveau {{ spell.level }} · Toujours préparé</small></span></div>
+            @if (spell.details) { <button type="button" class="detail-button" [attr.aria-label]="'Détails : ' + spell.name" (click)="openDetails(spell, $event)"><span aria-hidden="true">ⓘ</span></button> }
+          </div>
+        }
+      </section>
+    }
+    @if (details(); as spell) {
+      <section #detailsPanel class="preparation-details" tabindex="-1" [attr.aria-label]="'Détails : ' + spell.name">
+        <button type="button" class="return-to-list" (click)="closeDetails()">← Retour à la liste</button>
+        <app-player-spells mode="details" [spells]="[]" [detailSpell]="spell" />
+        <button type="button" class="return-to-list" (click)="closeDetails()">← Retour à la liste</button>
+      </section>
+    }
+    @if (data.spellPreparationAllowed && data.editable && plans().length > 0) {
+      <footer class="confirmation-bar" aria-label="Confirmation de la préparation">
+        <div class="confirmation-summary" aria-live="polite">
+          <strong>{{ selectedCount() }} sélectionné(s)</strong>
+          @if (excessCount() > 0) { <small class="error">{{ excessCount() }} sort(s) en trop</small> }
+          @else if (saving()) { <small role="status">Confirmation en cours…</small> }
+          @else if (plans().length > 1) { <small>{{ plans().length }} classes · quotas indépendants</small> }
+        </div>
+        <button type="button" class="confirm" [disabled]="!canConfirm()" (click)="confirm()">Confirmer</button>
+      </footer>
+    }
+  }
+</main>

@@ -75,7 +75,7 @@ describe('Conversion flexible', () => {
       flexibleCastingAction: signal({ handlerType: 'flexible-casting' }), sessionStatus: signal('live'),
       saveStatus: signal('idle'), saveError: signal(null), flexibleCastingError: signal(null), flexibleCastingSaving: signal(false),
       activeAction: signal(null), actions: signal([]), characterActions: signal(null), character: signal(null),
-      inspiration: signal(false), training: signal(null), proficiencyBonus: signal(2),
+      inspiration: signal(false), training: signal(null), proficiencyBonus: signal(2), playerSpells: signal([]),
       characterStateService: { applyServerState: vi.fn() }, loadCharacter: vi.fn(),
       characterSessionStateApi: { createFlexibleCastingSlot: vi.fn(), convertFlexibleCastingSlot: vi.fn() },
     });

@@ -1,0 +1,37 @@
+{% extends 'admin/base.html.twig' %}
+{% block title %}{{ id ? values.name : 'Nouveau sort' }}{% endblock %}
+{% block body %}
+<header><a class="back-link" href="{{ path('admin_spell_list', context) }}">← Retour à la liste filtrée</a><p class="eyebrow">Sort · {{ values.origin }} · D&D {{ values.edition }}</p><h1>{{ id ? values.name : 'Nouveau sort' }}</h1></header>
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+{% if not values.editable %}<p class="muted">Ce sort officiel est en consultation. Sa modification nécessite le droit d’administration du référentiel officiel.</p>{% endif %}
+<section class="panel editor"><form method="post" data-editor data-unsaved="{{ error ? 'true' : 'false' }}">
+    <input type="hidden" name="_token" value="{{ csrf_token(tokenId) }}">
+    <fieldset {{ not values.editable ? 'disabled' : '' }}><legend>Identité et mécaniques</legend>
+    {% if not id %}<label>Slug<input name="slug" value="{{ values.slug }}" maxlength="100" pattern="[a-z0-9]+(-[a-z0-9]+)*" required></label>{% else %}<p>Slug : {{ values.slug }} · Identité d’import : {{ values.importKey ?? 'Aucune' }}</p>{% endif %}
+    <label>Nom<input name="name" value="{{ values.name }}" maxlength="150" required></label>
+    <label>Nom original<input name="originalName" value="{{ values.originalName }}" maxlength="150"></label>
+    <label>Niveau<input type="number" name="level" min="0" max="9" value="{{ values.level }}" required></label>
+    <label>École<select name="school">{% for school in schools %}<option value="{{ school.value }}" {{ values.school == school.value ? 'selected' : '' }}>{{ school.label() }}</option>{% endfor %}</select></label>
+    {% for field, label in {castingTime: 'Temps d’incantation', range: 'Portée', duration: 'Durée', description: 'Effets', higherLevels: 'Aux niveaux supérieurs', materialDescription: 'Composantes matérielles'} %}
+        <label>{{ label }}<textarea name="{{ field }}" rows="{{ field == 'description' ? 12 : 3 }}" maxlength="50000" {{ field in ['castingTime', 'range', 'duration', 'description'] ? 'required' : '' }}>{{ attribute(values, field) }}</textarea></label>
+    {% endfor %}
+    {% for field, label in {verbal: 'Composante verbale (V)', somatic: 'Composante somatique (S)', material: 'Composante matérielle (M)', materialConsumed: 'Consommation habituelle à l’incantation', concentration: 'Concentration', ritual: 'Rituel'} %}
+        <label><input type="checkbox" name="{{ field }}" value="1" {{ attribute(values, field) ? 'checked' : '' }}>{{ label }}</label>
+    {% endfor %}
+    <label>Coût matériel (pièces de cuivre, vide si inconnu)<input type="number" name="materialCostCp" min="0" max="2147483647" value="{{ values.materialCostCp }}"></label>
+    <p class="muted">Cet indicateur décrit uniquement la consommation habituelle à l’incantation. La description matérielle fait foi pour les consommations conditionnelles, partielles ou différées ; une case décochée n’exclut pas ces cas particuliers.</p>
+    <p class="muted">Sans composante M, vider sa description et son coût et décocher l’indicateur de consommation.</p>
+    {% if values.origin == 'CUSTOM' %}<label>Variante maison<input name="rulesVariant" value="{{ values.rulesVariant }}" maxlength="150"></label>{% endif %}
+    <label>Code source<input name="sourceCode" value="{{ values.sourceCode }}" maxlength="40"></label>
+    <label>Référence dans la source<input name="sourceReference" value="{{ values.sourceReference }}" maxlength="255"></label>
+    <label>URL de source<input type="url" name="sourceUrl" value="{{ values.sourceUrl }}" maxlength="2048"></label>
+    <fieldset><legend>Listes de classes</legend>
+        <p>Le sort figure dans ces listes. Cela ne l’apprend ni ne le prépare pour un personnage.</p>
+        {% for class in classes %}<label><input type="checkbox" name="classIds[]" value="{{ class.id }}" {{ class.id in values.classIds ? 'checked' : '' }}>{{ class.name }}</label>{% else %}<p>Aucune classe officielle disponible.</p>{% endfor %}
+    </fieldset>
+    {% if values.editable %}<button type="submit" name="_action" value="save">Enregistrer</button>{% endif %}
+    </fieldset>
+</form></section>
+<section class="panel"><h2>Attributions particulières de sous-classes</h2>{% if id %}<a href="{{ path('admin_spell_grants', context|merge({id: id})) }}">Gérer les attributions officielles</a>{% else %}<p>Enregistrez le sort avant de configurer ses attributions.</p>{% endif %}</section>
+{% if id and values.editable %}<section class="panel"><details><summary>Supprimer ce sort</summary><p>La suppression est définitive et sera refusée si le sort est utilisé.</p><form method="post"><input type="hidden" name="_token" value="{{ csrf_token(tokenId) }}"><button type="submit" name="_action" value="delete">Confirmer la suppression</button></form></details></section>{% endif %}
+{% endblock %}

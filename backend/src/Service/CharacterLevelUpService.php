@@ -15,6 +15,7 @@ use App\Entity\CharacterSessionState;
 use Doctrine\DBAL\LockMode;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use App\Enum\AbilityAdjustmentOperation;
+use App\Enum\Ability;
 use App\Enum\AbilityAdjustmentSource;
 use App\Enum\HitPointGainMethod;
 use App\Repository\CharacterClassLevelRuleRepository;
@@ -30,6 +31,8 @@ final readonly class CharacterLevelUpService
         private CharacterAbilityCalculator $abilityCalculator,
         private CharacterTrainingService $trainingService,
         private CharacterTrainingPresenter $trainingPresenter,
+        private ?CharacterLevelUpSpells $levelUpSpells = null,
+        private ?CharacterFeatureSpellService $featureSpells = null,
     ) {
     }
 
@@ -42,6 +45,7 @@ final readonly class CharacterLevelUpService
         ?int $hitPointGain = null,
         ?CharacterSessionState $authorization = null,
         array $training = [],
+        ?array $spellChoices = null,
     ): CharacterClassLevel {
         foreach ([$characterClass, $subclass, $advancement?->getFeat(), $character->getSubclassFor($characterClass)] as $reference) {
             if ($reference !== null) ReferenceVisibility::requireVisible($reference, $character->getCampaign()->getOwner());
@@ -55,6 +59,7 @@ final readonly class CharacterLevelUpService
             $hitPointGain,
             $authorization,
             $training,
+            $spellChoices,
         ): CharacterClassLevel {
             if ($authorization !== null) {
                 if ($authorization->getCharacter() !== $character) {
@@ -69,6 +74,10 @@ final readonly class CharacterLevelUpService
                 $this->entityManager->refresh($character);
             }
             $this->validateCharacterCanLevelUp($character);
+            if ($spellChoices !== null) {
+                if ($this->levelUpSpells === null) throw new \LogicException('Service de choix de sorts indisponible.');
+                $this->levelUpSpells->lockReferences();
+            }
             $this->validateMulticlassEligibility(
                 $character,
                 $characterClass,
@@ -76,6 +85,16 @@ final readonly class CharacterLevelUpService
 
             $stateBeforeLevelUp =
                 $this->stateSynchronizer->snapshotForLevelUp($character);
+            foreach ($stateBeforeLevelUp as &$snapshot) {
+                $sessionState = $snapshot['sessionState'];
+                $this->entityManager->lock($sessionState, LockMode::PESSIMISTIC_WRITE);
+                $this->entityManager->refresh($sessionState);
+                $state = $sessionState->getState();
+                $snapshot['before'] = $this->stateSynchronizer->snapshot(
+                    $character, $this->stateSynchronizer->extractProgressionValues($state), $state,
+                );
+            }
+            unset($snapshot);
             $previousChoices = array_column($this->trainingPresenter->choices($character), 'key');
 
             $totalLevel = $character->getNextLevelPosition();
@@ -100,6 +119,12 @@ final readonly class CharacterLevelUpService
                     $hitPointGainMethod,
                     $hitPointGain,
                 );
+
+            $hitPointDelta = $stateBeforeLevelUp === [] ? null : $this->stateSynchronizer->levelUpHitPointDelta(
+                $character,
+                $resolvedHitPointGain,
+                $this->abilityCalculator->calculate($character, Ability::Constitution, $advancement)->modifier(),
+            );
 
             if ($advancement !== null) {
                 $this->applyAdvancementChoice($character, $advancement, $totalLevel);
@@ -127,9 +152,15 @@ final readonly class CharacterLevelUpService
                 }
             }
 
+            if ($spellChoices !== null) {
+                $this->entityManager->flush();
+                $this->levelUpSpells->apply($level, $spellChoices, $authorization !== null);
+            }
+
             $this->stateSynchronizer->synchronizeAfterLevelUp(
                 $character,
                 $stateBeforeLevelUp,
+                $hitPointDelta,
             );
 
             if ($authorization !== null) {
@@ -137,6 +168,8 @@ final readonly class CharacterLevelUpService
             }
 
             $this->entityManager->flush();
+            // Materialize racial, feat and subclass spell knowledge when the level is committed.
+            $this->featureSpells?->synchronize($character);
 
             return $level;
         });

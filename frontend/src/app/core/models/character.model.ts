@@ -65,6 +65,7 @@ export interface CharacterResource {
   currentValue: number;
   maximumValue: number;
   level?: number;
+  slotPool?: { level: number | null; counterKnown: boolean };
   displayOrder: number;
   unlockCondition?: ResourceUnlockCondition;
   hiddenFromTracker?: boolean;

@@ -2,186 +2,111 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Component } from '@angular/core';
+import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { routes } from '../../app.routes';
 import { AuthService } from '@core/services/auth.service';
-import { CustomResource } from '@core/models/custom-content.model';
 import { CustomContent } from './custom-content';
+import { DefinitionManager } from './definition-manager/definition-manager';
 import { MjLayout } from '../mj-layout/mj-layout';
 
 describe('Personal custom catalogue', () => {
   let http: HttpTestingController;
   let fixture: ComponentFixture<CustomContent>;
-  const reference = { id: 1, name: 'Guerrier', slug: 'hidden-source-slug', origin: 'OFFICIAL' as const };
-  const resource: CustomResource = {
-    id: 1, name: 'Souffle', slug: 'custom-hidden-slug', description: 'Une réserve personnelle.',
-    rechargeType: 'long-rest', maximumType: 'fixed', baseMaximum: 3, multiplier: 1,
-    minimumMaximum: 0, scalingAbility: null,
-  };
-
+  const resource = { id: 1, name: 'Souffle', slug: 'private-slug', description: 'Réserve personnelle', rechargeType: 'long-rest', maximumType: 'fixed', baseMaximum: 3, multiplier: 1, minimumMaximum: 0, scalingAbility: null };
+  const feature = { id: 2, name: 'Vision', slug: 'private-feature', description: 'Fiction', resourceDefinition: null };
   beforeEach(() => {
-    TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter(routes),
-        { provide: AuthService, useValue: { isAuthenticated: () => true } }],
-    });
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter(routes),
+      { provide: AuthService, useValue: { isAuthenticated: () => true } }] });
     http = TestBed.inject(HttpTestingController);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
-  afterEach(() => http.verify());
-  function start() { fixture = TestBed.createComponent(CustomContent); fixture.detectChanges(); }
-  function root(): HTMLElement { return fixture.nativeElement; }
-  function flush(path: string, response: object) {
-    const request = http.expectOne(`/api/reference/custom/${path}`);
-    expect(request.request.method).toBe('GET');
-    request.flush(response);
+  afterEach(() => { http.verify(); vi.restoreAllMocks(); });
+  const root = (): HTMLElement => fixture.nativeElement;
+  async function settle() { fixture.detectChanges(); await fixture.whenStable(); fixture.detectChanges(); }
+  function flushPending(overrides: Record<string, object> = {}) {
+    for (const r of http.match(() => true)) {
+      expect(r.request.method).toBe('GET');
+      const path = r.request.url.split('/').at(-1)!;
+      r.flush(overrides[path] ?? { features: [], resources: [], rules: [], classes: [], subclasses: [], races: [], feats: [], progressions: [] });
+    }
     fixture.detectChanges();
   }
-  function select(label: string) {
-    const button = Array.from(root().querySelectorAll<HTMLButtonElement>('.categories button'))
-      .find(button => button.textContent?.trim() === label);
-    expect(button).toBeDefined(); button!.click(); fixture.detectChanges();
+  async function start() { fixture = TestBed.createComponent(CustomContent); fixture.detectChanges(); flushPending(); await settle(); }
+  async function select(label: string) {
+    const b = Array.from(root().querySelectorAll<HTMLButtonElement>('.categories button')).find(b => b.textContent?.trim() === label)!;
+    expect(b.disabled).toBe(false); b.click(); await settle();
   }
-  function initialEmpty() { start(); flush('features', { features: [] }); }
+  const manager = () => fixture.debugElement.query(By.directive(DefinitionManager)).componentInstance as DefinitionManager;
 
-  it('loads only the initial category, shows loading before empty, and exposes five real buttons', () => {
-    start();
-    expect(root().textContent).toContain('Chargement');
-    expect(root().textContent).not.toContain('Aucune');
-    expect(root().querySelector('section')?.getAttribute('aria-busy')).toBe('true');
-    expect(Array.from(root().querySelectorAll('.categories button')).map(button => button.textContent?.trim()))
-      .toEqual(['Historiques', 'Capacités', 'Ressources', 'Attributions de capacités', 'Règles de ressources']);
-    expect(root().querySelector('[aria-pressed="true"]')?.textContent).toContain('Capacités');
-    http.expectNone('/api/reference/custom/resources');
-    flush('features', { features: [] });
-    expect(root().textContent).toContain('Aucune capacité personnalisée.');
-    expect(root().querySelector('section')?.getAttribute('aria-busy')).toBe('false');
+  it('exposes all current categories and blocks navigation while the initial editor loads', async () => {
+    fixture = TestBed.createComponent(CustomContent); fixture.detectChanges();
+    const labels = Array.from(root().querySelectorAll<HTMLButtonElement>('.categories button'));
+    expect(labels.map(b => b.textContent?.trim())).toEqual(['Classes', 'Sous-classes', 'Races', 'Dons', 'Progressions', 'Historiques', 'Sorts', 'Capacités', 'Ressources', 'Attributions de capacités', 'Règles de ressources']);
+    expect(labels.every(b => b.disabled)).toBe(true);
+    flushPending(); await settle(); expect(labels.every(b => !b.disabled)).toBe(true);
   });
-
-  it('renders descriptive and resource-linked features without exposing slugs or empty relation labels', () => {
-    start();
-    flush('features', { features: [
-      { id: 1, name: 'Vision', description: 'Voir dans le noir.', slug: 'hidden-feature', resourceDefinition: null },
-      { id: 2, name: 'Souffle', description: null, slug: 'hidden-feature-2', resourceDefinition: { ...reference, name: 'Charges' } },
-    ] });
-    const cards = root().querySelectorAll('article');
-    expect(cards).toHaveLength(2);
-    expect(cards[0].textContent).toContain('Voir dans le noir.');
-    expect(cards[0].textContent).not.toContain('Ressource liée');
-    expect(cards[1].textContent).toContain('Ressource liée : Charges');
-    expect(root().textContent).not.toMatch(/hidden-|OFFICIAL|CUSTOM/);
+  it('opens existing personal features without exposing their immutable slug', async () => {
+    await start(); manager().load(); flushPending({ features: { features: [feature] } }); await settle();
+    root().querySelector<HTMLButtonElement>('.select-item')!.click(); await settle();
+    expect(manager().name()).toBe('Vision'); expect(manager().description()).toBe('Fiction');
+    expect(root().querySelector('[name="slug"]')).toBeNull();
   });
-
-  it('renders fixed, proficiency and ability resource mechanics and all recharge labels', () => {
-    initialEmpty(); select('Ressources');
-    flush('resources', { resources: [resource,
-      { ...resource, id: 2, maximumType: 'proficiency-bonus', baseMaximum: 0, multiplier: 2, rechargeType: 'short-rest' },
-      { ...resource, id: 3, maximumType: 'ability-modifier', scalingAbility: 'wisdom', minimumMaximum: 1, rechargeType: 'none' },
-    ] });
-    const text = root().textContent;
-    expect(text).toContain('Une réserve personnelle.');
-    expect(text).toContain('Maximum de base : 3');
-    expect(text).toContain('0 + 2 × bonus de maîtrise');
-    expect(text).toContain('3 + 1 × modificateur de Sagesse · minimum 1');
-    expect(text).toContain('Recharge : repos court');
-    expect(text).toContain('Recharge : repos long');
-    expect(text).toContain('Aucune recharge automatique');
-    expect(text).not.toContain('custom-hidden');
+  it('reloads the reused editor when switching between features and attribution types', async () => {
+    await start(); await select('Attributions de capacités');
+    const rule = { id: 4, featureDefinition: feature, source: { id: 7, type: 'progression', name: 'Corruption' }, unlockLevel: null, progressionThreshold: 0 };
+    flushPending({ 'feature-rules': { rules: [rule] } }); await settle();
+    expect(root().textContent).toContain('Vision → Corruption');
+    manager().levelFilter.set('0'); expect(manager().filtered()).toHaveLength(1);
+    await select('Règles de ressources');
+    flushPending({ 'resource-rules': { rules: [{ id: 5, resourceDefinition: resource, source: { id: 8, type: 'class', name: 'Classe' }, unlockLevel: 2, maximumBonus: 0 }] } }); await settle();
+    expect(root().textContent).toContain('Souffle → Classe'); expect(root().textContent).not.toContain('Vision → Corruption');
   });
-
-  it('renders feature assignments using names and distinguishes a zero threshold from a level', () => {
-    initialEmpty(); select('Attributions de capacités');
-    flush('feature-rules', { rules: [
-      { id: 1, featureDefinition: { ...reference, name: 'Fougue' }, source: { ...reference, type: 'class' }, unlockLevel: 2, progressionThreshold: null },
-      { id: 2, featureDefinition: { ...reference, name: 'Vignes' }, source: { ...reference, type: 'progression', name: 'Corruption' }, unlockLevel: null, progressionThreshold: 0 },
-    ] });
-    const cards = root().querySelectorAll('article');
-    expect(cards[0].textContent).toContain('Fougue → Guerrier');
-    expect(cards[0].textContent).toContain('Niveau 2');
-    expect(cards[1].textContent).toContain('Vignes → Corruption');
-    expect(cards[1].textContent).toContain('Seuil 0');
-    expect(cards[1].textContent).not.toContain('Niveau');
+  it('renders resource formulas and preserves a zero maximum', async () => {
+    await start(); await select('Ressources');
+    flushPending({ resources: { resources: [resource, { ...resource, id: 2, baseMaximum: 0, maximumType: 'proficiency-bonus', multiplier: 2, rechargeType: 'short-rest' }, { ...resource, id: 3, maximumType: 'ability-modifier', scalingAbility: 'wisdom', minimumMaximum: 1, rechargeType: 'none' }] } }); await settle();
+    expect(root().textContent).toContain('Maximum de base : 3'); expect(root().textContent).toContain('0 + 2 × bonus de maîtrise');
+    expect(root().textContent).toContain('3 + 1 × modificateur de Sagesse · minimum 1');
+    expect(root().textContent).toContain('Recharge : repos court'); expect(root().textContent).toContain('Aucune recharge automatique');
   });
-
-  it('renders resource bonuses and zero-bonus grants without a +0 label', () => {
-    initialEmpty(); select('Règles de ressources');
-    flush('resource-rules', { rules: [1, 0].map((bonus, index) => ({
-      id: index, resourceDefinition: { ...reference, name: 'Points de ki' },
-      source: { ...reference, name: 'Moine', type: 'class' }, unlockLevel: 5, maximumBonus: bonus,
-    })) });
-    expect(root().textContent).toContain('Points de ki → Moine');
-    expect(root().textContent).toContain('Niveau 5');
-    expect(root().textContent).toContain('+1 au maximum');
-    expect(root().textContent).toContain('Attribue la ressource');
-    expect(root().textContent).not.toContain('+0');
+  it('caches the parent resource collection while separately reloading editor dependencies', async () => {
+    await start(); await select('Ressources'); flushPending({ resources: { resources: [resource] } }); await settle();
+    await select('Capacités'); flushPending(); await settle(); await select('Ressources');
+    http.expectNone('/api/reference/custom/resources'); expect(root().textContent).toContain('Souffle');
   });
-
-  it.each([
-    ['Ressources', 'resources', 'resources', 'Aucune ressource personnalisée.'],
-    ['Attributions de capacités', 'feature-rules', 'rules', 'Aucune attribution de capacité personnalisée.'],
-    ['Règles de ressources', 'resource-rules', 'rules', 'Aucune règle de ressource personnalisée.'],
-  ])('has a dedicated empty state for %s', (label, path, key, message) => {
-    initialEmpty(); select(label); flush(path, { [key]: [] });
-    expect(root().textContent).toContain(message);
+  it('retains a draft after a refused mutation and sends no ownership fields', async () => {
+    await start(); const m = manager(); m.open(null); m.name.set('Brouillon'); m.save();
+    const r = http.expectOne('/api/reference/custom/features'); expect(r.request.method).toBe('POST');
+    expect(r.request.body).not.toHaveProperty('owner'); expect(r.request.body).not.toHaveProperty('origin');
+    r.flush({}, { status: 409, statusText: 'Conflict' }); await settle();
+    expect(m.name()).toBe('Brouillon'); expect(m.editing()).toBe(true); expect(root().textContent).toContain('conflit');
   });
-
-  it('caches completed collections locally without refetching on category changes', () => {
-    initialEmpty(); select('Ressources'); flush('resources', { resources: [resource] });
-    select('Capacités'); select('Ressources');
-    http.expectNone('/api/reference/custom/resources');
-    expect(root().textContent).toContain('Souffle');
-    expect(root().textContent).not.toContain('Chargement');
+  it('protects an unsaved feature when changing categories', async () => {
+    await start(); manager().open(null); manager().name.set('Brouillon'); vi.mocked(window.confirm).mockReturnValue(false);
+    await select('Ressources'); expect(manager().name()).toBe('Brouillon'); http.expectNone('/api/reference/custom/resources');
   });
-
-  it('keeps concurrent responses attached to their own category', () => {
-    start(); select('Ressources');
-    flush('features', { features: [] });
-    expect(root().textContent).toContain('Chargement');
-    expect(root().textContent).not.toContain('Aucune capacité');
-    flush('resources', { resources: [resource] });
-    expect(root().textContent).toContain('Souffle');
+  it('isolates a resource load error and retries without mutating data', async () => {
+    await start(); await select('Ressources');
+    http.expectOne('/api/reference/custom/resources').flush({}, { status: 500, statusText: 'Error' }); await settle();
+    expect(root().textContent).toContain('Impossible de charger'); root().querySelector<HTMLButtonElement>('.collection-state button')!.click();
+    flushPending(); await settle(); expect(root().querySelector('[role="alert"]')).toBeNull();
   });
-
-  it('isolates failures and retries only the failed collection', () => {
-    start();
-    http.expectOne('/api/reference/custom/features').flush({}, { status: 500, statusText: 'Error' });
-    fixture.detectChanges();
-    expect(root().querySelector('[role="alert"]')?.textContent).toContain('Impossible de charger');
-    expect(root().textContent).not.toContain('Aucune capacité');
-    select('Ressources'); flush('resources', { resources: [] }); select('Capacités');
-    root().querySelector<HTMLButtonElement>('.collection-state button')!.click(); fixture.detectChanges();
-    expect(root().textContent).toContain('Chargement');
-    flush('features', { features: [] });
-    expect(root().querySelector('[role="alert"]')).toBeNull();
+  it('cancels all pending requests when the catalogue and its editor are destroyed', () => {
+    fixture = TestBed.createComponent(CustomContent); fixture.detectChanges();
+    const requests = http.match(() => true); expect(requests.length).toBeGreaterThan(0);
+    fixture.destroy(); expect(requests.every(r => r.cancelled)).toBe(true);
   });
-
-  it('offers consultation only, with no editor or mutation actions', () => {
-    initialEmpty();
-    expect(root().querySelectorAll('form, input, textarea, dialog')).toHaveLength(0);
-    expect(root().querySelectorAll('button')).toHaveLength(5);
-    expect(root().textContent).not.toMatch(/Créer|Modifier|Supprimer/);
-  });
-
-  it('cancels pending HTTP when the catalogue is destroyed', () => {
-    start(); const request = http.expectOne('/api/reference/custom/features');
-    fixture.destroy(); expect(request.cancelled).toBe(true);
-  });
-
-  it('opens the real guarded route inside the MJ navigation without a campaign', async () => {
+  it('opens the guarded route without a campaign context', async () => {
     const harness = await RouterTestingHarness.create('/custom-content');
-    const request = http.expectOne('/api/reference/custom/features');
-    expect(request.request.method).toBe('GET'); request.flush({ features: [] });
+    for (const r of http.match(() => true)) { expect(r.request.url).toMatch(/^\/api\/reference\/custom\//); r.flush({ features: [], resources: [], classes: [], hitDice: [], spellcastingProgressions: [] }); }
     harness.detectChanges();
-    const page = harness.routeNativeElement!;
-    expect(page.querySelector('h1')?.textContent).toBe('Contenu personnalisé');
-    expect(page.querySelector('.primary-navigation a[href="/custom-content"]')?.textContent).toContain('Contenu personnalisé');
-    expect(page.querySelector('.breadcrumbs')?.textContent).toContain('Contenu personnalisé');
-    expect(page.querySelector('.breadcrumbs')?.textContent).not.toContain('Campagnes');
-    expect(routes.find(route => route.path === '')?.canActivate).toHaveLength(1);
-    http.expectNone('/api/campaigns');
+    expect(harness.routeNativeElement!.querySelector('h1')?.textContent).toBe('Référentiel des personnages');
+    expect(harness.routeNativeElement!.querySelector('.breadcrumbs')?.textContent).not.toContain('Campagnes');
+    expect(routes.find(r => r.path === '')?.canActivate).toHaveLength(1); http.expectNone('/api/campaigns');
   });
 });
-
 @Component({ template: '<h1>Campagne de test</h1>' })
 class CampaignPlaceholder {}
 
@@ -198,9 +123,9 @@ describe('Custom catalogue navigation context', () => {
     const campaignRequest = http.expectOne('/api/campaigns');
     await harness.navigateByUrl('/custom-content');
     expect(campaignRequest.cancelled).toBe(true);
-    http.expectOne('/api/reference/custom/features').flush({ features: [] });
+    for (const r of http.match(() => true)) r.flush({ features: [], resources: [] });
     harness.detectChanges();
-    expect(harness.routeNativeElement!.querySelector('.breadcrumbs')?.textContent).toContain('Contenu personnalisé');
+    expect(harness.routeNativeElement!.querySelector('.breadcrumbs')?.textContent).toContain('Référentiel D&D');
     expect(harness.routeNativeElement!.querySelector('.breadcrumbs')?.getAttribute('aria-busy')).toBe('false');
     expect(harness.routeNativeElement!.querySelector('.primary-navigation')?.textContent).not.toContain('Sessions');
     http.verify();

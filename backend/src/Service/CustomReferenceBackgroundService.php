@@ -20,50 +20,65 @@ final class CustomReferenceBackgroundService
 
     public function __construct(private readonly Connection $db) {}
 
-    public function list(User $owner): array
+    private function requireAdmin(User $owner): void
     {
+        if (!in_array(SpellCatalogue::ADMIN_ROLE,$owner->getRoles(),true)) throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException('Administration officielle requise.');
+    }
+
+    public function list(User $owner, bool $official=false): array
+    {
+        if ($official) {
+            $this->requireAdmin($owner);
+            return array_map(fn($row)=>$this->serialize($row,$owner,true),$this->db->fetchAllAssociative("SELECT * FROM character_background WHERE origin='OFFICIAL' AND owner_id IS NULL ORDER BY name,id"));
+        }
         return array_map(fn ($row) => $this->serialize($row, $owner), $this->db->fetchAllAssociative(
             "SELECT * FROM character_background WHERE (origin = 'OFFICIAL' AND owner_id IS NULL) OR (origin = 'CUSTOM' AND owner_id = ?) ORDER BY name, id", [$owner->getId()],
         ));
     }
 
-    public function options(User $owner): array
+    public function options(User $owner, bool $official=false): array
     {
+        if ($official) $this->requireAdmin($owner);
         $result = [];
         foreach (['proficiencies' => 'proficiency_definition', 'languages' => 'language_definition'] as $key => $table) {
-            $rows = $this->db->fetchAllAssociative("SELECT * FROM $table WHERE (origin = 'OFFICIAL' AND owner_id IS NULL) OR (origin = 'CUSTOM' AND owner_id = ?) ORDER BY name, id", [$owner->getId()]);
+            $rows = $this->db->fetchAllAssociative("SELECT * FROM $table WHERE (origin = 'OFFICIAL' AND owner_id IS NULL)".($official?'':" OR (origin = 'CUSTOM' AND owner_id = ?)").' ORDER BY name,id', $official?[]:[$owner->getId()]);
             $result[$key] = array_values(array_map(static fn ($row) => [
                 'id' => (int) $row['id'], 'name' => $row['name'], 'slug' => $row['slug'],
-                'type' => $row['type'] ?? null,
+                'type' => $row['type'] ?? null, 'origin' => $row['origin'],
             ], array_filter($rows, static fn ($row) => $key === 'languages' || in_array($row['type'], ['SKILL', 'TOOL'], true))));
         }
         return $result;
     }
 
-    public function get(int $id, User $owner): array
+    public function get(int $id, User $owner, bool $official=false): array
     {
-        return $this->serialize($this->row($id, $owner), $owner);
+        return $this->serialize($this->row($id, $owner,false,$official), $owner,$official);
     }
 
-    private function row(int $id, User $owner, bool $write = false): array
+    private function row(int $id, User $owner, bool $write = false, bool $official=false): array
     {
+        if ($official) {
+            $this->requireAdmin($owner);
+            return $this->db->fetchAssociative("SELECT * FROM character_background WHERE id=? AND origin='OFFICIAL' AND owner_id IS NULL",[$id]) ?: throw new NotFoundHttpException('Historique officiel introuvable.');
+        }
         $condition = $write ? "origin = 'CUSTOM' AND owner_id = :owner" : "((origin = 'OFFICIAL' AND owner_id IS NULL) OR (origin = 'CUSTOM' AND owner_id = :owner))";
         $row = $this->db->fetchAssociative("SELECT * FROM character_background WHERE id = :id AND $condition", ['id' => $id, 'owner' => $owner->getId()]);
         if (!$row) throw new NotFoundHttpException('Historique introuvable.');
         return $row;
     }
 
-    public function create(array $payload, User $owner): array { return $this->save(null, $payload, $owner); }
-    public function patch(int $id, array $payload, User $owner): array { return $this->save($id, $payload, $owner); }
+    public function create(array $payload, User $owner,bool $official=false): array { return $this->save(null, $payload, $owner,$official); }
+    public function patch(int $id, array $payload, User $owner,bool $official=false): array { return $this->save($id, $payload, $owner,$official); }
 
-    private function save(?int $id, array $payload, User $owner): array
+    private function save(?int $id, array $payload, User $owner,bool $official=false): array
     {
+        if ($official) $this->requireAdmin($owner);
         try {
-            return $this->db->transactional(function () use ($id, $payload, $owner): array {
-                if ($id !== null) $this->row($id, $owner, true);
+            return $this->db->transactional(function () use ($id, $payload, $owner,$official): array {
+                if ($id !== null) $this->row($id, $owner, true,$official);
                 $this->lock();
                 $current = $id === null ? array_fill_keys(array_keys(self::TEXT), null) + array_fill_keys([...array_keys(self::LISTS), ...array_keys(self::RULES)], [])
-                    : $this->get($id, $owner);
+                    : $this->get($id, $owner,$official);
                 if (array_diff(array_keys($payload), [...array_keys(self::TEXT), ...array_keys(self::LISTS), ...array_keys(self::RULES)])) throw new BadRequestHttpException('Champ inconnu ou interdit.');
                 $data = array_replace($current, $payload);
                 $columns = [];
@@ -89,11 +104,11 @@ final class CustomReferenceBackgroundService
                 if ($frozen && $data['slug'] !== $current['slug']) throw new ConflictHttpException('Cet historique est utilisé : son slug est verrouillé.');
                 foreach (self::RULES as $field => $tables) {
                     if (!array_key_exists($field, $payload)) continue;
-                    $data[$field] = $this->validateRules($data[$field], $current[$field], $field, $owner);
+                    $data[$field] = $this->validateRules($data[$field], $current[$field], $field, $owner,$official);
                     if ($frozen && $this->mechanics($data[$field]) !== $this->mechanics($current[$field])) throw new ConflictHttpException('Cet historique est utilisé : ses règles mécaniques sont verrouillées.');
                 }
                 if ($id === null) {
-                    $columns += ['origin' => 'CUSTOM', 'owner_id' => $owner->getId()];
+                    $columns += ['origin' => $official?'OFFICIAL':'CUSTOM', 'owner_id' => $official?null:$owner->getId()];
                     $names = implode(', ', array_keys($columns));
                     $marks = implode(', ', array_fill(0, count($columns), '?'));
                     $id = (int) $this->db->fetchOne("INSERT INTO character_background ($names) VALUES ($marks) RETURNING id", array_values($columns));
@@ -101,9 +116,9 @@ final class CustomReferenceBackgroundService
                     $this->db->update('character_background', $columns, ['id' => $id]);
                 }
                 foreach (self::RULES as $field => $tables) {
-                    if (array_key_exists($field, $payload)) $this->saveRules($id, $owner, $data[$field], $current[$field], $tables);
+                    if (array_key_exists($field, $payload)) $this->saveRules($id, $owner, $data[$field], $current[$field], $tables,$official);
                 }
-                return $this->get($id, $owner);
+                return $this->get($id, $owner,$official);
             });
         } catch (UniqueConstraintViolationException $error) {
             throw new ConflictHttpException('Ce slug est déjà utilisé. Choisissez un autre slug.', $error);
@@ -120,10 +135,10 @@ final class CustomReferenceBackgroundService
         return $result;
     }
 
-    private function validateRules(mixed $rules, array $current, string $field, User $owner): array
+    private function validateRules(mixed $rules, array $current, string $field, User $owner,bool $official=false): array
     {
         if (!is_array($rules) || !array_is_list($rules) || count($rules) > 100) throw new BadRequestHttpException('Liste de règles invalide.');
-        $available = array_column($this->options($owner)[$field === 'languageRules' ? 'languages' : 'proficiencies'], null, 'id');
+        $available = array_column($this->options($owner,$official)[$field === 'languageRules' ? 'languages' : 'proficiencies'], null, 'id');
         $existing = array_column($current, null, 'id');
         $seen = $fixed = $slots = [];
         foreach ($rules as &$rule) {
@@ -169,7 +184,7 @@ final class CustomReferenceBackgroundService
         return $rules;
     }
 
-    private function saveRules(int $backgroundId, User $owner, array $rules, array $current, array $tables): void
+    private function saveRules(int $backgroundId, User $owner, array $rules, array $current, array $tables,bool $official=false): void
     {
         [$table, $join, $definition] = $tables;
         $retained = array_column($rules, 'id');
@@ -177,8 +192,8 @@ final class CustomReferenceBackgroundService
         foreach ($rules as $rule) {
             $id = $rule['id'];
             if ($id === null) {
-                $id = (int) $this->db->fetchOne("INSERT INTO $table (import_key, label, unlock_level, choice_count, origin, owner_id, character_background_id) VALUES (?, ?, 1, ?, 'CUSTOM', ?, ?) RETURNING id",
-                    ['custom-background-'.bin2hex(random_bytes(16)), $rule['label'], $rule['choiceCount'], $owner->getId(), $backgroundId]);
+                $id = (int) $this->db->fetchOne("INSERT INTO $table (import_key, label, unlock_level, choice_count, origin, owner_id, character_background_id) VALUES (?, ?, 1, ?, ?, ?, ?) RETURNING id",
+                    [($official?'official':'custom').'-background-'.bin2hex(random_bytes(16)), $rule['label'], $rule['choiceCount'], $official?'OFFICIAL':'CUSTOM', $official?null:$owner->getId(), $backgroundId]);
             } else {
                 $this->db->update($table, ['label' => $rule['label'], 'choice_count' => $rule['choiceCount']], ['id' => $id]);
             }
@@ -188,12 +203,13 @@ final class CustomReferenceBackgroundService
         }
     }
 
-    public function delete(int $id, User $owner): void
+    public function delete(int $id, User $owner,bool $official=false): void
     {
-        $this->db->transactional(function () use ($id, $owner): void {
-            $this->row($id, $owner, true);
+        if ($official) $this->requireAdmin($owner);
+        $this->db->transactional(function () use ($id, $owner,$official): void {
+            $this->row($id, $owner, true,$official);
             $this->lock();
-            $record = $this->get($id, $owner);
+            $record = $this->get($id, $owner,$official);
             if ($record['mechanicsLocked']) throw new ConflictHttpException('Cet historique est utilisé ou possède des dépendances protégées.');
             $this->db->delete('character_background', ['id' => $id]);
         });
@@ -213,10 +229,10 @@ final class CustomReferenceBackgroundService
             || (bool) $this->db->fetchOne('SELECT 1 FROM expertise_grant_rule WHERE character_background_id = ? LIMIT 1', [$id]);
     }
 
-    private function serialize(array $row, User $owner): array
+    private function serialize(array $row, User $owner,bool $official=false): array
     {
         $id = (int) $row['id'];
-        $data = ['id' => $id, 'origin' => $row['origin'], 'mechanicsLocked' => $row['origin'] === 'OFFICIAL' || $this->used($id)];
+        $data = ['id' => $id, 'origin' => $row['origin'], 'mechanicsLocked' => (!$official && $row['origin'] === 'OFFICIAL') || $this->used($id)];
         foreach (self::TEXT as $field => $column) $data[$field] = $row[$column];
         foreach (self::LISTS as $field => $column) $data[$field] = json_decode($row[$column], true, 512, JSON_THROW_ON_ERROR);
         foreach (self::RULES as $field => [$table, $join, $definition]) {

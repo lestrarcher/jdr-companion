@@ -1,3 +1,4 @@
+import { REFERENCE_READ_ONLY } from '@core/services/reference-editor-context';
 import { afterNextRender, Component, DestroyRef, ElementRef, inject, Injector, output, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -13,6 +14,9 @@ import { CustomContentApiService } from '@core/services/custom-content-api.servi
 })
 export class BackgroundEditor {
   private readonly api = inject(CustomContentApiService);
+  readonly official = this.api.scope === 'official';
+  readonly contextReadOnly = inject(REFERENCE_READ_ONLY);
+  readOnly(): boolean { return this.contextReadOnly || this.selected() !== null && (this.selected()!.origin === 'OFFICIAL') !== this.official; }
   private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
   private readonly nameInput = viewChild<ElementRef<HTMLInputElement>>('nameInput');
@@ -26,6 +30,8 @@ export class BackgroundEditor {
   readonly error = signal('');
   readonly feedback = signal('');
   readonly items = signal<CustomBackground[]>([]);
+  search = '';
+  filteredItems() { return this.items().filter(item => item.name.toLocaleLowerCase('fr').includes(this.search.toLocaleLowerCase('fr'))); }
   readonly options = signal<BackgroundOptions>({ proficiencies: [], languages: [] });
   readonly opened = signal(false);
   readonly selected = signal<CustomBackground | null>(null);
@@ -53,10 +59,10 @@ export class BackgroundEditor {
       });
   }
   canDiscard(): boolean {
-    return !this.busy() && (!this.opened() || this.selected()?.origin === 'OFFICIAL' || JSON.stringify(this.draft) === this.original || window.confirm('Abandonner les modifications non enregistrées ?'));
+    return !this.busy() && (!this.opened() || this.readOnly() || JSON.stringify(this.draft) === this.original || window.confirm('Abandonner les modifications non enregistrées ?'));
   }
   open(item: CustomBackground | null, event: Event): void {
-    if (!this.canDiscard()) return;
+    if ((!item && this.contextReadOnly) || !this.canDiscard()) return;
     this.trigger = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
     this.selected.set(item);
     const { id, origin, mechanicsLocked, ...payload } = item ?? { ...this.blank(), id: null, origin: 'CUSTOM', mechanicsLocked: false };
@@ -78,14 +84,15 @@ export class BackgroundEditor {
   addRule(key: 'proficiencyRules' | 'languageRules'): void {
     this.draft[key].push({ id: null, label: '', choiceCount: 0, optionIds: [] });
   }
-  ruleOptions(key: 'proficiencyRules' | 'languageRules', rule: BackgroundRule) {
-    if (key === 'languageRules') return this.options().languages;
+  ruleOptions(key: 'proficiencyRules' | 'languageRules', rule: BackgroundRule, search = '') {
+    const matches = (option: { id: number; name: string }) => rule.optionIds.includes(option.id) || option.name.toLocaleLowerCase('fr').includes(search.toLocaleLowerCase('fr'));
+    if (key === 'languageRules') return this.options().languages.filter(matches);
     const first = this.options().proficiencies.find(option => option.id === rule.optionIds[0]);
-    return this.options().proficiencies.filter(option => !first || option.type === first.type);
+    return this.options().proficiencies.filter(option => (!first || option.type === first.type) && matches(option));
   }
   private setBusy(value: boolean): void { this.busy.set(value); this.busyChange.emit(value); }
   save(): void {
-    if (this.busy() || this.selected()?.origin === 'OFFICIAL') return;
+    if (this.busy() || this.readOnly()) return;
     this.setBusy(true); this.error.set('');
     const { slug, proficiencyRules, languageRules, ...descriptive } = this.draft;
     this.api.saveBackground(this.selected()?.id ?? null, this.selected()?.mechanicsLocked ? descriptive : this.draft)
@@ -100,7 +107,7 @@ export class BackgroundEditor {
       });
   }
   remove(item: CustomBackground): void {
-    if (this.busy() || item.origin !== 'CUSTOM' || item.mechanicsLocked || !window.confirm(`Supprimer « ${item.name} » et ses règles ?`)) return;
+    if (this.busy() || (item.origin === 'OFFICIAL') !== this.official || item.mechanicsLocked || !window.confirm(`Supprimer « ${item.name} » et ses règles ?`)) return;
     this.setBusy(true); this.error.set('');
     this.api.deleteBackground(item.id).pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.setBusy(false))).subscribe({
       next: () => { this.items.update(items => items.filter(old => old.id !== item.id)); this.feedback.set('Historique supprimé.'); this.createButton()?.nativeElement.focus(); },

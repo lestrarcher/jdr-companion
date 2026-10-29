@@ -1,0 +1,59 @@
+<section>
+  <a href="/dnd/reference">Retour au référentiel</a>
+  <h1>Politiques de magie personnelles</h1>
+  <p>Éditeur avancé de configurations versionnées. Une nouvelle version ne remplace pas la politique des personnages existants. Les références officielles sont consultables ici ; leur administration est réservée au parcours administrateur.</p>
+  @if (error()) { <p role="alert">{{ error() }}</p> }
+  @if (success()) { <p role="status">{{ success() }}</p> }
+  @if (options(); as data) {
+    @if (data.migrationRequired) { <p role="status">La migration des politiques avancées est en attente. Enregistrement indisponible.</p> }
+    <fieldset [disabled]="busy()">
+      <legend>Préparer un préréglage sans l’enregistrer</legend>
+      <label>Classe personnelle<select [(ngModel)]="presetClassId"><option [ngValue]="0">Choisir</option>@for (r of data.classes; track r.id) { @if (r.origin === 'CUSTOM') { <option [ngValue]="r.id">{{ r.name }}</option> } }</select></label>
+      <label>Préréglage<select [(ngModel)]="preset"><option value="artificer">Artificier</option><option value="warlock">Occultiste et Arcanums</option><option value="druid">Druide</option><option value="sorcerer">Ensorceleur</option></select></label>
+      <label><input type="checkbox" [(ngModel)]="tasha"> Remplacement facultatif Tasha explicitement activé (hors Artificier)</label>
+      <button type="button" (click)="preview()" [disabled]="!presetClassId">Préparer le brouillon</button>
+    </fieldset>
+    <app-policy-guide [document]="document" [references]="references" [disabled]="busy() || data.migrationRequired" (changed)="document=$event" />
+    <form (ngSubmit)="save()">
+      <fieldset [disabled]="busy() || data.migrationRequired">
+        <label for="policy-kind">Configuration</label>
+        <select id="policy-kind" name="kind" [(ngModel)]="kind">
+          <option value="policy">Politique et règles de choix</option>
+          <option value="substitution">Règle de substitution d’attribution</option>
+        </select>
+        <button type="button" (click)="newDocument()">Nouveau document de ce type</button>
+        <label for="policy-document">Document de configuration</label>
+        <textarea id="policy-document" name="document" [(ngModel)]="document" rows="22" spellcheck="false"></textarea>
+        <button type="submit">Créer cette version</button>
+      </fieldset>
+    </form>
+    <details><summary>Identifiants des références accessibles</summary>
+      <h2>Classes</h2>
+      @for (item of data.classes; track item.id) { <p>{{ item.id }} — {{ item.name }} ({{ item.origin }})</p> }
+      <h2>Sous-classes</h2>
+      @for (item of data.subclasses; track item.id) { <p>{{ item.id }} — {{ item.name }} ({{ item.origin }})</p> }
+      <h2>Attributions</h2>
+      @for (item of data.grants; track item.id) { <p>{{ item.id }} — {{ item.name }} ({{ item.origin }})</p> }
+    </details>
+    <h2>Versions des politiques</h2>
+    @for (item of data.policies; track item.id) {
+      <article>
+        <p>{{ item.sourceName }} — version {{ item.version }} ({{ item.origin }})</p>
+        @if (item.origin === 'CUSTOM') {
+          <button type="button" [disabled]="busy()" (click)="edit(item, 'policy')">Préparer une nouvelle version</button>
+        }
+        <details><summary>Configuration</summary><pre>{{ item.document | json }}</pre></details>
+      </article>
+    }
+    <h2>Versions des substitutions</h2>
+    @for (item of data.substitutions; track item.id) {
+      <article>
+        <p>Règle {{ item.id }} — version {{ item.version }} ({{ item.origin }})</p>
+        @if (item.origin === 'CUSTOM') {
+          <button type="button" [disabled]="busy()" (click)="edit(item, 'substitution')">Préparer une nouvelle version</button>
+        }
+        <details><summary>Configuration</summary><pre>{{ item.document | json }}</pre></details>
+      </article>
+    }
+  } @else if (busy()) { <p role="status">Chargement…</p> }
+</section>

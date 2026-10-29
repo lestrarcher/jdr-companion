@@ -1,0 +1,101 @@
+<?php
+declare(strict_types=1);
+// Included by test-fixed-feature-spell-sync.php: synthetic entities, temporary tables only.
+$abilityCalculator=new App\Service\CharacterAbilityCalculator();
+$featureResolver=new App\Service\CharacterFeatureResolver(new App\Repository\CharacterFeatureRuleRepository($registry));
+$resourceResolver=new App\Service\CharacterResourceResolver(new App\Repository\TrackableResourceRuleRepository($registry),$abilityCalculator,$featureResolver,$em);
+$slotCalculator=new App\Service\CharacterSpellSlotCalculator();
+$slotState=new App\Service\CharacterSpellSlotStateService($slotCalculator);
+$definitions=new App\Repository\TrackableResourceDefinitionRepository($registry);
+$contextBuilder=new App\Service\CharacterSpellAvailabilityContext($slotCalculator,$slotState,$resourceResolver,$definitions);
+$hp=new App\Service\CharacterHitPointCalculator($abilityCalculator); $hpState=new App\Service\CharacterHitPointStateService($hp);
+$synchronizer=new App\Service\CharacterSessionStateSynchronizer($hp,$hpState,$resourceResolver,new App\Repository\CharacterSessionStateRepository($registry),$slotState);
+$evaluator=new App\Service\CharacterSpellCastAvailability();
+$resource->setBaseMaximum(1);
+$secondResource=new App\Entity\TrackableResourceDefinition('fixture-second-cast','Second independent use',App\Enum\ResourceRechargeType::LongRest);
+$secondResource->setBaseMaximum(1);
+foreach ([$secondResource,App\Entity\TrackableResourceRule::forFeat($resource,$feat),App\Entity\TrackableResourceRule::forFeat($secondResource,$feat)] as $entity) $em->persist($entity);
+$em->flush();
+foreach ([$grantId=>$resource->getId(),$choiceId=>$secondResource->getId()] as $g=>$r) {
+    $db->update('feature_spell_grant',['casting_rules'=>json_encode(['version'=>1,'methods'=>[['kind'=>'resource','cost'=>1,'castingLevel'=>2]]]),'resource_definition_id'=>$r,'casting_ability'=>'INT'],['id'=>$g]);
+}
+$resolved=$resolveCasting->resolve($character,$grantId);
+$chosenResolved=$resolveCasting->resolve($character,$choiceId);
+$empty=['resources'=>[],'hitPoints'=>['current'=>1,'temporary'=>0],'hitDice'=>[],'progressions'=>[]];
+$beforeReads=$snapshot(); $beforeAcquisitions=$rows();
+$decision=$evaluator->evaluateResolvedFeature($resolved,$contextBuilder->build($character,$empty));
+$check($decision['status']==='unknown' && $decision['methods'][0]['reason']==='missing_counter','Assigned resource without session counter is unknown');
+$check($snapshot()===$beforeReads && $rows()===$beforeAcquisitions && $empty['resources']===[],'Availability read never initializes resources');
+$initialized=$synchronizer->synchronizeResources($character,$empty);
+$poolValues=static fn(array $state): array => array_column($state['resources'],'currentValue','id');
+$check($poolValues($initialized)[$resource->getSlug()]===1 && $poolValues($initialized)[$secondResource->getSlug()]===1,'Two independent uses initialized at maximum');
+$check($synchronizer->synchronizeResources($character,$initialized)===$initialized,'Initialization is idempotent');
+$check($synchronizer->synchronizeResources($other,$empty)['resources']===[],'Unassigned character receives no resource');
+$unassigned=$evaluator->evaluateResolvedFeature($resolved,$contextBuilder->build($other,$initialized));
+$check($unassigned['status']==='unavailable' && $unassigned['methods'][0]['reason']==='inactive_pool','A historical full counter does not establish resource attribution');
+$spent=$initialized;
+foreach ($spent['resources'] as &$counter) if ($counter['id']===$resource->getSlug()) $counter['currentValue']=0;
+unset($counter);
+$context=$contextBuilder->build($character,$spent);
+$first=$evaluator->evaluateResolvedFeature($resolved,$context); $second=$evaluator->evaluateResolvedFeature($chosenResolved,$context);
+$check($first['status']==='unavailable' && $first['methods'][0]['reason']==='exhausted' && $second['status']==='available','Using one pool leaves the other available');
+$check($second['methods'][0]['castingLevel']===2 && $second['methods'][0]['cost']===1,'Configured resource cost and casting level preserved');
+$expensive=$chosenResolved; $expensive['methods'][0]['cost']=2;
+$check($evaluator->evaluateResolvedFeature($expensive,$context)['methods'][0]['reason']==='insufficient_resource','Positive remainder below configured cost is unavailable');
+foreach ([-1,'1',1.5,2] as $invalid) {
+    $invalidState=$empty; $invalidState['resources']=[['id'=>$resource->getSlug(),'currentValue'=>$invalid]];
+    $check($evaluator->evaluateResolvedFeature($resolved,$contextBuilder->build($character,$invalidState))['status']==='unknown','Invalid resource counter never available');
+}
+$duplicate=$initialized; $duplicate['resources'][]=$initialized['resources'][0];
+$check($evaluator->evaluateResolvedFeature($resolved,$contextBuilder->build($character,$duplicate))['status']==='unknown','Duplicate counter rejected');
+$unknown=$resolved; $unknown['methods'][0]['resourceDefinitionId']=2147483647;
+$check($evaluator->evaluateResolvedFeature($unknown,$context)['methods'][0]['reason']==='resource_not_resolved','Unknown resource definition never available');
+$duplicateContext=$context; $duplicateContext['resources'][]=$context['resources'][0];
+$ambiguousId=$context['resources'][0]['definitionId']; $ambiguous=$resolved; $ambiguous['methods'][0]['resourceDefinitionId']=$ambiguousId;
+$check($evaluator->evaluateResolvedFeature($ambiguous,$duplicateContext)['methods'][0]['reason']==='ambiguous_resource','Ambiguous resource attribution rejected');
+foreach (['provenance_ambiguous','provenance_missing','ability_choice_missing','casting_rules_missing'] as $reason) {
+    $blocked=array_replace($resolved,['status'=>'unknown','reason'=>$reason]);
+    $decision=$evaluator->evaluateResolvedFeature($blocked,$context);
+    $check($decision['status']==='unknown' && $decision['methods']===[],'Unresolved configuration blocks every method: '.$reason);
+}
+$restricted=array_replace($resolved,['restrictions'=>'Uninterpreted condition','requiresRestrictionReview'=>true]);
+$check($evaluator->evaluateResolvedFeature($restricted,$context)['reason']==='restrictions_pending_review','Descriptive restrictions block methods');
+$check($synchronizer->synchronizeResources($character,$spent)===$spent,'Synchronization preserves zero');
+// Replace only the chosen spell, keeping the same grant and its resource identity.
+$newSpell=(new App\Service\SpellCatalogue($db))->create(['slug'=>'replacement-fixture','name'=>'Replacement','level'=>2,'school'=>'conjuration','castingTime'=>'1 action','range'=>'Self','duration'=>'Instantaneous','description'=>'Fixture','classIds'=>[]],$owner,true);
+foreach ($spent['resources'] as &$counter) $counter['currentValue']=0; unset($counter);
+$db->update('character_feature_spell',['spell_id'=>$newSpell['id']],['character_id'=>$character->getId(),'grant_id'=>$choiceId]);
+$check($synchronizer->synchronizeResources($character,$spent)===$spent,'Choice replacement does not replenish either resource');
+$check($evaluator->evaluateResolvedFeature($resolveCasting->resolve($character,$choiceId),$contextBuilder->build($character,$spent))['status']==='unavailable','Replacement spell uses the same exhausted pool');
+$rest=new App\Service\CharacterRestService($hp,$hpState,$resourceResolver,$synchronizer,$slotCalculator,$definitions,$abilityCalculator,new App\Repository\CharacterActiveEffectRepository($registry),new App\Service\CharacterActiveEffectService($hpState),$em);
+$game=new App\Entity\GameSession($campaign,'grant-rest-fixture','Grant rest');
+$session=new App\Entity\CharacterSessionState($game,$character,$spent); $em->persist($game); $em->persist($session); $em->flush();
+$rest->apply($session,App\Entity\RestRequest::TYPE_SHORT_REST);
+$check($poolValues($session->getState())===$poolValues($spent),'Short rest does not recover long-rest grant uses');
+$rest->apply($session,App\Entity\RestRequest::TYPE_LONG_REST);
+$check($poolValues($session->getState())[$resource->getSlug()]===1 && $poolValues($session->getState())[$secondResource->getSlug()]===1,'Long rest restores both independent uses');
+$resource->setRechargeType(App\Enum\ResourceRechargeType::ShortRest);
+$em->flush();
+$session->setState($spent);
+$rest->apply($session,App\Entity\RestRequest::TYPE_SHORT_REST);
+$check($poolValues($session->getState())[$resource->getSlug()]===1,'Short rest restores a grant only when its resource specifies short rest');
+$slotsResolution=$resolved; $slotsResolution['methods']=[['kind'=>'standard-slot','minimumCastingLevel'=>2]];
+$slotContext=['standardSlots'=>[]];
+foreach(range(1,9) as $n) $slotContext['standardSlots'][]=['slug'=>'spell-slot-'.$n,'level'=>$n,'applicable'=>$n<=3,'maximum'=>$n<=3?2:0,'remaining'=>$n===2?0:2,'status'=>$n===2?'unavailable':'available','reason'=>$n===2?'exhausted':null,'issues'=>[]];
+$slotsDecision=$evaluator->evaluateResolvedFeature($slotsResolution,$slotContext);
+$check(array_column($slotsDecision['methods'],'castingLevel')===[2,3],'Lower and structurally absent slot levels omitted');
+$check(array_column($slotsDecision['methods'],'status')===['unavailable','available'],'Exhausted and available standard levels remain distinct');
+$check(array_unique(array_column($slotsDecision['methods'],'kind'))===['standard-slot'],'No implicit pact or ritual');
+$combined=$resolved; $combined['methods'][]=['kind'=>'standard-slot','minimumCastingLevel'=>2];
+$combinedContext=$context; $combinedContext['standardSlots']=$slotContext['standardSlots'];
+$combinedDecision=$evaluator->evaluateResolvedFeature($combined,$combinedContext);
+$check($combinedDecision['status']==='available' && $combinedDecision['methods'][0]['reason']==='exhausted','Explicit standard slots remain available when the grant use is exhausted');
+$resourceOnly=$evaluator->evaluateResolvedFeature($resolved,$combinedContext);
+$check(count($resourceOnly['methods'])===1 && $resourceOnly['status']==='unavailable','Full slots never imply unconfigured slot permission');
+$slotContext['standardSlots'][2]['status']='unknown'; $slotContext['standardSlots'][2]['reason']='missing_counter'; $slotContext['standardSlots'][2]['remaining']=null;
+$check($evaluator->evaluateResolvedFeature($slotsResolution,$slotContext)['status']==='unknown','Compatible unknown slot dominates exhausted slots');
+$em->remove($subclassRule); $em->flush();
+$inactive=$resolveCasting->resolve($character,$grantId);
+$check($evaluator->evaluateResolvedFeature($inactive,$contextBuilder->build($character,$session->getState()))['methods']===[],'Inactive feature cannot use a full assigned resource');
+$eligibility=(new App\Service\CharacterSpellCastEligibility())->evaluate(['sourceType'=>'feature','level'=>2,'known'=>true],null,null);
+$check($evaluator->evaluate(['sourceType'=>'feature','level'=>2,'castingEligibility'=>$eligibility],$context)['reason']==='grant_rules_pending','Existing public evaluator stays blocked');

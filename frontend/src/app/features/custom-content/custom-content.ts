@@ -1,20 +1,23 @@
 import { afterNextRender, Component, computed, DestroyRef, ElementRef, inject, Injector, signal, viewChild } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { finalize, map, Observable, Subscription } from 'rxjs';
+import { finalize, map, Observable, of, Subscription } from 'rxjs';
 import { CustomResource, CustomScalingAbility } from '@core/models/custom-content.model';
 import { CustomContentApiService } from '@core/services/custom-content-api.service';
 import { ResourceEditor } from './resource-editor/resource-editor';
 import { BackgroundEditor } from './background-editor/background-editor';
+import { SpellEditor } from './spell-editor/spell-editor';
+import { DefinitionManager } from './definition-manager/definition-manager';
+import { CatalogueManager } from './catalogue-manager/catalogue-manager';
 
-type Category = 'features' | 'resources' | 'feature-rules' | 'resource-rules' | 'backgrounds';
+type Category = 'features' | 'resources' | 'feature-rules' | 'resource-rules' | 'backgrounds' | 'spells' | 'classes' | 'subclasses' | 'races' | 'feats' | 'progressions';
 interface CatalogueItem { id: number; title: string; description?: string | null; details: string[]; resource?: CustomResource }
 interface CollectionState { status: 'idle' | 'loading' | 'ready' | 'error'; items: CatalogueItem[] }
 const emptyCollection = (): CollectionState => ({ status: 'idle', items: [] });
 
 @Component({
   selector: 'app-custom-content',
-  imports: [ResourceEditor, BackgroundEditor],
+  imports: [ResourceEditor, BackgroundEditor, SpellEditor, DefinitionManager, CatalogueManager],
   templateUrl: './custom-content.html',
   styleUrl: './custom-content.scss',
 })
@@ -24,30 +27,58 @@ export class CustomContent {
   private readonly injector = inject(Injector);
   private readonly resourceEditor = viewChild(ResourceEditor);
   private readonly backgroundEditor = viewChild(BackgroundEditor);
+  private readonly spellEditor = viewChild(SpellEditor);
+  private readonly definitionManager = viewChild(DefinitionManager);
+  private readonly catalogueManager = viewChild(CatalogueManager);
+  protected readonly definitionBusy = signal(false);
+  protected readonly catalogueBusy = signal(false);
+  protected readonly spellBusy = signal(false);
   protected readonly backgroundBusy = signal(false);
   private readonly createButton = viewChild<ElementRef<HTMLButtonElement>>('createResource');
   private editorTrigger: HTMLElement | null = null;
   private readonly pendingCollections: Partial<Record<Category, Subscription>> = {};
   protected readonly editor = signal<{ resource: CustomResource | null } | null>(null);
   protected readonly deletingId = signal<number | null>(null);
-  protected readonly busy = computed(() => this.backgroundBusy() || this.deletingId() !== null || !!this.resourceEditor()?.saving());
+  protected readonly busy = computed(() => this.spellBusy() || this.backgroundBusy() || this.definitionBusy() || this.catalogueBusy() || this.deletingId() !== null || !!this.resourceEditor()?.saving());
   protected readonly feedback = signal<string | null>(null);
   protected readonly mutationError = signal<string | null>(null);
   protected readonly categories: { id: Category; label: string; empty: string }[] = [
+    { id: 'classes', label: 'Classes', empty: 'Aucune classe personnelle.' },
+    { id: 'subclasses', label: 'Sous-classes', empty: 'Aucune sous-classe personnelle.' },
+    { id: 'races', label: 'Races', empty: 'Aucune race personnelle.' },
+    { id: 'feats', label: 'Dons', empty: 'Aucun don personnel.' },
+    { id: 'progressions', label: 'Progressions', empty: 'Aucune progression personnelle.' },
     { id: 'backgrounds', label: 'Historiques', empty: 'Aucun historique disponible.' },
+    { id: 'spells', label: 'Sorts', empty: 'Aucun sort disponible.' },
     { id: 'features', label: 'Capacités', empty: 'Aucune capacité personnalisée.' },
     { id: 'resources', label: 'Ressources', empty: 'Aucune ressource personnalisée.' },
     { id: 'feature-rules', label: 'Attributions de capacités', empty: 'Aucune attribution de capacité personnalisée.' },
     { id: 'resource-rules', label: 'Règles de ressources', empty: 'Aucune règle de ressource personnalisée.' },
   ];
   protected readonly active = signal<Category>('features');
+  protected readonly catalogueSearch = signal('');
+  protected readonly selectedCatalogueId = signal<number | null>(null);
   private readonly collections = signal<Record<Category, CollectionState>>({
+    classes: emptyCollection(), subclasses: emptyCollection(), races: emptyCollection(), feats: emptyCollection(), progressions: emptyCollection(),
     backgrounds: { status: 'ready', items: [] },
+    spells: { status: 'ready', items: [] },
     features: emptyCollection(), resources: emptyCollection(),
     'feature-rules': emptyCollection(), 'resource-rules': emptyCollection(),
   });
   protected readonly current = computed(() => this.collections()[this.active()]);
   protected readonly category = computed(() => this.categories.find(category => category.id === this.active())!);
+  protected readonly filteredCatalogueItems = computed(() => {
+    const query = this.catalogueSearch().trim().toLocaleLowerCase('fr');
+    const items = this.current().items;
+    if (!query) return items;
+    return items.filter(item => [item.title, item.description ?? '', ...item.details]
+      .some(value => value.toLocaleLowerCase('fr').includes(query)));
+  });
+  protected readonly selectedCatalogueItem = computed(() =>
+    this.current().items.find(item => item.id === this.selectedCatalogueId()) ?? null
+  );
+
+  protected selectCatalogueItem(id: number): void { this.selectedCatalogueId.set(id); }
 
   constructor() { this.load('features'); }
 
@@ -55,10 +86,15 @@ export class CustomContent {
     if (category === this.active() || this.busy()) return;
     if (this.resourceEditor() && !this.resourceEditor()!.canDiscard()) return;
     if (this.backgroundEditor() && !this.backgroundEditor()!.canDiscard()) return;
+    if (this.spellEditor() && !this.spellEditor()!.canDiscard()) return;
+    if (this.definitionManager() && !this.definitionManager()!.canDiscard()) return;
+    if (this.catalogueManager() && !this.catalogueManager()!.canDiscard()) return;
     this.editor.set(null);
     this.feedback.set(null); this.mutationError.set(null);
     this.active.set(category);
-    if (this.collections()[category].status === 'idle') this.load(category);
+    this.catalogueSearch.set('');
+    this.selectedCatalogueId.set(null);
+    if (!['classes', 'subclasses', 'races', 'feats', 'progressions'].includes(category) && this.collections()[category].status === 'idle') this.load(category);
   }
 
   protected retry(): void { this.load(this.active()); }
@@ -151,7 +187,9 @@ export class CustomContent {
 
   private request(category: Category): Observable<CatalogueItem[]> {
     switch (category) {
+      case 'spells': return of([]);
       case 'backgrounds': return this.api.backgrounds().pipe(map(() => []));
+      case 'classes': case 'subclasses': case 'races': case 'feats': case 'progressions': return of([]);
       case 'features': return this.api.features().pipe(map(items => items.map(item => ({
         id: item.id, title: item.name, description: item.description,
         details: item.resourceDefinition ? [`Ressource liée : ${item.resourceDefinition.name}`] : [],

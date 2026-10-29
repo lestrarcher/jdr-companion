@@ -1,0 +1,77 @@
+@let currentCharacter = character();
+
+<section class="profile-section">
+  <header class="section-header">
+    <div>
+      <span class="eyebrow">Jauges calculées</span>
+      <h3>Ressources</h3>
+    </div>
+
+    <span class="section-count">{{ currentCharacter.resources.length }}</span>
+  </header>
+
+  <div class="resource-grid">
+    @for (resource of currentCharacter.resources; track resource.slug) {
+      <article class="resource-card">
+        <div>
+          <strong>{{ resource.name }}</strong>
+          <span>{{ rechargeLabel(resource.rechargeType) }}</span>
+        </div>
+
+        <b>{{ resource.maximum }}</b>
+      </article>
+    } @empty {
+      <p class="section-empty">Aucune ressource débloquée.</p>
+    }
+  </div>
+</section>
+
+<section class="profile-section">
+  <header class="section-header">
+    <div>
+      <span class="eyebrow">Progression automatique</span>
+      <h3>Capacités débloquées</h3>
+    </div>
+
+    <span class="section-count">{{ currentCharacter.features.length }}</span>
+  </header>
+
+  <div class="feature-list">
+    @for (feature of currentCharacter.features; track feature.slug) {
+      <details class="feature-card">
+        <summary>
+          <div class="feature-title">
+            <span class="feature-source">
+              {{ featureSourceLabel(feature.sourceType) }}
+              · {{ feature.sourceName }} · niveau {{ feature.unlockLevel }}
+            </span>
+
+            <h4>{{ feature.name }}</h4>
+          </div>
+
+          <div class="feature-badges">
+            <span>{{ activationLabel(feature.activationType) }}</span>
+
+            @if (feature.resource) {
+              <span class="resource-label">
+                {{ feature.resource.name }}
+              </span>
+            }
+
+            @if (feature.custom) {
+              <span>Personnalisée</span>
+            }
+          </div>
+        </summary>
+
+        @if (feature.description) {
+          <p>{{ feature.description }}</p>
+        } @else {
+          <p class="empty-description">Aucune description renseignée.</p>
+        }
+      </details>
+    } @empty {
+      <p class="section-empty">Aucune capacité n’est encore attribuée à ce personnage.</p>
+    }
+  </div>
+</section>

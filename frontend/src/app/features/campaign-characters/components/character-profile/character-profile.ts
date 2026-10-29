@@ -12,6 +12,12 @@ import { AbilityKey } from '@core/services/dnd-reference-api.service';
   styleUrl: './character-profile.scss',
 })
 export class CharacterProfile {
+  protected readonly proficiencyGroups = [
+    { label: 'Compétences', types: ['SKILL'] },
+    { label: 'Jets de sauvegarde', types: ['SAVING_THROW'] },
+    { label: 'Outils', types: ['TOOL'] },
+    { label: 'Armes et armures', types: ['WEAPON', 'WEAPON_GROUP', 'ARMOR'] },
+  ];
   readonly character = input.required<CharacterProfileModel>();
   readonly canLevelUp = input(false);
   readonly loading = input(false);

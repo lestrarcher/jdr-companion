@@ -1,0 +1,26 @@
+{% extends 'admin/base.html.twig' %}
+{% block title %}Sorts{% endblock %}
+{% block body %}
+<header><p class="eyebrow">Référentiel D&D 2014</p><h1>Sorts</h1></header>
+<div class="actions">
+    <a href="{{ path('admin_spell_new', context) }}">Créer un sort officiel</a>
+</div>
+<form class="panel" method="get" action="{{ path('admin_spell_list') }}">
+    <label>Nom ou slug<input name="q" value="{{ context.q|default('') }}" maxlength="200"></label>
+    <label>Niveau<select name="level"><option value="">Tous</option>{% for level in 0..9 %}<option value="{{ level }}" {{ context.level is defined and context.level == level ? 'selected' : '' }}>{{ level == 0 ? 'Sort mineur' : level }}</option>{% endfor %}</select></label>
+    <label>École<select name="school"><option value="">Toutes</option>{% for school in schools %}<option value="{{ school.value }}" {{ context.school|default('') == school.value ? 'selected' : '' }}>{{ school.label() }}</option>{% endfor %}</select></label>
+    <label>Liste de classe<select name="classId"><option value="">Toutes</option>{% for class in classes %}<option value="{{ class.id }}" {{ context.classId|default('') == class.id ? 'selected' : '' }}>{{ class.name }}</option>{% endfor %}</select></label>
+    <label>Code source<input name="source" value="{{ context.source|default('') }}" maxlength="40"></label>
+    <input type="hidden" name="pageSize" value="{{ context.pageSize }}">
+    <button type="submit">Rechercher</button> <a href="{{ path('admin_spell_list') }}">Réinitialiser</a>
+</form>
+<section class="panel"><h2>{{ result.total }} sort(s)</h2><div class="table-scroll"><table>
+    <thead><tr><th>Nom</th><th>Niveau</th><th>École</th><th>Origine</th><th>Source</th></tr></thead>
+    <tbody>{% for spell in result.spells %}<tr><td><a href="{{ path('admin_spell_edit', context|merge({id: spell.id})) }}">{{ spell.name }}</a>{% if not spell.editable %} <span class="muted">Lecture seule</span>{% endif %}</td><td>{{ spell.level }}</td><td>{% for school in schools %}{% if school.value == spell.school %}{{ school.label() }}{% endif %}{% endfor %}</td><td>{{ spell.origin }}</td><td>{{ spell.sourceCode }}</td></tr>
+    {% else %}<tr><td colspan="5">Aucun sort ne correspond aux critères.</td></tr>{% endfor %}</tbody>
+</table></div><nav class="pagination" aria-label="Pagination">
+    {% if result.page > 1 %}<a rel="prev" href="{{ path('admin_spell_list', context|merge({page: result.page - 1})) }}">Précédent</a>{% endif %}
+    <span>Page {{ result.page }}</span>
+    {% if result.page * result.pageSize < result.total %}<a rel="next" href="{{ path('admin_spell_list', context|merge({page: result.page + 1})) }}">Suivant</a>{% endif %}
+</nav></section>
+{% endblock %}

@@ -1,0 +1,133 @@
+<div class="spell-page">
+  @if (initializationPending()) {
+    <div class="initialization-banner">
+      <div><strong>Votre magie reste à initialiser</strong><p>Il vous reste des sorts à choisir pour ce personnage.</p></div>
+      <a [routerLink]="['/campaigns', campaignId(), 'characters', character().id, 'spell-initialization']">Continuer l’initialisation →</a>
+    </div>
+  }
+  <section class="feature-spell-panel" aria-label="Sorts accordés par les capacités">
+    <div class="feature-spell-heading"><div><h3>Sorts des capacités</h3><p>Sorts raciaux, dons et autres capacités, indépendants des quotas de classe.</p></div>
+    </div>
+    @if (featureError()) { <p class="spell-error" role="alert">{{ featureError() }}</p> }
+    @if (featureSpells().pending.length) {
+      <h4>Choix à effectuer ({{ featureSpells().pending.length }})</h4>
+      @for (grant of featureSpells().pending; track grant.grantId) {
+        <div class="feature-spell-choice">
+          <div><strong>{{ grant.featureName }}</strong><p>Choix {{ $index + 1 }} sur {{ featureSpells().pending.length }} en attente · Sort de niveau {{ grant.spellLevel }} · {{ abilityLabel(grant.castingAbility) }}</p></div>
+          @if (!featureOptions()[grant.grantId]) {
+            <button type="button" (click)="loadFeatureOptions(grant.grantId)">Choisir un sort</button>
+          } @else {
+            @if (featureOptions()[grant.grantId].length === 0) { <p>Aucun autre sort éligible pour ce choix.</p> }
+            <select aria-label="Sort à apprendre" #spellChoice (change)="selectFeatureSpell(grant.grantId, spellChoice.value)">
+              <option value="">Sélectionner un sort…</option>
+              @for (option of featureOptions()[grant.grantId]; track option.id) { <option [value]="option.id">{{ option.name }}</option> }
+            </select>
+            <button type="button" [disabled]="!selectedFeatureSpells()[grant.grantId] || featureBusy()" (click)="chooseFeatureSpell(grant.grantId)">Confirmer</button>
+          }
+        </div>
+      }
+    }
+    @if (featureSpells().known.length) {
+      <p class="feature-spell-count">{{ featureSpells().known.length }} attribution(s) enregistrée(s), affichée(s) dans la liste ci-dessous.</p>
+      @for (grant of featureSpells().known; track grant.grantId) {
+        <div class="feature-spell-choice"><div><strong>{{ grant.spellName }}</strong>
+          <p>{{ grant.featureName }} · {{ abilityLabel(grant.castingAbility) }} · DD {{ grant.spellSaveDc ?? '—' }} · Attaque {{ signedBonus(grant.spellAttackBonus) }}</p>
+        </div></div>
+      }
+    }
+  </section>
+  <header class="spell-heading"><div><p class="eyebrow">GRIMOIRE & MAGIE</p><h2>Sorts du personnage</h2><p class="muted">Acquisitions de classe et sorts octroyés par les capacités.</p></div><span class="spell-count">{{ entries().length }} {{ entries().length === 1 ? 'sort' : 'sorts' }}</span></header>
+  @if (policies().length || spellSlotMaximums().length) {
+    <section class="casting-summary" aria-label="Statistiques d’incantation">
+      <h3>Incantation</h3>
+      @for (policy of castingPolicies(); track policy.policyId) {
+        <section class="casting-policy" [attr.aria-label]="policy.className">
+          <h4>{{ policy.className }}</h4>
+          <div class="casting-stats">
+            <div><span>Caractéristique d’incantation</span><strong>{{ abilityLabel(policy.data.ability) }}</strong></div>
+            <div><span>DD de sauvegarde des sorts</span><strong>{{ policy.data.spellSaveDc ?? '—' }}</strong></div>
+            <div><span>Bonus d’attaque magique</span><strong>{{ signedBonus(policy.data.spellAttackBonus) }}</strong></div>
+          </div>
+        </section>
+      }
+        <div class="casting-slots">
+          <span>Emplacements maximums (hors session)</span>
+          <ul class="slot-maximums">
+            @for (slot of spellSlotMaximums(); track slot.level) {
+              <li class="slot-maximum" [attr.aria-label]="'Niveau ' + slot.level + ' : ' + slot.maximum + ' emplacements maximums (hors session)'">
+                <span class="slot-level" aria-hidden="true">Niveau {{ slot.level }}</span>
+                <span class="slot-symbols" aria-hidden="true">
+                  @for (symbol of '●'.repeat(slot.maximum); track $index) {
+                    <span class="slot-symbol"></span>
+                  }
+                </span>
+                <strong class="slot-total" aria-hidden="true">{{ slot.maximum }}</strong>
+              </li>
+            } @empty {
+              <li>Aucun emplacement standard.</li>
+            }
+          </ul>
+        </div>
+    </section>
+  }
+  @if (error()) { <p role="alert" class="spell-error">{{ error() }}</p> }
+  @if (loading()) { <p role="status" class="spell-empty">Chargement des sorts…</p> }
+  @else {
+    @if ((policies().length || featureSpells().known.length) && entries().length === 0) { <p class="spell-empty">Aucun sort acquis ou accordé n'est actuellement renseigné pour ce personnage.</p> }
+    @if (!policies().length && !featureSpells().known.length && !featureSpells().pending.length) { <p class="spell-empty">Aucun sort ni choix de capacité disponible.</p> }
+    @if (entries().length) {
+      <div class="spell-layout">
+      <div class="spell-list">
+      <div class="spell-filters" aria-label="Filtrer par niveau"><button type="button" [class.active]="selectedLevel() === null" (click)="selectedLevel.set(null)">Tous</button>@for (level of levels();track level) {<button type="button" [class.active]="selectedLevel() === level" (click)="selectedLevel.set(level)">{{ level === 0 ? 'Tours de magie' : 'Niveau ' + level }}</button>}</div>
+      @for (group of groups(); track group.level) {
+        <section class="spell-group"><div class="group-title"><h3>{{ group.level === 0 ? 'Tours de magie' : 'Sorts de niveau ' + group.level }}</h3><span>{{ group.spells.length }}</span></div>
+          <div class="spell-grid">@for (spell of group.spells; track spell.id + '-' + spell.origin) {
+            <article class="spell-card" role="button" tabindex="0" [class.selected]="selectedSpell() === spell" [attr.aria-pressed]="selectedSpell() === spell" aria-controls="spell-detail" (click)="selectedSpell.set(spell)" (keydown.enter)="selectedSpell.set(spell)" (keydown.space)="$event.preventDefault(); selectedSpell.set(spell)">
+              <div class="spell-card-content">
+                <span class="spell-icon-placeholder" aria-hidden="true"><span class="spell-icon-rune">✧</span></span>
+                <div class="spell-card-body">
+                  <div class="spell-card-top"><h4>{{ spell.name }}</h4><span class="spell-level">{{ spell.level === 0 ? 'Tour' : 'Niv. ' + spell.level }}</span></div>
+                  <p class="spell-school">{{ schoolLabel(spell.detail?.school) }}</p>
+                  <p class="spell-origin">{{ spell.origin }}</p>
+                  <div class="spell-tags">@if (spell.action) {<span class="spell-tag action-tag">{{ spell.action }}</span>}@if (spell.ritual) {<span class="spell-tag">✦ Rituel</span>}@if (spell.concentration) {<span class="spell-tag">◷ Concentration</span>}</div>
+                </div>
+              </div>
+            </article>
+          }</div></section>
+      }
+      </div>
+      <aside id="spell-detail" class="spell-detail" aria-label="Détail du sort" aria-live="polite">
+        @if (selectedSpell(); as selected) {
+          <div class="spell-detail-header">
+            <div class="spell-detail-meta">
+              <span class="spell-detail-school">{{ schoolLabel(selected.detail?.school) }}</span>
+              <span class="spell-detail-level">{{ selected.level === 0 ? 'Tour de magie' : 'Niveau ' + selected.level }} · {{ selected.origin }}</span>
+            </div>
+            <h3>{{ selected.name }}</h3>
+          </div>
+          @if (selected.detail; as detail) {
+            <dl class="spell-properties">
+              <div class="spell-property"><dt>Temps d’incantation</dt><dd>{{ detail.castingTime || detail.casting_time || detail.castingTimeText || detail.casting_time_text || '—' }}</dd></div>
+              <div class="spell-property"><dt>Portée</dt><dd>{{ detail.range || '—' }}</dd></div>
+              <div class="spell-property"><dt>Composantes</dt><dd>{{ components(detail) }}</dd></div>
+              <div class="spell-property"><dt>Durée</dt><dd>{{ detail.duration || '—' }}</dd></div>
+            </dl>
+            @if (detail.materialDescription) {<p class="spell-material"><strong>Matériel :</strong> {{ detail.materialDescription }}</p>}
+            @if (detail.concentration ?? detail.is_concentration) {<div class="spell-detail-tags"><span class="spell-tag">◷ Concentration</span></div>}
+            @if (detail.ritual ?? detail.is_ritual) {<div class="spell-detail-tags"><span class="spell-tag">✦ Rituel</span></div>}
+            @if (detail.description) {
+              <section class="spell-description"><h4>Description</h4><p class="spell-text">{{ detail.description }}</p></section>
+            }
+            @if (detail.higherLevels) {
+              <section class="spell-description"><h4>Aux niveaux supérieurs</h4><p class="spell-text">{{ detail.higherLevels }}</p></section>
+            }
+          } @else {<p class="muted">Détails du catalogue indisponibles.</p>}
+        } @else {
+          <div class="spell-detail-placeholder"><span aria-hidden="true">✧</span><h3>Détail du sort</h3><p class="muted">Sélectionnez un sort pour consulter ses détails.</p></div>
+        }
+      </aside>
+      </div>
+    }
+  }
+  <nav class="spell-actions" aria-label="Gestion des sorts"><h3>Gestion des sorts</h3><div class="spell-action-links"><a [routerLink]="['/campaigns', campaignId(), 'characters', character().id, 'spellbook']">Copies de grimoire ↗</a><a [routerLink]="['/campaigns', campaignId(), 'characters', character().id, 'spell-revision']">Réviser les acquisitions ↗</a><a [routerLink]="['/campaigns', campaignId(), 'characters', character().id, 'spell-substitutions']">Substitutions ↗</a></div><app-spell-historical [characterId]="character().id" (saved)="historicalSaved()" /></nav>
+</div>

@@ -1,0 +1,126 @@
+<div class="revision-page">
+  <a class="back-link" [routerLink]="['/campaigns', campaignId, 'characters', characterId]">← Retour au personnage</a>
+
+  <header class="page-heading">
+    <p class="eyebrow">GRIMOIRE & MAGIE</p>
+    <h1>Corriger les acquisitions</h1>
+    <p>Cette opération remplace la sélection complète de la classe. Elle ne reconstitue pas les contraintes historiques de chaque niveau ; les décisions antérieures restent conservées.</p>
+  </header>
+
+  @if (error()) { <p class="notice error" role="alert">{{ error() }}</p> }
+  @if (success()) { <p class="notice success" role="status">{{ success() }}</p> }
+  @if (busy()) { <p class="notice" role="status">Chargement…</p> }
+
+  <fieldset class="panel" [disabled]="busy()">
+    <legend>Voie d'incantation</legend>
+    <label for="source-policy">Classe</label>
+    <select id="source-policy" [(ngModel)]="policyId" (ngModelChange)="load()">
+      <option [ngValue]="0">Sélectionner une classe</option>
+      @for (policy of policies(); track policy.className) {
+        @if (policy.policyIds.length === 1) {
+          <option [ngValue]="policy.policyIds[0]">{{ policy.className }}</option>
+        }
+      }
+    </select>
+  </fieldset>
+
+  @if (options(); as data) {
+    <fieldset class="panel" [disabled]="busy()">
+      <legend>Nouvelle sélection complète</legend>
+      <label for="target-policy">Politique cible</label>
+      <select id="target-policy" [(ngModel)]="targetPolicyId" (ngModelChange)="targetChanged()">
+        @for (target of data.targets; track target.id) {
+          <option [ngValue]="target.id">{{ target.label }}</option>
+        }
+      </select>
+
+      <div class="section-heading">
+        <h2>Sorts sélectionnés</h2>
+        <span class="counter">{{ selected().length }}</span>
+      </div>
+      @if (selected().length === 0) {
+        <p class="empty">Aucun sort sélectionné.</p>
+      } @else {
+        <div class="selected-list">
+          @for (spell of selected(); track spell.id) {
+            <div class="selected-item">
+              <div class="spell-name">{{ spell.name }}</div>
+              @if (advanced) {
+                <div class="rule-field">
+                  <label [for]="'rule-' + spell.id">Règle d'acquisition</label>
+                  <select [id]="'rule-' + spell.id" [ngModel]="selectedRule(spell.id)"
+                          (ngModelChange)="setRule(spell.id, $event)"
+                          [class.invalid]="selectedRule(spell.id) === null">
+                    <option [ngValue]="null">Choisir une règle…</option>
+                    @for (rule of rulesFor(spell.id); track rule.ruleId) {
+                      <option [ngValue]="rule.ruleId">{{ ruleLabel(rule) }}</option>
+                    }
+                  </select>
+                  @if (rulesFor(spell.id).length === 0) {
+                    <small class="warning">Aucune règle éligible pour ce sort avec la politique cible.</small>
+                  }
+                </div>
+              }
+              <button type="button" class="button-subtle" (click)="remove(spell.id)" [attr.aria-label]="'Retirer ' + spell.name">Retirer</button>
+            </div>
+          }
+        </div>
+      }
+
+      <form class="search-form" (ngSubmit)="search()">
+        <label for="spell-query">Rechercher dans le catalogue</label>
+        <div class="search-row">
+          <input id="spell-query" name="query" [(ngModel)]="query" maxlength="200" placeholder="Nom du sort…">
+          <button type="submit" class="button-primary">Rechercher</button>
+        </div>
+      </form>
+      <p class="hint">Les résultats du catalogue ne garantissent pas l'éligibilité. Les règles et quotas sont vérifiés lors de l'enregistrement.</p>
+      @if (results().length) {
+        <div class="search-results">
+          @for (spell of results(); track spell.id) {
+            <div class="result-item">
+              <div><strong>{{ spell.name }}</strong><span class="spell-level">{{ spell.level === 0 ? 'Tour de magie' : 'Niveau ' + spell.level }}</span></div>
+              <button type="button" class="button-subtle" (click)="add(spell)">Ajouter</button>
+            </div>
+          }
+        </div>
+      }
+
+      <div class="decision">
+        <label class="checkline">
+          <input type="checkbox" [(ngModel)]="overrideRules" (ngModelChange)="changed()">
+          <span>Dérogation MJ : autoriser une exception d'éligibilité ou de quota.</span>
+        </label>
+        <p class="hint">La propriété, la visibilité, les doublons et l'intégrité restent contrôlés. Une dérogation ne remplace pas la sélection explicite d'une règle.</p>
+
+        <label for="revision-reason">Motif obligatoire</label>
+        <textarea id="revision-reason" [(ngModel)]="reason" (ngModelChange)="changed()" maxlength="10000" rows="3" placeholder="Pourquoi cette sélection est-elle corrigée ?"></textarea>
+
+        <label class="checkline confirm">
+          <input type="checkbox" [(ngModel)]="confirmed">
+          <span>Je confirme le remplacement de toutes les acquisitions courantes de cette classe par cette sélection.</span>
+        </label>
+        @if (advanced && !rulesComplete) {
+          <p class="warning">Choisis une règle éligible pour chaque sort avant d'enregistrer.</p>
+        }
+        <button type="button" class="button-primary save" (click)="save()"
+                [disabled]="busy() || !policyOptions() || !rulesComplete || !confirmed || !reason.trim()">
+          Enregistrer la révision
+        </button>
+      </div>
+    </fieldset>
+
+    <section class="history panel">
+      <h2>Journal des révisions</h2>
+      @if (data.history.length === 0) { <p class="empty">Aucune révision enregistrée.</p> }
+      @for (entry of data.history; track entry.id) {
+        <div class="history-item">
+          <strong>{{ entry.override_rules ? 'Dérogation MJ' : 'Correction stricte' }}</strong>
+          <span>{{ entry.decided_at }}</span>
+          <p>{{ entry.reason }}</p>
+          <small>{{ entry.retired_count }} décisions archivées · {{ entry.created_count }} nouvelles</small>
+        </div>
+      }
+    </section>
+  }
+</div>

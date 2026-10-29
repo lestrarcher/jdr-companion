@@ -1,0 +1,57 @@
+@if (loading()) { <p class="state" role="status">Chargement des choix initiaux…</p> }
+@if (error()) { <div class="state error" role="alert">{{ error() }} <button type="button" (click)="retry()" [disabled]="loading() || saving()">Réessayer</button></div> }
+@if (totalLevel() === 1 && preview() && categories().length) {
+<section class="initialization" aria-label="Initialisation de la magie">
+  @if (!pending()) {
+    <div class="finished"><span aria-hidden="true">✧</span><h2>Votre magie est initialisée</h2><p>Tous les choix de classe sont enregistrés.</p></div>
+  } @else {
+    <header class="intro"><p class="eyebrow">PERSONNALISATION MAGIQUE</p><h2>Choisissez vos sorts</h2><p>Vos choix peuvent être enregistrés progressivement. Les sorts raciaux et la préparation seront gérés séparément.</p></header>
+    <nav class="category-tabs" aria-label="Catégories de sorts">
+      @for (category of categories(); track category.key) {
+        <button type="button" [class.active]="activeCategory() === category.key" (click)="activeCategory.set(category.key); search.set('')">
+          <span>{{ category.label.split('—').pop() }}</span><strong>{{ category.used }}/{{ category.total }}</strong>
+        </button>
+      }
+    </nav>
+    @for (category of categories(); track category.key) {
+      @if (activeCategory() === category.key) {
+        <div class="category-body">
+          <div class="category-heading"><div><h3>{{ category.label }}</h3><p>{{ category.restrictions }}</p></div><strong>{{ category.remaining }} restant(s)</strong></div>
+          @if (category.remaining > 0) {
+            <label class="search-label" [for]="'spell-search-' + category.key">Rechercher un sort</label>
+            <input class="search" [id]="'spell-search-' + category.key" type="search" placeholder="Nom ou école de magie…" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+            <div class="spell-choices">
+              @for (spell of filteredSpells(category); track spell.id) {
+                <article class="spell-choice" [class.chosen]="(selection()[category.key] ?? []).includes(spell.id)" [class.acquired]="isAcquired(category, spell.id)">
+                  <button type="button" class="choose" [attr.aria-pressed]="(selection()[category.key] ?? []).includes(spell.id)" [attr.aria-label]="isAcquired(category, spell.id) ? spell.name + ' — déjà acquis' : spell.name + ' — sélectionner'" [disabled]="isAcquired(category, spell.id) || saving() || loading() || (!(selection()[category.key] ?? []).includes(spell.id) && selectedCount(category) >= category.remaining)" (click)="toggle(category.key, spell.id)">
+                    <span class="choice-mark" aria-hidden="true">{{ isAcquired(category, spell.id) ? '✓' : (selection()[category.key] ?? []).includes(spell.id) ? '✓' : '+' }}</span>
+                    <span class="choice-info"><strong>{{ spell.name }}</strong><small>{{ spell.level === 0 ? 'Tour de magie' : 'Niveau ' + spell.level }} · {{ spell.school }}</small>@if (isAcquired(category, spell.id)) { <span class="acquired-label">Déjà acquis</span> }</span>
+                  </button>
+                  <button type="button" class="details-toggle" [attr.aria-expanded]="expandedSpell() === spell.id" [attr.aria-controls]="'initial-spell-detail-' + spell.id" (click)="expandedSpell.set(expandedSpell() === spell.id ? null : spell.id)">
+                    {{ expandedSpell() === spell.id ? 'Masquer les détails' : 'Voir les détails' }}
+                  </button>
+                  @if (expandedSpell() === spell.id) {
+                    <section class="spell-extra" [id]="'initial-spell-detail-' + spell.id" [attr.aria-label]="'Détails de ' + spell.name">
+                      <dl class="spell-facts">
+                        <div><dt>Incantation</dt><dd>{{ spell.castingTime || '—' }}</dd></div>
+                        <div><dt>Portée</dt><dd>{{ spell.range || '—' }}</dd></div>
+                        <div><dt>Durée</dt><dd>{{ spell.duration || '—' }}</dd></div>
+                        <div><dt>Composantes</dt><dd>{{ spell.verbal ? 'V' : '' }}{{ spell.somatic ? ' S' : '' }}{{ spell.material ? ' M' : '' }}{{ !spell.verbal && !spell.somatic && !spell.material ? '—' : '' }}</dd></div>
+                      </dl>
+                      @if (spell.ritual || spell.concentration) { <p class="spell-flags">{{ spell.ritual ? 'Rituel' : '' }}{{ spell.ritual && spell.concentration ? ' · ' : '' }}{{ spell.concentration ? 'Concentration' : '' }}</p> }
+                      @if (spell.materialDescription) { <p><strong>Matériel :</strong> {{ spell.materialDescription }}</p> }
+                      @if (spell.description) { <p class="spell-description">{{ spell.description }}</p> } @else { <p class="spell-muted">Description indisponible.</p> }
+                      @if (spell.higherLevels) { <p class="spell-description"><strong>Aux niveaux supérieurs :</strong> {{ spell.higherLevels }}</p> }
+                    </section>
+                  }
+                </article>
+              } @empty { <p class="state">Aucun sort ne correspond à cette recherche.</p> }
+            </div>
+            <div class="save-bar"><span>{{ selectedCount(category) }} / {{ category.remaining }} sélectionné(s)</span><button type="button" (click)="save(category)" [disabled]="saving() || loading() || !selectedCount(category) || selectedCount(category) > category.remaining">{{ saving() ? 'Enregistrement…' : 'Enregistrer mes choix' }}</button></div>
+          } @else { <p class="state">Cette catégorie est terminée.</p> }
+        </div>
+      }
+    }
+  }
+</section>
+}

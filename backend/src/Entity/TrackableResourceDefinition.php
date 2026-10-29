@@ -92,6 +92,11 @@ class TrackableResourceDefinition
     #[ORM\Column]
     private bool $custom = false;
 
+    #[ORM\Column(options: ['default' => false])]
+    private bool $hiddenFromTracker = false;
+
+    public function isHiddenFromTracker(): bool { return $this->hiddenFromTracker; }
+
     #[ORM\Column]
     private \DateTimeImmutable $createdAt;
 

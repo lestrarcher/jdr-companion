@@ -1,0 +1,170 @@
+<section class="reference-manager">
+  <aside class="reference-manager__sidebar">
+    <header class="sidebar-header">
+      <div>
+        <span class="eyebrow">Bibliothèque</span>
+        <h2>Sorts</h2>
+      </div>
+      <button #createButton type="button" class="icon-button" title="Créer un sort" aria-label="Créer un sort" [disabled]="contextReadOnly || busy() || loading()" (click)="open(null, $event)">+</button>
+    </header>
+
+    <form class="filters" (ngSubmit)="load()">
+      <fieldset [disabled]="busy() || loading()">
+        <legend>Rechercher des sorts</legend>
+        <label class="field">Nom ou slug<input name="q" [(ngModel)]="filters.q" maxlength="200" placeholder="Rechercher un sort…"></label>
+        <div class="filter-grid">
+          <label class="field">Niveau<select name="level" [(ngModel)]="filters.level"><option value="">Tous</option>@for (level of [0,1,2,3,4,5,6,7,8,9]; track level) { <option [value]="level">{{ level === 0 ? 'Sort mineur' : level }}</option> }</select></label>
+          <label class="field">École<select name="school" [(ngModel)]="filters.school"><option value="">Toutes</option>@for (school of options().schools; track school.value) { <option [value]="school.value">{{ school.label }}</option> }</select></label>
+          @if (!viewOrigin) { <label class="field">Origine<select name="origin" [(ngModel)]="filters.origin"><option value="">Toutes</option><option value="OFFICIAL">Officiel</option><option value="CUSTOM">Personnel</option></select></label> }
+          <label class="field">Liste de classe<select name="classId" [(ngModel)]="filters.classId"><option value="">Toutes</option><label>Rechercher une classe<input type="search" name="classSearch" [(ngModel)]="classSearch"></label> @for (item of classChoices(); track item.id) { <option [value]="item.id">{{ item.name }}</option> }</select></label>
+        </div>
+        <label class="field">Code source<input name="source" [(ngModel)]="filters.source" maxlength="40"></label>
+        <button class="secondary-button search-button" type="submit">Rechercher</button>
+      </fieldset>
+    </form>
+
+    @if (error()) { <div class="message message--error" role="alert">{{ error() }} <button type="button" [disabled]="busy()" (click)="load(result().page)">Recharger</button></div> }
+    @if (feedback()) { <p class="message message--success" role="status">{{ feedback() }}</p> }
+
+    <div class="list-heading">
+      <span>{{ result().total }} sort(s)</span>
+    </div>
+    <div class="spell-list">
+      @if (loading()) {
+        <p class="empty-state" role="status">Chargement des sorts…</p>
+      } @else {
+        @for (item of result().spells; track item.id) {
+          <article class="spell-card" [class.spell-card--selected]="selected()?.id === item.id && opened()">
+            <button type="button" class="spell-card__select" [disabled]="busy()" (click)="open(item, $event)">
+              <span class="spell-card__meta">{{ item.level === 0 ? 'Sort mineur' : 'Niveau ' + item.level }} · {{ item.origin === 'OFFICIAL' ? 'Officiel' : 'Personnel' }}</span>
+              <strong class="spell-card__name">{{ item.name }}</strong>
+              <span class="spell-card__classes">@for (characterClass of item.classes; track characterClass.id) { {{ characterClass.name }} }</span>
+            </button>
+            @if ((item.origin === 'OFFICIAL') === official) {
+              <div class="spell-card__actions">
+                <button type="button" class="danger-button" [disabled]="busy() || !item.deletable" [title]="item.deletable ? 'Supprimer ce sort' : 'Détachez les listes de classes avant de supprimer ce sort'" (click)="remove(item)">Supprimer</button>
+                @if (!item.deletable) { <span class="spell-card__hint">Listes de classes à détacher</span> }
+              </div>
+            }
+          </article>
+        } @empty { <p class="empty-state">Aucun sort ne correspond aux critères.</p> }
+      }
+    </div>
+    @if (!loading()) {
+      <nav class="pagination" aria-label="Pagination des sorts">
+        <button type="button" [disabled]="busy() || result().page <= 1" (click)="load(result().page - 1)">Précédent</button>
+        <span>Page {{ result().page }}</span>
+        <button type="button" [disabled]="busy() || result().page * result().pageSize >= result().total" (click)="load(result().page + 1)">Suivant</button>
+      </nav>
+    }
+  </aside>
+
+  <div class="reference-manager__content">
+    @if (opened()) {
+      <header class="content-header">
+        <div>
+          <span class="eyebrow">{{ readOnly() ? 'Consultation' : selected() ? 'Modification' : 'Création' }}</span>
+          <h2>{{ selected() ? selected()!.name : 'Nouveau sort' }}</h2>
+          <p>{{ readOnly() ? 'Sort officiel — consultation uniquement.' : 'Définissez les propriétés, les composantes et les listes de classes de ce sort.' }}</p>
+        </div>
+        @if (selected()?.origin === 'CUSTOM') { <span class="custom-badge">Personnalisé</span> }
+        @if (selected()?.origin === 'OFFICIAL') { <span class="official-badge">Officiel</span> }
+      </header>
+
+      <!-- Onglets natifs : aucun changement nécessaire dans spell-editor.ts. -->
+      <div class="editor-tabs" role="group" aria-label="Sections du sort">
+        <input class="tab-radio" type="radio" name="spell-editor-tab" id="spell-tab-general" checked>
+        <label class="editor-tab" for="spell-tab-general">Général</label>
+        <input class="tab-radio" type="radio" name="spell-editor-tab" id="spell-tab-casting">
+        <label class="editor-tab" for="spell-tab-casting">Incantation</label>
+        <input class="tab-radio" type="radio" name="spell-editor-tab" id="spell-tab-description">
+        <label class="editor-tab" for="spell-tab-description">Description</label>
+        <input class="tab-radio" type="radio" name="spell-editor-tab" id="spell-tab-sources">
+        <label class="editor-tab" for="spell-tab-sources">Sources</label>
+        <input class="tab-radio" type="radio" name="spell-editor-tab" id="spell-tab-classes">
+        <label class="editor-tab" for="spell-tab-classes">Classes</label>
+        @if (selected()) {
+          <input class="tab-radio" type="radio" name="spell-editor-tab" id="spell-tab-grants">
+          <label class="editor-tab" for="spell-tab-grants">Attributions</label>
+        }
+      </div>
+
+      <form #spellForm="ngForm" class="spell-form" (ngSubmit)="save()">
+        <fieldset class="properties" [disabled]="busy() || readOnly()">
+          <section class="tab-panel tab-panel--general" aria-label="Informations générales">
+            <h3>Informations générales</h3>
+            <div class="form-grid">
+              <label class="field">Nom<input #nameInput name="name" [(ngModel)]="draft.name" maxlength="150" required></label>
+              <label class="field">Slug<input name="slug" [(ngModel)]="draft.slug" [readonly]="!!selected()" maxlength="100" pattern="[a-z0-9]+(-[a-z0-9]+)*" required></label>
+              <label class="field">Nom original<input name="originalName" [(ngModel)]="draft.originalName" maxlength="150"></label>
+              <label class="field">Niveau<input type="number" name="level" [(ngModel)]="draft.level" min="0" max="9" required></label>
+              <label class="field">École<select name="school" [(ngModel)]="draft.school">@for (school of options().schools; track school.value) { <option [value]="school.value">{{ school.label }}</option> }</select></label>
+              <label class="field">Variante maison<input name="rulesVariant" [(ngModel)]="draft.rulesVariant" maxlength="150"></label>
+            </div>
+          </section>
+
+          <section class="tab-panel tab-panel--casting" aria-label="Incantation et composantes">
+            <h3>Incantation et composantes</h3>
+            <div class="form-grid">
+              @for (field of textFields; track field.key) {
+                @if (field.label.toLowerCase().includes('incantation') || field.label.toLowerCase().includes('portée') || field.label.toLowerCase().includes('durée') || field.label.toLowerCase().includes('matérielle')) {
+                  <label class="field field--wide">{{ field.label }}<textarea [name]="field.key" [attr.name]="field.key" [(ngModel)]="draft[field.key]" [required]="field.required" maxlength="50000" rows="3"></textarea></label>
+                }
+              }
+            </div>
+            <div class="flags-grid">
+              @for (field of flags; track field.key) { <label class="checkbox-field"><input type="checkbox" [name]="field.key" [attr.name]="field.key" [(ngModel)]="draft[field.key]"><span>{{ field.label }}</span></label> }
+            </div>
+            <div class="form-grid extra-fields">
+              <label class="field field--wide">Coût matériel en pièces de cuivre (vide si inconnu)<input type="number" name="materialCostCp" [(ngModel)]="draft.materialCostCp" min="0" max="2147483647"></label>
+              <p class="form-note field--wide">Cet indicateur décrit uniquement la consommation habituelle à l’incantation. La description matérielle fait foi pour les consommations conditionnelles, partielles ou différées ; une case décochée n’exclut pas ces cas particuliers.</p>
+              <p class="form-note field--wide">Sans composante M, vider la description et le coût matériel et décocher l’indicateur de consommation.</p>
+            </div>
+          </section>
+
+          <section class="tab-panel tab-panel--description" aria-label="Description et effets">
+            <h3>Description et effets</h3>
+            <div class="form-grid">
+              @for (field of textFields; track field.key) {
+                @if (!(field.label.toLowerCase().includes('incantation') || field.label.toLowerCase().includes('portée') || field.label.toLowerCase().includes('durée') || field.label.toLowerCase().includes('matérielle'))) {
+                  <label class="field field--wide">{{ field.label }}<textarea [name]="field.key" [attr.name]="field.key" [(ngModel)]="draft[field.key]" [required]="field.required" maxlength="50000" [rows]="field.key === 'description' ? 10 : 3"></textarea></label>
+                }
+              }
+            </div>
+          </section>
+
+          <section class="tab-panel tab-panel--sources" aria-label="Sources du sort">
+            <h3>Sources et références</h3>
+            <div class="form-grid">
+              <label class="field">Code source<input name="sourceCode" [(ngModel)]="draft.sourceCode" maxlength="40"></label>
+              <label class="field">Référence source<input name="sourceReference" [(ngModel)]="draft.sourceReference" maxlength="255"></label>
+              <label class="field field--wide">URL source<input type="url" name="sourceUrl" [(ngModel)]="draft.sourceUrl" maxlength="2048"></label>
+            </div>
+          </section>
+
+          <section class="tab-panel tab-panel--classes" aria-label="Listes de classes">
+            <h3>Listes de classes</h3>
+            <p class="form-note">L’appartenance à une liste n’accorde ni connaissance ni préparation à un personnage.</p>
+            <div class="class-grid">
+              <label>Rechercher une classe<input type="search" name="classSearch" [(ngModel)]="classSearch"></label> @for (item of classChoices(); track item.id) { <label class="checkbox-field"><input type="checkbox" [checked]="draft.classIds.includes(item.id)" (change)="toggleClass(item.id, $any($event.target).checked)"><span>{{ item.name }} — {{ item.origin }}</span></label> }
+            </div>
+          </section>
+        </fieldset>
+        <footer class="form-actions">
+          <button type="button" class="secondary-button" [disabled]="busy()" (click)="close()">Fermer</button>
+          @if (!readOnly()) { <button type="submit" class="primary-button" [disabled]="busy() || spellForm.invalid">Enregistrer</button> }
+        </footer>
+      </form>
+      @for (spell of selected() ? [selected()!] : []; track spell.id) {
+        <div class="tab-panel tab-panel--grants grants-section"><app-spell-grants [spellId]="spell.id" [disabled]="busy()" (busyChange)="grantBusy($event)" /></div>
+      }
+    } @else {
+      <div class="editor-placeholder">
+        <span class="eyebrow">Éditeur de sorts</span>
+        <h2>Sélectionnez un sort</h2>
+        <p>Choisissez un sort dans la liste pour le consulter ou le modifier, ou créez un nouveau sort.</p>
+        <button type="button" class="primary-button" [disabled]="contextReadOnly || busy() || loading()" (click)="open(null, $event)">{{ official ? 'Créer un sort officiel' : 'Créer un sort personnalisé' }}</button>
+      </div>
+    }
+  </div>
+</section>

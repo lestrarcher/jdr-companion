@@ -1,0 +1,12 @@
+:host { display: block; color: #ede3cf; }
+section { max-width: 70rem; margin: auto; padding: 1.5rem; }
+h1, h2, summary, a { color: #d9b66f; }
+fieldset, article, details { border: 1px solid #665331; border-radius: .5rem; background: #191820; padding: 1rem; margin-block: 1rem; }
+fieldset { display: grid; gap: .75rem; }
+textarea, select, button { color: inherit; background: #25232d; border: 1px solid #887047; border-radius: .3rem; padding: .7rem; font: inherit; }
+textarea { width: 100%; box-sizing: border-box; resize: vertical; font-family: monospace; }
+button { cursor: pointer; }
+button:disabled { opacity: .5; cursor: default; }
+:focus-visible { outline: 2px solid #edcc84; outline-offset: 3px; }
+pre { overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+[role=alert] { color: #ffb3a8; }

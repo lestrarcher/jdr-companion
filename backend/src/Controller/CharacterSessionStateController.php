@@ -406,6 +406,7 @@ public function terminateActiveEffect(
         ProgressionDefinitionRepository $progressionRepository,
         CharacterSessionStateRepository $stateRepository,
         EntityManagerInterface $entityManager,
+        \App\Service\CharacterProgressionMaximumRecorder $maximumRecorder,
     ): JsonResponse {
         $gameSession = $gameSessionRepository->find($sessionId);
         $character = $characterRepository->find($characterId);
@@ -459,34 +460,41 @@ public function terminateActiveEffect(
             return $this->json( ['message' => 'La valeur dépasse le maximum de la progression.'], Response::HTTP_UNPROCESSABLE_ENTITY, );
         }
 
-        $state = $sessionState->getState();
-        $progressions = $state['progressions'] ?? [];
-        $found = false;
+        $entityManager->wrapInTransaction(function () use ($entityManager, $character, $sessionState, $progression, $currentValue, $maximumRecorder): void {
+            $entityManager->lock($character, LockMode::PESSIMISTIC_WRITE);
+            $entityManager->lock($sessionState, LockMode::PESSIMISTIC_WRITE);
+            $entityManager->refresh($sessionState);
+            $state = $sessionState->getState();
+            $before = $state;
+            $progressions = $state['progressions'] ?? [];
+            $found = false;
 
-        foreach ($progressions as &$progressionState) {
-            if ( ($progressionState['id'] ?? null) !== $progression->getSlug() ) {
-                continue;
+            foreach ($progressions as &$progressionState) {
+                if ( ($progressionState['id'] ?? null) !== $progression->getSlug() ) {
+                    continue;
+                }
+
+                $progressionState['currentValue'] = $currentValue;
+                $found = true;
+                break;
             }
 
-            $progressionState['currentValue'] = $currentValue;
-            $found = true;
-            break;
-        }
+            unset($progressionState);
 
-        unset($progressionState);
+            if (!$found) {
+                $progressions[] = [
+                    'id' => $progression->getSlug(),
+                    'currentValue' => $currentValue,
+                ];
+            }
 
-        if (!$found) {
-            $progressions[] = [
-                'id' => $progression->getSlug(),
-                'currentValue' => $currentValue,
-            ];
-        }
+            $state['progressions'] = $progressions;
+            $maximumRecorder->recordChanges($character, $before, $state);
+            $sessionState->setState(
+                $this->stateSynchronizer->synchronizeResources($character, $state), );
 
-        $state['progressions'] = $progressions;
-        $sessionState->setState(
-            $this->stateSynchronizer->synchronizeResources($character, $state), );
-
-        $entityManager->flush();
+            $entityManager->flush();
+        });
 
         return $this->json( $this->sessionStateSerializer->serialize($sessionState, true), );
     }
@@ -503,6 +511,7 @@ public function terminateActiveEffect(
         CharacterLevelUpOptionsService $optionsService,
         Request $request,
         CharacterLevelUpService $levelUpService,
+        \App\Service\CharacterLevelUpSpellPreview $spellPreview,
     ): JsonResponse {
         $state = $playerAccess->requireParticipating( $accessToken, );
 
@@ -517,6 +526,7 @@ public function terminateActiveEffect(
         try {
             $options = $optionsService->getOptions($state->getCharacter());
             if ($request->query->has('classId')) $options['training'] = $levelUpService->trainingOptionsForSelection($state->getCharacter(), $request->query->all());
+            $options['spellPreview'] = $spellPreview->preview($state->getCharacter(), $request->query->all());
             return $this->json($options);
         } catch (\DomainException $exception) {
             return $this->json(['message' => $exception->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -570,6 +580,7 @@ public function terminateActiveEffect(
                     $selection['hitPointGain'],
                 authorization: $state,
                 training: $selection['training'],
+                spellChoices: $selection['spellChoices'],
             );
         } catch (
             \InvalidArgumentException
@@ -659,6 +670,7 @@ public function terminateActiveEffect(
         EntityManagerInterface $entityManager,
         PlayerCharacterStateUpdater $updater,
         CharacterInspirationService $inspiration,
+        \App\Service\CharacterProgressionMaximumRecorder $maximumRecorder,
     ): JsonResponse {
         $state = $playerAccess->requireParticipating($accessToken);
 
@@ -685,14 +697,16 @@ public function terminateActiveEffect(
         if ($state->getRevision() !== $revision) {
             return $this->json(['message' => 'Le personnage a été modifié ailleurs. Rechargez son état.'], 409);
         }
-        $mergedState = $updater->merge($state, $newState);
         try {
-            return $entityManager->wrapInTransaction(function () use ($entityManager, $state, $revision, $mergedState, $inspiration): JsonResponse {
+            return $entityManager->wrapInTransaction(function () use ($entityManager, $state, $revision, $newState, $updater, $inspiration, $maximumRecorder): JsonResponse {
                 PlayerCharacterAccess::lockForMutation($entityManager, $state);
                 if ($state->getRevision() !== $revision) {
                     return $this->json(['message' => 'Le personnage a été modifié ailleurs. Rechargez son état.'], 409);
                 }
                 $entityManager->lock($state, LockMode::OPTIMISTIC, $revision);
+                $mergedState = $updater->merge($state, $newState);
+                $maximumRecorder->recordChanges($state->getCharacter(), $state->getState(), $mergedState);
+                $mergedState = $this->stateSynchronizer->synchronizeResources($state->getCharacter(), $mergedState);
                 $inspiration->changeLocked($state->getCharacter(), $mergedState['inspiration']);
                 $state->setState($mergedState);
                 $entityManager->flush();
