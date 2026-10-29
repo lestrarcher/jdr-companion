@@ -128,4 +128,5 @@ $check($db->fetchAssociative('SELECT * FROM character_feature_spell WHERE grant_
 $db->update('character_feature_spell',['active'=>0,'retired_at'=>date('Y-m-d H:i:s')],['id'=>$acquisition['id']]);
 $tester->execute([...$args,'--apply'=>true]);
 $call('PATCH',$base.'/'.$managedId,['castingAbility'=>null]);
-$check(!$db->fetchOne('SELECT active FROM character_feature_spell WHERE id=?',[$acquisition['id']]), 'Existing inactive acquisition is never reactivated by reconciliation');
+$check((bool)$db->fetchOne('SELECT active FROM character_feature_spell WHERE id=?',[$acquisition['id']]), 'Reference save restores an eligible inactive acquisition');
+require __DIR__.'/test-progression-reference-reconciliation-cases.php';

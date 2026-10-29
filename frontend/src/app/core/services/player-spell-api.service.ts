@@ -11,6 +11,7 @@ export interface PlayerSpellChoice {
 export interface PlayerSpellPreparation {
   policyId: number; source: string; ability: string; learningStyle: 'spellbook' | 'prepared';
   maximum: number; selected: number[]; available: SpellCandidate[]; blocked: boolean;
+  excessCount?: number; requiresAdjustment?: boolean;
 }
 export interface PlayerSpellView {
   spellPreparationAllowed: boolean;

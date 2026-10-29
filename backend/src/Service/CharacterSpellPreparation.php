@@ -31,8 +31,13 @@ final readonly class CharacterSpellPreparation
             && $spell['level'] <= $options['limits']['maxSpellLevel'] && !in_array($spell['id'], $automatic, true)));
         $selected = $state['preparedSpells'][(string)$options['policyId']] ?? [];
         $selected = array_values(array_intersect(is_array($selected) ? $selected : [], array_column($candidates, 'id')));
+        // A lower maximum does not revoke the active preparation. Only an explicit
+        // preparation confirmation replaces it, using the current maximum.
+        $excessCount = max(0, count($selected) - $maximum);
         return ['policyId'=>$options['policyId'], 'ability'=>$options['ability'], 'learningStyle'=>$options['learningStyle'],
             'maximum'=>$maximum, 'selected'=>$selected, 'available'=>$candidates,
+            'excessCount'=>$excessCount,
+            'requiresAdjustment'=>$excessCount > 0 && ($state['spellPreparationAllowed'] ?? true) === true,
             'blocked'=>$missingAbility || $options['blocked'] !== [] || $options['status'] === 'quota-exceeded'];
     }
 

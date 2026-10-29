@@ -123,6 +123,51 @@ $complete[1]['spellIds'] = [];
 $confirm($multiSession, $complete);
 $check(json_decode($stored($multiSession)['state'], true)['preparedSpells'][$second] === [], 'Explicit empty selection clears only its own policy');
 
+// A reduced ability preserves active preparation until the next explicit confirmation.
+$setWisdom = static function (int $value) use ($em, $multi): void {
+    $managed = $em->find(Character::class, $multi->getId());
+    $managed->getAbilityScore(Ability::Wisdom)->setBaseValue($value);
+    $em->flush();
+};
+$setWisdom(12); // Base one + modifier one = two ordinary preparations.
+$applyRest($multiSession, RestRequest::TYPE_LONG_REST);
+$excessSelection = [['policyId'=>$first, 'spellIds'=>$spellIds], ['policyId'=>$second, 'spellIds'=>[]]];
+$valid = $confirm($multiSession, $excessSelection);
+$check($valid['preparations'][0]['maximum'] === 2 && $valid['preparations'][0]['excessCount'] === 0, 'Initial selection fits the current maximum');
+$setWisdom(10);
+$excess = $get($multiSession);
+$p = $excess['preparations'][0];
+$check($p['maximum'] === 1 && $p['selected'] === $spellIds && $p['excessCount'] === 1 && !$p['blocked'] && !$p['requiresAdjustment'], 'Ability reduction reports excess without revoking preparation during adventure');
+$ordinary = array_values(array_filter($excess['spells'], static fn(array $s): bool => ($s['policyId'] ?? null) === $first && $s['prepared']));
+$check(count($ordinary) === 2 && array_column(array_column($ordinary, 'castingEligibility'), 'canCastNormally') === [true, true], 'Both excessive prepared spells remain eligible for casting');
+$check(str_contains(implode(' ', $excess['warnings']), 'prochain repos long'), 'Portal explains deferred adjustment');
+$applyRest($multiSession, RestRequest::TYPE_SHORT_REST);
+$check(!$get($multiSession)['preparations'][0]['requiresAdjustment'], 'Short rest does not require adjustment');
+$setWisdom(12);
+$restored = $get($multiSession);
+$check($restored['preparations'][0]['excessCount'] === 0 && $restored['preparations'][0]['selected'] === $spellIds && $restored['warnings'] === [], 'Restoring the maximum clears the warning without changing the selection');
+$setWisdom(10);
+$applyRest($multiSession, RestRequest::TYPE_LONG_REST);
+$opened = $get($multiSession);
+$check($opened['preparations'][0]['requiresAdjustment'] && $opened['preparations'][0]['selected'] === $spellIds, 'Long rest requires choosing a valid selection without arbitrary removal');
+$confirm($multiSession, $excessSelection, 422);
+$regularized = $confirm($multiSession, $complete);
+$check($regularized['preparations'][0]['excessCount'] === 0 && !$regularized['preparations'][0]['requiresAdjustment'], 'Player selection regularizes and locks preparation');
+$managed = $em->find(Character::class, $multi->getId());
+$castingClass = $em->find(SpellcastingPolicyDefinition::class, $first)->getCharacterClass();
+$domain = new App\Entity\CharacterSubclass($castingClass, 'test-preparation-domain', 'Preparation domain');
+foreach ($managed->getClassLevels() as $classLevel) {
+    if ($classLevel->getCharacterClass()->getId() === $castingClass->getId()) $classLevel->setSubclass($domain);
+}
+$domainGrant = new App\Entity\SpellSubclassGrant($domain, $em->find(SpellDefinition::class, $spellIds[0]), App\Enum\SpellGrantMode::AlwaysPrepared, 1, $castingClass);
+$domainGrant->setQuotaImpact(App\Enum\SpellQuotaImpact::Free);
+$em->persist($domain); $em->persist($domainGrant); $em->flush();
+$domainView = $get($multiSession);
+$domainPlan = $domainView['preparations'][0];
+$check($domainPlan['maximum'] === 1 && $domainPlan['excessCount'] === 0 && !in_array($spellIds[0], array_column($domainPlan['available'], 'id'), true), 'Free always-prepared domain spell neither consumes quota nor appears in ordinary choices');
+$always = array_values(array_filter($domainView['spells'], static fn(array $s): bool => ($s['alwaysPrepared'] ?? false) && $s['spellId'] === $spellIds[0]));
+$check(count($always) === 1 && $always[0]['castingEligibility']['canCastNormally'], 'Domain spell remains prepared and castable alongside the ordinary selection');
+
 // A missing configuration must not silently remove a class from the required policies.
 $applyRest($multiSession, RestRequest::TYPE_LONG_REST);
 $multi = $em->find(Character::class, $multi->getId());

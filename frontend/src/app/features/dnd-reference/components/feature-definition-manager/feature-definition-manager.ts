@@ -60,6 +60,7 @@ export class FeatureDefinitionManager {
   protected readonly spellGrantLoading = signal(false);
   protected readonly spellGrantEditing = signal(false);
   protected readonly spellGrantError = signal<string | null>(null);
+  protected readonly choiceAllowed = signal(false);
   protected grantMode: 'fixed' | 'choice' = 'fixed';
   protected grantSpellId: number | null = null;
   protected grantSpellLevel = 0;
@@ -67,6 +68,7 @@ export class FeatureDefinitionManager {
   protected grantSchool = '';
   protected grantUnlockLevel = 1;
   protected editingGrantId: number | null = null;
+  private editedGrant: FeatureSpellGrant | null = null;
   protected configureCasting = false;
   protected freeCasting = false;
   protected freeUses = 1;
@@ -75,6 +77,7 @@ export class FeatureDefinitionManager {
   protected standardCasting = true;
 
   protected startSpellGrant(): void {
+    this.editedGrant = null;
     this.grantMode = 'fixed'; this.grantSpellId = null; this.grantUnlockLevel = 1;
     this.grantSpellLevel = 0; this.grantClassId = null; this.grantSchool = '';
     this.editingGrantId = null; this.configureCasting = true;
@@ -84,6 +87,7 @@ export class FeatureDefinitionManager {
   }
 
   protected editSpellGrant(grant: FeatureSpellGrant): void {
+    this.editedGrant = grant;
     this.editingGrantId = grant.id; this.grantMode = grant.mode;
     this.grantSpellId = grant.spellId; this.grantSpellLevel = grant.spellLevel ?? 0;
     this.grantClassId = grant.classId; this.grantSchool = grant.schools?.[0] ?? '';
@@ -108,10 +112,11 @@ export class FeatureDefinitionManager {
   }
 
   protected loadSpellGrants(featureId: number): void {
+    this.choiceAllowed.set(false);
     this.spellGrantLoading.set(true);
     this.spellGrantError.set(null);
     this.api.getFeatureSpellGrantOptions(featureId).subscribe({
-      next: options => { if (this.selectedFeatureId() === featureId) { this.grantClasses.set(options.classes); this.grantSpells.set(options.spells); } },
+      next: options => { if (this.selectedFeatureId() === featureId) { this.choiceAllowed.set(options.choiceAllowed); this.grantClasses.set(options.classes); this.grantSpells.set(options.spells); } },
       error: () => this.spellGrantError.set('Impossible de charger les listes de sorts et de classes.'),
     });
     this.api.getFeatureSpellGrants(featureId).subscribe({
@@ -123,11 +128,17 @@ export class FeatureDefinitionManager {
   protected addSpellGrant(): void {
     const featureId = this.selectedFeatureId();
     if (featureId === null || this.readOnly() || this.spellGrantLoading()) return;
+    if (this.grantMode === 'choice' && !this.choiceAllowed()) {
+      this.spellGrantError.set('Une progression ne peut accorder que des sorts fixes.'); return;
+    }
     const payload: FeatureSpellGrantPayload = this.grantMode === 'fixed'
       ? { mode: 'fixed', spellId: Number(this.grantSpellId), unlockLevel: Number(this.grantUnlockLevel), castingAbility: this.grantCastingAbility || null }
       : { mode: 'choice', spellLevel: Number(this.grantSpellLevel), classId: this.grantClassId ? Number(this.grantClassId) : null, schools: this.grantSchool ? [this.grantSchool] : [], unlockLevel: Number(this.grantUnlockLevel), castingAbility: this.grantCastingAbility || null };
     if (!Number.isInteger(payload.unlockLevel) || payload.unlockLevel < 1 || payload.unlockLevel > 20 || (payload.mode === 'fixed' && (!payload.spellId || payload.spellId < 1))) {
       this.spellGrantError.set('Vérifie le sort et le niveau de déblocage.'); return;
+    }
+    if (payload.mode === 'choice' && this.editedGrant && this.grantSchool === (this.editedGrant.schools?.[0] ?? '')) {
+      payload.schools = this.editedGrant.schools;
     }
     this.spellGrantLoading.set(true); this.spellGrantError.set(null);
     const casting = this.configureCasting ? {
@@ -137,7 +148,7 @@ export class FeatureDefinitionManager {
     } : undefined;
     const request = this.editingGrantId === null
       ? this.api.addFeatureSpellGrant(featureId, { ...payload, ...(casting ? { casting } : {}) })
-      : this.api.configureFeatureSpellGrant(featureId, this.editingGrantId, { castingAbility: this.grantCastingAbility || null, ...(casting ? { casting } : {}) });
+      : this.api.configureFeatureSpellGrant(featureId, this.editingGrantId, { ...Object.fromEntries(Object.entries(payload).filter(([key]) => key !== 'mode')), ...(casting ? { casting } : {}) });
     request.subscribe({
       next: response => { this.spellGrants.set(response.grants); this.spellGrantEditing.set(false); this.spellGrantLoading.set(false); },
       error: error => { this.spellGrantError.set(error.error?.detail ?? 'Impossible d’ajouter ce sort.'); this.spellGrantLoading.set(false); },

@@ -238,7 +238,10 @@
 
       @if (selectedFeatureId() !== null) {
         <section class="feature-spell-grants" aria-label="Sorts octroyés">
-          <div class="feature-spell-grants__header"><h3>Sorts octroyés par la capacité</h3><p>Ajoutez une attribution par sort : pour deux tours de magie au choix et un sort de niveau 1, créez trois lignes « Sort au choix ». Chaque choix est indépendant et les utilisations restent gérées par les ressources.</p></div>
+          <div class="feature-spell-grants__header"><h3>Sorts octroyés par la capacité</h3>
+            @if (choiceAllowed()) { <p>Ajoutez une attribution par sort : pour deux tours de magie au choix et un sort de niveau 1, créez trois lignes « Sort au choix ». Chaque choix est indépendant et les utilisations restent gérées par les ressources.</p> }
+            @else { <p>Les capacités liées à une progression accordent uniquement des sorts définis par le MJ.</p> }
+          </div>
           @if (spellGrantError()) { <p class="message message--error" role="alert">{{ spellGrantError() }}</p> }
           @if (spellGrantLoading()) { <p class="hint">Chargement…</p> }
           @for (grant of spellGrants(); track grant.id) {
@@ -267,11 +270,11 @@
             @if (spellGrantEditing()) {
               <div class="feature-spell-grant-form">
                 <label>Attribution
-                  <select name="grantMode" [(ngModel)]="grantMode" [disabled]="editingGrantId !== null"><option value="fixed">Sort défini</option><option value="choice">Sort au choix</option></select>
+                  <select name="grantMode" [(ngModel)]="grantMode" [disabled]="editingGrantId !== null"><option value="fixed">Sort défini</option>@if (choiceAllowed()) { <option value="choice">Sort au choix</option> }</select>
                 </label>
                 @if (grantMode === 'fixed') {
                   <label>Sort octroyé
-                    <select name="grantSpellId" [(ngModel)]="grantSpellId" [disabled]="editingGrantId !== null" (ngModelChange)="freeLevel = null">
+                    <select name="grantSpellId" [(ngModel)]="grantSpellId" (ngModelChange)="freeLevel = null">
                       <option [ngValue]="null">Sélectionner un sort…</option>
                       @for (spell of grantSpells(); track spell.id) { <option [ngValue]="spell.id">{{ spell.name }} (niveau {{ spell.level }})</option> }
                     </select>
@@ -306,7 +309,7 @@
                   </select>
                 </label>
                 <label>Déblocage au niveau
-                  <input type="number" name="grantUnlockLevel" min="1" max="20" step="1" [(ngModel)]="grantUnlockLevel" [disabled]="editingGrantId !== null" />
+                  <input type="number" name="grantUnlockLevel" min="1" max="20" step="1" [(ngModel)]="grantUnlockLevel" />
                 </label>
                 <label><input type="checkbox" name="configureCasting" [(ngModel)]="configureCasting" />Configurer les méthodes de lancement</label>
                 @if (configureCasting) {

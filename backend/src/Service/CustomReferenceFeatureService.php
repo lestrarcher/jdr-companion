@@ -60,7 +60,6 @@ final class CustomReferenceFeatureService
             $data=$this->validate($payload,$current);
             $this->validateResource($data['resourceDefinitionId'],$actor);
             if ($official && $data['resourceDefinitionId']!==null && !$this->db->fetchOne("SELECT 1 FROM trackable_resource_definition WHERE id=? AND origin='OFFICIAL' AND owner_id IS NULL",[$data['resourceDefinitionId']])) throw new BadRequestHttpException('Une capacité officielle exige une ressource officielle.');
-            if ($row && ($activation!==$row['activation_type'] || $visible!==(bool)$row['visible'] || $data['resourceDefinitionId']!==$current['resourceDefinitionId']) && $this->isUsed($id)) throw new ConflictHttpException('Mécaniques utilisées et verrouillées.');
             $columns=['name'=>$data['name'],'description'=>$data['description'],'resource_definition_id'=>$data['resourceDefinitionId'],'activation_type'=>$activation,'visible'=>$visible?'true':'false','updated_at'=>$this->now()];
             try {
                 if ($row) $this->db->update('character_feature_definition',$columns,['id'=>$id]);
@@ -120,9 +119,8 @@ final class CustomReferenceFeatureService
             ];
             $data = $this->validate($payload, $current);
             $this->validateResource($data['resourceDefinitionId'], $owner);
-            if ($data['resourceDefinitionId'] !== $current['resourceDefinitionId'] && $this->isUsed($id)) {
-                throw new ConflictHttpException('Cette capacité est utilisée : sa relation à une ressource est figée.');
-            }
+
+
             $this->db->update('character_feature_definition', [
                 'name' => $data['name'], 'description' => $data['description'],
                 'resource_definition_id' => $data['resourceDefinitionId'], 'updated_at' => $this->now(),

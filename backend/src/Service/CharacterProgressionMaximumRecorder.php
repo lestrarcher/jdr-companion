@@ -9,7 +9,7 @@ use Doctrine\DBAL\LockMode;
 /** Called only by mutation endpoints, after validation and under the character lock. */
 final readonly class CharacterProgressionMaximumRecorder
 {
-    public function __construct(private EntityManagerInterface $em) {}
+    public function __construct(private EntityManagerInterface $em, private ?CharacterFeatureSpellService $spells = null) {}
 
     public function recordChanges(Character $character, array $before, array $after): void
     {
@@ -32,6 +32,8 @@ final readonly class CharacterProgressionMaximumRecorder
             $this->em->refresh($assignment);
             // Only the accepted new value is proven; never infer an older maximum.
             $assignment->recordReachedValue($value);
+            // The mutation controller subsequently synchronizes its accepted state.
+            $this->spells?->synchronizeProgression($character, $definition, false);
         }
     }
 }

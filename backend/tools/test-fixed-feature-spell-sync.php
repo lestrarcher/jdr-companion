@@ -24,6 +24,10 @@ try {
     foreach (['feature_spell_grant','character_feature_spell'] as $table) {
         $db->executeStatement('CREATE TEMP TABLE '.$table.' (LIKE public.'.$table.' INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING IDENTITY INCLUDING INDEXES)');
         $check($db->fetchOne('SELECT relpersistence FROM pg_class WHERE oid=to_regclass(?)', [$table]) === 't', 'Temporary table');
+        if ($db->fetchOne("SELECT attidentity FROM pg_attribute WHERE attrelid=to_regclass(?) AND attname='id'", [$table]) === '') {
+            $db->executeStatement('CREATE TEMP SEQUENCE fixture_'.$table.'_id');
+            $db->executeStatement("ALTER TABLE ".$table." ALTER COLUMN id SET DEFAULT nextval('fixture_".$table."_id')");
+        }
     }
     require __DIR__.'/feature-grant-fixture-schema.php';
     // Apply the new DDL to the temporary fixture only, even before local migration.
@@ -55,7 +59,7 @@ try {
     $service->synchronize($character);
     $rows = static fn() => $db->fetchAllAssociative('SELECT * FROM character_feature_spell ORDER BY id');
     $check($rows() === [], 'Feat acquired before any grants');
-    $db->insert('feature_spell_grant', ['feature_id'=>$feature->getId(),'mode'=>'choice','spell_level'=>1,'unlock_level'=>1]);
+    $db->insert('feature_spell_grant', ['feature_id'=>$feature->getId(),'mode'=>'choice','spell_level'=>2,'unlock_level'=>1]);
     $choiceId = (int)$db->lastInsertId();
     $db->insert('character_feature_spell', ['character_id'=>$character->getId(),'grant_id'=>$choiceId,'spell_id'=>$spell['id']]);
     $choice = $rows()[0];
@@ -78,7 +82,7 @@ try {
     $check($rows() === $first, 'Targeted reconciliation never changes a choice');
     $db->update('feature_spell_grant', ['unlock_level'=>2], ['id'=>$grantId]);
     $service->synchronize($character, $grantId);
-    $check($rows() === $first, 'Targeted reconciliation does not retire an inapplicable grant');
+    $check(!$rows()[1]['active'] && $rows()[0] === $first[0], 'Targeted reconciliation retires only the inapplicable grant');
     $check(count($service->status($character)['known']) === 1, 'Reads still enforce unlock level');
     $db->update('feature_spell_grant', ['unlock_level'=>1], ['id'=>$grantId]);
     $db->update('character_feature_spell', ['active'=>false,'retired_at'=>'2026-01-01 00:00:00'], ['id'=>$first[1]['id']], ['active'=>Doctrine\DBAL\ParameterType::BOOLEAN]);
@@ -267,6 +271,42 @@ try {
     $check($resolveCasting->resolve($other,$grantId)['reason']==='acquisition_missing','No source inferred without an active acquisition');
     require __DIR__.'/test-feature-spell-availability-cases.php';
     require __DIR__.'/test-progression-spell-acquisition-cases.php';
+    // POST isolation: use ordinary MJ accounts and temporary fixtures only.
+    (static function () use ($em, $db, $service, $repository, $check): void {
+        $actor = (new User())->setEmail('grant-isolation-owner@example.invalid')->setPassword('unused')->setRoles(['ROLE_USER']);
+        $foreignOwner = (new User())->setEmail('grant-isolation-foreign@example.invalid')->setPassword('unused')->setRoles(['ROLE_USER']);
+        $officialClass = new CharacterClass('grant-isolation-official', 'Official class', 8, 1);
+        $personalClass = (new CharacterClass('grant-isolation-personal', 'Personal class', 8, 1))->markAsPersonalReference($actor);
+        $foreignClass = (new CharacterClass('grant-isolation-foreign', 'PRIVATE FOREIGN CLASS', 8, 1))->markAsPersonalReference($foreignOwner);
+        $personalFeature = new CharacterFeatureDefinition('grant-isolation-feature', 'Personal feature');
+        foreach ([$actor, $foreignOwner, $officialClass, $personalClass, $foreignClass, $personalFeature] as $entity) $em->persist($entity);
+        $em->flush();
+        $db->update('character_feature_definition', ['origin'=>'CUSTOM', 'owner_id'=>$actor->getId()], ['id'=>$personalFeature->getId()]);
+        $controller = new App\Controller\FeatureSpellGrantController($db);
+        $container = new Symfony\Component\DependencyInjection\Container();
+        $tokens = new Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorage();
+        $tokens->setToken(new Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken($actor, 'test', $actor->getRoles()));
+        $container->set('security.token_storage', $tokens); $controller->setContainer($container);
+        $create = static fn(mixed $classId) => $controller->create('custom', $personalFeature->getId(),
+            Symfony\Component\HttpFoundation\Request::create('/', 'POST', [], [], [], [], json_encode(['mode'=>'choice', 'spellLevel'=>1, 'classId'=>$classId])), $service, $repository);
+        foreach ([$foreignClass->getId(), 2147483647, (string)$personalClass->getId()] as $inaccessibleId) {
+            $before = $db->fetchAllAssociative('SELECT * FROM feature_spell_grant ORDER BY id');
+            $error = null;
+            try { $create($inaccessibleId); }
+            catch (Symfony\Component\HttpKernel\Exception\BadRequestHttpException $exception) { $error = $exception; }
+            $check($error !== null && $error->getStatusCode() === 400, 'POST rejects foreign, missing or malformed class references');
+            $check($error->getMessage() === 'Filtres invalides.' && !str_contains($error->getMessage(), $foreignClass->getName()), 'Rejection contains no private class metadata');
+            $check($db->fetchAllAssociative('SELECT * FROM feature_spell_grant ORDER BY id') === $before, 'Rejected POST creates no grant');
+        }
+        foreach ([$officialClass, $personalClass, null] as $allowedClass) {
+            $response = $create($allowedClass?->getId());
+            $check($response->getStatusCode() === 201, 'POST accepts official, personal or unrestricted class filter');
+            $grants = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR)['grants'];
+            $created = $grants[array_key_last($grants)];
+            $check($created['classId'] === $allowedClass?->getId() && $created['className'] === $allowedClass?->getName(), 'Authorized class reference is preserved in response');
+            $check(!str_contains($response->getContent(), $foreignClass->getName()), 'Successful response contains no foreign class name');
+        }
+    })();
     echo "PASS: $checks assertions\n";
 } finally {
     if ($db->isTransactionActive()) $db->rollBack();

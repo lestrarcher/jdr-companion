@@ -209,8 +209,8 @@ export class FeatureRuleManager {
     }
 
     const selectedId = this.selectedRuleId();
-    if (this.form.sourceType === 'progression' && !this.hasMatchingStage()) {
-      this.error.set('Sélectionnez une phase : le seuil enregistré sera sa valeur minimale.');
+    if (this.form.sourceType === 'progression' && (this.form.progressionThreshold === null || !Number.isInteger(Number(this.form.progressionThreshold)) || Number(this.form.progressionThreshold) < 0)) {
+      this.error.set('Saisissez un seuil entier positif ou nul.');
       return;
     }
     this.submitting.set(true);
@@ -218,13 +218,18 @@ export class FeatureRuleManager {
 
     if (selectedId !== null) {
       this.featureApi.updateRule(selectedId, {
+        featureDefinitionId: Number(this.form.featureDefinitionId),
+        sourceType: this.form.sourceType,
+        sourceId: Number(this.form.sourceId),
         ...(this.form.sourceType === 'progression'
           ? {
               progressionThreshold:
                 Number(this.form.progressionThreshold),
+              unlockLevel: null,
             }
           : {
               unlockLevel: Number(this.form.unlockLevel),
+              progressionThreshold: null,
             }),
         displayOrder: Number(this.form.displayOrder),
       }).subscribe({

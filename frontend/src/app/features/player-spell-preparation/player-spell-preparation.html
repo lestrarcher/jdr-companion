@@ -25,7 +25,13 @@
           {{ selected(plan.policyId).length }} / {{ plan.maximum }} préparés
         </p>
         </header>
-        @if (selected(plan.policyId).length > plan.maximum) { <p class="error" role="alert">Quota dépassé : {{ selected(plan.policyId).length - plan.maximum }} sort(s) en trop.</p> }
+        @if (selected(plan.policyId).length > plan.maximum) {
+          @if (data.spellPreparationAllowed) {
+            <p class="error" role="alert">Quota dépassé : {{ selected(plan.policyId).length - plan.maximum }} sort(s) en trop. Choisissez les sorts à conserver avant de confirmer.</p>
+          } @else {
+            <p class="notice" role="status">Maximum actuel dépassé de {{ selected(plan.policyId).length - plan.maximum }} sort(s). Vos sorts restent utilisables ; ajustez votre sélection au prochain repos long si le dépassement persiste.</p>
+          }
+        }
         @if (plan.blocked) { <p class="notice">Préparation indisponible : vérifiez la configuration avec le MJ.</p> }
         @for (group of plan.groups; track group.level) {
           <h3>Niveau {{ group.level }}</h3>

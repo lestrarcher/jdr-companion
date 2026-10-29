@@ -89,7 +89,9 @@ final readonly class CharacterFeatureResolver
         return array_values(array_filter($this->ruleRepository->findVisibleForOwner($owner),
             fn(CharacterFeatureRule $rule): bool => ReferenceVisibility::allows($rule, $owner)
                 && ($rule->getProgressionDefinition() !== null
-                    ? $character->hasProgression($rule->getProgressionDefinition())
+                    ? ($rule->getProgressionDefinition()->isIrreversible()
+                        ? $this->isRuleApplicable($character, $rule, [])
+                        : $character->hasProgression($rule->getProgressionDefinition()))
                     : $this->isRuleApplicable($character, $rule, []))));
     }
 

@@ -20,7 +20,7 @@ final readonly class CustomReferenceCatalogueService
         'progressions' => ProgressionDefinition::class,
     ];
 
-    public function __construct(private EntityManagerInterface $em) {}
+    public function __construct(private EntityManagerInterface $em, private ?FeatureSpellGrantReconciler $reconciler = null) {}
 
     public function editorList(string $category, User $actor, bool $official): array
     {
@@ -81,6 +81,10 @@ final readonly class CustomReferenceCatalogueService
             $this->apply($category,$item,$data,$actor,$id===null);
             if ($item instanceof ProgressionDefinition) $this->validateStages($item);
             $this->em->persist($item); $this->em->flush();
+            if ($item instanceof ProgressionDefinition && $this->reconciler) {
+                $ids = $this->em->getConnection()->fetchFirstColumn('SELECT feature_definition_id FROM character_feature_rule WHERE progression_definition_id=?', [$item->getId()]);
+                if ($ids !== []) $this->reconciler->reconcile($ids);
+            }
             return $this->editorView($item,$actor,$official);
         });
     }
@@ -122,7 +126,7 @@ final readonly class CustomReferenceCatalogueService
             $definition=$this->em->find(ProgressionDefinition::class,$id,\Doctrine\DBAL\LockMode::PESSIMISTIC_WRITE);
             if (!$definition || !ReferenceVisibility::allows($definition,$actor) || ($official && $definition->getOrigin()!==ReferenceOrigin::Official)) throw new NotFoundHttpException('Progression indisponible.');
             if (!$official && $definition->getOrigin()!==ReferenceOrigin::Custom) throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException('Progression officielle en lecture seule.');
-            if ($stage && $this->hasReferences($definition)) throw new ConflictHttpException('Les paliers de cette progression utilisée sont verrouillés.');
+
             $type=$stage?\App\Entity\ProgressionStage::class:\App\Entity\ProgressionAdjustmentRule::class;
             $child=$childId===null?null:$this->em->find($type,$childId);
             if ($childId!==null && (!$child || $child->getProgressionDefinition()->getId()!==$id)) throw new NotFoundHttpException('Relation indisponible.');

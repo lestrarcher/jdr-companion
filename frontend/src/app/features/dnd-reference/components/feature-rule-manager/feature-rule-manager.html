@@ -49,7 +49,7 @@
           }
         </span>
 
-        <app-reference-picker name="featureDefinitionId" label="Capacité" [options]="features()" [(ngModel)]="form.featureDefinitionId" [nullable]="false" [disabled]="selectedRuleId() !== null || readOnly()" (ngModelChange)="featureSelected()" />
+        <app-reference-picker name="featureDefinitionId" label="Capacité" [options]="features()" [(ngModel)]="form.featureDefinitionId" [nullable]="false" [disabled]="readOnly()" (ngModelChange)="featureSelected()" />
       </label>
 
       @if (featureSearch() && filteredFeatures().length === 0) {
@@ -62,7 +62,7 @@
         <span>Type de source</span>
         <select
           name="sourceType"
-          [disabled]="selectedRuleId() !== null"
+          [disabled]="readOnly()"
           [(ngModel)]="form.sourceType"
           (ngModelChange)="sourceTypeChanged()"
         >
@@ -76,35 +76,20 @@
 
       <label class="field">
         <span>Source</span>
-        <app-reference-picker name="sourceId" label="Source" [options]="formSourceOptions()" [(ngModel)]="form.sourceId" [nullable]="false" [disabled]="selectedRuleId() !== null || readOnly()" (ngModelChange)="sourceChanged()" />
+        <app-reference-picker name="sourceId" label="Source" [options]="formSourceOptions()" [(ngModel)]="form.sourceId" [nullable]="false" [disabled]="readOnly()" (ngModelChange)="sourceChanged()" />
       </label>
 
       <div class="compact-grid">
         @if (form.sourceType === 'progression') {
           <label class="field">
-            <span>Phase de déblocage</span>
-            <select
-              name="progressionThreshold"
-              [(ngModel)]="form.progressionThreshold"
-            >
-              <option [ngValue]="null">Sélectionner une phase</option>
-              @if (form.progressionThreshold !== null && !hasMatchingStage()) {
-                <option [ngValue]="form.progressionThreshold" disabled>
-                  Seuil actuel {{ form.progressionThreshold }} — aucune phase correspondante
-                </option>
-              }
+            <span>Seuil de déblocage</span>
+            <input type="number" name="progressionThreshold" min="0" step="1"
+              [(ngModel)]="form.progressionThreshold" list="progression-stage-thresholds" />
+            <datalist id="progression-stage-thresholds">
               @for (stage of formStages(); track stage.id) {
-                <option [ngValue]="stage.minimumValue">
-                  {{ stage.label }} · {{ stage.minimumValue }}{{ stage.maximumValue === null ? '+' : '–' + stage.maximumValue }}
-                </option>
+                <option [value]="stage.minimumValue">{{ stage.label }}</option>
               }
-            </select>
-            @if (hasMatchingStage()) {
-              <small>Seuil enregistré : {{ form.progressionThreshold }}</small>
-            }
-            @if (formStages().length === 0) {
-              <small>Choisissez une progression possédant des phases.</small>
-            }
+            </datalist>
           </label>
         } @else {
           <label class="field">

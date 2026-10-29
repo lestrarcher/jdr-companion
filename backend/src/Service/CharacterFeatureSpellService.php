@@ -13,11 +13,27 @@ final readonly class CharacterFeatureSpellService
 {
     public function __construct(private Connection $db, private CharacterFeatureResolver $features, private CharacterAbilityCalculator $abilityCalculator = new CharacterAbilityCalculator(), private ?FeatureSpellGrantConfiguration $configuration = null) {}
 
-    /** Add only fixed grants belonging to this newly assigned progression. */
-    public function synchronizeProgression(Character $character, \App\Entity\ProgressionDefinition $progression): void
+
+    /**
+     * Reconcile all persisted spell acquisitions for the supplied characters.
+     *
+     * Retires ineligible grants, activates eligible fixed grants,
+     * and preserves existing eligible choices.
+     *
+     * @param iterable<Character> $characters
+     */
+    public function reconcileCharacters(iterable $characters): void
     {
-        $ids = $this->db->fetchFirstColumn('SELECT DISTINCT g.id FROM feature_spell_grant g JOIN character_feature_rule r ON r.feature_definition_id=g.feature_id WHERE r.progression_definition_id=? AND g.mode=? ORDER BY g.id', [$progression->getId(), 'fixed']);
-        foreach ($ids as $id) $this->synchronize($character, (int)$id);
+        foreach ($characters as $character) {
+            $this->synchronize($character);
+        }
+    }
+
+    /** Reconcile grants belonging to this progression; never select a new choice. */
+    public function synchronizeProgression(Character $character, \App\Entity\ProgressionDefinition $progression, bool $resources = true): void
+    {
+        $ids = $this->db->fetchFirstColumn('SELECT DISTINCT g.id FROM feature_spell_grant g JOIN character_feature_rule r ON r.feature_definition_id=g.feature_id WHERE r.progression_definition_id=? ORDER BY g.id', [$progression->getId()]);
+        foreach ($ids as $id) $this->synchronize($character, (int)$id, $resources);
     }
 
     /**
@@ -67,7 +83,7 @@ final readonly class CharacterFeatureSpellService
     {
         $featureIds = [];
         $rules = $acquisition ? $this->features->acquisitionRules($character)
-            : $this->features->resolve($character, $progressionValues);
+            : $this->features->applicableRules($character, $progressionValues);
         foreach ($rules as $rule) {
             $id = $rule->getFeatureDefinition()->getId();
             if ($id !== null) $featureIds[] = $id;
@@ -75,18 +91,23 @@ final readonly class CharacterFeatureSpellService
         if ($featureIds === []) return [];
         $params = implode(',', array_fill(0, count($featureIds), '?'));
         $rows = $this->db->fetchAllAssociative(
-            "SELECT g.*, d.name AS feature_name FROM feature_spell_grant g JOIN character_feature_definition d ON d.id=g.feature_id WHERE g.feature_id IN ($params) AND g.unlock_level <= ?".($acquisition ? '' : ' AND g.enabled=true').' ORDER BY g.id',
-            [...$featureIds, $character->getTotalLevel()]
+"SELECT g.*, d.name AS feature_name
+ FROM feature_spell_grant g
+ JOIN character_feature_definition d ON d.id = g.feature_id
+ WHERE g.feature_id IN ($params)
+   AND g.unlock_level <= ?
+   AND g.enabled = true
+ ORDER BY g.id",            [...$featureIds, $character->getTotalLevel()]
         );
         return array_column($rows, null, 'id');
     }
 
     /**
      * Call on character changes, or explicitly to reconcile pre-existing characters.
-     * A grant ID restricts reconciliation to that applicable fixed grant only;
-     * choices, other grants and inapplicable historical acquisitions are preserved.
+     * A grant ID restricts retirement/restoration to that source only;
+     * historical rows and unrelated grants are preserved.
      */
-    public function synchronize(Character $character, ?int $grantId = null): array
+    public function synchronize(Character $character, ?int $grantId = null, bool $resources = true): array
     {
         $id = $character->getId();
         $this->db->beginTransaction();
@@ -95,13 +116,7 @@ final readonly class CharacterFeatureSpellService
             $this->db->fetchOne('SELECT id FROM character WHERE id=? FOR UPDATE', [$id]);
             $grants = $this->applicable($character, [], true);
             if ($grantId !== null) {
-                // Targeted reconciliation never retires unrelated or session-specific grants.
-                $grant = $grants[$grantId] ?? null;
-                if ($grant === null || $grant['mode'] !== 'fixed') {
-                    $this->db->commit();
-                    return $this->status($character);
-                }
-                $grants = [$grantId => $grant];
+                $grants = isset($grants[$grantId]) ? [$grantId => $grants[$grantId]] : [];
             }
             $existing = $this->db->fetchAllAssociative(
                 'SELECT * FROM character_feature_spell WHERE character_id=?'.($grantId === null ? '' : ' AND grant_id=?').' FOR UPDATE',
@@ -110,8 +125,11 @@ final readonly class CharacterFeatureSpellService
             $byGrant = array_column($existing, null, 'grant_id');
             foreach ($existing as $row) {
                 $grant = $grants[$row['grant_id']] ?? null;
-                $valid = $grant !== null && ($grant['mode'] === 'choice' || (int)$grant['spell_id'] === (int)$row['spell_id']);
+                $valid = $grant !== null && ($grant['mode'] === 'choice'
+                    ? in_array((int)$row['spell_id'], array_column($this->choiceOptions($character, $grant, $character->getCampaign()->getOwner()->getId(), false), 'id'), true)
+                    : (int)$grant['spell_id'] === (int)$row['spell_id']);
                 if (!$valid && $row['active']) $this->db->update('character_feature_spell', ['active'=>false,'retired_at'=>date('Y-m-d H:i:s')], ['id'=>$row['id']], ['active'=>ParameterType::BOOLEAN]);
+                if ($valid && !$row['active']) $this->db->update('character_feature_spell', ['active'=>true,'retired_at'=>null], ['id'=>$row['id']], ['active'=>ParameterType::BOOLEAN]);
             }
             foreach ($grants as $grant) {
                 if ($grant['mode'] !== 'fixed') continue;
@@ -122,7 +140,7 @@ final readonly class CharacterFeatureSpellService
                     $this->db->update('character_feature_spell', ['spell_id'=>$grant['spell_id'],'active'=>true,'retired_at'=>null], ['id'=>$old['id']], ['active'=>ParameterType::BOOLEAN]);
                 }
             }
-            foreach ($grants as $grant) $this->configuration?->synchronize((int)$grant['id'], $character->getId());
+            if ($resources) foreach ($grants as $grant) $this->configuration?->synchronize((int)$grant['id'], $character->getId());
             $this->db->commit();
         } catch (\Throwable $e) { $this->db->rollBack(); throw $e; }
         return $this->status($character);
@@ -152,8 +170,14 @@ final readonly class CharacterFeatureSpellService
 
     public function options(Character $character,int $grantId,int $ownerId): array
     {
-        $grant=$this->applicable($character)[$grantId]??null;
+        $grant=$this->applicable($character, [], true)[$grantId]??null;
         if (!$grant || $grant['mode']!=='choice') throw new BadRequestHttpException('Choix non disponible.');
+        return $this->choiceOptions($character, $grant, $ownerId);
+    }
+
+    private function choiceOptions(Character $character, array $grant, int $ownerId, bool $excludeDuplicates = true): array
+    {
+        $grantId = (int)$grant['id'];
         $params=[$grant['spell_level'],$ownerId];
         $sql="SELECT s.id,s.name,s.level,s.school FROM spell_definition s WHERE s.level=? AND (s.origin='OFFICIAL' OR s.owner_id=?)";
         if ($grant['class_id']!==null) { $sql.=' AND EXISTS (SELECT 1 FROM spell_class_list_entry e WHERE e.spell_id=s.id AND e.character_class_id=?)'; $params[]=$grant['class_id']; }
@@ -161,8 +185,10 @@ final readonly class CharacterFeatureSpellService
         if ($schools!==[]) { $sql.=' AND s.school IN ('.implode(',',array_fill(0,count($schools),'?')).')'; $params=[...$params,...$schools]; }
         // A spell may be granted by several different features, but one feature
         // should not offer the same spell twice through separate choice slots.
-        $sql .= ' AND NOT EXISTS (SELECT 1 FROM character_feature_spell a JOIN feature_spell_grant used ON used.id=a.grant_id WHERE a.character_id=? AND a.active=true AND used.feature_id=? AND a.spell_id=s.id AND used.id<>?)';
-        $params=[...$params,$character->getId(),$grant['feature_id'],$grantId];
+        if ($excludeDuplicates) {
+            $sql .= ' AND NOT EXISTS (SELECT 1 FROM character_feature_spell a JOIN feature_spell_grant used ON used.id=a.grant_id WHERE a.character_id=? AND a.active=true AND used.feature_id=? AND a.spell_id=s.id AND used.id<>?)';
+            $params=[...$params,$character->getId(),$grant['feature_id'],$grantId];
+        }
         return array_map(static fn($r)=>['id'=>(int)$r['id'],'name'=>$r['name'],'level'=>(int)$r['level'],'school'=>$r['school']],$this->db->fetchAllAssociative($sql.' ORDER BY s.name,s.id',$params));
     }
 

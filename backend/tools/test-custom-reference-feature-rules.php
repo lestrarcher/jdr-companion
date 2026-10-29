@@ -45,22 +45,7 @@ $request = static function (string $method, string $suffix = '', array|string|nu
 try {
     $service = new CustomReferenceFeatureRuleService($db);
     $db->beginTransaction(); $db->executeStatement('SET TRANSACTION READ ONLY');
-    $owner1 = $em->find(User::class, 1); $login($owner1);
-    [$status, $body] = $request('GET');
-    $check($status === 200 && array_column($body['rules'] ?? [], 'id') === [243, 244, 245], 'Owner1 real list');
-    foreach ([243 => [1, 247, 10], 244 => [2, 248, 15], 245 => [3, 249, 50]] as $id => [$progression, $feature, $threshold]) {
-        [$status, $body] = $request('GET', '/'.$id); $rule = $body['rule'];
-        $check($status === 200 && $rule['source']['type'] === 'progression' && $rule['source']['id'] === $progression
-            && $rule['featureDefinition']['id'] === $feature && $rule['progressionThreshold'] === $threshold
-            && $rule['unlockLevel'] === null, 'Real serialized assignment '.$id);
-        $count = $service->usageCount($id, $owner1);
-        $actual = (int)$db->fetchOne('SELECT count(DISTINCT c.id) FROM character_progression a
-            JOIN "character" c ON c.id=a.character_id JOIN campaign p ON p.id=c.campaign_id
-            WHERE p.owner_id=1 AND a.progression_definition_id=?', [$progression]);
-        $check($count === $actual, 'Real acquisition count '.$id);
-        echo json_encode(['rule' => $id, 'progression' => $progression, 'feature' => $feature,
-            'threshold' => $threshold, 'characters' => $count, 'used' => $count > 0], JSON_THROW_ON_ERROR)."\n";
-    }
+    // No hard-coded real users or historical catalogue IDs: all behavior is tested below on fixtures.
     // Verify deployed CHECKs and partial indexes, then copy CHECK definitions to TEMP
     // tables: SchemaTool alone includes indexes but not migration-only constraints.
     $constraints = $db->fetchAllAssociative("SELECT conname, pg_get_constraintdef(oid) AS definition FROM pg_constraint
@@ -76,6 +61,10 @@ try {
     foreach ($em->getMetadataFactory()->getAllMetadata() as $meta) {
         $check($db->fetchOne('SELECT relpersistence FROM pg_class WHERE oid=to_regclass(?)', [$meta->getTableName()]) === 't', 'Isolated '.$meta->getTableName());
     }
+    foreach (['feature_spell_grant','character_feature_spell'] as $table) {
+        $db->executeStatement('CREATE TEMP TABLE '.$table.' (LIKE public.'.$table.' INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING IDENTITY)');
+    }
+    require __DIR__.'/feature-grant-fixture-schema.php';
     foreach ($constraints as $constraint) $db->executeStatement('ALTER TABLE pg_temp.character_feature_rule ADD CONSTRAINT '.$db->quoteIdentifier($constraint['conname']).' '.$constraint['definition']);
     $a = (new User())->setEmail('a@custom-rule.invalid')->setPassword('unused');
     $b = (new User())->setEmail('b@custom-rule.invalid')->setPassword('unused');
@@ -201,7 +190,8 @@ try {
     $check($status===201,'Composition feature create'); $feature=$body['feature'];
     $assignment=$create($payload('class',$sourceIds['a']['class'],$feature['id']));
     $fp='/reference/custom/features/'.$feature['id']; $rp='/reference/custom/resources/'.$resource['id'];
-    $check($request('PATCH',$fp,['resourceDefinitionId'=>null])[0]===409,'Rule freezes Feature resource');
+    $check($request('PATCH',$fp,['resourceDefinitionId'=>null])[0]===200,'Used Feature resource relation is editable');
+    $check($request('PATCH',$fp,['resourceDefinitionId'=>$resource['id']])[0]===200,'Resource relation can be restored without recreating it');
     $check($request('DELETE',$fp)[0]===409,'Rule blocks Feature delete');
     $check($request('PATCH',$rp,['baseMaximum'=>7])[0]===409 && $request('DELETE',$rp)[0]===409,'Feature freezes Resource');
     $check($request('DELETE','/'.$assignment['id'])[0]===204,'Unused Rule removal');
@@ -313,7 +303,9 @@ try {
         $prior=$row($id);
         $check($request('PATCH','/'.$id,[$key=>20])[0]===200 && $row($id)===$prior,'Used same value no-op '.$type);
         foreach ([[$key=>19],['featureDefinitionId'=>$featureIds['a']],['sourceId'=>$sourceIds['a'][$type]]] as $change) {
-            $check($request('PATCH','/'.$id,$change)[0]===409 && $row($id)===$prior,'Used structural change blocked atomically '.$type);
+            $db->createSavepoint('used_edit');
+            $check($request('PATCH','/'.$id,$change)[0]===200,'Used structural change allowed '.$type);
+            $db->rollbackSavepoint('used_edit'); $db->releaseSavepoint('used_edit'); $em->clear();
         }
         $check($request('DELETE','/'.$id)[0]===409 && $row($id)===$prior,'Used delete blocked '.$type);
     }
@@ -353,4 +345,4 @@ try {
     $check($before === $snapshot(), 'All public fingerprints unchanged');
     $kernel->shutdown();
 }
-echo "OK: $checks custom feature rule CRUD assertions; owner1 READ ONLY; isolated fixtures rolled back.\n";
+echo "OK: $checks custom feature rule CRUD assertions; public fingerprints unchanged; isolated fixtures rolled back.\n";

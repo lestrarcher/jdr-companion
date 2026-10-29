@@ -51,6 +51,25 @@ afterEach(() => {
 });
 
 describe('Player spell preparation', () => {
+  it('explains an adventure excess without demanding immediate changes', async () => {
+    const data = view(); data.spellPreparationAllowed = false;
+    data.preparations[0].selected = [1,2];
+    const {element, component} = await setup(data);
+    expect(component.selected(10)).toEqual([1,2]);
+    expect(element.textContent).toContain('Vos sorts restent utilisables');
+    expect(element.textContent).toContain('au prochain repos long');
+    expect(element.querySelector('.confirmation-bar')).toBeNull();
+  });
+  it('keeps the excessive selection after rest until the player chooses a valid draft', async () => {
+    const data = view(); data.preparations[0].selected = [1,2];
+    const {element, component, harness} = await setup(data);
+    expect(component.canConfirm()).toBe(false);
+    expect(element.textContent).toContain('Choisissez les sorts à conserver');
+    component.toggle(component.plans()[0], 2); harness.detectChanges();
+    expect(component.canConfirm()).toBe(true);
+    expect(component.view()!.preparations[0].selected).toEqual([1,2]);
+    expect(element.querySelector('.always-prepared')!.textContent).toContain('Sort de domaine');
+  });
   it('opens and closes long details at the end of a 50-spell book without losing either class draft', async () => {
     const data = view();
     data.preparations[0].available = Array.from({length:50}, (_, index) => ({id:index+1, name:`Sort ${index+1}`, level:Math.floor(index/6)+1}));

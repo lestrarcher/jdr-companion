@@ -9,7 +9,7 @@ export class ReferenceFeatureEditorApiService {
   readonly scope=inject(REFERENCE_EDITOR_SCOPE);
   private url(category: string) { return `/api/reference/${this.scope}/${category}/editor`; }
   getFeatureSpellGrantOptions(featureId: number) {
-    return this.http.get<{ classes: { id: number; name: string }[]; spells: { id: number; name: string; level: number }[] }>(`/api/reference/${this.scope}/features/${featureId}/spell-grants/options`);
+    return this.http.get<{ choiceAllowed: boolean; classes: { id: number; name: string }[]; spells: { id: number; name: string; level: number }[] }>(`/api/reference/${this.scope}/features/${featureId}/spell-grants/options`);
   }
   getFeatureSpellGrants(featureId: number) {
     return this.http.get<{ grants: FeatureSpellGrant[] }>(`/api/reference/${this.scope}/features/${featureId}/spell-grants`);
@@ -20,7 +20,7 @@ export class ReferenceFeatureEditorApiService {
   deleteFeatureSpellGrant(featureId: number, grantId: number) {
     return this.http.delete<{ grants: FeatureSpellGrant[] }>(`/api/reference/${this.scope}/features/${featureId}/spell-grants/${grantId}`);
   }
-  configureFeatureSpellGrant(featureId: number, grantId: number, payload: { castingAbility?: string | null; casting?: GrantCastingConfiguration; enabled?: boolean }) {
+  configureFeatureSpellGrant(featureId: number, grantId: number, payload: Partial<FeatureSpellGrantPayload> & { enabled?: boolean }) {
     return this.http.patch<{ grants: FeatureSpellGrant[] }>(`/api/reference/${this.scope}/features/${featureId}/spell-grants/${grantId}`, payload);
   }
   getFeatures() { return this.http.get<FeatureListResponse>(this.url('features')); }

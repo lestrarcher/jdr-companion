@@ -21,7 +21,7 @@ final class CustomReferenceFeatureRuleService
     ];
     private const FIELDS = ['featureDefinitionId', 'sourceType', 'sourceId', 'unlockLevel', 'progressionThreshold'];
 
-    public function __construct(private readonly Connection $db) {}
+    public function __construct(private readonly Connection $db, private readonly ?FeatureSpellGrantReconciler $reconciler = null) {}
 
     public function editorList(User $actor,bool $official,?int $targetId=null): array
     {
@@ -70,16 +70,15 @@ final class CustomReferenceFeatureRuleService
             if (!$this->integer($extra,0,2147483647)) throw new BadRequestHttpException('Paramètre displayOrder invalide.');
             unset($payload['displayOrder']);
             $data=$this->validate($payload,$row?$this->data($row):null,$actor);
-            if ($row) foreach(['featureDefinitionId','sourceType','sourceId'] as $key) if ($data[$key]!==$this->data($row)[$key]) throw new ConflictHttpException('Identité de relation immuable.');
             if ($official && ($this->reference('character_feature_definition',$data['featureDefinitionId'],null)===null || $this->reference(self::SOURCES[$data['sourceType']][0],$data['sourceId'],null)===null)) throw new BadRequestHttpException('Une attribution officielle exige des dépendances officielles.');
             $columns=$this->columns($data)+['display_order'=>$extra];
             if ($row) {
-                if (($data!==$this->data($row) || $extra!==(int)$row['display_order']) && $this->editorUsed($row)) throw new ConflictHttpException('Attribution utilisée.');
                 $this->db->update('character_feature_rule',$columns,['id'=>$id]);
             } else {
                 $this->db->insert('character_feature_rule',$columns+['origin'=>$official?'OFFICIAL':'CUSTOM','owner_id'=>$official?null:$actor->getId()]);
                 $id=(int)$this->db->lastInsertId();
             }
+            $this->reconciler?->reconcile(array_values(array_unique([$data['featureDefinitionId'], (int)($row['feature_definition_id'] ?? $data['featureDefinitionId'])])));
             return $this->editorView($this->db->fetchAssociative('SELECT * FROM character_feature_rule WHERE id=?',[$id]),$official);
         });
     }
@@ -125,7 +124,9 @@ final class CustomReferenceFeatureRuleService
             $this->db->insert('character_feature_rule', $this->columns($data) + [
                 'origin' => 'CUSTOM', 'owner_id' => $owner->getId(), 'display_order' => 0,
             ]);
-            return $this->get((int) $this->db->lastInsertId(), $owner);
+            $id = (int)$this->db->lastInsertId();
+            $this->reconciler?->reconcile([$data['featureDefinitionId']]);
+            return $this->get($id, $owner);
         });
     }
 
@@ -138,9 +139,9 @@ final class CustomReferenceFeatureRuleService
             $current = $this->data($row);
             $data = $this->validate($payload, $current, $owner);
             if ($data !== $current) {
-                if ($this->countCharacters($row) > 0) throw new ConflictHttpException('Cette attribution est utilisée : sa structure est figée.');
                 $this->db->update('character_feature_rule', $this->columns($data), ['id' => $id]);
             }
+            $this->reconciler?->reconcile(array_values(array_unique([$current['featureDefinitionId'], $data['featureDefinitionId']])));
             return $this->get($id, $owner);
         });
     }
@@ -238,6 +239,11 @@ final class CustomReferenceFeatureRuleService
         }
         if ($this->reference(self::SOURCES[$data['sourceType']][0], $data['sourceId'], $owner->getId()) === null) {
             throw new BadRequestHttpException('La source sélectionnée est indisponible.');
+        }
+        if ($data['sourceType'] === 'progression' && $this->db->fetchOne(
+            "SELECT 1 FROM feature_spell_grant WHERE feature_id=? AND mode='choice'", [$data['featureDefinitionId']],
+        )) {
+            throw new BadRequestHttpException('Une progression ne peut accorder que des sorts fixes.');
         }
         return $data;
     }

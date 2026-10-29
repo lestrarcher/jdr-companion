@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 // Synthetic fixtures in the acquisition harness transaction/schema only.
-$administration=new App\Service\SpellPolicyAdministration($em,$service);
+$administration=new App\Service\SpellPolicyAdministration($em,$service,new App\Service\SpellPolicyTemplateFactory());
 $landRecipe=App\Service\Dnd2014AdvancedSpellPolicies::landCircleCantrip($bookClass);
 $check($landRecipe['parameters']->values['quota']==='free' && array_sum($landRecipe['parameters']->values['opportunities'])===1 && $landRecipe['parameters']->values['opportunities'][1]===1,'Land circle additional cantrip has its own level-two opportunity');
 $psionicRecipe=App\Service\Dnd2014AdvancedSpellPolicies::sorcererSubstitution('psionic-spells',1,[11,12,13]);

@@ -34,6 +34,12 @@ final readonly class PlayerSpellManagement
                 $choices = [...$choices, ...$this->routes($character, $options, $status['className'])];
                 $plan = $this->preparation->plan($character, $options, $session->getState());
                 if ($plan !== null) $preparations[] = $plan + ['source'=>$status['className']];
+                if (($plan['excessCount'] ?? 0) > 0) {
+                    $warnings[] = $status['className'].' : '.$plan['excessCount'].' sort(s) préparé(s) au-delà du maximum actuel. '
+                        .($plan['requiresAdjustment']
+                            ? 'Préparation ouverte : choisissez les sorts à conserver avant de confirmer. Vos sorts actuels restent actifs jusque-là.'
+                            : 'Vos sorts restent utilisables. La sélection sera à ajuster au prochain repos long si le dépassement persiste.');
+                }
                 if ($options['blocked'] || $options['status'] === 'quota-exceeded') $warnings[] = $status['className'].' : quotas à vérifier avec le MJ.';
             } catch (ConflictHttpException $error) { $warnings[] = $status['className'].' : '.$error->getMessage(); }
         }

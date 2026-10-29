@@ -148,8 +148,11 @@ export interface CreateFeatureRulePayload {
 }
 
 export interface UpdateFeatureRulePayload {
-  unlockLevel?: number;
-  progressionThreshold?: number;
+  featureDefinitionId?: number;
+  sourceType?: CreateFeatureRulePayload['sourceType'];
+  sourceId?: number;
+  unlockLevel?: number | null;
+  progressionThreshold?: number | null;
   displayOrder?: number;
 }
 
