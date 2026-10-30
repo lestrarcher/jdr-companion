@@ -48,6 +48,16 @@ class CharacterMagicItem
     #[ORM\Column]
     private bool $equipped = false;
 
+    // Reserved for structured equipment; legacy equipped items occupy no inferred slot.
+    #[ORM\Column(length: 16, nullable: true)]
+    private ?string $equippedSlot = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $handsUsed = null;
+
+    #[ORM\Column(options: ['default' => false])]
+    private bool $legacyStack = false;
+
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $notes = null;
 
@@ -62,15 +72,12 @@ class CharacterMagicItem
         MagicItem $magicItem,
     ) {
         if (
-            $character
-                ->getCampaign()
-                ->getId()
-            !== $magicItem
-                ->getCampaign()
-                ->getId()
+            $magicItem->getCampaign() !== null
+            && $character->getCampaign()->getId()
+                !== $magicItem->getCampaign()->getId()
         ) {
             throw new \InvalidArgumentException(
-                'Le personnage et l’objet doivent appartenir à la même campagne.',
+                'Cet objet appartient à une autre campagne.',
             );
         }
 
@@ -105,22 +112,32 @@ class CharacterMagicItem
         return $this->quantity;
     }
 
-    public function setQuantity(
-        int $quantity,
-    ): static {
+    public function getEquippedSlot(): ?string { return $this->equippedSlot; }
+    public function getHandsUsed(): ?int { return $this->handsUsed; }
+    public function isLegacyStack(): bool { return $this->legacyStack; }
+
+    public function setQuantity(int $quantity): static
+    {
         if ($quantity < 1) {
             throw new \InvalidArgumentException(
                 'La quantité doit être supérieure à zéro.',
             );
         }
 
-        if (
-            $quantity > 1
-            && $this->magicItem->hasCharges()
-        ) {
-            throw new \InvalidArgumentException(
-                'Les objets à charges doivent être suivis individuellement.',
-            );
+        if ($quantity > 1) {
+            $mode = $this->magicItem->getQuantityMode();
+
+            if ($mode === 'individual') {
+                throw new \InvalidArgumentException(
+                    'Cet objet doit être suivi individuellement.',
+                );
+            }
+
+            if ($mode === 'legacy' && $this->magicItem->hasCharges()) {
+                throw new \InvalidArgumentException(
+                    'Les objets à charges doivent être suivis individuellement.',
+                );
+            }
         }
 
         $this->quantity = $quantity;

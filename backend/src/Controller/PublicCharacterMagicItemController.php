@@ -12,6 +12,7 @@ use App\Entity\CharacterSessionState;
 use App\Entity\GameSession;
 use App\Repository\CharacterMagicItemRepository;
 use App\Service\CharacterAbilityCalculator;
+use App\Service\CharacterInventory;
 use Doctrine\ORM\EntityManagerInterface;
 use JsonException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -45,6 +46,88 @@ final class PublicCharacterMagicItemController extends AbstractController
                 $abilityCalculator,
             ),
         );
+    }
+
+    #[Route(
+        '/public/characters/{accessToken}/magic-items',
+        name: 'api_public_character_magic_item_acquire',
+        requirements: ['accessToken' => '[a-f0-9]{64}'],
+        methods: ['POST'],
+    )]
+    public function acquire(
+        string $accessToken,
+        Request $request,
+        PlayerCharacterAccess $playerAccess,
+        CharacterInventory $inventory,
+        CharacterAbilityCalculator $abilityCalculator,
+        EntityManagerInterface $entityManager,
+    ): JsonResponse {
+        $sessionState = $playerAccess->requireParticipating($accessToken);
+
+        try {
+            $payload = $request->toArray();
+        } catch (JsonException) {
+            return $this->json(
+                ['message' => 'Le corps JSON est invalide.'],
+                Response::HTTP_BAD_REQUEST
+            );
+        }
+
+        $definitionId = filter_var($payload['magicItemId'] ?? null, FILTER_VALIDATE_INT);
+        $quantity = $payload['quantity'] ?? 1;
+        $notes = $payload['notes'] ?? null;
+
+        if ($definitionId === false || $definitionId === null || $definitionId <= 0) {
+            return $this->json(
+                ['message' => 'L’identifiant de l’objet est invalide.'],
+                Response::HTTP_UNPROCESSABLE_ENTITY
+            );
+        }
+
+        if (!is_int($quantity) || ($notes !== null && !is_string($notes))) {
+            return $this->json(
+                ['message' => 'Quantité ou notes invalides.'],
+                Response::HTTP_UNPROCESSABLE_ENTITY
+            );
+        }
+
+        return $entityManager->wrapInTransaction(function () use (
+            $sessionState,
+            $playerAccess,
+            $inventory,
+            $abilityCalculator,
+            $entityManager,
+            $definitionId,
+            $quantity,
+            $notes
+        ): JsonResponse {
+            PlayerCharacterAccess::lockForMutation($entityManager, $sessionState);
+
+            $character = $sessionState->getCharacter();
+
+            try {
+                $ownedItems = $inventory->acquire(
+                    $character,
+                    $definitionId,
+                    $quantity,
+                    true,
+                    $notes
+                );
+            } catch (\InvalidArgumentException $exception) {
+                throw new \Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException(
+                    $exception->getMessage(),
+                    $exception
+                );
+            }
+
+            return $this->json([
+                'acquiredItems' => array_map(
+                    fn (CharacterMagicItem $item): array => $this->serializeOwnedItem($item),
+                    $ownedItems
+                ),
+                ...$this->serializeCharacterInventory($character, $abilityCalculator),
+            ], Response::HTTP_CREATED);
+        });
     }
 
     #[Route(
@@ -136,6 +219,18 @@ final class PublicCharacterMagicItemController extends AbstractController
         Character $character,
         array $payload,
     ): void {
+        if (
+    $payload === []
+    || array_diff(
+        array_keys($payload),
+        ['equipped', 'attuned', 'chargeChange'],
+    )
+) {
+    throw new \InvalidArgumentException(
+        'Propriétés de modification invalides.',
+    );
+}
+
         if (array_key_exists('equipped', $payload)) {
             if (!is_bool($payload['equipped'])) {
                 throw new \InvalidArgumentException(
@@ -144,10 +239,6 @@ final class PublicCharacterMagicItemController extends AbstractController
             }
 
             $ownedItem->setEquipped($payload['equipped']);
-
-            if (!$payload['equipped'] && $ownedItem->isAttuned()) {
-                $ownedItem->setAttuned(false);
-            }
         }
 
         if (array_key_exists('attuned', $payload)) {
@@ -168,10 +259,6 @@ final class PublicCharacterMagicItemController extends AbstractController
                 throw new \InvalidArgumentException(
                     'Un personnage ne peut pas être harmonisé avec plus de trois objets.',
                 );
-            }
-
-            if ($shouldBeAttuned && !$ownedItem->isEquipped()) {
-                $ownedItem->setEquipped(true);
             }
 
             $ownedItem->setAttuned($shouldBeAttuned);
@@ -257,7 +344,7 @@ final class PublicCharacterMagicItemController extends AbstractController
                 'id' => $magicItem->getId(),
                 'name' => $magicItem->getName(),
                 'description' => $magicItem->getDescription(),
-                'rarity' => $magicItem->getRarity()->value,
+                'rarity' => $magicItem->getRarity()?->value,
                 'requiresAttunement' =>
                     $magicItem->requiresAttunement(),
                 'maximumCharges' =>

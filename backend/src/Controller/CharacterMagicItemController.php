@@ -10,8 +10,10 @@ use App\Entity\MagicItem;
 use App\Repository\CharacterRepository;
 use App\Security\Voter\CampaignVoter;
 use App\Service\CharacterAbilityCalculator;
+use App\Service\CharacterInventory;
 use Doctrine\ORM\EntityManagerInterface;
 use JsonException;
+use Doctrine\DBAL\LockMode;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -45,156 +47,90 @@ final class CharacterMagicItemController
         );
     }
 
-    #[Route(
-        '/characters/{characterId}/magic-items',
-        name: 'api_character_magic_item_assign',
-        requirements: [
-            'characterId' => '\d+',
-        ],
-        methods: ['POST'],
-    )]
-    public function assign(
-        int $characterId,
-        Request $request,
-        CharacterRepository $characterRepository,
-        EntityManagerInterface $entityManager,
-        CharacterAbilityCalculator $abilityCalculator,
-    ): JsonResponse {
-        $character = $this->getOwnedCharacter(
-            $characterId,
-            $characterRepository,
-        );
+#[Route(
+    '/characters/{characterId}/magic-items',
+    name: 'api_character_magic_item_assign',
+    requirements: ['characterId' => '\d+'],
+    methods: ['POST'],
+)]
+public function assign(
+    int $characterId,
+    Request $request,
+    CharacterRepository $characterRepository,
+    EntityManagerInterface $entityManager,
+    CharacterAbilityCalculator $abilityCalculator,
+    CharacterInventory $inventory,
+): JsonResponse {
+    $character = $this->getOwnedCharacter($characterId, $characterRepository);
 
-        try {
-            $payload = $request->toArray();
-        } catch (JsonException) {
-            return $this->json(
-                [
-                    'message' =>
-                        'Le corps JSON est invalide.',
-                ],
-                Response::HTTP_BAD_REQUEST,
-            );
-        }
-
-        $magicItemId = filter_var(
-            $payload['magicItemId'] ?? null,
-            FILTER_VALIDATE_INT,
-        );
-
-        if (
-            $magicItemId === false
-            || $magicItemId <= 0
-        ) {
-            return $this->json(
-                [
-                    'message' =>
-                        'L’identifiant de l’objet est invalide.',
-                ],
-                Response::HTTP_UNPROCESSABLE_ENTITY,
-            );
-        }
-
-        $magicItem = $entityManager
-            ->getRepository(MagicItem::class)
-            ->find($magicItemId);
-
-        if (!$magicItem instanceof MagicItem) {
-            return $this->json(
-                [
-                    'message' =>
-                        'Objet magique introuvable.',
-                ],
-                Response::HTTP_NOT_FOUND,
-            );
-        }
-
-        if (
-            $magicItem
-                ->getCampaign()
-                ->getId()
-            !== $character
-                ->getCampaign()
-                ->getId()
-        ) {
-            return $this->json(
-                [
-                    'message' =>
-                        'Cet objet n’appartient pas à la campagne du personnage.',
-                ],
-                Response::HTTP_UNPROCESSABLE_ENTITY,
-            );
-        }
-
-        try {
-            $ownedItem =
-                new CharacterMagicItem(
-                    character: $character,
-                    magicItem: $magicItem,
-                );
-
-            if (
-                array_key_exists(
-                    'quantity',
-                    $payload,
-                )
-            ) {
-                $quantity = filter_var(
-                    $payload['quantity'],
-                    FILTER_VALIDATE_INT,
-                );
-
-                if ($quantity === false) {
-                    throw new \InvalidArgumentException(
-                        'La quantité doit être un entier.',
-                    );
-                }
-
-                $ownedItem->setQuantity(
-                    $quantity,
-                );
-            }
-
-            $ownedItem->setNotes(
-                $this->nullableString(
-                    $payload['notes'] ?? null,
-                ),
-            );
-
-            $character->addMagicItem(
-                $ownedItem,
-            );
-        } catch (\InvalidArgumentException $exception) {
-            return $this->json(
-                [
-                    'message' =>
-                        $exception->getMessage(),
-                ],
-                Response::HTTP_UNPROCESSABLE_ENTITY,
-            );
-        }
-
-        $entityManager->persist(
-            $ownedItem,
-        );
-
-        $entityManager->flush();
-
+    try {
+        $payload = $request->toArray();
+    } catch (JsonException) {
         return $this->json(
-            [
-                'ownedItem' =>
-                    $this->serializeOwnedItem(
-                        $ownedItem,
-                    ),
-                'abilities' =>
-                    $this->serializeAbilities(
-                        $character,
-                        $abilityCalculator,
-                    ),
-            ],
-            Response::HTTP_CREATED,
+            ['message' => 'Le corps JSON est invalide.'],
+            Response::HTTP_BAD_REQUEST
         );
     }
+
+    // Validation de l'identifiant de la définition.
+    $magicItemId = filter_var($payload['magicItemId'] ?? null, FILTER_VALIDATE_INT);
+
+    if ($magicItemId === false || $magicItemId === null || $magicItemId <= 0) {
+        return $this->json(
+            ['message' => 'L’identifiant de l’objet est invalide.'],
+            Response::HTTP_UNPROCESSABLE_ENTITY
+        );
+    }
+
+    try {
+        $quantity = $payload['quantity'] ?? 1;
+
+        if (!is_int($quantity)) {
+            throw new \InvalidArgumentException('La quantité doit être un entier.');
+        }
+
+        $notes = $payload['notes'] ?? null;
+
+        if ($notes !== null && !is_string($notes)) {
+            throw new \InvalidArgumentException('Les notes doivent être du texte.');
+        }
+
+        $ownedItems = $entityManager->wrapInTransaction(function () use (
+            $entityManager,
+            $inventory,
+            $character,
+            $magicItemId,
+            $quantity,
+            $notes
+        ): array {
+            $entityManager->lock($character, LockMode::PESSIMISTIC_WRITE);
+            $entityManager->refresh($character);
+
+            return $inventory->acquire(
+                $character,
+                $magicItemId,
+                $quantity,
+                false,
+                $notes
+            );
+        });
+    } catch (\InvalidArgumentException $exception) {
+        return $this->json(
+            ['message' => $exception->getMessage()],
+            Response::HTTP_UNPROCESSABLE_ENTITY
+        );
+    }
+
+    return $this->json([
+        'ownedItem' => $this->serializeOwnedItem($ownedItems[0]),
+        'ownedItems' => array_map(
+            fn (CharacterMagicItem $item) => $this->serializeOwnedItem($item),
+            $ownedItems
+        ),
+        'abilities' => $this->serializeAbilities($character, $abilityCalculator),
+    ], Response::HTTP_CREATED);
+}
+
 
     #[Route(
         '/characters/{characterId}/magic-items/{ownedItemId}',
@@ -347,11 +283,9 @@ final class CharacterMagicItemController
             'description' =>
                 $item->getDescription(),
             'rarity' =>
-                $item->getRarity()->value,
+                $item->getRarity()?->value,
             'rarityLabel' =>
-                $item
-                    ->getRarity()
-                    ->label(),
+                $item->getRarity()?->label(),
             'requiresAttunement' =>
                 $item
                     ->requiresAttunement(),

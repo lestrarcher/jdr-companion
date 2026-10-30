@@ -6,6 +6,7 @@ namespace App\Entity;
 
 use App\Enum\MagicItemRarity;
 use App\Enum\MagicItemRechargeType;
+use App\Enum\ReferenceOrigin;
 use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -13,6 +14,7 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'magic_item')]
+#[ORM\Index(name: 'idx_magic_item_owner', columns: ['owner_id'])]
 class MagicItem
 {
     #[ORM\Id]
@@ -24,10 +26,49 @@ class MagicItem
         targetEntity: Campaign::class,
     )]
     #[ORM\JoinColumn(
-        nullable: false,
+        nullable: true,
         onDelete: 'CASCADE',
     )]
-    private Campaign $campaign;
+    private ?Campaign $campaign;
+
+    // A non-null campaign preserves the scope of historical definitions.
+    #[ORM\Column(length: 8, enumType: ReferenceOrigin::class, options: ['default' => 'CUSTOM'])]
+    private ReferenceOrigin $origin = ReferenceOrigin::Custom;
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'RESTRICT')]
+    private ?User $owner;
+
+    #[ORM\Column(length: 24, options: ['default' => 'other'])]
+    private string $category = 'other';
+
+    #[ORM\Column(options: ['default' => true])]
+    private bool $magical = true;
+
+    #[ORM\Column(options: ['default' => true])]
+    private bool $equippable = true;
+
+    // Keep legacy quantity semantics until explicit classification; never infer from names.
+    #[ORM\Column(length: 16, options: ['default' => 'legacy'])]
+    private string $quantityMode = 'legacy';
+
+    #[ORM\Column(length: 16, options: ['default' => 'free'])]
+    private string $equipmentSlot = 'free';
+
+    #[ORM\Column(length: 16, nullable: true)]
+    private ?string $handUsage = null;
+
+    #[ORM\Column(length: 4, nullable: true)]
+    private ?string $edition = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $sourceReference = null;
+
+    #[ORM\Column(length: 150, nullable: true)]
+    private ?string $importKey = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?DateTimeImmutable $archivedAt = null;
 
     #[ORM\Column(length: 150)]
     private string $name;
@@ -39,8 +80,9 @@ class MagicItem
         type: 'string',
         length: 20,
         enumType: MagicItemRarity::class,
+        nullable: true,
     )]
-    private MagicItemRarity $rarity;
+    private ?MagicItemRarity $rarity;
 
     #[ORM\Column]
     private bool $requiresAttunement = false;
@@ -82,9 +124,11 @@ class MagicItem
     private DateTimeImmutable $updatedAt;
 
     public function __construct(
-        Campaign $campaign,
+        ?Campaign $campaign,
         string $name,
-        MagicItemRarity $rarity,
+        ?MagicItemRarity $rarity,
+        ?User $owner = null,
+        ReferenceOrigin $origin = ReferenceOrigin::Custom,
     ) {
         $name = trim($name);
 
@@ -94,7 +138,16 @@ class MagicItem
             );
         }
 
+        $owner ??= $campaign?->getOwner();
+        if (($origin === ReferenceOrigin::Official && ($owner !== null || $campaign !== null))
+            || ($origin === ReferenceOrigin::Custom && $owner === null)
+            || ($campaign !== null && $campaign->getOwner() !== $owner)) {
+            throw new \InvalidArgumentException('Origine ou propriétaire de définition incohérent.');
+        }
         $this->campaign = $campaign;
+        $this->owner = $owner;
+        $this->origin = $origin;
+        $this->edition = $origin === ReferenceOrigin::Official ? '2014' : null;
         $this->name = $name;
         $this->rarity = $rarity;
         $this->rechargeType =
@@ -114,9 +167,44 @@ class MagicItem
         return $this->id;
     }
 
-    public function getCampaign(): Campaign
+    public function getCampaign(): ?Campaign
     {
         return $this->campaign;
+    }
+
+    public function getOrigin(): ReferenceOrigin { return $this->origin; }
+    public function getOwner(): ?User { return $this->owner; }
+    public function getCategory(): string { return $this->category; }
+    public function isMagical(): bool { return $this->magical; }
+    public function isEquippable(): bool { return $this->equippable; }
+    public function getQuantityMode(): string { return $this->quantityMode; }
+    public function getEquipmentSlot(): string { return $this->equipmentSlot; }
+    public function getHandUsage(): ?string { return $this->handUsage; }
+    public function getEdition(): ?string { return $this->edition; }
+    public function getSourceReference(): ?string { return $this->sourceReference; }
+    public function getImportKey(): ?string { return $this->importKey; }
+    public function getArchivedAt(): ?DateTimeImmutable { return $this->archivedAt; }
+
+    /** Classification for new catalogue definitions; legacy definitions are not reclassified. */
+    public function classify(string $category, bool $magical, bool $equippable, string $slot = 'free', ?string $hands = null): void
+    {
+        if (!in_array($category, ['gear', 'weapon', 'armor', 'shield', 'potion', 'scroll', 'other'], true)
+            || !in_array($slot, ['free', 'hand', 'armor'], true)
+            || !in_array($hands, [null, 'one', 'two', 'versatile'], true)
+            || (!$equippable && ($slot !== 'free' || $hands !== null))
+            || (($slot === 'hand') !== ($hands !== null))
+            || ($category === 'weapon' && (!$equippable || $slot !== 'hand'))
+            || ($category === 'armor' && (!$equippable || $slot !== 'armor'))
+            || ($category === 'shield' && (!$equippable || $slot !== 'hand' || $hands !== 'one'))
+            || (!$magical && ($this->hasCharges() || $this->requiresAttunement || !$this->abilityEffects->isEmpty()))) {
+            throw new \InvalidArgumentException('Classification de l’objet incohérente.');
+        }
+        $this->category = $category;
+        $this->magical = $magical;
+        $this->equippable = $equippable;
+        $this->equipmentSlot = $slot;
+        $this->handUsage = $hands;
+        $this->quantityMode = $equippable || $this->hasCharges() || $this->requiresAttunement ? 'individual' : 'stackable';
     }
 
     public function getName(): string
@@ -165,7 +253,7 @@ class MagicItem
     }
 
     public function getRarity():
-        MagicItemRarity {
+        ?MagicItemRarity {
         return $this->rarity;
     }
 
