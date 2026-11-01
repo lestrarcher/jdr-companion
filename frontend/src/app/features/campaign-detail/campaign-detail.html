@@ -61,6 +61,30 @@
       </a>
     </nav>
 
+    <section class="item-rarity-panel" aria-label="Catalogue des objets de campagne">
+      <div class="section-heading">
+        <span class="eyebrow">Référentiel d'objets</span>
+        <h2>Objets disponibles dans la campagne</h2>
+      </div>
+      <p>Les objets officiels sans rareté sont toujours disponibles. Choisis les autres raretés autorisées :</p>
+      <label class="item-rarity-choice">
+        <input type="checkbox" checked disabled /> Sans rareté — toujours disponible
+      </label>
+      @for (rarity of rarityOptions; track rarity.value) {
+        <label class="item-rarity-choice">
+          <input type="checkbox"
+            [checked]="allowedRarities().includes(rarity.value)"
+            (change)="toggleRarity(rarity.value, $any($event.target).checked)" />
+          {{ rarity.label }}
+        </label>
+      }
+      <button type="button" (click)="saveRarities()" [disabled]="raritySaving()">
+        {{ raritySaving() ? 'Enregistrement…' : 'Enregistrer les raretés' }}
+      </button>
+      @if (rarityMessage()) { <p role="status">{{ rarityMessage() }}</p> }
+      <p class="item-rarity-note">Les objets personnalisés restent ajoutés individuellement. Les exceptions par objet seront configurables depuis le catalogue.</p>
+    </section>
+
     <section class="creation-panel">
       <div class="section-heading">
         <span class="eyebrow">

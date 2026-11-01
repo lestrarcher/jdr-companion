@@ -42,7 +42,11 @@ export interface MagicItemResponse {
   id: number;
   name: string;
   description: string | null;
-  rarity: MagicItemRarity;
+  rarity: MagicItemRarity | null;
+  category: string;
+  equippable: boolean;
+  priceCopper?: number | null;
+  weightGrams?: number | null;
   requiresAttunement: boolean;
   maximumCharges: number | null;
   rechargeType: MagicItemRechargeType;
@@ -79,13 +83,15 @@ export interface CharacterMagicItemInventoryResponse {
 
 export interface CharacterMagicItemUpdateResponse
   extends CharacterMagicItemInventoryResponse {
-  ownedItem: CharacterMagicItemResponse;
+  ownedItem: CharacterMagicItemResponse | null;
 }
 
 export interface CharacterMagicItemUpdatePayload {
   equipped?: boolean;
   attuned?: boolean;
   chargeChange?: number;
+  consume?: boolean;
+  discardQuantity?: number;
 }
 
 @Injectable({
@@ -103,6 +109,20 @@ export class PublicCharacterMagicItemApiService {
     );
   }
 
+  catalogue(accessToken: string, query: string, page = 1): Observable<{items: MagicItemResponse[]; total: number; page: number; pageSize: number}> {
+    return this.http.get<{items: MagicItemResponse[]; total: number; page: number; pageSize: number}>(
+      `${this.apiUrl}/public/characters/${accessToken}/item-catalogue`,
+      { params: { q: query, page } },
+    );
+  }
+
+  acquire(accessToken: string, magicItemId: number, quantity: number): Observable<CharacterMagicItemInventoryResponse> {
+    return this.http.post<CharacterMagicItemInventoryResponse>(
+      `${this.apiUrl}/public/characters/${accessToken}/magic-items`,
+      { magicItemId, quantity },
+    );
+  }
+
   update(
     accessToken: string,
     ownedItemId: number,
@@ -112,6 +132,14 @@ export class PublicCharacterMagicItemApiService {
       `${this.apiUrl}/public/characters/${accessToken}/magic-items/${ownedItemId}`,
       payload,
     );
+  }
+
+  consume(accessToken: string, ownedItemId: number): Observable<CharacterMagicItemUpdateResponse> {
+    return this.update(accessToken, ownedItemId, { consume: true });
+  }
+
+  discard(accessToken: string, ownedItemId: number, quantity: number): Observable<CharacterMagicItemUpdateResponse> {
+    return this.update(accessToken, ownedItemId, { discardQuantity: quantity });
   }
 
   equip(

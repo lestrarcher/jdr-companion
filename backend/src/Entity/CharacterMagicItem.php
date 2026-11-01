@@ -241,6 +241,9 @@ class CharacterMagicItem
     public function setEquipped(
         bool $equipped,
     ): static {
+        if ($equipped && !$this->magicItem->isEquippable()) {
+            throw new \InvalidArgumentException('Cet objet ne peut pas être équipé.');
+        }
         $this->equipped = $equipped;
         $this->touch();
 

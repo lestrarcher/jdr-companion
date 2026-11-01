@@ -67,7 +67,20 @@ export interface PlayerSpell {
   level: number | null;
   school: string | null;
   source: string;
-  sourceType: 'class' | 'subclass' | 'feature';
+  sourceType: 'class' | 'subclass' | 'feature' | 'item';
+  itemGrant?: {
+    ownedItemId: number;
+    grantId: number;
+    activation: 'possession' | 'equipped' | 'attuned';
+    active: boolean;
+    costMode: 'charges' | 'limited';
+    cost: number;
+    currentCharges: number | null;
+    usesPerReset: number | null;
+    remainingUses: number | null;
+    resetTrigger: 'dawn' | 'short-rest' | 'long-rest' | 'manual' | null;
+    castingSupported: boolean;
+  };
   castingAbility: string | null;
   spellSaveDc: number | null;
   spellAttackBonus: number | null;

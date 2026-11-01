@@ -1,3 +1,5 @@
+import { CampaignItemCatalogueApiService } from '@core/services/campaign-item-catalogue-api.service';
+
 import {
   Component,
   inject,
@@ -46,6 +48,49 @@ export class CampaignDetail {
 
   private readonly formBuilder =
     inject(FormBuilder);
+
+  private readonly itemCatalogueApi = inject(CampaignItemCatalogueApiService);
+
+  protected readonly rarityOptions = [
+    { value: 'common', label: 'Commun' },
+    { value: 'uncommon', label: 'Peu commun' },
+    { value: 'rare', label: 'Rare' },
+    { value: 'very-rare', label: 'Très rare' },
+    { value: 'legendary', label: 'Légendaire' },
+    { value: 'artifact', label: 'Artefact' },
+  ];
+  protected readonly allowedRarities = signal<string[]>([]);
+  protected readonly raritySaving = signal(false);
+  protected readonly rarityMessage = signal<string | null>(null);
+
+  protected toggleRarity(value: string, enabled: boolean): void {
+    this.allowedRarities.update(current => enabled
+      ? [...current.filter(item => item !== value), value]
+      : current.filter(item => item !== value));
+    this.rarityMessage.set(null);
+  }
+
+  protected saveRarities(): void {
+    if (this.raritySaving()) return;
+    this.raritySaving.set(true);
+    this.rarityMessage.set(null);
+    this.itemCatalogueApi.saveRarities(this.campaignId, this.allowedRarities())
+      .pipe(finalize(() => this.raritySaving.set(false)))
+      .subscribe({
+        next: response => {
+          this.allowedRarities.set(response.rarities);
+          this.rarityMessage.set('Catalogue de campagne enregistré.');
+        },
+        error: () => this.rarityMessage.set('Impossible de sauvegarder les raretés.'),
+      });
+  }
+
+  private loadRarities(): void {
+    this.itemCatalogueApi.getRarities(this.campaignId).subscribe({
+      next: response => this.allowedRarities.set(response.rarities),
+      error: () => this.rarityMessage.set('Impossible de charger les raretés.'),
+    });
+  }
 
   private readonly campaignApi =
     inject(CampaignApiService);
@@ -96,6 +141,7 @@ export class CampaignDetail {
 
     this.campaignId = campaignId;
     this.loadCampaign();
+    this.loadRarities();
   }
 
   protected createSession(): void {

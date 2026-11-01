@@ -25,6 +25,22 @@ final class ItemCatalogueController extends AbstractController
             $request->query->getString('q'), $request->query->has('category') ? $request->query->getString('category') : null, $request->query->getInt('page', 1)));
     }
 
+    #[Route('/rarities', name: 'api_item_catalogue_rarities_get', methods: ['GET'])]
+    public function rarities(int $campaignId): JsonResponse
+    {
+        return $this->json($this->catalogue->allowedRarities($this->campaign($campaignId)));
+    }
+
+    #[Route('/rarities', name: 'api_item_catalogue_rarities_put', methods: ['PUT'])]
+    public function updateRarities(int $campaignId, Request $request): JsonResponse
+    {
+        $payload = $request->toArray();
+        if (array_keys($payload) !== ['rarities'] || !is_array($payload['rarities'])) {
+            throw new UnprocessableEntityHttpException('Liste des raretés requise.');
+        }
+        return $this->json($this->catalogue->setAllowedRarities($this->campaign($campaignId), $payload['rarities']));
+    }
+
     #[Route('/{id}', name: 'api_item_catalogue_show', requirements: ['id'=>'\d+'], methods: ['GET'])]
     public function show(int $campaignId, int $id): JsonResponse
     {

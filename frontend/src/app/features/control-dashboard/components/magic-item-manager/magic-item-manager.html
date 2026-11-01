@@ -244,6 +244,56 @@
         }
       </section>
 
+
+      <section class="spell-grants">
+        <h4>Sorts octroyés</h4>
+        <label class="field"><span>Rechercher un sort</span>
+          <input type="search" [value]="spellQuery()" (input)="searchSpells($any($event.target).value)" placeholder="Nom du sort…" />
+        </label>
+        <div class="spell-results">
+          @for (spell of spellOptions(); track spell.id) {
+            <button type="button" class="secondary-button" (click)="addSpell(spell)">
+              + {{ spell.name }} (niveau {{ spell.level }})
+            </button>
+          }
+        </div>
+        @for (grant of spellGrants(); track grant.spellId; let index = $index) {
+          <div class="spell-grant-row">
+            <strong>{{ grant.spellName }}</strong>
+            <label class="field"><span>Condition</span>
+              <select [value]="grant.activation" (change)="updateSpell(index, 'activation', $any($event.target).value)">
+                <option value="possession">Possession</option>
+                <option value="equipped">Équipé</option>
+                <option value="attuned">Harmonisé</option>
+              </select>
+            </label>
+            <label class="field"><span>Consommation</span>
+              <select [value]="grant.costMode" (change)="updateSpell(index, 'costMode', $any($event.target).value)">
+                <option value="limited">Utilisations limitées</option>
+                <option value="charges">Charges de l'objet</option>
+              </select>
+            </label>
+            <label class="field"><span>Coût</span>
+              <input type="number" min="1" [value]="grant.cost" (change)="updateSpell(index, 'cost', $any($event.target).valueAsNumber)" />
+            </label>
+            @if (grant.costMode === 'limited') {
+              <label class="field"><span>Utilisations par recharge</span>
+                <input type="number" min="1" [value]="grant.usesPerReset" (change)="updateSpell(index, 'usesPerReset', $any($event.target).valueAsNumber)" />
+              </label>
+              <label class="field"><span>Recharge</span>
+                <select [value]="grant.resetTrigger" (change)="updateSpell(index, 'resetTrigger', $any($event.target).value)">
+                  <option value="dawn">À l'aube</option>
+                  <option value="short-rest">Repos court</option>
+                  <option value="long-rest">Repos long</option>
+                  <option value="manual">Manuelle</option>
+                </select>
+              </label>
+            }
+            <button type="button" class="secondary-button" (click)="removeSpell(index)">Retirer</button>
+          </div>
+        }
+      </section>
+
       <button
         type="submit"
         class="primary-button"
@@ -311,6 +361,62 @@
                 </p>
               }
 
+              <button type="button" class="secondary-button" (click)="editGrants(magicItem)">Gérer les sorts</button>
+              @if (editingItemId() === magicItem.id) {
+                <div class="grant-editor">
+
+      <section class="spell-grants">
+        <h4>Sorts octroyés</h4>
+        <label class="field"><span>Rechercher un sort</span>
+          <input type="search" [value]="spellQuery()" (input)="searchSpells($any($event.target).value)" placeholder="Nom du sort…" />
+        </label>
+        <div class="spell-results">
+          @for (spell of spellOptions(); track spell.id) {
+            <button type="button" class="secondary-button" (click)="addSpell(spell)">
+              + {{ spell.name }} (niveau {{ spell.level }})
+            </button>
+          }
+        </div>
+        @for (grant of spellGrants(); track grant.spellId; let index = $index) {
+          <div class="spell-grant-row">
+            <strong>{{ grant.spellName }}</strong>
+            <label class="field"><span>Condition</span>
+              <select [value]="grant.activation" (change)="updateSpell(index, 'activation', $any($event.target).value)">
+                <option value="possession">Possession</option>
+                <option value="equipped">Équipé</option>
+                <option value="attuned">Harmonisé</option>
+              </select>
+            </label>
+            <label class="field"><span>Consommation</span>
+              <select [value]="grant.costMode" (change)="updateSpell(index, 'costMode', $any($event.target).value)">
+                <option value="limited">Utilisations limitées</option>
+                <option value="charges">Charges de l'objet</option>
+              </select>
+            </label>
+            <label class="field"><span>Coût</span>
+              <input type="number" min="1" [value]="grant.cost" (change)="updateSpell(index, 'cost', $any($event.target).valueAsNumber)" />
+            </label>
+            @if (grant.costMode === 'limited') {
+              <label class="field"><span>Utilisations par recharge</span>
+                <input type="number" min="1" [value]="grant.usesPerReset" (change)="updateSpell(index, 'usesPerReset', $any($event.target).valueAsNumber)" />
+              </label>
+              <label class="field"><span>Recharge</span>
+                <select [value]="grant.resetTrigger" (change)="updateSpell(index, 'resetTrigger', $any($event.target).value)">
+                  <option value="dawn">À l'aube</option>
+                  <option value="short-rest">Repos court</option>
+                  <option value="long-rest">Repos long</option>
+                  <option value="manual">Manuelle</option>
+                </select>
+              </label>
+            }
+            <button type="button" class="secondary-button" (click)="removeSpell(index)">Retirer</button>
+          </div>
+        }
+      </section>
+                  <button type="button" class="primary-button" [disabled]="submitting()" (click)="saveGrants()">Enregistrer les sorts</button>
+                  <button type="button" class="secondary-button" (click)="cancelEdit()">Annuler</button>
+                </div>
+              }
               <footer>
                 @if (
                   magicItem.maximumCharges !== null

@@ -17,6 +17,9 @@ import { HttpErrorResponse } from '@angular/common/http';
 
 import {
   CreateMagicItemPayload,
+  MagicItemSpellGrantPayload,
+  MagicItemSpellGrantResponse,
+  SpellOption,
   MagicItemApiService,
 } from '@core/services/magic-item-api.service';
 
@@ -52,6 +55,11 @@ export class MagicItemManager implements OnInit {
     signal<MagicItemResponse[]>([]);
 
   protected readonly loading = signal(true);
+  protected readonly spellOptions = signal<SpellOption[]>([]);
+  protected readonly spellQuery = signal('');
+  protected readonly editingItemId = signal<number | null>(null);
+  protected readonly spellGrants = signal<(MagicItemSpellGrantPayload & {spellName: string})[]>([]);
+
   protected readonly submitting = signal(false);
   protected readonly errorMessage =
     signal<string | null>(null);
@@ -254,6 +262,76 @@ export class MagicItemManager implements OnInit {
     this.abilityEffects.removeAt(index);
   }
 
+  protected searchSpells(query: string): void {
+    this.spellQuery.set(query);
+    this.magicItemApi.searchSpells(query).subscribe({
+      next: spells => this.spellOptions.set(spells),
+      error: () => this.errorMessage.set('Impossible de rechercher les sorts.'),
+    });
+  }
+
+  protected addSpell(spell: SpellOption): void {
+    if (this.spellGrants().some(grant => grant.spellId === spell.id)) return;
+    this.spellGrants.update(grants => [...grants, {
+      spellId: spell.id, spellName: spell.name, activation: 'possession',
+      costMode: 'limited', cost: 1, usesPerReset: 1, resetTrigger: 'dawn',
+    }]);
+  }
+
+  protected removeSpell(index: number): void {
+    this.spellGrants.update(grants => grants.filter((_, i) => i !== index));
+  }
+
+  protected updateSpell(index: number, field: keyof MagicItemSpellGrantPayload, value: string | number | null): void {
+    this.spellGrants.update(grants => grants.map((grant, i) => {
+      if (i !== index) return grant;
+      const next = {...grant, [field]: value};
+      if (field === 'costMode') {
+        if (value === 'charges') { next.usesPerReset = null; next.resetTrigger = null; }
+        else { next.usesPerReset = 1; next.resetTrigger = 'dawn'; }
+      }
+      return next;
+    }));
+  }
+
+  protected editGrants(item: MagicItemResponse): void {
+    this.editingItemId.set(item.id);
+    this.spellGrants.set(((item as MagicItemResponse & {spellGrants?: MagicItemSpellGrantResponse[]}).spellGrants ?? [])
+      .map(({spellId, spellName, activation, costMode, cost, usesPerReset, resetTrigger}) =>
+        ({spellId, spellName, activation, costMode, cost, usesPerReset, resetTrigger})));
+    this.searchSpells('');
+  }
+
+  protected cancelEdit(): void {
+    this.editingItemId.set(null);
+    this.spellGrants.set([]);
+  }
+
+  protected saveGrants(): void {
+    const itemId = this.editingItemId();
+    if (itemId === null) return;
+    this.submitting.set(true);
+    this.magicItemApi.replaceSpellGrants(this.campaignId(), itemId, this.grantPayload()).subscribe({
+      next: item => {
+        const updated = this.catalog().map(current => current.id === item.id ? item : current);
+        this.catalog.set(updated);
+        this.catalogChanged.emit(updated);
+        this.cancelEdit();
+        this.successMessage.set('Sorts octroyés mis à jour.');
+        this.submitting.set(false);
+      },
+      error: (error: HttpErrorResponse) => {
+        this.errorMessage.set(error.error?.message ?? 'Impossible de modifier les sorts.');
+        this.submitting.set(false);
+      },
+    });
+  }
+
+  private grantPayload(): MagicItemSpellGrantPayload[] {
+    return this.spellGrants().map(({spellId, activation, costMode, cost, usesPerReset, resetTrigger}) =>
+      ({spellId, activation, costMode, cost, usesPerReset, resetTrigger}));
+  }
+
   protected submit(): void {
     this.errorMessage.set(null);
     this.successMessage.set(null);
@@ -302,6 +380,8 @@ export class MagicItemManager implements OnInit {
           ? null
           : rawValue.rechargeFormula?.trim()
             || null,
+
+      spellGrants: this.grantPayload(),
 
       abilityEffects:
         rawAbilityEffects.map(
@@ -361,8 +441,11 @@ export class MagicItemManager implements OnInit {
   }
 
   protected rarityLabel(
-    rarity: MagicItemRarity,
+    rarity: MagicItemRarity | null,
   ): string {
+    if (rarity === null) {
+      return 'Sans rareté';
+    }
     return (
       this.rarities.find(
         (candidate) =>
@@ -428,5 +511,6 @@ export class MagicItemManager implements OnInit {
     });
 
     this.abilityEffects.clear();
+    this.spellGrants.set([]);
   }
 }

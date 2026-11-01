@@ -388,3 +388,10 @@ textarea {
       repeat(5, minmax(0, 1fr));
   }
 }
+
+.spell-grants { display: grid; gap: .75rem; margin: 1rem 0; padding: 1rem 0; border-top: 1px solid rgba(201,168,95,.3); }
+.spell-grants h4 { color: #c9a85f; margin: 0; }
+.spell-results { display: flex; flex-wrap: wrap; gap: .4rem; max-height: 9rem; overflow-y: auto; }
+.spell-grant-row { display: flex; flex-wrap: wrap; gap: .65rem; align-items: end; padding: .75rem; border: 1px solid rgba(201,168,95,.2); }
+.spell-grant-row > strong { flex-basis: 100%; color: #f1eadc; }
+.grant-editor { margin-top: 1rem; }

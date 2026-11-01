@@ -118,12 +118,23 @@ export class SpellCastDialog implements AfterViewInit, OnDestroy {
     const value = matches[0]?.currentValue;
     return matches.length === 1 && Number.isInteger(value) && value >= 0 ? value : null;
   }
+  itemRemaining(option: CastOption): number | null {
+    const grant = option.source.itemGrant;
+    return grant ? (grant.costMode === 'charges' ? grant.currentCharges : grant.remainingUses) : null;
+  }
+  isItemOption(option: CastOption): boolean {
+    return option.method.kind === 'item-charges' || option.method.kind === 'item-limited';
+  }
   unavailableLabel(option: CastOption): string {
     if (option.method.status === 'unknown') return 'État inconnu';
+    if (option.method.reason === 'item_inactive') return 'Objet non équipé ou non harmonisé';
+    if (option.method.reason === 'insufficient_item_uses') return 'Charges ou utilisations insuffisantes';
     if (option.method.reason === 'insufficient_resource') return 'Ressource insuffisante';
     return option.method.reason === 'exhausted' ? 'Épuisé' : 'Indisponible';
   }
   costLabel(option: CastOption): string {
+    if (option.method.kind === 'item-charges') return `${option.method.cost} charge(s) de l’objet`;
+    if (option.method.kind === 'item-limited') return `${option.method.cost} utilisation(s) de l’objet`;
     if (option.method.kind === 'arcanum') return '1 utilisation d’Arcanum (sans emplacement)';
     return option.method.kind === 'resource' ? `${option.method.cost} unité(s) de ressource de capacité`
       : option.method.cost === 0 ? 'sans emplacement' : `${option.method.cost} emplacement(s)`;
@@ -132,10 +143,10 @@ export class SpellCastDialog implements AfterViewInit, OnDestroy {
     const remaining = this.remaining(option);
     return `${option.source.source} · ${this.methodLabel(option.method.kind)} · niveau ${option.method.castingLevel}`
       + ` · coût : ${this.costLabel(option)}`
-      + (option.method.poolSlug ? ` · ${remaining === null ? 'quantité restante inconnue' : remaining + ' restant(s)'}` : '')
+      + (this.isItemOption(option) ? ` · ${this.itemRemaining(option) ?? '?'} restant(s)` : option.method.poolSlug ? ` · ${remaining === null ? 'quantité restante inconnue' : remaining + ' restant(s)'}` : '')
       + (option.method.status === 'available' ? '' : ` · ${this.unavailableLabel(option)}`);
   }
   methodLabel(kind: string): string {
-    return ({ arcanum: 'Arcanum mystique (sans emplacement)', resource: 'Utilisation de capacité (sans emplacement)', cantrip: 'Tour de magie', ritual: 'Rituel', 'standard-slot': 'Emplacement standard', 'pact-slot': 'Magie de pacte' } as Record<string, string>)[kind] ?? kind;
+    return ({ arcanum: 'Arcanum mystique (sans emplacement)', resource: 'Utilisation de capacité (sans emplacement)', cantrip: 'Tour de magie', ritual: 'Rituel', 'standard-slot': 'Emplacement standard', 'pact-slot': 'Magie de pacte', 'item-charges': 'Charges d’objet', 'item-limited': 'Utilisations d’objet' } as Record<string, string>)[kind] ?? kind;
   }
 }

@@ -59,6 +59,11 @@ export const routes: Routes = [
         redirectTo: 'dnd/reference', pathMatch: 'full',
       },
       {
+        path: 'dnd/items',
+        redirectTo: 'dnd/reference/official',
+        pathMatch: 'full',
+      },
+      {
         path: 'dnd/reference',
         loadComponent: () =>
           import('./features/dnd-reference/feature-manager/feature-manager')

@@ -33,7 +33,7 @@ export function spellArtwork(spell: Pick<PlayerSpell, 'spellId' | 'school'>): st
     <div class="quickbar" role="group" aria-label="Répertoire rapide">
       @for (spell of entries(); track key(spell)) {
         <button type="button" class="quick-spell" [class.is-selected]="selectedKey() === key(spell)"
-          [attr.data-school]="spell.school" [title]="spell.name + ' · ' + spell.source"
+          [attr.data-school]="spell.school" [title]="spell.name + ' · ' + spell.source + (spell.itemGrant ? ' · Objet magique (' + (spell.itemGrant.active ? 'actif' : 'inactif') + ')' : '')"
           [class.is-unavailable]="!available(spell)" [disabled]="disabled() || !available(spell)"
           [attr.aria-pressed]="selectedKey() === key(spell)"
           [attr.aria-label]="spell.name + ' · ' + spell.source + (!available(spell) ? ' · Indisponible' : '')"
@@ -47,6 +47,9 @@ export function spellArtwork(spell: Pick<PlayerSpell, 'spellId' | 'school'>): st
           </span>
           <span class="spell-level" [attr.aria-label]="spell.level === 0 ? 'Tour de magie' : 'Niveau ' + (spell.level ?? '?')">{{ spell.level === 0 ? '∞' : spell.level ?? '?' }}</span>
           <span class="quick-name">{{ spell.name }}</span>
+          @if (spell.itemGrant) {
+            <span class="item-grant-label">Objet · {{ spell.itemGrant.active ? 'actif' : 'inactif' }}</span>
+          }
           @if (spell.prepared) { <span class="prepared-dot" aria-label="Préparé"></span> }
         </button>
       }
@@ -76,6 +79,7 @@ export function spellArtwork(spell: Pick<PlayerSpell, 'spellId' | 'school'>): st
     [data-school=divination] .spell-icon { color: #e8cf91; }
     .spell-level { position: absolute; top: .2rem; right: .35rem; color: #e7d6b5; font-size: .7rem; }
     .quick-name { font-size: .68rem; line-height: 1.25; overflow-wrap: anywhere; }
+    .item-grant-label { font-size: .57rem; color: #dfbf80; text-align: center; }
     .prepared-dot { position: absolute; left: .4rem; top: .4rem; width: .4rem; height: .4rem; border-radius: 50%; background: #9ed4b9; }
   `,
 })

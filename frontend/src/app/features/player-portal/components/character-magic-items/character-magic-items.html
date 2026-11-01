@@ -5,7 +5,7 @@
         Équipement
       </p>
 
-      <h2>Objets magiques</h2>
+      <h2>Inventaire d’équipement</h2>
     </div>
 
     <div
@@ -19,6 +19,67 @@
       </strong>
     </div>
   </header>
+
+  @if (!readonly()) {
+    <button type="button" class="catalogue-toggle" (click)="openCatalogue()">
+      <span aria-hidden="true">＋</span> Ajouter un objet
+    </button>
+    @if (successMessage()) { <p class="inventory-feedback" role="status">{{ successMessage() }}</p> }
+  }
+
+  @if (catalogueOpen()) {
+    <div class="catalogue-backdrop" (click)="closeCatalogue()">
+      <section class="catalogue-dialog" role="dialog" aria-modal="true" aria-labelledby="catalogue-title" (click)="$event.stopPropagation()">
+        <header class="catalogue-dialog__header">
+          <div><p class="magic-items__eyebrow">Catalogue</p><h3 id="catalogue-title">Ajouter un objet</h3></div>
+          <button type="button" class="catalogue-close" aria-label="Fermer le catalogue" [disabled]="acquiring()" (click)="closeCatalogue()">✕</button>
+        </header>
+        <div class="catalogue-dialog__search">
+          <label for="item-search">Rechercher un équipement disponible</label>
+          <input id="item-search" type="search" autocomplete="off" [value]="catalogueQuery()"
+            (input)="searchCatalogue($any($event.target).value)" placeholder="Nom de l’objet…" />
+        </div>
+        <div class="catalogue-dialog__results" aria-label="Résultats de recherche">
+          @if (catalogueLoading()) { <p class="catalogue-empty">Recherche…</p> }
+          @for (item of catalogueItems(); track item.id) {
+            <button type="button" class="catalogue-result" [class.catalogue-result--selected]="selectedCatalogueItem()?.id === item.id"
+              [class]="'catalogue-result rarity--' + rarityClass(item.rarity)"
+              [disabled]="acquiring()" (click)="selectCatalogueItem(item)">
+              <span class="catalogue-result__main"><strong>{{ item.name }}</strong><small>{{ rarityLabel(item.rarity) }} @if (item.weightGrams != null) { · {{ formatWeight(item.weightGrams) }} }</small></span>
+              <span class="catalogue-result__indicator" aria-hidden="true">{{ selectedCatalogueItem()?.id === item.id ? '●' : '○' }}</span>
+            </button>
+          } @empty {
+            @if (!catalogueLoading()) { <p class="catalogue-empty">Aucun objet disponible.</p> }
+          }
+          @if (catalogueTotal() > 50) {
+            <nav class="item-catalogue__pages" aria-label="Pagination du catalogue">
+              <button type="button" [disabled]="cataloguePage() <= 1 || catalogueLoading()" (click)="loadCatalogue(cataloguePage() - 1)">Précédent</button>
+              <span>Page {{ cataloguePage() }}</span>
+              <button type="button" [disabled]="cataloguePage() * 50 >= catalogueTotal() || catalogueLoading()" (click)="loadCatalogue(cataloguePage() + 1)">Suivant</button>
+            </nav>
+          }
+        </div>
+        <footer class="catalogue-dialog__footer">
+          @if (selectedCatalogueItem(); as selected) {
+            <div class="catalogue-selected"><span>Objet sélectionné</span><strong>{{ selected.name }}</strong></div>
+            <div class="catalogue-quantity">
+              <span>Quantité</span>
+              <div class="catalogue-quantity__controls">
+                <button type="button" aria-label="Diminuer la quantité" [disabled]="quantity() <= 1 || acquiring()" (click)="adjustQuantity(-1)">−</button>
+                <input aria-label="Quantité à ajouter" type="number" min="1" max="9999" [value]="quantity()" (input)="quantity.set(+$any($event.target).value)" />
+                <button type="button" aria-label="Augmenter la quantité" [disabled]="quantity() >= 9999 || acquiring()" (click)="adjustQuantity(1)">+</button>
+              </div>
+            </div>
+            <button type="button" class="catalogue-submit" [disabled]="acquiring() || !validQuantity()" (click)="acquireItem(selected)">
+              {{ acquiring() ? 'Ajout en cours…' : 'Ajouter à l’inventaire' }}
+            </button>
+          } @else {
+            <p class="catalogue-hint">Sélectionne un objet pour choisir la quantité à ajouter.</p>
+          }
+        </footer>
+      </section>
+    </div>
+  }
 
   @if (errorMessage()) {
     <p class="magic-items__error" role="alert">
@@ -34,175 +95,86 @@
     <div class="magic-items__empty">
       <span class="magic-items__empty-symbol">◇</span>
 
-      <p>Aucun objet magique dans l’inventaire.</p>
+      <p>Aucun équipement dans l’inventaire.</p>
     </div>
   } @else {
+    <div class="inventory-summary">
+      <span>{{ ownedItems().length }} ligne(s) · Tri A → Z</span>
+      <span>Poids : {{ formatWeight(totalWeightGrams()) }}{{ unknownWeight() ? ' + poids inconnus' : '' }}</span>
+    </div>
     <div class="magic-items__list">
-      @for (
-        ownedItem of ownedItems();
-        track ownedItem.id
-      ) {
-        <article
-          class="magic-item"
-          [class.magic-item--active]="
-            ownedItem.effectActive
-          "
-          [class.magic-item--updating]="
-            isUpdating(ownedItem)
-          "
-        >
-          <header class="magic-item__header">
-            <div>
-              <h3>{{ ownedItem.magicItem.name }}</h3>
-
-              <p class="magic-item__rarity">
-                {{
-                  rarityLabel(
-                    ownedItem.magicItem.rarity
-                  )
-                }}
-
-                @if (
-                  ownedItem.magicItem.requiresAttunement
-                ) {
-                  · Harmonisation requise
-                }
-              </p>
-            </div>
-
-            @if (ownedItem.quantity > 1) {
-              <span class="magic-item__quantity">
-                × {{ ownedItem.quantity }}
+      @for (ownedItem of sortedItems(); track ownedItem.id) {
+        <article class="magic-item" [class]="'magic-item rarity--' + rarityClass(ownedItem.magicItem.rarity)" [class.magic-item--active]="ownedItem.effectActive" [class.magic-item--updating]="isUpdating(ownedItem)">
+          <button type="button" class="magic-item__summary" [attr.aria-expanded]="expandedItemId() === ownedItem.id"
+            [attr.aria-controls]="'item-details-' + ownedItem.id" (click)="toggleDetails(ownedItem.id)">
+            <span class="magic-item__summary-main">
+              <strong>{{ ownedItem.magicItem.name }}</strong>
+              <span class="magic-item__statuses">
+                <span>× {{ ownedItem.quantity }}</span>
+                @if (ownedItem.equipped) { <span class="item-status">Équipé</span> }
+                @if (ownedItem.attuned) { <span class="item-status">Harmonisé</span> }
               </span>
-            }
-          </header>
-
-          @if (ownedItem.magicItem.description) {
-            <p class="magic-item__description">
-              {{ ownedItem.magicItem.description }}
-            </p>
-          }
-
-          @if (ownedItem.notes) {
-            <p class="magic-item__notes">
-              {{ ownedItem.notes }}
-            </p>
-          }
-
-          @if (hasCharges(ownedItem)) {
-            <div class="charges">
-              <div class="charges__label">
-                <span>Charges</span>
-
-                @if (
-                  ownedItem.magicItem.rechargeFormula
-                ) {
-                  <small>
-                    Recharge :
-                    {{
-                      ownedItem.magicItem
-                        .rechargeFormula
-                    }}
-                  </small>
-                }
+            </span>
+            <span class="magic-item__chevron" aria-hidden="true">{{ expandedItemId() === ownedItem.id ? '⌃' : '⌄' }}</span>
+          </button>
+          @if (expandedItemId() === ownedItem.id) {
+            <div class="magic-item__details" [id]="'item-details-' + ownedItem.id">
+              <div class="magic-item__metadata">
+                <span>{{ rarityLabel(ownedItem.magicItem.rarity) }}</span>
+                <span>Poids : {{ ownedItem.magicItem.weightGrams == null ? 'Non renseigné' : formatWeight(ownedItem.magicItem.weightGrams) }}</span>
+                <span>Prix : {{ formatPrice(ownedItem.magicItem.priceCopper) }}</span>
               </div>
-
-              <div class="charges__controls">
-                <button [hidden]="readonly()"
-                  type="button"
-                  class="charges__button"
-                  aria-label="Dépenser une charge"
-                  [disabled]="
-                    ownedItem.currentCharges <= 0
-                    || isUpdating(ownedItem)
-                  "
-                  (click)="spendCharge(ownedItem)"
-                >
-                  −
-                </button>
-
-                <strong>
-                  {{ ownedItem.currentCharges }}
-                  /
-                  {{
-                    ownedItem.magicItem
-                      .maximumCharges
-                  }}
-                </strong>
-
-                @if (
-                  canRestoreManually(ownedItem)
-                ) {
-                  <button [hidden]="readonly()"
-                    type="button"
-                    class="charges__button"
-                    aria-label="Récupérer une charge"
-                    [disabled]="
-                      ownedItem.currentCharges >=
-                        ownedItem.magicItem
-                          .maximumCharges!
-                      || isUpdating(ownedItem)
-                    "
-                    (click)="restoreCharge(ownedItem)"
-                  >
-                    +
-                  </button>
+              @if (ownedItem.magicItem.requiresAttunement) { <p class="magic-item__rarity">Harmonisation requise</p> }
+              @if (ownedItem.magicItem.description) { <p class="magic-item__description">{{ ownedItem.magicItem.description }}</p> }
+              @if (ownedItem.notes) { <p class="magic-item__notes">{{ ownedItem.notes }}</p> }
+              @if (hasCharges(ownedItem)) {
+                <div class="charges">
+                  <div class="charges__label"><span>Charges</span>
+                    @if (ownedItem.magicItem.rechargeFormula) { <small>Recharge : {{ ownedItem.magicItem.rechargeFormula }}</small> }
+                  </div>
+                  <div class="charges__controls">
+                    @if (!readonly()) { <button type="button" class="charges__button" aria-label="Dépenser une charge" [disabled]="ownedItem.currentCharges <= 0 || isUpdating(ownedItem)" (click)="spendCharge(ownedItem)">−</button> }
+                    <strong>{{ ownedItem.currentCharges }} / {{ ownedItem.magicItem.maximumCharges }}</strong>
+                    @if (!readonly() && canRestoreManually(ownedItem)) { <button type="button" class="charges__button" aria-label="Récupérer une charge" [disabled]="ownedItem.currentCharges >= ownedItem.magicItem.maximumCharges! || isUpdating(ownedItem)" (click)="restoreCharge(ownedItem)">+</button> }
+                  </div>
+                </div>
+              }
+              <footer class="magic-item__actions">
+                @if (!readonly() && canEquip(ownedItem)) {
+                  <button type="button" class="item-action" [class.item-action--active]="ownedItem.equipped" [disabled]="isUpdating(ownedItem)" (click)="toggleEquipped(ownedItem)">{{ ownedItem.equipped ? 'Déséquiper' : 'Équiper' }}</button>
                 }
-              </div>
+                @if (!readonly() && canConsume(ownedItem)) {
+                  <button type="button" class="item-action" [disabled]="isUpdating(ownedItem)" (click)="askConsume(ownedItem)">Consommer (−1)</button>
+                }
+                @if (!readonly() && ownedItem.magicItem.requiresAttunement) {
+                  <button type="button" class="item-action" [class.item-action--active]="ownedItem.attuned" [disabled]="isUpdating(ownedItem) || isAttunementDisabled(ownedItem)" (click)="toggleAttuned(ownedItem)">{{ ownedItem.attuned ? 'Se désharmoniser' : 'S’harmoniser' }}</button>
+                }
+                @if (!readonly()) { <button type="button" class="item-action item-action--danger" [disabled]="isUpdating(ownedItem)" (click)="askDiscard(ownedItem)">Jeter / retirer</button> }
+                @if (ownedItem.effectActive) { <span class="magic-item__active-label">Effets actifs</span> }
+              </footer>
             </div>
           }
-
-          <footer class="magic-item__actions">
-            @if (readonly()) {
-              <span>{{ ownedItem.equipped ? 'Équipé' : 'Non équipé' }}{{ ownedItem.attuned ? ' · Harmonisé' : '' }}</span>
-            }
-            <button [hidden]="readonly()"
-              type="button"
-              class="item-action"
-              [class.item-action--active]="
-                ownedItem.equipped
-              "
-              [disabled]="isUpdating(ownedItem)"
-              (click)="toggleEquipped(ownedItem)"
-            >
-              {{
-                ownedItem.equipped
-                  ? 'Équipé'
-                  : 'Équiper'
-              }}
-            </button>
-
-            @if (
-              ownedItem.magicItem.requiresAttunement
-            ) {
-              <button [hidden]="readonly()"
-                type="button"
-                class="item-action"
-                [class.item-action--active]="
-                  ownedItem.attuned
-                "
-                [disabled]="
-                  isUpdating(ownedItem)
-                  || isAttunementDisabled(ownedItem)
-                "
-                (click)="toggleAttuned(ownedItem)"
-              >
-                {{
-                  ownedItem.attuned
-                    ? 'Harmonisé'
-                    : 'S’harmoniser'
-                }}
-              </button>
-            }
-
-            @if (ownedItem.effectActive) {
-              <span class="magic-item__active-label">
-                Effets actifs
-              </span>
-            }
-          </footer>
         </article>
       }
+    </div>
+  }
+  @if (pendingAction(); as action) {
+    <div class="inventory-confirm-backdrop" role="presentation">
+      <section class="inventory-confirm" role="dialog" aria-modal="true" aria-labelledby="inventory-confirm-title">
+        <h3 id="inventory-confirm-title">{{ action.kind === 'consume' ? 'Consommer cet objet ?' : 'Retirer cet objet ?' }}</h3>
+        <p>{{ action.item.magicItem.name }} · En possession : {{ action.item.quantity }}</p>
+        @if (action.kind === 'discard') {
+          <label for="discard-quantity">Quantité à retirer</label>
+          <input id="discard-quantity" type="number" min="1" [max]="action.item.quantity" [value]="discardQuantity()"
+            (input)="discardQuantity.set(+$any($event.target).value)" />
+        } @else { <p>Cette action retire définitivement une unité de l’inventaire. Aucun soin automatique ne sera appliqué.</p> }
+        <div class="inventory-confirm__actions">
+          <button type="button" class="item-action" (click)="cancelAction()">Annuler</button>
+          <button type="button" class="item-action item-action--danger"
+            [disabled]="action.kind === 'discard' && (discardQuantity() < 1 || discardQuantity() > action.item.quantity)"
+            (click)="confirmAction()">Confirmer</button>
+        </div>
+      </section>
     </div>
   }
 </section>

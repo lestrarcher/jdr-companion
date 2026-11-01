@@ -49,37 +49,22 @@
       </p>
     }
 
+    <label class="modal-field">
+      <span>Rechercher un objet</span>
+      <input type="search" [value]="search()" (input)="updateSearch($any($event.target).value)" placeholder="Nom de l’objet…" />
+    </label>
     @if (loading()) {
-      <p class="modal-empty">
-        Chargement du catalogue…
-      </p>
-    } @else if (catalog().length === 0) {
-      <p class="modal-empty">
-        Aucun objet n’existe dans le catalogue de cette campagne.
-      </p>
+      <p class="modal-empty">Recherche dans le catalogue…</p>
     } @else {
-      <label class="modal-field">
-        <span>Objet magique</span>
-
-        <select
-          [value]="selectedMagicItemId() ?? ''"
-          (change)="selectMagicItem($event)"
-        >
-          <option value="">
-            Sélectionner un objet…
-          </option>
-
-          @for (
-            magicItem of catalog();
-            track magicItem.id
-          ) {
-            <option [value]="magicItem.id">
-              {{ magicItem.name }}
-            </option>
-          }
-        </select>
-      </label>
-
+      <div class="catalog-results" role="listbox" aria-label="Objets disponibles">
+        @for (item of filteredCatalog(); track item.id) {
+          <button type="button" class="catalog-option" [class.catalog-option--selected]="selectedMagicItemId() === item.id" (click)="selectItem(item.id)" [disabled]="assigning()">
+            <strong>{{ item.name }}</strong><small>{{ item.rarity ?? 'Sans rareté' }}</small>
+          </button>
+        } @empty {
+          <p class="modal-empty">Aucun résultat. Essayez un autre nom.</p>
+        }
+      </div>
       @if (selectedMagicItem(); as magicItem) {
         <article class="item-preview">
           <header>
@@ -127,6 +112,14 @@
         </article>
       }
 
+      <div class="quantity-picker">
+        <span>Quantité</span>
+        <div>
+          <button type="button" (click)="changeQuantity(quantity() - 1)" [disabled]="quantity() <= 1 || assigning()">−</button>
+          <input type="number" min="1" max="9999" [value]="quantity()" (change)="changeQuantity(+$any($event.target).value)" aria-label="Quantité à donner" />
+          <button type="button" (click)="changeQuantity(quantity() + 1)" [disabled]="quantity() >= 9999 || assigning()">+</button>
+        </div>
+      </div>
       <footer class="modal-actions">
         <button
           type="button"
@@ -144,12 +137,12 @@
             assigning()
             || selectedMagicItemId() === null
           "
-          (click)="assignmentRequested.emit()"
+          (click)="requestAssignment()"
         >
           {{
             assigning()
               ? 'Attribution…'
-              : 'Donner cet objet'
+              : 'Donner × ' + quantity()
           }}
         </button>
       </footer>

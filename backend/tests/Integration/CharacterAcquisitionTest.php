@@ -91,6 +91,7 @@ final class CharacterAcquisitionTest extends TestCase
             ->setPassword('unused');
 
         $campaign = new Campaign($user, 'inventory-test', 'Inventory Test');
+        $campaign->setAllowedItemRarities([MagicItemRarity::Common->value]);
 
         $character = new Character(
             $campaign,

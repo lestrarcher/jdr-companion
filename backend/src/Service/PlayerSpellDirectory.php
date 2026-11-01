@@ -115,6 +115,44 @@ final readonly class PlayerSpellDirectory
                 'known' => true, 'inSpellbook' => false, 'prepared' => null,
             ];
         }
+        // Magic-item permissions are per owned instance: identical items may have
+        // different charges, equipment states and attunement states.
+        // This is read-only. Casting through items is intentionally unsupported
+        // until the executor can atomically spend item charges / limited uses.
+        foreach ($character->getMagicItems() as $ownedItem) {
+            $item = $ownedItem->getMagicItem();
+            foreach ($item->getSpellGrants() as $grant) {
+                $spell = $grant->getSpell();
+                $active = match ($grant->getActivation()) {
+                    'possession' => true,
+                    'equipped' => $ownedItem->isEquipped(),
+                    'attuned' => $ownedItem->isAttuned(),
+                    default => false,
+                };
+                $result[] = [
+                    'key' => 'item:'.$ownedItem->getId().':'.$grant->getId(),
+                    'policyId' => null, 'alwaysPrepared' => false,
+                    'spellId' => $spell->getId(), 'name' => $spell->getName(),
+                    'level' => $spell->getLevel(), 'school' => $spell->getSchool()->value,
+                    'source' => $item->getName(), 'sourceType' => 'item',
+                    'castingAbility' => null, 'spellSaveDc' => null, 'spellAttackBonus' => null,
+                    'known' => false, 'inSpellbook' => false, 'prepared' => null,
+                    'itemGrant' => [
+                        'ownedItemId' => $ownedItem->getId(),
+                        'grantId' => $grant->getId(),
+                        'activation' => $grant->getActivation(),
+                        'active' => $active,
+                        'costMode' => $grant->getCostMode(),
+                        'cost' => $grant->getCost(),
+                        'currentCharges' => $grant->getCostMode() === 'charges' ? $ownedItem->getCurrentCharges() : null,
+                        'usesPerReset' => $grant->getUsesPerReset(),
+                        'remainingUses' => $grant->getCostMode() === 'limited' ? ($this->em->getRepository(\App\Entity\CharacterMagicItemSpellUsage::class)->findOneBy(['ownedItem'=>$ownedItem, 'grant'=>$grant])?->getRemaining() ?? $grant->getUsesPerReset()) : null,
+                        'resetTrigger' => $grant->getResetTrigger(),
+                        'castingSupported' => true,
+                    ],
+                ];
+            }
+        }
         // Prepared-list casters do not acquire every spell on their class list.
         foreach ($state['preparedSpells'] ?? [] as $policyId => $ids) {
             $definition = $this->em->find(SpellcastingPolicyDefinition::class, (int)$policyId);
@@ -146,6 +184,27 @@ final readonly class PlayerSpellDirectory
                 ? $this->em->find(SpellcastingPolicyDefinition::class, $entry['policyId']) : null;
             if ($entry['sourceType'] === 'subclass' && $entry['castingAbility'] !== null) {
                 $policy = $castingPolicies[$entry['castingClass']['id'] ?? 0] ?? null;
+            }
+            if ($entry['sourceType'] === 'item') {
+                $grant = $entry['itemGrant'];
+                $kind = $grant['costMode'] === 'charges' ? 'item-charges' : 'item-limited';
+                $remaining = $grant['costMode'] === 'charges' ? $grant['currentCharges'] : $grant['remainingUses'];
+                $available = $grant['active'] && $remaining !== null && $remaining >= $grant['cost'];
+                $reason = !$grant['active'] ? 'item_inactive' : (!$available ? 'insufficient_item_uses' : null);
+                $entry['castingEligibility'] = [
+                    'canCastNormally' => $available, 'canCastAsRitual' => false,
+                    'reason' => $reason, 'ritualReason' => 'item_ritual_not_supported',
+                    'requiresGrantReview' => false,
+                ];
+                $entry['castingAvailability'] = [
+                    'sourceKey' => $entry['key'], 'policyId' => null,
+                    'status' => $available ? 'available' : 'unavailable', 'reason' => $reason,
+                    'methods' => [[
+                        'kind' => $kind, 'castingLevel' => $entry['level'], 'poolSlug' => null,
+                        'cost' => $grant['cost'], 'status' => $available ? 'available' : 'unavailable', 'reason' => $reason,
+                    ]],
+                ];
+                continue;
             }
             $entry['castingEligibility'] = $this->eligibility->evaluate(
                 $entry, $policy?->policy()->learningStyle, $policy?->getCharacterClass()->getSlug(),

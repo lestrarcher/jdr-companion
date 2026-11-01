@@ -7,11 +7,16 @@ namespace App\Controller;
 use App\Entity\Campaign;
 use App\Entity\MagicItem;
 use App\Entity\MagicItemAbilityEffect;
+use App\Entity\MagicItemSpellGrant;
+use App\Entity\SpellDefinition;
+use App\Entity\User;
 use App\Enum\Ability;
 use App\Enum\AbilityEffectOperation;
 use App\Enum\MagicItemRarity;
 use App\Enum\MagicItemRechargeType;
 use App\Repository\CampaignRepository;
+use App\Service\ItemCatalogue;
+use App\Service\SpellCatalogue;
 use App\Security\Voter\CampaignVoter;
 use Doctrine\ORM\EntityManagerInterface;
 use JsonException;
@@ -24,6 +29,25 @@ use Symfony\Component\Routing\Attribute\Route;
 final class MagicItemController
     extends AbstractController
 {
+    #[Route('/dnd/items', name: 'api_official_item_reference', methods: ['GET'])]
+    public function officialReference(EntityManagerInterface $entityManager): JsonResponse
+    {
+        $items = $entityManager->getRepository(MagicItem::class)->findBy(
+            ['origin' => \App\Enum\ReferenceOrigin::Official, 'campaign' => null, 'owner' => null],
+            ['name' => 'ASC'],
+        );
+        return $this->json(['items' => array_map(static fn (MagicItem $item): array => [
+            'id' => $item->getId(),
+            'name' => $item->getName(),
+            'englishName' => $item->getEnglishName(),
+            'description' => $item->getDescription(),
+            'category' => $item->getCategory(),
+            'rarity' => $item->getRarity()?->value,
+            'priceCopper' => $item->getPriceCopper(),
+            'weightGrams' => $item->getWeightGrams(),
+        ], $items)]);
+    }
+
     #[Route(
         '/campaigns/{campaignId}/magic-items',
         name: 'api_campaign_magic_item_list',
@@ -58,6 +82,17 @@ final class MagicItemController
         ]);
     }
 
+    #[Route('/campaigns/{campaignId}/item-catalogue', name: 'api_gm_item_catalogue', requirements: ['campaignId' => '\d+'], methods: ['GET'])]
+    public function itemCatalogue(int $campaignId, Request $request, CampaignRepository $campaignRepository, ItemCatalogue $catalogue): JsonResponse
+    {
+        $campaign = $this->getOwnedCampaign($campaignId, $campaignRepository);
+        $page = filter_var($request->query->get('page', '1'), FILTER_VALIDATE_INT);
+        if ($page === false || $page < 1) {
+            return $this->json(['message' => 'Page invalide.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+        return $this->json($catalogue->list($campaign, false, (string) $request->query->get('q', ''), null, $page));
+    }
+
     #[Route(
         '/campaigns/{campaignId}/magic-items',
         name: 'api_campaign_magic_item_create',
@@ -71,6 +106,7 @@ final class MagicItemController
         Request $request,
         CampaignRepository $campaignRepository,
         EntityManagerInterface $entityManager,
+        SpellCatalogue $spellCatalogue,
     ): JsonResponse {
         $campaign = $this->getOwnedCampaign(
             $campaignId,
@@ -182,6 +218,11 @@ final class MagicItemController
             );
         }
 
+        $grantsPayload = $payload['spellGrants'] ?? [];
+        if (!is_array($grantsPayload) || !array_is_list($grantsPayload) || count($grantsPayload) > 100) {
+            return $this->json(['message' => 'Les octrois de sorts doivent former une liste (100 maximum).'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
         try {
             $item = new MagicItem(
                 campaign: $campaign,
@@ -216,6 +257,10 @@ final class MagicItemController
                         ] ?? null,
                     ),
                 );
+
+            foreach ($this->buildSpellGrants($item, $grantsPayload, $entityManager, $spellCatalogue) as $grant) {
+                $item->addSpellGrant($grant);
+            }
 
             foreach (
                 $effectsPayload
@@ -257,6 +302,113 @@ final class MagicItemController
             ],
             Response::HTTP_CREATED,
         );
+    }
+
+    #[Route('/campaigns/{campaignId}/magic-items/{itemId}/spell-grants', name: 'api_campaign_magic_item_grants_replace', requirements: ['campaignId' => '\d+', 'itemId' => '\d+'], methods: ['PUT'])]
+    public function replaceSpellGrants(
+        int $campaignId,
+        int $itemId,
+        Request $request,
+        CampaignRepository $campaignRepository,
+        EntityManagerInterface $entityManager,
+        SpellCatalogue $spellCatalogue,
+    ): JsonResponse {
+        $campaign = $this->getOwnedCampaign($campaignId, $campaignRepository);
+        $item = $entityManager->find(MagicItem::class, $itemId);
+        if (!$item || $item->getCampaign()?->getId() !== $campaign->getId()) {
+            throw $this->createNotFoundException('Objet de campagne introuvable.');
+        }
+        try {
+            $payload = $request->toArray();
+        } catch (\Throwable) {
+            return $this->json(['message' => 'JSON invalide.'], 400);
+        }
+        if (array_keys($payload) !== ['spellGrants']) {
+            return $this->json(['message' => 'Seul spellGrants est accepté.'], 422);
+        }
+        try {
+            $grants = $this->buildSpellGrants($item, $payload['spellGrants'], $entityManager, $spellCatalogue);
+        } catch (\InvalidArgumentException $error) {
+            return $this->json(['message' => $error->getMessage()], 422);
+        }
+        $entityManager->wrapInTransaction(function () use ($item, $grants, $entityManager): void {
+            // Preserve unchanged grant IDs, so future per-instance usage counters remain stable.
+            $existing = [];
+            foreach ($item->getSpellGrants() as $grant) {
+                $existing[$grant->getSpell()->getId()] = $grant;
+            }
+            foreach ($grants as $grant) {
+                $spellId = $grant->getSpell()->getId();
+                $previous = $existing[$spellId] ?? null;
+                if ($previous && $previous->getActivation() === $grant->getActivation()
+                    && $previous->getCostMode() === $grant->getCostMode()
+                    && $previous->getCost() === $grant->getCost()
+                    && $previous->getUsesPerReset() === $grant->getUsesPerReset()
+                    && $previous->getResetTrigger() === $grant->getResetTrigger()) {
+                    unset($existing[$spellId]);
+                    continue;
+                }
+            }
+            foreach ($existing as $old) {
+                $item->removeSpellGrant($old);
+                $entityManager->remove($old);
+            }
+            $keptIds = array_map(static fn (MagicItemSpellGrant $g) => $g->getSpell()->getId(), $item->getSpellGrants()->toArray());
+            // Flush deletions first to respect the unique (item, spell) constraint when replacing a changed grant.
+            $entityManager->flush();
+            foreach ($grants as $grant) {
+                if (!in_array($grant->getSpell()->getId(), $keptIds, true)) {
+                    $item->addSpellGrant($grant);
+                    $entityManager->persist($grant);
+                }
+            }
+            $entityManager->flush();
+        });
+        return $this->json(['item' => $this->serializeItem($item)]);
+    }
+
+    /** @return list<MagicItemSpellGrant> */
+    private function buildSpellGrants(MagicItem $item, mixed $payload, EntityManagerInterface $entityManager, SpellCatalogue $catalogue): array
+    {
+        if (!is_array($payload) || !array_is_list($payload) || count($payload) > 100) {
+            throw new \InvalidArgumentException('Liste de sorts invalide (100 maximum).');
+        }
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            throw $this->createAccessDeniedException();
+        }
+        $seen = [];
+        $result = [];
+        foreach ($payload as $row) {
+            if (!is_array($row) || array_is_list($row) || array_diff(array_keys($row), ['spellId', 'activation', 'costMode', 'cost', 'usesPerReset', 'resetTrigger'])) {
+                throw new \InvalidArgumentException('Octroi de sort invalide.');
+            }
+            $id = $row['spellId'] ?? null;
+            if (!is_int($id) || $id < 1 || isset($seen[$id])) {
+                throw new \InvalidArgumentException('Sort invalide ou dupliqué.');
+            }
+            $seen[$id] = true;
+            try {
+                $catalogue->get($id, $user);
+            } catch (\Symfony\Component\HttpKernel\Exception\NotFoundHttpException) {
+                throw new \InvalidArgumentException('Sort inaccessible.');
+            }
+            $spell = $entityManager->find(SpellDefinition::class, $id);
+            if (!$spell) {
+                throw new \InvalidArgumentException('Sort introuvable.');
+            }
+            $activation = $row['activation'] ?? null;
+            $mode = $row['costMode'] ?? null;
+            $cost = $row['cost'] ?? 1;
+            $uses = $row['usesPerReset'] ?? null;
+            $reset = $row['resetTrigger'] ?? null;
+            if (!is_string($activation) || !is_string($mode) || !is_int($cost)
+                || ($uses !== null && !is_int($uses)) || ($reset !== null && !is_string($reset))) {
+                throw new \InvalidArgumentException('Paramètres de sort invalides.');
+            }
+            $result[] = new MagicItemSpellGrant($item, $spell, $activation, $mode, $cost, $uses, $reset);
+        }
+        return $result;
     }
 
     /**
@@ -412,14 +564,14 @@ final class MagicItemController
             'campaignId' =>
                 $item
                     ->getCampaign()
-                    ->getId(),
+                    ?->getId(),
             'name' => $item->getName(),
             'description' =>
                 $item->getDescription(),
             'rarity' =>
-                $item->getRarity()->value,
+                $item->getRarity()?->value,
             'rarityLabel' =>
-                $item->getRarity()->label(),
+                $item->getRarity()?->label(),
             'requiresAttunement' =>
                 $item->requiresAttunement(),
             'maximumCharges' =>
@@ -471,6 +623,21 @@ final class MagicItemController
                         ->getAbilityEffects()
                         ->toArray(),
                 ),
+
+            'spellGrants' => array_map(
+                static fn (MagicItemSpellGrant $grant): array => [
+                    'id' => $grant->getId(),
+                    'spellId' => $grant->getSpell()->getId(),
+                    'spellName' => $grant->getSpell()->getName(),
+                    'spellLevel' => $grant->getSpell()->getLevel(),
+                    'activation' => $grant->getActivation(),
+                    'costMode' => $grant->getCostMode(),
+                    'cost' => $grant->getCost(),
+                    'usesPerReset' => $grant->getUsesPerReset(),
+                    'resetTrigger' => $grant->getResetTrigger(),
+                ],
+                $item->getSpellGrants()->toArray(),
+            ),
 
             'createdAt' =>
                 $item

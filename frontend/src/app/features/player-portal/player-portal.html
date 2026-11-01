@@ -260,7 +260,7 @@
               @case ('possessions') {
                 <div class="possessions-sections">
                   <app-character-wallet [accessToken]="accessToken" [disabled]="sessionStatus() !== 'live'" />
-                  <app-character-magic-items [readonly]="!canEdit()" [accessToken]="accessToken" />
+                  <app-character-magic-items [readonly]="!canEdit()" [accessToken]="accessToken" [refreshRevision]="inventoryRefreshRevision()" />
                 </div>
               }
             }

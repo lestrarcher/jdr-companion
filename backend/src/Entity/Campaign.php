@@ -46,6 +46,19 @@ class Campaign
     private string $configurationKey =
         self::CONFIGURATION_STRAHD;
 
+    #[ORM\Column(type: 'json', options: ['default' => '[]'])]
+    private array $allowedItemRarities = [];
+
+    public function getAllowedItemRarities(): array
+    {
+        return $this->allowedItemRarities;
+    }
+
+    public function setAllowedItemRarities(array $rarities): void
+    {
+        $this->allowedItemRarities = array_values(array_unique($rarities));
+    }
+
     /**
      * @var Collection<int, Media>
      */

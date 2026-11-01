@@ -70,6 +70,16 @@ class MagicItem
     #[ORM\Column(nullable: true)]
     private ?DateTimeImmutable $archivedAt = null;
 
+    #[ORM\Column(length: 150, nullable: true)]
+    private ?string $englishName = null;
+
+    // Integer copper pieces avoid rounding errors (1 po = 100 pc).
+    #[ORM\Column(nullable: true)]
+    private ?int $priceCopper = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $weightGrams = null;
+
     #[ORM\Column(length: 150)]
     private string $name;
 
@@ -117,6 +127,10 @@ class MagicItem
     )]
     private Collection $abilityEffects;
 
+    /** @var Collection<int, MagicItemSpellGrant> */
+    #[ORM\OneToMany(mappedBy: 'magicItem', targetEntity: MagicItemSpellGrant::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private Collection $spellGrants;
+
     #[ORM\Column]
     private DateTimeImmutable $createdAt;
 
@@ -155,6 +169,7 @@ class MagicItem
 
         $this->abilityEffects =
             new ArrayCollection();
+        $this->spellGrants = new ArrayCollection();
 
         $now = new DateTimeImmutable();
 
@@ -205,6 +220,22 @@ class MagicItem
         $this->equipmentSlot = $slot;
         $this->handUsage = $hands;
         $this->quantityMode = $equippable || $this->hasCharges() || $this->requiresAttunement ? 'individual' : 'stackable';
+    }
+
+    public function getEnglishName(): ?string { return $this->englishName; }
+    public function getPriceCopper(): ?int { return $this->priceCopper; }
+    public function getWeightGrams(): ?int { return $this->weightGrams; }
+
+    public function setReferenceDetails(?string $englishName, ?int $priceCopper, ?int $weightGrams): static
+    {
+        if ($priceCopper !== null && $priceCopper < 0 || $weightGrams !== null && $weightGrams < 0) {
+            throw new \InvalidArgumentException('Prix ou poids invalide.');
+        }
+        $this->englishName = $englishName;
+        $this->priceCopper = $priceCopper;
+        $this->weightGrams = $weightGrams;
+        $this->touch();
+        return $this;
     }
 
     public function getName(): string
@@ -408,6 +439,28 @@ class MagicItem
 
         $this->touch();
 
+        return $this;
+    }
+
+    /** @return Collection<int, MagicItemSpellGrant> */
+    public function getSpellGrants(): Collection { return $this->spellGrants; }
+
+    public function addSpellGrant(MagicItemSpellGrant $grant): static
+    {
+        if ($grant->getMagicItem() !== $this) {
+            throw new \InvalidArgumentException('Cet octroi appartient à un autre objet.');
+        }
+        if (!$this->spellGrants->contains($grant)) {
+            $this->spellGrants->add($grant);
+        }
+        $this->touch();
+        return $this;
+    }
+
+    public function removeSpellGrant(MagicItemSpellGrant $grant): static
+    {
+        $this->spellGrants->removeElement($grant);
+        $this->touch();
         return $this;
     }
 

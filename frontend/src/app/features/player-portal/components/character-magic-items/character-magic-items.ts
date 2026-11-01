@@ -5,6 +5,8 @@ import {
   inject,
   input,
   OnInit,
+  OnChanges,
+  SimpleChanges,
   signal,
 } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -13,6 +15,7 @@ import {
   CharacterMagicItemInventoryResponse,
   CharacterMagicItemResponse,
   MagicItemRarity,
+  MagicItemResponse,
   PublicCharacterMagicItemApiService,
 } from '@core/services/public-character-magic-item-api.service';
 
@@ -24,9 +27,16 @@ import {
   styleUrl: './character-magic-items.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class CharacterMagicItems implements OnInit {
+export class CharacterMagicItems implements OnInit, OnChanges {
   readonly readonly = input(false);
   readonly accessToken = input.required<string>();
+  readonly refreshRevision = input(0);
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['refreshRevision'] && !changes['refreshRevision'].firstChange) {
+      this.loadInventory();
+    }
+  }
 
   private readonly magicItemApi =
     inject(PublicCharacterMagicItemApiService);
@@ -35,6 +45,70 @@ export class CharacterMagicItems implements OnInit {
     signal<CharacterMagicItemInventoryResponse | null>(null);
 
   protected readonly loading = signal(true);
+  protected readonly catalogueQuery = signal('');
+  protected readonly catalogueItems = signal<MagicItemResponse[]>([]);
+  protected readonly cataloguePage = signal(1);
+  protected readonly catalogueTotal = signal(0);
+  protected readonly catalogueLoading = signal(false);
+  private catalogueRequestId = 0;
+  protected readonly acquiring = signal(false);
+  protected readonly quantity = signal(1);
+  protected readonly catalogueOpen = signal(false);
+  protected readonly selectedCatalogueItem = signal<MagicItemResponse | null>(null);
+  protected readonly successMessage = signal<string | null>(null);
+
+  protected readonly expandedItemId = signal<number | null>(null);
+  protected readonly pendingAction = signal<{ item: CharacterMagicItemResponse; kind: 'consume' | 'discard' } | null>(null);
+  protected readonly discardQuantity = signal(1);
+
+  protected readonly sortedItems = computed(() => [...this.ownedItems()].sort((a, b) =>
+    a.magicItem.name.localeCompare(b.magicItem.name, 'fr', { sensitivity: 'base' }) || a.id - b.id));
+  protected readonly totalWeightGrams = computed(() => this.ownedItems().reduce((sum, item) =>
+    sum + (item.magicItem.weightGrams ?? 0) * item.quantity, 0));
+  protected readonly unknownWeight = computed(() => this.ownedItems().some(item => item.magicItem.weightGrams == null));
+  protected formatWeight(grams: number): string {
+    return grams >= 1000 ? `${(grams / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} kg` : `${grams} g`;
+  }
+  protected formatPrice(copper: number | null | undefined): string {
+    if (copper == null) return 'Non renseigné';
+    if (copper === 0) return '0 pc';
+    return copper >= 100 ? `${(copper / 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} po` : `${copper} pc`;
+  }
+  protected toggleDetails(id: number): void {
+    this.expandedItemId.set(this.expandedItemId() === id ? null : id);
+  }
+  protected askConsume(item: CharacterMagicItemResponse): void {
+    if (this.readonly() || this.isUpdating(item)) return;
+    this.pendingAction.set({ item, kind: 'consume' });
+  }
+  protected askDiscard(item: CharacterMagicItemResponse): void {
+    if (this.readonly() || this.isUpdating(item)) return;
+    this.discardQuantity.set(1);
+    this.pendingAction.set({ item, kind: 'discard' });
+  }
+  protected cancelAction(): void { this.pendingAction.set(null); }
+  protected confirmAction(): void {
+    const action = this.pendingAction();
+    if (!action || this.readonly() || this.isUpdating(action.item)) return;
+    if (action.kind === 'consume') {
+      this.pendingAction.set(null);
+      this.consumeItem(action.item);
+      return;
+    }
+    const quantity = this.discardQuantity();
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > action.item.quantity) return;
+    this.pendingAction.set(null);
+    this.startUpdate(action.item.id);
+    this.magicItemApi.discard(this.accessToken(), action.item.id, quantity).subscribe({
+      next: response => {
+        this.inventory.set(response);
+        this.successMessage.set(`${quantity} × ${action.item.magicItem.name} retiré de l’inventaire.`);
+        this.finishUpdate();
+      },
+      error: (error: HttpErrorResponse) => this.handleError(error),
+    });
+  }
+
   protected readonly updatingItemId = signal<number | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
 
@@ -58,10 +132,109 @@ export class CharacterMagicItems implements OnInit {
     this.loadInventory();
   }
 
+  protected openCatalogue(): void {
+    if (this.readonly()) return;
+    this.catalogueOpen.set(true);
+    this.selectedCatalogueItem.set(null);
+    this.quantity.set(1);
+    this.loadCatalogue(1);
+  }
+
+  protected closeCatalogue(): void {
+    if (this.acquiring()) return;
+    this.catalogueOpen.set(false);
+    this.selectedCatalogueItem.set(null);
+  }
+
+  protected selectCatalogueItem(item: MagicItemResponse): void {
+    this.selectedCatalogueItem.set(item);
+    this.quantity.set(1);
+  }
+
+  protected validQuantity(): boolean {
+    return Number.isInteger(this.quantity()) && this.quantity() >= 1 && this.quantity() <= 9999;
+  }
+
+  protected adjustQuantity(change: number): void {
+    this.quantity.set(Math.max(1, Math.min(9999, this.quantity() + change)));
+  }
+
+  protected rarityClass(rarity: MagicItemRarity | null): string {
+    return rarity === null ? 'mundane' : rarity;
+  }
+
+  protected searchCatalogue(value: string): void {
+    this.catalogueQuery.set(value);
+    this.selectedCatalogueItem.set(null);
+    this.loadCatalogue(1);
+  }
+
+  protected loadCatalogue(page: number): void {
+    if (this.readonly()) return;
+    const requestId = ++this.catalogueRequestId;
+    this.catalogueLoading.set(true);
+    this.magicItemApi.catalogue(this.accessToken(), this.catalogueQuery(), page).subscribe({
+      next: response => {
+        if (requestId !== this.catalogueRequestId) return;
+        this.catalogueItems.set(response.items);
+        this.catalogueTotal.set(response.total);
+        this.cataloguePage.set(response.page);
+        this.catalogueLoading.set(false);
+      },
+      error: (error: HttpErrorResponse) => {
+        if (requestId !== this.catalogueRequestId) return;
+        this.catalogueLoading.set(false);
+        this.handleError(error);
+      },
+    });
+  }
+
+  protected acquireItem(item: MagicItemResponse): void {
+    if (this.readonly() || this.acquiring() || this.selectedCatalogueItem()?.id !== item.id) return;
+    const quantity = this.quantity();
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 9999) return;
+    this.acquiring.set(true);
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+    this.magicItemApi.acquire(this.accessToken(), item.id, quantity).subscribe({
+      next: inventory => {
+        this.inventory.set(inventory);
+        this.acquiring.set(false);
+        this.successMessage.set(`${quantity} × ${item.name} ajouté à l’inventaire.`);
+        this.closeCatalogue();
+      },
+      error: (error: HttpErrorResponse) => {
+        this.acquiring.set(false);
+        this.handleError(error);
+      },
+    });
+  }
+
+  protected canEquip(ownedItem: CharacterMagicItemResponse): boolean {
+    return ownedItem.magicItem.equippable === true;
+  }
+
+  protected canConsume(ownedItem: CharacterMagicItemResponse): boolean {
+    return ownedItem.magicItem.category === 'potion';
+  }
+
+  protected consumeItem(ownedItem: CharacterMagicItemResponse): void {
+    if (this.readonly() || this.isUpdating(ownedItem)) return;
+    this.startUpdate(ownedItem.id);
+    this.magicItemApi.consume(this.accessToken(), ownedItem.id).subscribe({
+      next: response => {
+        this.inventory.set(response);
+        this.successMessage.set(`1 × ${ownedItem.magicItem.name} consommé.`);
+        this.finishUpdate();
+      },
+      error: (error: HttpErrorResponse) => this.handleError(error),
+    });
+  }
+
   protected toggleEquipped(
     ownedItem: CharacterMagicItemResponse,
   ): void {
-    if (this.readonly()) return;
+    if (this.readonly() || !this.canEquip(ownedItem)) return;
     if (this.isUpdating(ownedItem)) {
       return;
     }
@@ -177,7 +350,7 @@ export class CharacterMagicItems implements OnInit {
   }
 
   protected rarityLabel(
-    rarity: MagicItemRarity,
+    rarity: MagicItemRarity | null,
   ): string {
     const labels: Record<MagicItemRarity, string> = {
       common: 'Commun',
@@ -188,7 +361,7 @@ export class CharacterMagicItems implements OnInit {
       artifact: 'Artefact',
     };
 
-    return labels[rarity];
+    return rarity === null ? 'Sans rareté' : labels[rarity];
   }
 
   private loadInventory(): void {

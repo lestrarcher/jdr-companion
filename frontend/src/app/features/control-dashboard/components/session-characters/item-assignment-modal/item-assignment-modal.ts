@@ -1,4 +1,4 @@
-import { Component, computed, input, output } from '@angular/core';
+import { Component, computed, input, output, signal } from '@angular/core';
 
 import {
   MagicItemResponse,
@@ -22,9 +22,14 @@ export class ItemAssignmentModal {
   readonly feedback = input<string | null>(null);
   readonly error = input<string | null>(null);
 
+  readonly search = signal('');
+  readonly quantity = signal(1);
+  readonly catalogSearch = output<string>();
+  readonly filteredCatalog = computed(() => this.catalog().filter(item => item.name.toLocaleLowerCase().includes(this.search().trim().toLocaleLowerCase())).slice(0, 80));
+
   readonly closed = output<void>();
   readonly magicItemSelected = output<number | null>();
-  readonly assignmentRequested = output<void>();
+  readonly assignmentRequested = output<number>();
 
   protected readonly selectedMagicItem = computed(() => {
     const selectedId = this.selectedMagicItemId();
@@ -38,6 +43,11 @@ export class ItemAssignmentModal {
       ?? null
     );
   });
+
+  protected updateSearch(value: string): void { this.search.set(value); this.catalogSearch.emit(value); }
+  protected selectItem(id: number): void { this.magicItemSelected.emit(id); }
+  protected changeQuantity(value: number): void { if (Number.isInteger(value)) this.quantity.set(Math.max(1, Math.min(9999, value))); }
+  protected requestAssignment(): void { this.assignmentRequested.emit(this.quantity()); }
 
   protected selectMagicItem(event: Event): void {
     const value =

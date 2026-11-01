@@ -31,6 +31,23 @@ export interface CreateMagicItemAbilityEffectPayload {
   maximumIncrease?: number;
 }
 
+export interface MagicItemSpellGrantPayload {
+  spellId: number;
+  activation: 'possession' | 'equipped' | 'attuned';
+  costMode: 'charges' | 'limited';
+  cost: number;
+  usesPerReset: number | null;
+  resetTrigger: 'dawn' | 'short-rest' | 'long-rest' | 'manual' | null;
+}
+
+export interface MagicItemSpellGrantResponse extends MagicItemSpellGrantPayload {
+  id: number;
+  spellName: string;
+  spellLevel: number;
+}
+
+export interface SpellOption { id: number; name: string; level: number; origin: string; }
+
 export interface CreateMagicItemPayload {
   name: string;
   description?: string | null;
@@ -41,6 +58,7 @@ export interface CreateMagicItemPayload {
   rechargeFormula?: string | null;
   abilityEffects:
     CreateMagicItemAbilityEffectPayload[];
+  spellGrants?: MagicItemSpellGrantPayload[];
 }
 
 export interface AssignMagicItemPayload {
@@ -62,7 +80,9 @@ interface OwnedMagicItemApiResponse {
   magicItemId: number;
   name: string;
   description: string | null;
-  rarity: MagicItemRarity;
+  rarity: MagicItemRarity | null;
+  category: string;
+  equippable: boolean;
   rarityLabel: string;
   requiresAttunement: boolean;
   attuned: boolean;
@@ -125,6 +145,13 @@ export class MagicItemApiService {
       );
   }
 
+  searchAssignmentCatalog(campaignId: number, query: string, page = 1): Observable<{items: MagicItemResponse[]; total: number; page: number; pageSize: number}> {
+    return this.http.get<{items: MagicItemResponse[]; total: number; page: number; pageSize: number}>(
+      `${this.apiUrl}/campaigns/${campaignId}/item-catalogue`,
+      { params: { q: query, page } },
+    );
+  }
+
   create(
     campaignId: number,
     payload: CreateMagicItemPayload,
@@ -137,6 +164,25 @@ export class MagicItemApiService {
       .pipe(
         map((response) => response.item),
       );
+  }
+
+  searchSpells(query: string): Observable<SpellOption[]> {
+    return this.http.get<{spells: SpellOption[]}>(`${this.apiUrl}/reference/custom/spells`, {
+      params: {q: query, pageSize: 30},
+    }).pipe(map(response => response.spells));
+  }
+
+  replaceSpellGrants(campaignId: number, itemId: number, spellGrants: MagicItemSpellGrantPayload[]): Observable<MagicItemResponse> {
+    return this.http.put<MagicItemCreateApiResponse>(
+      `${this.apiUrl}/campaigns/${campaignId}/magic-items/${itemId}/spell-grants`,
+      {spellGrants},
+    ).pipe(map(response => response.item));
+  }
+
+  rechargeDawn(characterId: number): Observable<{recharged: {items: number; grants: number}}> {
+    return this.http.post<{recharged: {items: number; grants: number}}>(
+      `${this.apiUrl}/characters/${characterId}/magic-items/recharge-dawn`, {},
+    );
   }
 
   listCharacterItems(
@@ -174,9 +220,11 @@ export class MagicItemApiService {
   removeFromCharacter(
     characterId: number,
     ownedItemId: number,
+    quantity = 1,
   ): Observable<void> {
     return this.http.delete<void>(
       `${this.apiUrl}/characters/${characterId}/magic-items/${ownedItemId}`,
+      { params: { quantity } },
     );
   }
 
@@ -230,6 +278,8 @@ export class MagicItemApiService {
         description:
           item.description,
         rarity: item.rarity,
+        category: item.category,
+        equippable: item.equippable,
 
         requiresAttunement:
           item.requiresAttunement,

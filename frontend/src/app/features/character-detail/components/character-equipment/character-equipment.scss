@@ -1,2 +1,13 @@
 :host { display: block; }
-.temporary-panel { padding: 2rem 1rem; color: #c2b8a6; h2 { color: #d8b45d; } }
+.equipment-panel { display: grid; gap: 1.25rem; }
+.equipment-panel__header, .equipment-panel__item { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.equipment-panel__header h2, .equipment-panel__add h3 { margin: 0 0 .35rem; }
+.equipment-panel__header p, .equipment-panel__item p { margin: .3rem 0; opacity: .75; }
+.equipment-panel__items { display: grid; gap: .65rem; }
+.equipment-panel__item, .equipment-panel__add { padding: 1rem; border: 1px solid var(--border-color, #686174); border-radius: .6rem; }
+.equipment-panel__add { display: grid; gap: .65rem; }
+.equipment-panel__add input, .equipment-panel__add select { width: 100%; min-width: 0; padding: .65rem; border-radius: .35rem; }
+.equipment-panel button { cursor: pointer; padding: .55rem .85rem; }
+.equipment-panel button:disabled { opacity: .5; cursor: not-allowed; }
+.equipment-panel__error { color: #e77; }
+.equipment-panel__notice { color: #79c99b; }

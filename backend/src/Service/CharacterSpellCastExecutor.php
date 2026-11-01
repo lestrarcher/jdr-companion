@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\CharacterSessionState;
+use App\Entity\CharacterMagicItem;
+use App\Entity\MagicItemSpellGrant;
+use App\Entity\CharacterMagicItemSpellUsage;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
@@ -95,6 +98,47 @@ final readonly class CharacterSpellCastExecutor
                     $remaining = $state['resources'][$index]['currentValue'] ?? null;
                     if (!is_int($remaining) || $remaining < $cost) throw new UnprocessableEntityHttpException('invalid_counter');
                     $state['resources'][$index]['currentValue'] = $remaining - $cost;
+                } elseif (in_array($method, ['item-charges', 'item-limited'], true)) {
+                    if (($validation['source']['sourceType'] ?? null) !== 'item'
+                        || $validation['poolSlug'] !== null || $validation['cost'] < 1
+                        || !preg_match('/^item:([1-9][0-9]*):([1-9][0-9]*)$/', $command['sourceKey'], $parts)) {
+                        throw new UnprocessableEntityHttpException('invalid_item_cast');
+                    }
+                    $owned = $this->em->find(CharacterMagicItem::class, (int)$parts[1], LockMode::PESSIMISTIC_WRITE);
+                    $grant = $this->em->find(MagicItemSpellGrant::class, (int)$parts[2]);
+                    if ($owned === null || $grant === null || $owned->getCharacter()->getId() !== $session->getCharacter()->getId()
+                        || $owned->getMagicItem()->getId() !== $grant->getMagicItem()->getId()
+                        || $grant->getSpell()->getId() !== $validation['source']['spellId']
+                        || $owned->getQuantity() !== 1
+                        || ($grant->getCostMode() === 'charges' ? 'item-charges' : 'item-limited') !== $method) {
+                        throw new UnprocessableEntityHttpException('invalid_item_cast');
+                    }
+                    $active = match ($grant->getActivation()) {
+                        'possession' => true, 'equipped' => $owned->isEquipped(),
+                        'attuned' => $owned->isAttuned(), default => false,
+                    };
+                    if (!$active || $grant->getCost() !== $validation['cost']) {
+                        throw new UnprocessableEntityHttpException('item_inactive');
+                    }
+                    if ($method === 'item-charges') {
+                        if (($owned->getCurrentCharges() ?? -1) < $grant->getCost()) {
+                            throw new UnprocessableEntityHttpException('insufficient_item_charges');
+                        }
+                        $owned->adjustCharges(-$grant->getCost());
+                    } else {
+                        $usage = $this->em->getRepository(CharacterMagicItemSpellUsage::class)
+                            ->findOneBy(['ownedItem'=>$owned, 'grant'=>$grant]);
+                        if ($usage === null) {
+                            $usage = new CharacterMagicItemSpellUsage($owned, $grant);
+                            $this->em->persist($usage);
+                        } else {
+                            $this->em->lock($usage, LockMode::PESSIMISTIC_WRITE);
+                        }
+                        if ($usage->getRemaining() < $grant->getCost()) {
+                            throw new UnprocessableEntityHttpException('insufficient_item_uses');
+                        }
+                        $usage->spend();
+                    }
                 } elseif (!in_array($method, ['cantrip', 'ritual'], true)
                     || $validation['poolSlug'] !== null || $validation['cost'] !== 0) {
                     throw new UnprocessableEntityHttpException('invalid_cast_cost');

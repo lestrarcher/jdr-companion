@@ -1,4 +1,43 @@
-<section class="temporary-panel">
-  <h2>Équipement</h2>
-  <p>La gestion de l’équipement sera intégrée ici.</p>
+<section class="equipment-panel">
+  <header class="equipment-panel__header">
+    <div><h2>Équipement et inventaire</h2><p>Objets possédés par le personnage</p></div>
+    <button type="button" (click)="refresh()" [disabled]="busy()">Actualiser</button>
+  </header>
+
+  @if (error()) { <p class="equipment-panel__error" role="alert">{{ error() }}</p> }
+  @if (notice()) { <p class="equipment-panel__notice" role="status">{{ notice() }}</p> }
+
+  @if (loading()) { <p>Chargement de l’inventaire…</p> }
+  @else if (inventory(); as data) {
+    <p class="equipment-panel__summary">{{ data.ownedItems.length }} entrée(s) · Harmonisation : {{ data.attunedCount }} / {{ data.attunementLimit }}</p>
+    @if (data.ownedItems.length === 0) { <p>Aucun objet dans l’inventaire.</p> }
+    <div class="equipment-panel__items">
+      @for (owned of data.ownedItems; track owned.id) {
+        <article class="equipment-panel__item">
+          <div>
+            <strong>{{ owned.magicItem.name }}</strong>
+            <p>{{ owned.magicItem.rarity }} · Quantité : {{ owned.quantity }}</p>
+            @if (owned.equipped) { <small>Équipé</small> }
+            @if (owned.attuned) { <small> · Harmonisé</small> }
+            @if (owned.notes) { <p>{{ owned.notes }}</p> }
+          </div>
+          <button type="button" (click)="remove(owned.id)" [disabled]="busy()">Retirer</button>
+        </article>
+      }
+    </div>
+  }
+
+  <div class="equipment-panel__add">
+    <h3>Attribuer un objet</h3>
+    <label for="item-search">Rechercher dans le catalogue</label>
+    <input id="item-search" type="search" placeholder="Nom de l’objet…" [value]="search()" (input)="search.set($any($event.target).value)" />
+    <label for="item-choice">Objet</label>
+    <select id="item-choice" [value]="selectedId() ?? ''" (change)="selectedId.set($any($event.target).value ? +$any($event.target).value : null)">
+      <option value="">Sélectionner un objet</option>
+      @for (item of matches(); track item.id) { <option [value]="item.id">{{ item.name }}</option> }
+    </select>
+    <label for="item-quantity">Quantité</label>
+    <input id="item-quantity" type="number" min="1" max="9999" step="1" [value]="quantity()" (input)="quantity.set(+$any($event.target).value)" />
+    <button type="button" (click)="assign()" [disabled]="busy() || selectedId() === null || quantity() < 1 || quantity() > 9999">{{ busy() ? 'Enregistrement…' : 'Attribuer' }}</button>
+  </div>
 </section>

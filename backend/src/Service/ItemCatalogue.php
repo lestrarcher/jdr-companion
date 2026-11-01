@@ -24,7 +24,13 @@ final readonly class ItemCatalogue
             ->setParameter('campaign', $campaign)->setParameter('owner', $campaign->getOwner())
             ->setParameter('official', ReferenceOrigin::Official->value)->setParameter('custom', ReferenceOrigin::Custom->value);
         if ($player) {
-            $query->andWhere("((i.origin = :official AND (v.id IS NULL OR v.decision <> 'hidden')) OR (i.origin = :custom AND v.decision = 'published'))");
+            $rarities = $campaign->getAllowedItemRarities();
+            $automatic = 'i.rarity IS NULL';
+            if ($rarities !== []) {
+                $automatic .= ' OR i.rarity IN (:allowedRarities)';
+                $query->setParameter('allowedRarities', $rarities);
+            }
+            $query->andWhere("((i.origin = :official AND (v.decision = 'published' OR (v.id IS NULL AND ($automatic)))) OR (i.origin = :custom AND v.decision = 'published'))");
         }
         return $query;
     }
@@ -67,7 +73,7 @@ final readonly class ItemCatalogue
         if (!$player) {
             $decision = $this->em->getRepository(CampaignItemVisibility::class)->findOneBy(['campaign'=>$campaign, 'magicItem'=>$item])?->getDecision();
             $result['visibility'] = $decision ?? 'default';
-            $result['visibleToPlayers'] = $item->getOrigin() === ReferenceOrigin::Official ? $decision !== 'hidden' : $decision === 'published';
+            $result['visibleToPlayers'] = $decision === 'published' || ($item->getOrigin() === ReferenceOrigin::Official && $decision !== 'hidden' && ($item->getRarity() === null || in_array($item->getRarity()->value, $campaign->getAllowedItemRarities(), true)));
             $result['campaignId'] = $item->getCampaign()?->getId();
         }
         return $result;
@@ -78,9 +84,6 @@ final readonly class ItemCatalogue
     {
         if (!in_array($decision, ['default','hidden','published'], true)) throw new UnprocessableEntityHttpException('Visibilité invalide.');
         $item = $this->requireDefinition($campaign, $id, false);
-        if ($item->getOrigin() === ReferenceOrigin::Official && $decision === 'published') {
-            throw new UnprocessableEntityHttpException('Un objet officiel est visible par défaut ; utilisez default ou hidden.');
-        }
         return $this->em->wrapInTransaction(function () use ($campaign, $id, $decision): array {
             $this->em->lock($campaign, LockMode::PESSIMISTIC_WRITE);
             $item = $this->requireDefinition($campaign, $id, false);
@@ -96,6 +99,27 @@ final readonly class ItemCatalogue
             $this->em->flush();
             return $this->present($campaign, $item, false);
         });
+    }
+
+    public function allowedRarities(Campaign $campaign): array
+    {
+        return ['rarities' => $campaign->getAllowedItemRarities()];
+    }
+
+    public function setAllowedRarities(Campaign $campaign, array $rarities): array
+    {
+        if (!array_is_list($rarities) || count($rarities) > 6) {
+            throw new UnprocessableEntityHttpException('Liste des raretés invalide.');
+        }
+        $valid = array_map(static fn (MagicItemRarity $rarity) => $rarity->value, MagicItemRarity::cases());
+        foreach ($rarities as $rarity) {
+            if (!is_string($rarity) || !in_array($rarity, $valid, true)) {
+                throw new UnprocessableEntityHttpException('Rareté inconnue.');
+            }
+        }
+        $campaign->setAllowedItemRarities($rarities);
+        $this->em->flush();
+        return $this->allowedRarities($campaign);
     }
 
     /** Only CUSTOM creation is available to a GM; origin and owner never come from the request. */

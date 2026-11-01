@@ -154,11 +154,12 @@
     [feedback]="assignmentFeedback()"
     [error]="characterActionError()"
     (closed)="closeItemAssignment()"
+    (catalogSearch)="loadCatalog($event)"
     (magicItemSelected)="
       selectedMagicItemId.set($event)
     "
     (assignmentRequested)="
-      assignSelectedItem()
+      assignSelectedItem($event)
     "
   />
 }
@@ -203,6 +204,8 @@
     [loading]="statisticsLoading()"
     [error]="statisticsError()"
     [removing]="removingItem()"
+    [rechargingDawn]="rechargingDawn()"
+    (dawnRequested)="rechargeDawn()"
     (itemRemoved)="removeOwnedItem($event)"
     (closed)="closeStatistics()"
   />

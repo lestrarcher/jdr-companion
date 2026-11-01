@@ -189,6 +189,45 @@ final class PublicCharacterMagicItemController extends AbstractController
                 $entityManager->refresh($item, \Doctrine\DBAL\LockMode::PESSIMISTIC_WRITE);
             }
 
+            if (array_key_exists('discardQuantity', $payload)) {
+                if (count($payload) !== 1 || !is_int($payload['discardQuantity'])
+                    || $payload['discardQuantity'] < 1 || $payload['discardQuantity'] > $ownedItem->getQuantity()) {
+                    return $this->json(['message' => 'Quantité à retirer invalide.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+                }
+                $remaining = $ownedItem->getQuantity() - $payload['discardQuantity'];
+                if ($remaining > 0) {
+                    $ownedItem->setQuantity($remaining);
+                } else {
+                    $character->removeMagicItem($ownedItem);
+                    $entityManager->remove($ownedItem);
+                }
+                $entityManager->flush();
+                return $this->json([
+                    'ownedItem' => null,
+                    ...$this->serializeCharacterInventory($character, $abilityCalculator),
+                ]);
+            }
+
+            if (array_key_exists('consume', $payload)) {
+                if (count($payload) !== 1 || $payload['consume'] !== true) {
+                    return $this->json(['message' => 'Action de consommation invalide.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+                }
+                if ($ownedItem->getMagicItem()->getCategory() !== 'potion') {
+                    return $this->json(['message' => 'Seules les potions peuvent être consommées.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+                }
+                if ($ownedItem->getQuantity() > 1) {
+                    $ownedItem->setQuantity($ownedItem->getQuantity() - 1);
+                } else {
+                    $character->removeMagicItem($ownedItem);
+                    $entityManager->remove($ownedItem);
+                }
+                $entityManager->flush();
+                return $this->json([
+                    'ownedItem' => null,
+                    ...$this->serializeCharacterInventory($character, $abilityCalculator),
+                ]);
+            }
+
             try {
                 $this->applyUpdate(
                     $ownedItem,
@@ -345,6 +384,10 @@ final class PublicCharacterMagicItemController extends AbstractController
                 'name' => $magicItem->getName(),
                 'description' => $magicItem->getDescription(),
                 'rarity' => $magicItem->getRarity()?->value,
+                'category' => $magicItem->getCategory(),
+                'equippable' => $magicItem->isEquippable(),
+                'priceCopper' => $magicItem->getPriceCopper(),
+                'weightGrams' => $magicItem->getWeightGrams(),
                 'requiresAttunement' =>
                     $magicItem->requiresAttunement(),
                 'maximumCharges' =>
