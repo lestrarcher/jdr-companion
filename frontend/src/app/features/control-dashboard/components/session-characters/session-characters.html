@@ -21,6 +21,17 @@
         <button
           type="button"
           class="refresh-button"
+          [disabled]="rechargingSessionDawn()"
+          (click)="rechargeSessionDawn()"
+        >
+          {{ rechargingSessionDawn() ? 'Recharge en cours…' : 'Déclencher l’aube' }}
+        </button>
+      }
+
+      @if (hasActiveCharacters()) {
+        <button
+          type="button"
+          class="refresh-button"
           [disabled]="refreshingCharacters()"
           (click)="refreshCharacters()"
         >

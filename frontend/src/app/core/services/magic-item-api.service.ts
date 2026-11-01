@@ -65,6 +65,7 @@ export interface AssignMagicItemPayload {
   magicItemId: number;
   quantity?: number;
   notes?: string | null;
+  inscribedSpellId?: number;
 }
 
 interface MagicItemListApiResponse {
@@ -179,6 +180,12 @@ export class MagicItemApiService {
     ).pipe(map(response => response.item));
   }
 
+  rechargeSessionDawn(campaignId: number, sessionId: number): Observable<{recharged: {characters: number; items: number; grants: number}}> {
+    return this.http.post<{recharged: {characters: number; items: number; grants: number}}>(
+      `${this.apiUrl}/campaigns/${campaignId}/sessions/${sessionId}/magic-items/recharge-dawn`, {},
+    );
+  }
+
   rechargeDawn(characterId: number): Observable<{recharged: {items: number; grants: number}}> {
     return this.http.post<{recharged: {items: number; grants: number}}>(
       `${this.apiUrl}/characters/${characterId}/magic-items/recharge-dawn`, {},
@@ -197,6 +204,13 @@ export class MagicItemApiService {
           this.normalizeInventory(response),
         ),
       );
+  }
+
+  searchScrollSpells(characterId: number, query: string): Observable<{spells: {id: number; name: string; level: number}[]}> {
+    return this.http.get<{spells: {id: number; name: string; level: number}[]}>(
+      `${this.apiUrl}/characters/${characterId}/scroll-spells`,
+      { params: { q: query } },
+    );
   }
 
   assignToCharacter(

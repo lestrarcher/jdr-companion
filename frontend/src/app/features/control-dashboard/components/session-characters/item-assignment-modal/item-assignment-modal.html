@@ -112,6 +112,18 @@
         </article>
       }
 
+      @if (selectedMagicItem()?.isSpellScroll) {
+        <label class="modal-field">
+          <span>Sort inscrit (choix du MJ)</span>
+          <input type="search" [value]="scrollQuery()" (input)="searchScrollSpells($any($event.target).value)" placeholder="Rechercher un sort…" />
+          <select [value]="selectedScrollSpellId() ?? ''" (change)="selectedScrollSpellId.set(+$any($event.target).value || null)">
+            <option value="">Choisir un sort</option>
+            @for (spell of scrollSpells(); track spell.id) {
+              <option [value]="spell.id">{{ spell.name }} (niveau {{ spell.level }})</option>
+            }
+          </select>
+        </label>
+      }
       <div class="quantity-picker">
         <span>Quantité</span>
         <div>
@@ -136,6 +148,7 @@
           [disabled]="
             assigning()
             || selectedMagicItemId() === null
+            || (selectedMagicItem()?.isSpellScroll && selectedScrollSpellId() === null)
           "
           (click)="requestAssignment()"
         >

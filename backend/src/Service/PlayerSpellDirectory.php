@@ -121,6 +121,29 @@ final readonly class PlayerSpellDirectory
         // until the executor can atomically spend item charges / limited uses.
         foreach ($character->getMagicItems() as $ownedItem) {
             $item = $ownedItem->getMagicItem();
+            // A spell scroll stores its spell on the owned instance, not on a grant.
+            $inscribed = $ownedItem->getInscribedSpell();
+            if ($item->getImportKey() === 'srd-5.1:magic-item:spell-scroll' && $inscribed !== null) {
+                $classSlugs = array_unique(array_map(
+                    static fn($level): string => $level->getCharacterClass()->getSlug(),
+                    $character->getClassLevels()->toArray(),
+                ));
+                $allowed = $classSlugs !== [] && (bool) $this->db->fetchOne(
+                    'SELECT 1 FROM spell_class_list_entry e JOIN character_class c ON c.id=e.character_class_id WHERE e.spell_id=? AND c.slug IN (?) LIMIT 1',
+                    [$inscribed->getId(), $classSlugs],
+                    [\Doctrine\DBAL\ParameterType::INTEGER, \Doctrine\DBAL\ArrayParameterType::STRING],
+                );
+                $result[] = [
+                    'key' => 'scroll:'.$ownedItem->getId(), 'policyId' => null,
+                    'alwaysPrepared' => false, 'spellId' => $inscribed->getId(),
+                    'name' => $inscribed->getName(), 'level' => $inscribed->getLevel(),
+                    'school' => $inscribed->getSchool()->value,
+                    'source' => 'Parchemin de '.$inscribed->getName(), 'sourceType' => 'item',
+                    'castingAbility' => null, 'spellSaveDc' => null, 'spellAttackBonus' => null,
+                    'known' => false, 'inSpellbook' => false, 'prepared' => null,
+                    'scroll' => ['ownedItemId' => $ownedItem->getId(), 'eligible' => $allowed],
+                ];
+            }
             foreach ($item->getSpellGrants() as $grant) {
                 $spell = $grant->getSpell();
                 $active = match ($grant->getActivation()) {
@@ -184,6 +207,24 @@ final readonly class PlayerSpellDirectory
                 ? $this->em->find(SpellcastingPolicyDefinition::class, $entry['policyId']) : null;
             if ($entry['sourceType'] === 'subclass' && $entry['castingAbility'] !== null) {
                 $policy = $castingPolicies[$entry['castingClass']['id'] ?? 0] ?? null;
+            }
+            if (isset($entry['scroll'])) {
+                $available = $entry['scroll']['eligible'];
+                $reason = $available ? null : 'scroll_class_not_allowed';
+                $entry['castingEligibility'] = [
+                    'canCastNormally' => $available, 'canCastAsRitual' => false,
+                    'reason' => $reason, 'ritualReason' => 'item_ritual_not_supported',
+                    'requiresGrantReview' => false,
+                ];
+                $entry['castingAvailability'] = [
+                    'sourceKey' => $entry['key'], 'policyId' => null,
+                    'status' => $available ? 'available' : 'unavailable', 'reason' => $reason,
+                    'methods' => [[
+                        'kind' => 'scroll', 'castingLevel' => $entry['level'], 'poolSlug' => null,
+                        'cost' => 1, 'status' => $available ? 'available' : 'unavailable', 'reason' => $reason,
+                    ]],
+                ];
+                continue;
             }
             if ($entry['sourceType'] === 'item') {
                 $grant = $entry['itemGrant'];

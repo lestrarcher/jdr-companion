@@ -58,7 +58,7 @@ final readonly class ItemCatalogue
     public function present(Campaign $campaign, MagicItem $item, bool $player): array
     {
         $result = [
-            'id'=>$item->getId(), 'name'=>$item->getName(), 'description'=>$item->getDescription(),
+            'id'=>$item->getId(), 'isSpellScroll'=>$item->getImportKey() === 'srd-5.1:magic-item:spell-scroll', 'name'=>$item->getName(), 'description'=>$item->getDescription(),
             'origin'=>$item->getOrigin()->value, 'category'=>$item->getCategory(), 'magical'=>$item->isMagical(),
             'rarity'=>$item->getRarity()?->value, 'equippable'=>$item->isEquippable(),
             'quantityMode'=>$item->getQuantityMode(), 'equipmentSlot'=>$item->getEquipmentSlot(), 'handUsage'=>$item->getHandUsage(),

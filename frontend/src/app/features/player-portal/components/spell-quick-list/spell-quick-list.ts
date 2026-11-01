@@ -102,11 +102,12 @@ export class SpellQuickList {
   readonly mode = input<'directory' | 'play'>('directory');
   readonly levelFilter = input<number | null>(null);
   readonly hideUnavailable = input(false);
+  readonly showInactiveItemSpells = input(false);
   readonly disabled = input(false);
   readonly selectedKey = input<string | null>(null);
   readonly selected = output<PlayerSpell>();
   readonly entries = computed(() => this.spells()
-    .filter(spell => (this.levelFilter() === null
+    .filter(spell => (this.showInactiveItemSpells() || spell.itemGrant?.active !== false) && (this.levelFilter() === null
       ? this.mode() === 'directory' || (spell.level !== null && spell.level >= 1)
       : spell.level !== null && (this.levelFilter() === 0 ? spell.level === 0 && spell.known
         : spell.level >= 1 && spell.level <= this.levelFilter()! && (spell.prepared || spell.alwaysPrepared || spell.known && !spell.inSpellbook)))

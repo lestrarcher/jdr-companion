@@ -76,12 +76,29 @@ final class PublicCharacterMagicItemController extends AbstractController
         $definitionId = filter_var($payload['magicItemId'] ?? null, FILTER_VALIDATE_INT);
         $quantity = $payload['quantity'] ?? 1;
         $notes = $payload['notes'] ?? null;
+        $inscribedSpellId = $payload['inscribedSpellId'] ?? null;
+        // Les parchemins sont préparés par le MJ, jamais définis par le joueur.
+        if ($inscribedSpellId !== null) {
+            return $this->json(['message' => 'Le sort d’un parchemin doit être défini par le MJ.'], Response::HTTP_FORBIDDEN);
+        }
+        // Les parchemins sont préparés par le MJ, jamais définis par le joueur.
+        if ($inscribedSpellId !== null) {
+            return $this->json(['message' => 'Le sort d’un parchemin doit être défini par le MJ.'], Response::HTTP_FORBIDDEN);
+        }
+        // Les parchemins sont préparés par le MJ, jamais définis par le joueur.
+        if ($inscribedSpellId !== null) {
+            return $this->json(['message' => 'Le sort d’un parchemin doit être défini par le MJ.'], Response::HTTP_FORBIDDEN);
+        }
 
         if ($definitionId === false || $definitionId === null || $definitionId <= 0) {
             return $this->json(
                 ['message' => 'L’identifiant de l’objet est invalide.'],
                 Response::HTTP_UNPROCESSABLE_ENTITY
             );
+        }
+
+        if (($inscribedSpellId !== null && (!is_int($inscribedSpellId) || $inscribedSpellId < 1))) {
+            return $this->json(['message' => 'Identifiant de sort invalide.'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         if (!is_int($quantity) || ($notes !== null && !is_string($notes))) {
@@ -99,7 +116,8 @@ final class PublicCharacterMagicItemController extends AbstractController
             $entityManager,
             $definitionId,
             $quantity,
-            $notes
+            $notes,
+            $inscribedSpellId
         ): JsonResponse {
             PlayerCharacterAccess::lockForMutation($entityManager, $sessionState);
 
@@ -111,7 +129,8 @@ final class PublicCharacterMagicItemController extends AbstractController
                     $definitionId,
                     $quantity,
                     true,
-                    $notes
+                    $notes,
+                    $inscribedSpellId
                 );
             } catch (\InvalidArgumentException $exception) {
                 throw new \Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException(
@@ -379,6 +398,8 @@ final class PublicCharacterMagicItemController extends AbstractController
             'equipped' => $ownedItem->isEquipped(),
             'effectActive' => $ownedItem->isEffectActive(),
             'notes' => $ownedItem->getNotes(),
+            'inscribedSpellId' => $ownedItem->getInscribedSpell()?->getId(),
+            'inscribedSpellName' => $ownedItem->getInscribedSpell()?->getName(),
             'magicItem' => [
                 'id' => $magicItem->getId(),
                 'name' => $magicItem->getName(),

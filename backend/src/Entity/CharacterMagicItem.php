@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use DateTimeImmutable;
+use App\Entity\SpellDefinition;
 use App\Repository\CharacterMagicItemRepository;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -35,6 +36,19 @@ class CharacterMagicItem
         onDelete: 'CASCADE',
     )]
     private MagicItem $magicItem;
+
+    #[ORM\ManyToOne(targetEntity: SpellDefinition::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'RESTRICT')]
+    private ?SpellDefinition $inscribedSpell = null;
+
+    public function getInscribedSpell(): ?SpellDefinition { return $this->inscribedSpell; }
+
+    public function setInscribedSpell(SpellDefinition $spell): static
+    {
+        $this->inscribedSpell = $spell;
+        $this->touch();
+        return $this;
+    }
 
     #[ORM\Column(options: ['default' => 1])]
     private int $quantity = 1;

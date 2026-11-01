@@ -198,6 +198,19 @@ class MagicItem
     public function getEdition(): ?string { return $this->edition; }
     public function getSourceReference(): ?string { return $this->sourceReference; }
     public function getImportKey(): ?string { return $this->importKey; }
+
+    public function setImportMetadata(string $importKey, string $sourceReference): static
+    {
+        if ($this->origin !== ReferenceOrigin::Official || $this->owner !== null || $this->campaign !== null) {
+            throw new \LogicException('Seules les définitions officielles globales peuvent être importées.');
+        }
+        $this->importKey = $importKey;
+        $this->sourceReference = $sourceReference;
+        $this->edition = '2014';
+        $this->touch();
+        return $this;
+    }
+
     public function getArchivedAt(): ?DateTimeImmutable { return $this->archivedAt; }
 
     /** Classification for new catalogue definitions; legacy definitions are not reclassified. */

@@ -42,12 +42,14 @@
         <div class="catalogue-dialog__results" aria-label="Résultats de recherche">
           @if (catalogueLoading()) { <p class="catalogue-empty">Recherche…</p> }
           @for (item of catalogueItems(); track item.id) {
+            @if (!item.isSpellScroll) {
             <button type="button" class="catalogue-result" [class.catalogue-result--selected]="selectedCatalogueItem()?.id === item.id"
               [class]="'catalogue-result rarity--' + rarityClass(item.rarity)"
               [disabled]="acquiring()" (click)="selectCatalogueItem(item)">
               <span class="catalogue-result__main"><strong>{{ item.name }}</strong><small>{{ rarityLabel(item.rarity) }} @if (item.weightGrams != null) { · {{ formatWeight(item.weightGrams) }} }</small></span>
               <span class="catalogue-result__indicator" aria-hidden="true">{{ selectedCatalogueItem()?.id === item.id ? '●' : '○' }}</span>
             </button>
+            }
           } @empty {
             @if (!catalogueLoading()) { <p class="catalogue-empty">Aucun objet disponible.</p> }
           }
@@ -70,7 +72,22 @@
                 <button type="button" aria-label="Augmenter la quantité" [disabled]="quantity() >= 9999 || acquiring()" (click)="adjustQuantity(1)">+</button>
               </div>
             </div>
-            <button type="button" class="catalogue-submit" [disabled]="acquiring() || !validQuantity()" (click)="acquireItem(selected)">
+            @if (selected.isSpellScroll) {
+              <div class="catalogue-dialog__search">
+                <label for="scroll-spell-search">Sort inscrit sur le parchemin</label>
+                <input id="scroll-spell-search" type="search" autocomplete="off" [value]="scrollSpellQuery()"
+                  (input)="searchScrollSpells($any($event.target).value)" placeholder="Rechercher un sort…" />
+                <select aria-label="Sort inscrit" [value]="selectedScrollSpellId() ?? ''"
+                  (change)="selectedScrollSpellId.set(+$any($event.target).value || null)">
+                  <option value="">Choisir un sort</option>
+                  @for (spell of scrollSpells(); track spell.id) {
+                    <option [value]="spell.id">{{ spell.name }} (niveau {{ spell.level }})</option>
+                  }
+                </select>
+                @if (scrollSpellsLoading()) { <small>Recherche des sorts…</small> }
+              </div>
+            }
+            <button type="button" class="catalogue-submit" [disabled]="acquiring() || !validQuantity() || (selected.isSpellScroll && selectedScrollSpellId() == null)" (click)="acquireItem(selected)">
               {{ acquiring() ? 'Ajout en cours…' : 'Ajouter à l’inventaire' }}
             </button>
           } @else {
@@ -108,7 +125,7 @@
           <button type="button" class="magic-item__summary" [attr.aria-expanded]="expandedItemId() === ownedItem.id"
             [attr.aria-controls]="'item-details-' + ownedItem.id" (click)="toggleDetails(ownedItem.id)">
             <span class="magic-item__summary-main">
-              <strong>{{ ownedItem.magicItem.name }}</strong>
+              <strong>{{ ownedItem.inscribedSpellName ? 'Parchemin de ' + ownedItem.inscribedSpellName : ownedItem.magicItem.name }}</strong>
               <span class="magic-item__statuses">
                 <span>× {{ ownedItem.quantity }}</span>
                 @if (ownedItem.equipped) { <span class="item-status">Équipé</span> }

@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Entity\Character;
 use App\Entity\CharacterMagicItem;
+use App\Entity\SpellDefinition;
 use Doctrine\ORM\EntityManagerInterface;
 
 final readonly class CharacterInventory
@@ -22,6 +23,7 @@ final readonly class CharacterInventory
         int $quantity = 1,
         bool $player = false,
         ?string $notes = null,
+        ?int $inscribedSpellId = null,
     ): array {
         if ($quantity < 1 || $quantity > 9999) {
             throw new \InvalidArgumentException(
@@ -35,8 +37,32 @@ final readonly class CharacterInventory
             $player
         );
 
+        // Seul le modèle officiel de parchemin accepte un sort variable.
+        $isScroll = $definition->getImportKey() === 'srd-5.1:magic-item:spell-scroll';
+        $inscribedSpell = null;
+        if ($isScroll) {
+            if ($player) {
+                throw new \InvalidArgumentException('Un parchemin doit être préparé et attribué par le MJ.');
+            }
+            if ($player) {
+                throw new \InvalidArgumentException('Un parchemin doit être préparé et attribué par le MJ.');
+            }
+            if ($player) {
+                throw new \InvalidArgumentException('Un parchemin doit être préparé et attribué par le MJ.');
+            }
+            if ($inscribedSpellId === null || $inscribedSpellId < 1) {
+                throw new \InvalidArgumentException('Choisissez le sort inscrit sur le parchemin.');
+            }
+            $inscribedSpell = $this->em->getRepository(SpellDefinition::class)->find($inscribedSpellId);
+            if (!$inscribedSpell instanceof SpellDefinition) {
+                throw new \InvalidArgumentException('Sort introuvable dans le catalogue.');
+            }
+        } elseif ($inscribedSpellId !== null) {
+            throw new \InvalidArgumentException('Cet objet ne peut pas contenir un sort variable.');
+        }
+
         // Regrouper les objets empilables déjà possédés.
-        if ($definition->getQuantityMode() === 'stackable') {
+        if (!$isScroll && $definition->getQuantityMode() === 'stackable') {
             $existingItems = $this->em->getRepository(CharacterMagicItem::class)->findBy([
                 'character' => $character,
                 'magicItem' => $definition,
@@ -61,7 +87,7 @@ final readonly class CharacterInventory
         }
 
         // Créer une pile ou plusieurs exemplaires individuels.
-        $individual = $definition->getQuantityMode() !== 'stackable';
+        $individual = $isScroll || $definition->getQuantityMode() !== 'stackable';
         $created = [];
 
         for ($i = 0; $i < ($individual ? $quantity : 1); $i++) {
@@ -71,6 +97,9 @@ final readonly class CharacterInventory
                 $owned->setQuantity($quantity);
             }
 
+            if ($inscribedSpell !== null) {
+                $owned->setInscribedSpell($inscribedSpell);
+            }
             $owned->setNotes($notes);
             $character->addMagicItem($owned);
             $this->em->persist($owned);

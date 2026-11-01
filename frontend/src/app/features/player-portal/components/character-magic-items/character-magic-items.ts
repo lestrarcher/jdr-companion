@@ -53,6 +53,11 @@ export class CharacterMagicItems implements OnInit, OnChanges {
   private catalogueRequestId = 0;
   protected readonly acquiring = signal(false);
   protected readonly quantity = signal(1);
+  protected readonly scrollSpellQuery = signal('');
+  protected readonly scrollSpells = signal<{id: number; name: string; level: number}[]>([]);
+  protected readonly selectedScrollSpellId = signal<number | null>(null);
+  protected readonly scrollSpellsLoading = signal(false);
+  private scrollRequestId = 0;
   protected readonly catalogueOpen = signal(false);
   protected readonly selectedCatalogueItem = signal<MagicItemResponse | null>(null);
   protected readonly successMessage = signal<string | null>(null);
@@ -62,7 +67,7 @@ export class CharacterMagicItems implements OnInit, OnChanges {
   protected readonly discardQuantity = signal(1);
 
   protected readonly sortedItems = computed(() => [...this.ownedItems()].sort((a, b) =>
-    a.magicItem.name.localeCompare(b.magicItem.name, 'fr', { sensitivity: 'base' }) || a.id - b.id));
+    (a.inscribedSpellName ?? a.magicItem.name).localeCompare(b.inscribedSpellName ?? b.magicItem.name, 'fr', { sensitivity: 'base' }) || a.id - b.id));
   protected readonly totalWeightGrams = computed(() => this.ownedItems().reduce((sum, item) =>
     sum + (item.magicItem.weightGrams ?? 0) * item.quantity, 0));
   protected readonly unknownWeight = computed(() => this.ownedItems().some(item => item.magicItem.weightGrams == null));
@@ -149,6 +154,29 @@ export class CharacterMagicItems implements OnInit, OnChanges {
   protected selectCatalogueItem(item: MagicItemResponse): void {
     this.selectedCatalogueItem.set(item);
     this.quantity.set(1);
+    this.selectedScrollSpellId.set(null);
+    this.scrollSpellQuery.set('');
+    this.scrollSpells.set([]);
+    if (item.isSpellScroll) this.searchScrollSpells('');
+  }
+
+  protected searchScrollSpells(query: string): void {
+    this.scrollSpellQuery.set(query);
+    this.selectedScrollSpellId.set(null);
+    const requestId = ++this.scrollRequestId;
+    this.scrollSpellsLoading.set(true);
+    this.magicItemApi.searchScrollSpells(this.accessToken(), query).subscribe({
+      next: response => {
+        if (requestId !== this.scrollRequestId) return;
+        this.scrollSpells.set(response.spells);
+        this.scrollSpellsLoading.set(false);
+      },
+      error: (error: HttpErrorResponse) => {
+        if (requestId !== this.scrollRequestId) return;
+        this.scrollSpellsLoading.set(false);
+        this.handleError(error);
+      },
+    });
   }
 
   protected validQuantity(): boolean {
@@ -193,10 +221,11 @@ export class CharacterMagicItems implements OnInit, OnChanges {
     if (this.readonly() || this.acquiring() || this.selectedCatalogueItem()?.id !== item.id) return;
     const quantity = this.quantity();
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 9999) return;
+    if (item.isSpellScroll && this.selectedScrollSpellId() == null) return;
     this.acquiring.set(true);
     this.errorMessage.set(null);
     this.successMessage.set(null);
-    this.magicItemApi.acquire(this.accessToken(), item.id, quantity).subscribe({
+    this.magicItemApi.acquire(this.accessToken(), item.id, quantity, item.isSpellScroll ? this.selectedScrollSpellId()! : undefined).subscribe({
       next: inventory => {
         this.inventory.set(inventory);
         this.acquiring.set(false);

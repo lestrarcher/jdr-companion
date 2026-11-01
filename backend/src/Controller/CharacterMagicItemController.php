@@ -24,6 +24,24 @@ use Symfony\Component\Routing\Attribute\Route;
 final class CharacterMagicItemController
     extends AbstractController
 {
+    #[Route('/characters/{characterId}/scroll-spells', name: 'api_character_scroll_spells', requirements: ['characterId' => '\d+'], methods: ['GET'])]
+    public function scrollSpells(int $characterId, Request $request, CharacterRepository $characters, EntityManagerInterface $em): JsonResponse
+    {
+        $this->getOwnedCharacter($characterId, $characters);
+        $query = trim($request->query->getString('q'));
+        if (mb_strlen($query) > 150) {
+            return $this->json(['message' => 'Recherche trop longue.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+        $qb = $em->createQueryBuilder()->select('s')->from(\App\Entity\SpellDefinition::class, 's');
+        if ($query !== '') {
+            $qb->where('LOWER(s.name) LIKE :q')->setParameter('q', '%'.mb_strtolower($query).'%');
+        }
+        $spells = $qb->orderBy('s.name', 'ASC')->setMaxResults(50)->getQuery()->getResult();
+        return $this->json(['spells' => array_map(static fn (\App\Entity\SpellDefinition $spell): array => [
+            'id' => $spell->getId(), 'name' => $spell->getName(), 'level' => $spell->getLevel(),
+        ], $spells)]);
+    }
+
     #[Route(
         '/characters/{characterId}/magic-items',
         name: 'api_character_magic_item_list',
@@ -91,9 +109,14 @@ public function assign(
         }
 
         $notes = $payload['notes'] ?? null;
+        $inscribedSpellId = $payload['inscribedSpellId'] ?? null;
 
         if ($notes !== null && !is_string($notes)) {
             throw new \InvalidArgumentException('Les notes doivent être du texte.');
+        }
+
+        if ($inscribedSpellId !== null && (!is_int($inscribedSpellId) || $inscribedSpellId < 1)) {
+            throw new \InvalidArgumentException('Identifiant de sort invalide.');
         }
 
         $ownedItems = $entityManager->wrapInTransaction(function () use (
@@ -102,7 +125,8 @@ public function assign(
             $character,
             $magicItemId,
             $quantity,
-            $notes
+            $notes,
+            $inscribedSpellId
         ): array {
             $entityManager->lock($character, LockMode::PESSIMISTIC_WRITE);
             $entityManager->refresh($character);
@@ -112,7 +136,8 @@ public function assign(
                 $magicItemId,
                 $quantity,
                 false,
-                $notes
+                $notes,
+                $inscribedSpellId
             );
         });
     } catch (\InvalidArgumentException $exception) {
@@ -294,8 +319,8 @@ public function assign(
                 $ownedItem->getId(),
             'magicItemId' =>
                 $item->getId(),
-            'name' =>
-                $item->getName(),
+            'name' => $ownedItem->getInscribedSpell() !== null ? 'Parchemin de ' . $ownedItem->getInscribedSpell()->getName() : $item->getName(),
+            'inscribedSpellId' => $ownedItem->getInscribedSpell()?->getId(),
             'description' =>
                 $item->getDescription(),
             'rarity' =>

@@ -123,6 +123,7 @@ export class SessionCharacters implements OnInit {
   protected readonly statisticsLoading = signal(false);
   protected readonly removingItem = signal(false);
   protected readonly rechargingDawn = signal(false);
+  protected readonly rechargingSessionDawn = signal(false);
 
   private readonly progressionCharacterId = signal<number | null>(null);
   private readonly selectedProgressionSlug = signal<string | null>(null);
@@ -513,7 +514,8 @@ export class SessionCharacters implements OnInit {
     this.assignmentFeedback.set(null);
   }
 
-  protected assignSelectedItem(quantity: number): void {
+  protected assignSelectedItem(selection: {quantity: number; inscribedSpellId?: number}): void {
+    const { quantity, inscribedSpellId } = selection;
     const character = this.selectedCharacter();
     const magicItemId = this.selectedMagicItemId();
 
@@ -533,7 +535,7 @@ export class SessionCharacters implements OnInit {
     this.magicItemApi
       .assignToCharacter(
         character.character.id,
-        { magicItemId, quantity },
+        { magicItemId, quantity, ...(inscribedSpellId !== undefined ? {inscribedSpellId} : {}) },
       )
       .pipe(
         finalize(() =>
@@ -639,6 +641,26 @@ export class SessionCharacters implements OnInit {
             this.statisticsError.set(this.apiError(error, 'Impossible de retirer cet objet.'));
           }
         },
+      });
+  }
+
+  protected rechargeSessionDawn(): void {
+    if (this.rechargingSessionDawn() || !this.hasActiveCharacters()) return;
+    if (!window.confirm(`Déclencher l’aube pour les ${this.activeCharacters().length} personnages actifs de cette session ?`)) return;
+    this.rechargingSessionDawn.set(true);
+    this.characterActionError.set(null);
+    this.magicItemApi.rechargeSessionDawn(this.campaignId(), this.sessionId())
+      .pipe(finalize(() => this.rechargingSessionDawn.set(false)))
+      .subscribe({
+        next: ({recharged}) => {
+          this.characterActionFeedback.set(
+            `Aube déclenchée pour ${recharged.characters} personnage(s) : ${recharged.items} objet(s) rechargé(s), ${recharged.grants} utilisation(s) réinitialisée(s).`,
+          );
+          this.refreshCharacters();
+          const selected = this.statisticsCharacter();
+          if (selected) this.openStatistics(selected);
+        },
+        error: error => this.characterActionError.set(this.apiError(error, 'Impossible de déclencher l’aube pour la session.')),
       });
   }
 

@@ -98,6 +98,20 @@ final readonly class CharacterSpellCastExecutor
                     $remaining = $state['resources'][$index]['currentValue'] ?? null;
                     if (!is_int($remaining) || $remaining < $cost) throw new UnprocessableEntityHttpException('invalid_counter');
                     $state['resources'][$index]['currentValue'] = $remaining - $cost;
+                } elseif ($method === 'scroll') {
+                    if (($validation['source']['sourceType'] ?? null) !== 'item'
+                        || $validation['poolSlug'] !== null || $validation['cost'] !== 1
+                        || !preg_match('/^scroll:([1-9][0-9]*)$/', $command['sourceKey'], $parts)) {
+                        throw new UnprocessableEntityHttpException('invalid_scroll_cast');
+                    }
+                    $owned = $this->em->find(CharacterMagicItem::class, (int)$parts[1], LockMode::PESSIMISTIC_WRITE);
+                    if ($owned === null || $owned->getCharacter()->getId() !== $session->getCharacter()->getId()
+                        || $owned->getMagicItem()->getImportKey() !== 'srd-5.1:magic-item:spell-scroll'
+                        || $owned->getInscribedSpell()?->getId() !== $validation['source']['spellId']
+                        || $owned->getQuantity() !== 1) {
+                        throw new UnprocessableEntityHttpException('invalid_scroll_cast');
+                    }
+                    $this->em->remove($owned);
                 } elseif (in_array($method, ['item-charges', 'item-limited'], true)) {
                     if (($validation['source']['sourceType'] ?? null) !== 'item'
                         || $validation['poolSlug'] !== null || $validation['cost'] < 1

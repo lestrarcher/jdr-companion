@@ -136,6 +136,12 @@ export class PlayerSpells implements OnInit, OnChanges {
   private readonly location = inject(Location);
   private skipPreparationRedirect = false;
   readonly view = signal<PlayerSpellView | null>(null);
+  readonly showInactiveItemSpells = signal(false);
+  readonly inactiveItemSpellCount = computed(() => {
+    const view = this.view();
+    const spells = view && view.revision > this.revision() ? view.spells : this.spells();
+    return spells.filter(spell => spell.itemGrant?.active === false).length;
+  });
   readonly busy = signal(false);
   readonly error = signal('');
   readonly success = signal('');
@@ -144,7 +150,8 @@ export class PlayerSpells implements OnInit, OnChanges {
   readonly displayed = computed(() => {
     const view = this.view();
     const spells = view && view.revision > this.revision() ? view.spells : this.spells();
-    return this.mode() === 'spellbook' ? spells.filter(spell => spell.inSpellbook) : spells;
+    const visible = this.showInactiveItemSpells() ? spells : spells.filter(spell => spell.itemGrant?.active !== false);
+    return this.mode() === 'spellbook' ? visible.filter(spell => spell.inSpellbook) : visible;
   });
   private readonly selection = signal<PlayerSpell | null>(null);
   readonly selectedSpell = computed(() => {

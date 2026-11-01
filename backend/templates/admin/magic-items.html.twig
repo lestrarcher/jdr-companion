@@ -1,0 +1,12 @@
+{% extends 'admin/base.html.twig' %}
+{% block title %}Objets magiques{% endblock %}
+{% block body %}
+<header><p class="eyebrow">Référentiel officiel</p><h1>Objets magiques</h1></header>
+<section class="panel"><p><a href="{{ path('admin_magic_item_new') }}">+ Ajouter un objet</a></p>
+<form method="get"><label>Rechercher <input name="q" type="search" value="{{ q }}" maxlength="150"></label><button>Rechercher</button></form>
+<p>{{ total }} objet(s)</p><div class="table-scroll"><table><thead><tr><th>Nom</th><th>Rareté</th><th>Sorts</th></tr></thead><tbody>
+{% for item in items %}<tr><td><a href="{{ path('admin_magic_item_edit', {id: item.id}) }}">{{ item.name }}</a><small>{{ item.englishName }}</small></td><td>{{ item.rarity ? item.rarity.value : '—' }}</td><td>{{ item.spellGrants|length }}</td></tr>
+{% else %}<tr><td colspan="3">Aucun objet.</td></tr>{% endfor %}
+</tbody></table></div>
+<nav>{% if page > 1 %}<a href="{{ path('admin_magic_items', {q: q, page: page - 1}) }}">Précédent</a>{% endif %} Page {{ page }} {% if page * 25 < total %}<a href="{{ path('admin_magic_items', {q: q, page: page + 1}) }}">Suivant</a>{% endif %}</nav>
+</section>{% endblock %}

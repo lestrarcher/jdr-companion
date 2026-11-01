@@ -47,6 +47,7 @@ export interface MagicItemResponse {
   equippable: boolean;
   priceCopper?: number | null;
   weightGrams?: number | null;
+  isSpellScroll?: boolean;
   requiresAttunement: boolean;
   maximumCharges: number | null;
   rechargeType: MagicItemRechargeType;
@@ -62,6 +63,8 @@ export interface CharacterMagicItemResponse {
   equipped: boolean;
   effectActive: boolean;
   notes: string | null;
+  inscribedSpellId?: number | null;
+  inscribedSpellName?: string | null;
   magicItem: MagicItemResponse;
 }
 
@@ -116,10 +119,17 @@ export class PublicCharacterMagicItemApiService {
     );
   }
 
-  acquire(accessToken: string, magicItemId: number, quantity: number): Observable<CharacterMagicItemInventoryResponse> {
+  acquire(accessToken: string, magicItemId: number, quantity: number, inscribedSpellId?: number): Observable<CharacterMagicItemInventoryResponse> {
     return this.http.post<CharacterMagicItemInventoryResponse>(
       `${this.apiUrl}/public/characters/${accessToken}/magic-items`,
-      { magicItemId, quantity },
+      { magicItemId, quantity, ...(inscribedSpellId != null ? { inscribedSpellId } : {}) },
+    );
+  }
+
+  searchScrollSpells(accessToken: string, query: string): Observable<{spells: {id: number; name: string; level: number}[]}> {
+    return this.http.get<{spells: {id: number; name: string; level: number}[]}>(
+      `${this.apiUrl}/public/characters/${accessToken}/scroll-spells`,
+      { params: { q: query } },
     );
   }
 

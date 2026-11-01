@@ -6,12 +6,15 @@ namespace App\Controller;
 
 use App\Entity\Campaign;
 use App\Entity\GameSession;
+use App\Entity\CharacterSessionState;
 use App\Entity\Weather;
 use App\Enum\MoonPhase;
 use App\Repository\WeatherRepository;
 use App\Security\Voter\CampaignVoter;
 use App\Repository\CampaignRepository;
 use App\Repository\GameSessionRepository;
+use App\Service\MagicItemRechargeService;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -20,6 +23,50 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class GameSessionController extends AbstractController
 {
+    /** Recharge at dawn is an explicit GM action, scoped to participating session characters. */
+    #[Route(
+        '/campaigns/{campaignId}/sessions/{sessionId}/magic-items/recharge-dawn',
+        name: 'api_session_magic_items_recharge_dawn',
+        requirements: ['campaignId' => '\d+', 'sessionId' => '\d+'],
+        methods: ['POST'],
+    )]
+    public function rechargeDawn(
+        int $campaignId,
+        int $sessionId,
+        CampaignRepository $campaignRepository,
+        GameSessionRepository $sessionRepository,
+        EntityManagerInterface $entityManager,
+        MagicItemRechargeService $rechargeService,
+    ): JsonResponse {
+        $campaign = $this->getOwnedCampaign($campaignId, $campaignRepository);
+        $session = $sessionRepository->findOneBy(['id' => $sessionId, 'campaign' => $campaign]);
+        if (!$session instanceof GameSession) {
+            throw $this->createNotFoundException('Session introuvable.');
+        }
+
+        $summary = $entityManager->wrapInTransaction(function () use ($entityManager, $session, $rechargeService): array {
+            $states = $entityManager->getRepository(CharacterSessionState::class)
+                ->findBy(['gameSession' => $session, 'participating' => true]);
+            usort($states, static fn (CharacterSessionState $a, CharacterSessionState $b): int =>
+                $a->getCharacter()->getId() <=> $b->getCharacter()->getId());
+            $total = ['characters' => 0, 'items' => 0, 'grants' => 0];
+            foreach ($states as $state) {
+                $character = $state->getCharacter();
+                $entityManager->lock($character, LockMode::PESSIMISTIC_WRITE);
+                foreach ($character->getMagicItems() as $owned) {
+                    $entityManager->lock($owned, LockMode::PESSIMISTIC_WRITE);
+                }
+                $result = $rechargeService->apply($character, 'dawn');
+                ++$total['characters'];
+                $total['items'] += $result['items'];
+                $total['grants'] += $result['grants'];
+            }
+            return $total;
+        });
+
+        return $this->json(['recharged' => $summary]);
+    }
+
     #[Route(
         '/campaigns/{campaignId}/sessions',
         name: 'api_session_list',
