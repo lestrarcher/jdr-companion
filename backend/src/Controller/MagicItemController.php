@@ -390,7 +390,7 @@ final class MagicItemController
         $seen = [];
         $result = [];
         foreach ($payload as $row) {
-            if (!is_array($row) || array_is_list($row) || array_diff(array_keys($row), ['spellId', 'activation', 'costMode', 'cost', 'usesPerReset', 'resetTrigger'])) {
+            if (!is_array($row) || array_is_list($row) || array_diff(array_keys($row), ['spellId', 'activation', 'costMode', 'cost', 'usesPerReset', 'resetTrigger', 'castingLevel', 'maxCastingLevel'])) {
                 throw new \InvalidArgumentException('Octroi de sort invalide.');
             }
             $id = $row['spellId'] ?? null;
@@ -412,11 +412,14 @@ final class MagicItemController
             $cost = $row['cost'] ?? 1;
             $uses = $row['usesPerReset'] ?? null;
             $reset = $row['resetTrigger'] ?? null;
+            $castingLevel = $row['castingLevel'] ?? null;
+            $maxCastingLevel = $row['maxCastingLevel'] ?? null;
             if (!is_string($activation) || !is_string($mode) || !is_int($cost)
-                || ($uses !== null && !is_int($uses)) || ($reset !== null && !is_string($reset))) {
+                || ($uses !== null && !is_int($uses)) || ($reset !== null && !is_string($reset))
+                || ($castingLevel !== null && !is_int($castingLevel)) || ($maxCastingLevel !== null && !is_int($maxCastingLevel))) {
                 throw new \InvalidArgumentException('Paramètres de sort invalides.');
             }
-            $result[] = new MagicItemSpellGrant($item, $spell, $activation, $mode, $cost, $uses, $reset);
+            $result[] = new MagicItemSpellGrant($item, $spell, $activation, $mode, $cost, $uses, $reset, $castingLevel, $maxCastingLevel);
         }
         return $result;
     }
@@ -645,6 +648,8 @@ final class MagicItemController
                     'activation' => $grant->getActivation(),
                     'costMode' => $grant->getCostMode(),
                     'cost' => $grant->getCost(),
+                    'castingLevel' => $grant->getCastingLevel(),
+                    'maxCastingLevel' => $grant->getMaxCastingLevel(),
                     'usesPerReset' => $grant->getUsesPerReset(),
                     'resetTrigger' => $grant->getResetTrigger(),
                 ],

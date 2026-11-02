@@ -131,14 +131,19 @@ final readonly class CharacterSpellCastExecutor
                         'possession' => true, 'equipped' => $owned->isEquipped(),
                         'attuned' => $owned->isAttuned(), default => false,
                     };
-                    if (!$active || $grant->getCost() !== $validation['cost']) {
+                    try {
+                        $expectedCost = $grant->costAtLevel($validation['castingLevel']);
+                    } catch (\InvalidArgumentException) {
+                        throw new UnprocessableEntityHttpException('invalid_item_cast_level');
+                    }
+                    if (!$active || $expectedCost !== $validation['cost']) {
                         throw new UnprocessableEntityHttpException('item_inactive');
                     }
                     if ($method === 'item-charges') {
-                        if (($owned->getCurrentCharges() ?? -1) < $grant->getCost()) {
+                        if (($owned->getCurrentCharges() ?? -1) < $expectedCost) {
                             throw new UnprocessableEntityHttpException('insufficient_item_charges');
                         }
-                        $owned->adjustCharges(-$grant->getCost());
+                        $owned->adjustCharges(-$expectedCost);
                     } else {
                         $usage = $this->em->getRepository(CharacterMagicItemSpellUsage::class)
                             ->findOneBy(['ownedItem'=>$owned, 'grant'=>$grant]);

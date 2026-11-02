@@ -190,6 +190,8 @@ final readonly class PlayerSpellDirectory
                         'active' => $active,
                         'costMode' => $grant->getCostMode(),
                         'cost' => $grant->getCost(),
+                        'castingLevel' => $grant->getCastingLevel(),
+                        'maxCastingLevel' => $grant->getMaxCastingLevel(),
                         'currentCharges' => $grant->getCostMode() === 'charges' ? $ownedItem->getCurrentCharges() : null,
                         'usesPerReset' => $grant->getUsesPerReset(),
                         'remainingUses' => $grant->getCostMode() === 'limited' ? ($this->em->getRepository(\App\Entity\CharacterMagicItemSpellUsage::class)->findOneBy(['ownedItem'=>$ownedItem, 'grant'=>$grant])?->getRemaining() ?? $grant->getUsesPerReset()) : null,
@@ -281,10 +283,15 @@ final readonly class PlayerSpellDirectory
                 $entry['castingAvailability'] = [
                     'sourceKey' => $entry['key'], 'policyId' => null,
                     'status' => $available ? 'available' : 'unavailable', 'reason' => $reason,
-                    'methods' => [[
-                        'kind' => $kind, 'castingLevel' => $entry['level'], 'poolSlug' => null,
-                        'cost' => $grant['cost'], 'status' => $available ? 'available' : 'unavailable', 'reason' => $reason,
-                    ]],
+                    'methods' => array_map(static function (int $level) use ($kind, $grant, $remaining): array {
+                        $cost = $grant['cost'] + $level - $grant['castingLevel'];
+                        $availableAtLevel = $grant['active'] && $remaining !== null && $remaining >= $cost;
+                        return [
+                            'kind' => $kind, 'castingLevel' => $level, 'poolSlug' => null,
+                            'cost' => $cost, 'status' => $availableAtLevel ? 'available' : 'unavailable',
+                            'reason' => !$grant['active'] ? 'item_inactive' : ($availableAtLevel ? null : 'insufficient_item_uses'),
+                        ];
+                    }, range($grant['castingLevel'], $grant['maxCastingLevel'] ?? $grant['castingLevel'])),
                 ];
                 continue;
             }

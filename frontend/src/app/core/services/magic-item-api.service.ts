@@ -36,6 +36,8 @@ export interface MagicItemSpellGrantPayload {
   activation: 'possession' | 'equipped' | 'attuned';
   costMode: 'charges' | 'limited';
   cost: number;
+  castingLevel?: number | null;
+  maxCastingLevel?: number | null;
   usesPerReset: number | null;
   resetTrigger: 'dawn' | 'short-rest' | 'long-rest' | 'manual' | null;
 }

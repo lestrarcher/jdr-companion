@@ -362,6 +362,7 @@ export class MagicItemManager implements OnInit {
       const next = {...grant, [field]: value};
       if (field === 'costMode') {
         if (value === 'charges') { next.usesPerReset = null; next.resetTrigger = null; }
+        else { next.maxCastingLevel = null; }
         else { next.usesPerReset = 1; next.resetTrigger = 'dawn'; }
       }
       return next;
@@ -371,8 +372,8 @@ export class MagicItemManager implements OnInit {
   protected editGrants(item: MagicItemResponse): void {
     this.editingItemId.set(item.id);
     this.spellGrants.set(((item as MagicItemResponse & {spellGrants?: MagicItemSpellGrantResponse[]}).spellGrants ?? [])
-      .map(({spellId, spellName, activation, costMode, cost, usesPerReset, resetTrigger}) =>
-        ({spellId, spellName, activation, costMode, cost, usesPerReset, resetTrigger})));
+      .map(({spellId, spellName, activation, costMode, cost, usesPerReset, resetTrigger, castingLevel, maxCastingLevel}) =>
+        ({spellId, spellName, activation, costMode, cost, usesPerReset, resetTrigger, castingLevel, maxCastingLevel})));
     this.searchSpells('');
   }
 
@@ -402,8 +403,8 @@ export class MagicItemManager implements OnInit {
   }
 
   private grantPayload(): MagicItemSpellGrantPayload[] {
-    return this.spellGrants().map(({spellId, activation, costMode, cost, usesPerReset, resetTrigger}) =>
-      ({spellId, activation, costMode, cost, usesPerReset, resetTrigger}));
+    return this.spellGrants().map(({spellId, activation, costMode, cost, usesPerReset, resetTrigger, castingLevel, maxCastingLevel}) =>
+      ({spellId, activation, costMode, cost, usesPerReset, resetTrigger, castingLevel, maxCastingLevel}));
   }
 
   protected submit(): void {

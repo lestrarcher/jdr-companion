@@ -100,8 +100,17 @@ final class AdminMagicItemController extends AbstractController
             $mode = (string) $request->request->get('mode', 'limited');
             $uses = $mode === 'limited' ? (int) $request->request->get('uses', 1) : null;
             $reset = $mode === 'limited' ? (string) $request->request->get('reset', 'manual') : null;
+            $castingLevelRaw = trim((string) $request->request->get('casting_level', ''));
+            $maxCastingLevelRaw = trim((string) $request->request->get('max_casting_level', ''));
+            foreach (['Niveau de lancement' => $castingLevelRaw, 'Niveau maximal' => $maxCastingLevelRaw] as $label => $value) {
+                if ($value !== '' && (!ctype_digit($value) || (int) $value < 1 || (int) $value > 9)) {
+                    throw new \InvalidArgumentException($label.' invalide (1 à 9).');
+                }
+            }
+            $castingLevel = $castingLevelRaw === '' ? null : (int) $castingLevelRaw;
+            $maxCastingLevel = $maxCastingLevelRaw === '' ? null : (int) $maxCastingLevelRaw;
             $grant = new MagicItemSpellGrant($item, $spell, (string) $request->request->get('activation', 'possession'), $mode,
-                (int) $request->request->get('cost', 1), $uses, $reset);
+                (int) $request->request->get('cost', 1), $uses, $reset, $castingLevel, $maxCastingLevel);
             $item->addSpellGrant($grant);
             $em->persist($grant);
             $em->flush();

@@ -36,6 +36,14 @@ class MagicItemSpellGrant
     #[ORM\Column]
     private int $cost;
 
+    /** Fixed item casting level, or minimum level for variable-cost casts. */
+    #[ORM\Column(nullable: true)]
+    private ?int $castingLevel = null;
+
+    /** Highest selectable level; null means fixed-level casting. */
+    #[ORM\Column(nullable: true)]
+    private ?int $maxCastingLevel = null;
+
     /** Number of casts between resets, only for limited grants. */
     #[ORM\Column(nullable: true)]
     private ?int $usesPerReset;
@@ -52,6 +60,8 @@ class MagicItemSpellGrant
         int $cost = 1,
         ?int $usesPerReset = null,
         ?string $resetTrigger = null,
+        ?int $castingLevel = null,
+        ?int $maxCastingLevel = null,
     ) {
         if (!in_array($activation, ['possession', 'equipped', 'attuned'], true)) {
             throw new \InvalidArgumentException('Condition d’activation invalide.');
@@ -73,6 +83,16 @@ class MagicItemSpellGrant
             || !in_array($resetTrigger, ['dawn', 'short-rest', 'long-rest', 'manual'], true)) {
             throw new \InvalidArgumentException('Limite ou recharge de l’octroi invalide.');
         }
+        $baseLevel = $spell->getLevel();
+        $castingLevel ??= $baseLevel;
+        if ($castingLevel < $baseLevel || $castingLevel > 9
+            || ($maxCastingLevel !== null && ($costMode !== 'charges' || $baseLevel < 1
+                || $maxCastingLevel <= $castingLevel || $maxCastingLevel > 9
+                || $cost + $maxCastingLevel - $castingLevel > $magicItem->getMaximumCharges()))) {
+            throw new \InvalidArgumentException('Niveau de lancement ou coût variable invalide.');
+        }
+        $this->castingLevel = $castingLevel;
+        $this->maxCastingLevel = $maxCastingLevel;
         $this->magicItem = $magicItem;
         $this->spell = $spell;
         $this->activation = $activation;
@@ -90,4 +110,12 @@ class MagicItemSpellGrant
     public function getCost(): int { return $this->cost; }
     public function getUsesPerReset(): ?int { return $this->usesPerReset; }
     public function getResetTrigger(): ?string { return $this->resetTrigger; }
+    public function getCastingLevel(): int { return $this->castingLevel ?? $this->spell->getLevel(); }
+    public function getMaxCastingLevel(): ?int { return $this->maxCastingLevel; }
+    public function costAtLevel(int $level): int {
+        if ($level < $this->getCastingLevel() || $level > ($this->maxCastingLevel ?? $this->getCastingLevel())) {
+            throw new \InvalidArgumentException('Niveau de lancement non autorisé pour cet objet.');
+        }
+        return $this->cost + $level - $this->getCastingLevel();
+    }
 }

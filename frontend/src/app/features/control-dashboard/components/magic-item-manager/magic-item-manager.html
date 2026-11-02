@@ -369,6 +369,14 @@
             <label class="field"><span>Coût</span>
               <input type="number" min="1" [value]="grant.cost" (change)="updateSpell(index, 'cost', $any($event.target).valueAsNumber)" />
             </label>
+            <label class="field"><span>Niveau de lancement (vide = niveau du sort)</span>
+              <input type="number" min="0" max="9" [value]="grant.castingLevel ?? ''" (change)="updateSpell(index, 'castingLevel', $any($event.target).value === '' ? null : $any($event.target).valueAsNumber)" />
+            </label>
+            @if (grant.costMode === 'charges') {
+              <label class="field"><span>Niveau maximal (vide = coût fixe, +1 charge/niveau supplémentaire)</span>
+                <input type="number" min="1" max="9" [value]="grant.maxCastingLevel ?? ''" (change)="updateSpell(index, 'maxCastingLevel', $any($event.target).value === '' ? null : $any($event.target).valueAsNumber)" />
+              </label>
+            }
             @if (grant.costMode === 'limited') {
               <label class="field"><span>Utilisations par recharge</span>
                 <input type="number" min="1" [value]="grant.usesPerReset" (change)="updateSpell(index, 'usesPerReset', $any($event.target).valueAsNumber)" />
@@ -489,6 +497,14 @@
             <label class="field"><span>Coût</span>
               <input type="number" min="1" [value]="grant.cost" (change)="updateSpell(index, 'cost', $any($event.target).valueAsNumber)" />
             </label>
+            <label class="field"><span>Niveau de lancement (vide = niveau du sort)</span>
+              <input type="number" min="0" max="9" [value]="grant.castingLevel ?? ''" (change)="updateSpell(index, 'castingLevel', $any($event.target).value === '' ? null : $any($event.target).valueAsNumber)" />
+            </label>
+            @if (grant.costMode === 'charges') {
+              <label class="field"><span>Niveau maximal (vide = coût fixe, +1 charge/niveau supplémentaire)</span>
+                <input type="number" min="1" max="9" [value]="grant.maxCastingLevel ?? ''" (change)="updateSpell(index, 'maxCastingLevel', $any($event.target).value === '' ? null : $any($event.target).valueAsNumber)" />
+              </label>
+            }
             @if (grant.costMode === 'limited') {
               <label class="field"><span>Utilisations par recharge</span>
                 <input type="number" min="1" [value]="grant.usesPerReset" (change)="updateSpell(index, 'usesPerReset', $any($event.target).valueAsNumber)" />
