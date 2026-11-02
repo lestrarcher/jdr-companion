@@ -60,6 +60,7 @@ export interface SpellbookInscriptionResponse {
   spellId: number;
   name: string;
   level: number;
+  kind?: 'cantrip' | 'ritual';
 }
 
 export interface CharacterMagicItemResponse {
@@ -139,6 +140,16 @@ export class PublicCharacterMagicItemApiService {
       `${this.apiUrl}/public/characters/${accessToken}/scroll-spells`,
       { params: { q: query } },
     );
+  }
+
+  pactRitualCopyQuote(accessToken: string, params: {sourceOwnedItemId: number; destinationOwnedItemId: number; spellId: number}) {
+    return this.http.get<{spellLevel: number; baseCostCp: number; baseMinutes: number; sourceType: string; arcanaDC: number | null}>(
+      `${this.apiUrl}/public/characters/${accessToken}/pact-ritual-copy/quote`, {params});
+  }
+
+  pactRitualCopy(accessToken: string, payload: {sourceOwnedItemId: number; destinationOwnedItemId: number; spellId: number; confirmed: true; arcanaTotal?: number}) {
+    return this.http.post<{success: boolean; scrollConsumed: boolean; walletDebited: boolean}>(
+      `${this.apiUrl}/public/characters/${accessToken}/pact-ritual-copy`, payload);
   }
 
   spellCopyQuote(accessToken: string, params: {policyId: number; sourceOwnedItemId: number; destinationOwnedItemId: number; spellId: number}) {

@@ -46,7 +46,7 @@ export interface MagicItemSpellGrantResponse extends MagicItemSpellGrantPayload 
   spellLevel: number;
 }
 
-export interface SpellOption { id: number; name: string; level: number; origin: string; }
+export interface SpellOption { id: number; name: string; level: number; origin: string; ritual?: boolean; }
 
 export interface CreateMagicItemPayload {
   name: string;
@@ -184,6 +184,13 @@ export class MagicItemApiService {
   createReservedSpellbook(campaignId: number, magicItemId: number, spellIds: number[]): Observable<{id: number; name: string; spellCount: number}> {
     return this.http.post<{id: number; name: string; spellCount: number}>(
       `${this.apiUrl}/campaigns/${campaignId}/spellbook-reserve`, {magicItemId, spellIds},
+    );
+  }
+
+  createReservedPactTome(campaignId: number, magicItemId: number, pactCantripIds: number[], pactRitualIds: number[]): Observable<{id: number; name: string; spellCount: number}> {
+    return this.http.post<{id: number; name: string; spellCount: number}>(
+      `${this.apiUrl}/campaigns/${campaignId}/spellbook-reserve`,
+      {magicItemId, spellIds: [], pactCantripIds, pactRitualIds},
     );
   }
 

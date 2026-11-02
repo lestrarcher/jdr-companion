@@ -21,6 +21,7 @@ final readonly class PlayerSpellDirectory
         private CharacterSpellAcquisitions $acquisitions,
         private CharacterSpellPreparation $preparation,
         private SpellbookLibrary $spellbooks,
+        private PactTomeLibrary $pactTomes,
         private SpellCatalogue $catalogue,
         private CharacterSpellAvailabilityContext $availabilityContext,
         private CharacterSpellCastEligibility $eligibility = new CharacterSpellCastEligibility(),
@@ -146,6 +147,26 @@ final readonly class PlayerSpellDirectory
                     'scroll' => ['ownedItemId' => $ownedItem->getId(), 'eligible' => $allowed],
                 ];
             }
+            // Book of Shadows: physical source, never a known warlock spell or slot grant.
+            // Invocation is temporarily treated as active; actual invocation tracking comes later.
+            if ($item->getCategory() === 'spellbook' && $warlockLevel >= 3) {
+                foreach ($this->pactTomes->entries($ownedItem) as $pactSpell) {
+                    $spell = $this->em->find(\App\Entity\SpellDefinition::class, $pactSpell['spellId']);
+                    if ($spell === null) continue;
+                    $kind = $pactSpell['kind'];
+                    $result[] = [
+                        'key'=>'pact-tome:'.$ownedItem->getId().':'.$spell->getId(),
+                        'policyId'=>null, 'alwaysPrepared'=>false,
+                        'spellId'=>$spell->getId(), 'name'=>$spell->getName(),
+                        'level'=>$spell->getLevel(), 'school'=>$spell->getSchool()->value,
+                        'source'=>'Grimoire des Ombres', 'sourceType'=>'item',
+                        'castingAbility'=>'charisma',
+                        ...$this->abilities->spellStatistics($character, \App\Enum\Ability::Charisma),
+                        'known'=>$kind === 'cantrip', 'inSpellbook'=>false, 'prepared'=>null,
+                        'pactTomeKind'=>$kind,
+                    ];
+                }
+            }
             foreach ($item->getSpellGrants() as $grant) {
                 $spell = $grant->getSpell();
                 $active = match ($grant->getActivation()) {
@@ -224,6 +245,24 @@ final readonly class PlayerSpellDirectory
                     'methods' => [[
                         'kind' => 'scroll', 'castingLevel' => $entry['level'], 'poolSlug' => null,
                         'cost' => 1, 'status' => $available ? 'available' : 'unavailable', 'reason' => $reason,
+                    ]],
+                ];
+                continue;
+            }
+            if (isset($entry['pactTomeKind'])) {
+                $kind = $entry['pactTomeKind'];
+                $level = $entry['level'];
+                $entry['castingEligibility'] = [
+                    'canCastNormally'=>$kind === 'cantrip', 'canCastAsRitual'=>$kind === 'ritual',
+                    'reason'=>$kind === 'ritual' ? 'ritual_only' : null,
+                    'ritualReason'=>$kind === 'cantrip' ? 'not_a_ritual' : null,
+                    'requiresGrantReview'=>false,
+                ];
+                $entry['castingAvailability'] = [
+                    'sourceKey'=>$entry['key'], 'policyId'=>null, 'status'=>'available', 'reason'=>null,
+                    'methods'=>[[
+                        'kind'=>$kind, 'castingLevel'=>$level, 'poolSlug'=>null,
+                        'cost'=>0, 'status'=>'available', 'reason'=>null,
                     ]],
                 ];
                 continue;

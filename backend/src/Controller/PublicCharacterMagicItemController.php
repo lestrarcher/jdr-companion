@@ -6,6 +6,7 @@ namespace App\Controller;
 
 use App\Service\PlayerCharacterAccess;
 use App\Service\SpellbookLibrary;
+use App\Service\PactTomeLibrary;
 
 use App\Entity\Character;
 use App\Entity\CharacterMagicItem;
@@ -26,7 +27,7 @@ final class PublicCharacterMagicItemController extends AbstractController
 {
     private const ATTUNEMENT_LIMIT = 3;
 
-    public function __construct(private readonly SpellbookLibrary $spellbookLibrary) {}
+    public function __construct(private readonly SpellbookLibrary $spellbookLibrary, private readonly PactTomeLibrary $pactTomes) {}
 
     #[Route(
         '/public/characters/{accessToken}/magic-items',
@@ -408,7 +409,7 @@ final class PublicCharacterMagicItemController extends AbstractController
             'inscribedSpellId' => $ownedItem->getInscribedSpell()?->getId(),
             'inscribedSpellName' => $ownedItem->getInscribedSpell()?->getName(),
             'spellbookSpells' => $magicItem->getCategory() === 'spellbook'
-                ? $this->spellbookLibrary->contents($ownedItem) : null,
+                ? array_merge($this->spellbookLibrary->contents($ownedItem), $this->pactTomes->entries($ownedItem)) : null,
             'magicItem' => [
                 'id' => $magicItem->getId(),
                 'name' => $magicItem->getName(),

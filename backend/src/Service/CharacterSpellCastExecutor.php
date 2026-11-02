@@ -153,6 +153,22 @@ final readonly class CharacterSpellCastExecutor
                         }
                         $usage->spend();
                     }
+                } elseif (str_starts_with($command['sourceKey'], 'pact-tome:')) {
+                    if (!in_array($method, ['cantrip', 'ritual'], true)
+                        || $validation['poolSlug'] !== null || $validation['cost'] !== 0
+                        || !preg_match('/^pact-tome:([1-9][0-9]*):([1-9][0-9]*)$/', $command['sourceKey'], $parts)
+                        || ($validation['source']['sourceType'] ?? null) !== 'item'
+                        || (int)$parts[2] !== $validation['source']['spellId']) {
+                        throw new UnprocessableEntityHttpException('invalid_pact_tome_cast');
+                    }
+                    $book = $this->em->find(CharacterMagicItem::class, (int)$parts[1], LockMode::PESSIMISTIC_WRITE);
+                    $entries = $book === null ? [] : $this->em->getRepository(\App\Entity\PactTomeEntry::class)->findBy(['book'=>$book]);
+                    $valid = false;
+                    foreach ($entries as $entry) {
+                        if ($entry->getSpell()->getId() === (int)$parts[2] && $entry->getKind() === $method) $valid = true;
+                    }
+                    if ($book === null || $book->getCharacter()?->getId() !== $session->getCharacter()->getId()
+                        || !$valid) throw new UnprocessableEntityHttpException('pact_tome_unavailable');
                 } elseif (!in_array($method, ['cantrip', 'ritual'], true)
                     || $validation['poolSlug'] !== null || $validation['cost'] !== 0) {
                     throw new UnprocessableEntityHttpException('invalid_cast_cost');

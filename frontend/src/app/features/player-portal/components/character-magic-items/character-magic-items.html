@@ -30,10 +30,13 @@
   @if (!readonly() && canCopyWizardSpells() && copyBooks().length && copySources().length > 1) {
     <button type="button" class="catalogue-toggle" (click)="openSpellCopy()">✧ Recopier un sort</button>
   }
+  @if (!readonly() && pactBooks().length && copySources().length > 1) {
+    <button type="button" class="catalogue-toggle" (click)="openRitualCopy()">✧ Recopier un rituel (Livre des secrets anciens)</button>
+  }
   @if (copyOpen()) {
     <div class="catalogue-backdrop">
       <section class="catalogue-dialog spell-copy-dialog" role="dialog" aria-modal="true" aria-labelledby="spell-copy-title">
-        <header class="catalogue-dialog__header"><h3 id="spell-copy-title">Recopier un sort</h3><button type="button" class="catalogue-close" [disabled]="copyBusy()" (click)="copyOpen.set(false)">✕</button></header>
+        <header class="catalogue-dialog__header"><h3 id="spell-copy-title">{{ ritualCopyMode() ? "Recopier un rituel" : "Recopier un sort" }}</h3><button type="button" class="catalogue-close" [disabled]="copyBusy()" (click)="copyOpen.set(false)">✕</button></header>
         <div class="spell-copy-fields">
           <label>Source
             <select [value]="copySourceId() ?? ''" (change)="copySourceId.set(+$any($event.target).value || null); copySpellId.set(null); resetCopyQuote()">
@@ -67,7 +70,7 @@
           }
           @if (copyError()) { <p class="magic-items__error" role="alert">{{ copyError() }}</p> }
           @if (!copyQuote()) {
-            <button type="button" class="catalogue-submit" [disabled]="copyBusy() || !copyPolicyId() || !copySourceId() || !copyDestinationId() || !copySpellId()" (click)="requestCopyQuote()">Voir le coût et les conditions</button>
+            <button type="button" class="catalogue-submit" [disabled]="copyBusy() || (!ritualCopyMode() && !copyPolicyId()) || !copySourceId() || !copyDestinationId() || !copySpellId()" (click)="requestCopyQuote()">Voir le coût et les conditions</button>
           } @else {
             <button type="button" class="catalogue-submit" [disabled]="copyBusy() || (copyQuote()?.sourceType === 'scroll' && copyArcana() === null)" (click)="confirmSpellCopy()">Confirmer la copie</button>
           }
@@ -199,7 +202,7 @@
                   @for (spell of ownedItem.spellbookSpells ?? []; track spell.spellId) {
                     <div class="spellbook-contents__entry">
                       <span>{{ spell.name }}</span>
-                      <small>Niveau {{ spell.level }}</small>
+                      <small>{{ spell.kind === 'cantrip' ? 'Sort mineur du pacte' : spell.kind === 'ritual' ? 'Secret ancien · rituel' : 'Niveau ' + spell.level }}</small>
                     </div>
                   } @empty {
                     <p>Aucun sort inscrit dans ce grimoire.</p>

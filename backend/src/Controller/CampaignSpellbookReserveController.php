@@ -8,6 +8,7 @@ use App\Entity\Campaign;
 use App\Entity\Character;
 use App\Entity\CharacterMagicItem;
 use App\Entity\SpellDefinition;
+use App\Service\PactTomeLibrary;
 use App\Service\ItemCatalogue;
 use App\Service\SpellbookLibrary;
 use App\Security\Voter\CampaignVoter;
@@ -22,7 +23,7 @@ use Symfony\Component\Routing\Attribute\Route;
 final class CampaignSpellbookReserveController extends AbstractController
 {
     #[Route('/campaigns/{campaignId}/spellbook-reserve', name: 'api_campaign_spellbook_reserve', requirements: ['campaignId' => '\d+'], methods: ['GET'])]
-    public function list(int $campaignId, EntityManagerInterface $em, SpellbookLibrary $library): JsonResponse
+    public function list(int $campaignId, EntityManagerInterface $em, SpellbookLibrary $library, PactTomeLibrary $pact): JsonResponse
     {
         $campaign = $this->campaign($campaignId, $em);
         $books = $em->getRepository(CharacterMagicItem::class)->findBy(['campaign' => $campaign, 'character' => null]);
@@ -30,13 +31,14 @@ final class CampaignSpellbookReserveController extends AbstractController
         foreach ($books as $book) {
             if ($book->getMagicItem()->getCategory() !== 'spellbook') { continue; }
             $spells = $library->contents($book);
-            $result[] = ['id' => $book->getId(), 'name' => $book->getDisplayName(), 'spellCount' => count($spells), 'spells' => $spells];
+            $pactSpells = $pact->entries($book);
+            $result[] = ['id' => $book->getId(), 'name' => $book->getDisplayName(), 'spellCount' => count($spells) + count($pactSpells), 'spells' => array_merge($spells, $pactSpells), 'pactTome' => $pactSpells !== []];
         }
         return $this->json(['books' => $result]);
     }
 
     #[Route('/campaigns/{campaignId}/spellbook-reserve', name: 'api_campaign_spellbook_reserve_create', requirements: ['campaignId' => '\d+'], methods: ['POST'])]
-    public function create(int $campaignId, Request $request, EntityManagerInterface $em, ItemCatalogue $catalogue, SpellbookLibrary $library): JsonResponse
+    public function create(int $campaignId, Request $request, EntityManagerInterface $em, ItemCatalogue $catalogue, SpellbookLibrary $library, PactTomeLibrary $pact): JsonResponse
     {
         $campaign = $this->campaign($campaignId, $em);
         try { $data = $request->toArray(); } catch (\Throwable) {
@@ -44,11 +46,28 @@ final class CampaignSpellbookReserveController extends AbstractController
         }
         $definitionId = $data['magicItemId'] ?? null;
         $spellIds = $data['spellIds'] ?? [];
+        $pactCantripIds = $data['pactCantripIds'] ?? null;
+        $pactRitualIds = $data['pactRitualIds'] ?? null;
+        $isPact = $pactCantripIds !== null || $pactRitualIds !== null;
         if (!is_int($definitionId) || $definitionId < 1 || !is_array($spellIds) || !array_is_list($spellIds)
             || count($spellIds) > 100 || count(array_unique($spellIds)) !== count($spellIds)
             || count(array_filter($spellIds, static fn ($id) => is_int($id) && $id > 0)) !== count($spellIds)
-            || array_diff(array_keys($data), ['magicItemId', 'spellIds'])) {
+            || array_diff(array_keys($data), ['magicItemId', 'spellIds', 'pactCantripIds', 'pactRitualIds'])) {
             return $this->json(['message' => 'Paramètres invalides.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+        if ($isPact && ($spellIds !== [] || !is_array($pactCantripIds) || !is_array($pactRitualIds)
+            || !array_is_list($pactCantripIds) || !array_is_list($pactRitualIds)
+            || count($pactCantripIds) !== 3 || count($pactRitualIds) !== 2
+            || count(array_unique(array_merge($pactCantripIds, $pactRitualIds))) !== 5
+            || count(array_filter(array_merge($pactCantripIds, $pactRitualIds), static fn($id): bool => is_int($id) && $id > 0)) !== 5)) {
+            return $this->json(['message' => 'Le pacte requiert exactement 3 sorts mineurs et 2 rituels de niveau 1.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+        $pactCantrips = $isPact ? $em->getRepository(SpellDefinition::class)->findBy(['id' => $pactCantripIds]) : [];
+        $pactRituals = $isPact ? $em->getRepository(SpellDefinition::class)->findBy(['id' => $pactRitualIds]) : [];
+        if ($isPact && (count($pactCantrips) !== 3 || count($pactRituals) !== 2
+            || count(array_filter($pactCantrips, static fn(SpellDefinition $s): bool => $s->getLevel() === 0)) !== 3
+            || count(array_filter($pactRituals, static fn(SpellDefinition $s): bool => $s->getLevel() === 1 && $s->isRitual())) !== 2)) {
+            return $this->json(['message' => 'Sort mineur ou rituel initial invalide.'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
         $definition = $catalogue->requireDefinition($campaign, $definitionId, false);
         if ($definition->getCategory() !== 'spellbook' || $definition->getQuantityMode() !== 'individual') {
@@ -58,15 +77,20 @@ final class CampaignSpellbookReserveController extends AbstractController
         if (count($spells) !== count($spellIds) || count(array_filter($spells, static fn (SpellDefinition $s) => $s->getLevel() > 0)) !== count($spells)) {
             return $this->json(['message' => 'Sort invalide ou tour de magie.'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
-        $book = $em->wrapInTransaction(function () use ($em, $campaign, $definition, $spells, $library) {
+        $book = $em->wrapInTransaction(function () use ($em, $campaign, $definition, $spells, $library, $pact, $isPact, $pactCantrips, $pactRituals) {
             $em->lock($campaign, LockMode::PESSIMISTIC_WRITE);
             $book = new CharacterMagicItem($campaign, $definition);
             $em->persist($book);
             foreach ($spells as $spell) { $library->inscribe($book, $spell); }
+            if ($isPact) {
+                $book->setDisplayName('Grimoire des Ombres');
+                foreach ($pactCantrips as $spell) { $pact->inscribe($book, $spell, 'cantrip'); }
+                foreach ($pactRituals as $spell) { $pact->inscribe($book, $spell, 'ritual'); }
+            }
             $em->flush();
             return $book;
         });
-        return $this->json(['id' => $book->getId(), 'name' => $book->getDisplayName(), 'spellCount' => count($spells)], Response::HTTP_CREATED);
+        return $this->json(['id' => $book->getId(), 'name' => $book->getDisplayName(), 'spellCount' => count($spells) + ($isPact ? 5 : 0)], Response::HTTP_CREATED);
     }
 
     #[Route('/campaigns/{campaignId}/spellbook-reserve/{bookId}/assign', name: 'api_campaign_spellbook_reserve_assign', requirements: ['campaignId' => '\d+', 'bookId' => '\d+'], methods: ['POST'])]

@@ -54,6 +54,9 @@ export class MagicItemManager implements OnInit {
   private readonly characterApi = inject(CharacterApiService);
 
   protected readonly bookDefinitionId = signal<number | null>(null);
+  protected readonly pactTomeMode = signal(false);
+  protected readonly pactCantripIds = signal<number[]>([]);
+  protected readonly pactRitualIds = signal<number[]>([]);
   protected readonly bookSpellIds = signal<number[]>([]);
   protected readonly bookSpellQuery = signal('');
   protected readonly bookSpellOptions = signal<SpellOption[]>([]);
@@ -61,20 +64,30 @@ export class MagicItemManager implements OnInit {
   protected bookSearch(query: string): void {
     this.bookSpellQuery.set(query);
     this.magicItemApi.searchSpells(query).subscribe({
-      next: spells => this.bookSpellOptions.set(spells.filter(spell => spell.level > 0)),
+      next: spells => this.bookSpellOptions.set(spells.filter(spell => !this.pactTomeMode() || spell.level === 0 || (spell.level === 1 && spell.ritual === true))),
       error: () => this.reserveError.set('Recherche des sorts impossible.'),
     });
   }
   protected toggleBookSpell(id: number): void {
     this.bookSpellIds.update(ids => ids.includes(id) ? ids.filter(value => value !== id) : ids.length < 100 ? [...ids, id] : ids);
   }
+  protected togglePactSpell(spell: SpellOption): void {
+    if (spell.level === 0) {
+      this.pactCantripIds.update(ids => ids.includes(spell.id) ? ids.filter(id => id !== spell.id) : ids.length < 3 ? [...ids, spell.id] : ids);
+    } else if (spell.level === 1) {
+      this.pactRitualIds.update(ids => ids.includes(spell.id) ? ids.filter(id => id !== spell.id) : ids.length < 2 ? [...ids, spell.id] : ids);
+    }
+  }
   protected createReserveBook(): void {
     const definitionId = this.bookDefinitionId();
     if (!definitionId || this.bookCreating()) return;
     this.bookCreating.set(true);
     this.reserveError.set(null);
-    this.magicItemApi.createReservedSpellbook(this.campaignId(), definitionId, this.bookSpellIds()).subscribe({
-      next: () => { this.bookCreating.set(false); this.bookSpellIds.set([]); this.reloadReserve(); },
+    const request = this.pactTomeMode()
+      ? this.magicItemApi.createReservedPactTome(this.campaignId(), definitionId, this.pactCantripIds(), this.pactRitualIds())
+      : this.magicItemApi.createReservedSpellbook(this.campaignId(), definitionId, this.bookSpellIds());
+    request.subscribe({
+      next: () => { this.bookCreating.set(false); this.bookSpellIds.set([]); this.pactCantripIds.set([]); this.pactRitualIds.set([]); this.reloadReserve(); },
       error: (error: HttpErrorResponse) => { this.bookCreating.set(false); this.reserveError.set(error.error?.message ?? 'Création du grimoire impossible.'); },
     });
   }

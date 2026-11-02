@@ -90,17 +90,28 @@
             }
           </select>
         </label>
+        <label class="reserve-field"><span>Type de grimoire</span>
+          <select [value]="pactTomeMode() ? 'pact' : 'wizard'" (change)="pactTomeMode.set($any($event.target).value === 'pact'); bookSearch(bookSpellQuery())">
+            <option value="wizard">Grimoire ordinaire</option>
+            <option value="pact">Grimoire des Ombres (Pacte du Grimoire)</option>
+          </select>
+        </label>
+        @if (pactTomeMode()) { <p>Choisir exactement 3 sorts mineurs et 2 sorts de niveau 1 avec l’étiquette Rituel. La manifestation Livre des secrets anciens est temporairement considérée active.</p> }
         <label class="reserve-field"><span>Rechercher des sorts à inscrire (facultatif)</span>
           <input type="search" [value]="bookSpellQuery()" (input)="bookSearch($any($event.target).value)" placeholder="Nom du sort…" />
         </label>
         <div class="reserve-spells" role="group" aria-label="Sorts à inscrire">
           @for (spell of bookSpellOptions(); track spell.id) {
-            <label class="reserve-spell"><input type="checkbox" [checked]="bookSpellIds().includes(spell.id)" (change)="toggleBookSpell(spell.id)" /><span>{{ spell.name }}</span><small>Niv. {{ spell.level }}</small></label>
+            @if (pactTomeMode()) {
+              <label class="reserve-spell"><input type="checkbox" [checked]="pactCantripIds().includes(spell.id) || pactRitualIds().includes(spell.id)" (change)="togglePactSpell(spell)" /><span>{{ spell.name }}</span><small>{{ spell.level === 0 ? 'Mineur' : 'Rituel niv. 1' }}</small></label>
+            } @else {
+              <label class="reserve-spell"><input type="checkbox" [checked]="bookSpellIds().includes(spell.id)" (change)="toggleBookSpell(spell.id)" /><span>{{ spell.name }}</span><small>Niv. {{ spell.level }}</small></label>
+            }
           } @empty { <p class="reserve-spells__empty">Aucun sort à afficher. Utilise la recherche pour filtrer.</p> }
         </div>
         <div class="reserve-create__footer">
-          <span>{{ bookSpellIds().length }} sort{{ bookSpellIds().length > 1 ? 's' : '' }} sélectionné{{ bookSpellIds().length > 1 ? 's' : '' }} · Un grimoire vide est autorisé.</span>
-          <button class="reserve-primary" type="button" [disabled]="!bookDefinitionId() || bookCreating()" (click)="createReserveBook()">Créer dans la réserve</button>
+          <span>{{ pactTomeMode() ? (pactCantripIds().length + ' / 3 mineurs · ' + pactRitualIds().length + ' / 2 rituels') : (bookSpellIds().length + ' sorts sélectionnés · Un grimoire vide est autorisé.') }}</span>
+          <button class="reserve-primary" type="button" [disabled]="!bookDefinitionId() || bookCreating() || (pactTomeMode() && (pactCantripIds().length !== 3 || pactRitualIds().length !== 2))" (click)="createReserveBook()">Créer dans la réserve</button>
         </div>
       </div>
     </details>
