@@ -10,6 +10,7 @@ import {
   signal,
 } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
+import { PlayerSpellApiService } from '@core/services/player-spell-api.service';
 
 import {
   CharacterMagicItemInventoryResponse,
@@ -36,6 +37,57 @@ export class CharacterMagicItems implements OnInit, OnChanges {
     if (changes['refreshRevision'] && !changes['refreshRevision'].firstChange) {
       this.loadInventory();
     }
+  }
+
+  private readonly spellApi = inject(PlayerSpellApiService);
+  protected readonly copyOpen = signal(false);
+  protected readonly copyBusy = signal(false);
+  protected readonly copyPolicyId = signal<number | null>(null);
+  protected readonly copySourceId = signal<number | null>(null);
+  protected readonly copyDestinationId = signal<number | null>(null);
+  protected readonly copySpellId = signal<number | null>(null);
+  protected readonly copyArcana = signal<number | null>(null);
+  protected readonly copyQuote = signal<{spellLevel: number; baseCostCp: number; baseMinutes: number; sourceType: string; arcanaDC: number | null} | null>(null);
+  protected readonly copyError = signal('');
+  protected readonly copyPolicies = signal<{id: number; label: string}[]>([]);
+  protected readonly canCopyWizardSpells = computed(() => this.copyPolicies().length === 1);
+  protected readonly copyBooks = computed(() => this.ownedItems().filter(item => item.magicItem.category === 'spellbook'));
+  protected readonly copySources = computed(() => this.ownedItems().filter(item => item.magicItem.category === 'spellbook' || item.magicItem.category === 'scroll'));
+  protected readonly copySpells = computed(() => {
+    const source = this.copySources().find(item => item.id === this.copySourceId());
+    return source?.magicItem.category === 'spellbook' ? (source.spellbookSpells ?? []).map(spell => ({id: spell.spellId, name: spell.name, level: spell.level}))
+      : source?.inscribedSpellId ? [{id: source.inscribedSpellId, name: source.inscribedSpellName ?? 'Sort inscrit', level: 0}] : [];
+  });
+  protected openSpellCopy(): void {
+    this.copyOpen.set(true); this.copyError.set(''); this.copyQuote.set(null);
+    // La progression est résolue lors du chargement du portail ; aucun choix joueur.
+    if (!this.canCopyWizardSpells()) { this.copyOpen.set(false); return; }
+    this.copyPolicyId.set(this.copyPolicies()[0].id);
+  }
+  protected resetCopyQuote(): void { this.copyQuote.set(null); this.copyError.set(''); }
+  protected requestCopyQuote(): void {
+    const policyId = this.copyPolicyId(), sourceOwnedItemId = this.copySourceId(), destinationOwnedItemId = this.copyDestinationId(), spellId = this.copySpellId();
+    if (!policyId || !sourceOwnedItemId || !destinationOwnedItemId || !spellId) return;
+    this.copyBusy.set(true); this.copyError.set(''); this.copyQuote.set(null);
+    this.magicItemApi.spellCopyQuote(this.accessToken(), {policyId, sourceOwnedItemId, destinationOwnedItemId, spellId}).subscribe({
+      next: quote => {this.copyQuote.set(quote); this.copyBusy.set(false);},
+      error: (error: HttpErrorResponse) => {this.copyBusy.set(false); this.copyError.set(error.error?.detail ?? error.error?.message ?? 'Copie impossible.');},
+    });
+  }
+  protected confirmSpellCopy(): void {
+    const quote = this.copyQuote(), policyId = this.copyPolicyId(), sourceOwnedItemId = this.copySourceId(), destinationOwnedItemId = this.copyDestinationId(), spellId = this.copySpellId();
+    if (!quote || !policyId || !sourceOwnedItemId || !destinationOwnedItemId || !spellId || this.copyBusy()) return;
+    if (quote.sourceType === 'scroll' && (this.copyArcana() === null || !Number.isInteger(this.copyArcana()))) return;
+    this.copyBusy.set(true); this.copyError.set('');
+    this.magicItemApi.spellCopy(this.accessToken(), {policyId, sourceOwnedItemId, destinationOwnedItemId, spellId, confirmed: true,
+      ...(quote.sourceType === 'scroll' ? {arcanaTotal: this.copyArcana()!} : {})}).subscribe({
+      next: result => {
+        this.copyBusy.set(false); this.copyOpen.set(false); this.copyQuote.set(null);
+        this.successMessage.set(result.success ? 'Sort recopié dans le grimoire.' : 'Échec du test : parchemin consommé, sort non inscrit.');
+        this.loadInventory();
+      },
+      error: (error: HttpErrorResponse) => {this.copyBusy.set(false); this.copyError.set(error.error?.detail ?? error.error?.message ?? 'Erreur pendant la copie. Vérifier l’état des objets avant de réessayer.');},
+    });
   }
 
   private readonly magicItemApi =
@@ -135,6 +187,16 @@ export class CharacterMagicItems implements OnInit, OnChanges {
 
   ngOnInit(): void {
     this.loadInventory();
+    this.spellApi.get(this.accessToken()).subscribe({
+      next: view => {
+        const wizardPolicies = view.preparations
+          .filter(p => p.learningStyle === 'spellbook' && /magicien/i.test(p.source))
+          .map(p => ({id: p.policyId, label: p.source}));
+        this.copyPolicies.set(wizardPolicies);
+        this.copyPolicyId.set(wizardPolicies.length === 1 ? wizardPolicies[0].id : null);
+      },
+      error: () => this.copyPolicies.set([]),
+    });
   }
 
   protected openCatalogue(): void {

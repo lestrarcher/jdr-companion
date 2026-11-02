@@ -258,6 +258,16 @@ final class MagicItemController
                     ),
                 );
 
+            $category = $payload['category'] ?? 'other';
+            if (!is_string($category) || !in_array($category, ['other', 'spellbook'], true)) {
+                throw new \InvalidArgumentException('Catégorie inconnue.');
+            }
+            if ($category === 'spellbook') {
+                if ($maximumCharges !== null || ($payload['requiresAttunement'] ?? false) || $effectsPayload !== [] || $grantsPayload !== []) {
+                    throw new \InvalidArgumentException('Un grimoire ordinaire ne possède ni charges, ni harmonisation, ni octrois de sorts.');
+                }
+                $item->classify('spellbook', false, false);
+            }
             foreach ($this->buildSpellGrants($item, $grantsPayload, $entityManager, $spellCatalogue) as $grant) {
                 $item->addSpellGrant($grant);
             }
@@ -566,6 +576,8 @@ final class MagicItemController
                     ->getCampaign()
                     ?->getId(),
             'name' => $item->getName(),
+            'category' => $item->getCategory(),
+            'quantityMode' => $item->getQuantityMode(),
             'description' =>
                 $item->getDescription(),
             'rarity' =>

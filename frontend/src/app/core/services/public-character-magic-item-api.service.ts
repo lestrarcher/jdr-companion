@@ -55,7 +55,15 @@ export interface MagicItemResponse {
   abilityEffects: MagicItemAbilityEffectResponse[];
 }
 
+export interface SpellbookInscriptionResponse {
+  id: number;
+  spellId: number;
+  name: string;
+  level: number;
+}
+
 export interface CharacterMagicItemResponse {
+  spellbookSpells?: SpellbookInscriptionResponse[] | null;
   id: number;
   quantity: number;
   currentCharges: number;
@@ -131,6 +139,16 @@ export class PublicCharacterMagicItemApiService {
       `${this.apiUrl}/public/characters/${accessToken}/scroll-spells`,
       { params: { q: query } },
     );
+  }
+
+  spellCopyQuote(accessToken: string, params: {policyId: number; sourceOwnedItemId: number; destinationOwnedItemId: number; spellId: number}) {
+    return this.http.get<{spellLevel: number; baseCostCp: number; baseMinutes: number; sourceType: string; arcanaDC: number | null}>(
+      `${this.apiUrl}/public/characters/${accessToken}/physical-spell-copy/quote`, {params});
+  }
+
+  spellCopy(accessToken: string, payload: {policyId: number; sourceOwnedItemId: number; destinationOwnedItemId: number; spellId: number; confirmed: true; arcanaTotal?: number}) {
+    return this.http.post<{success: boolean; scrollConsumed: boolean; walletDebited: boolean}>(
+      `${this.apiUrl}/public/characters/${accessToken}/physical-spell-copy`, payload);
   }
 
   update(

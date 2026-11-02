@@ -514,7 +514,7 @@ export class SessionCharacters implements OnInit {
     this.assignmentFeedback.set(null);
   }
 
-  protected assignSelectedItem(selection: {quantity: number; inscribedSpellId?: number}): void {
+  protected assignSelectedItem(selection: {quantity: number; inscribedSpellId?: number; spellIds?: number[]; notes?: string}): void {
     const { quantity, inscribedSpellId } = selection;
     const character = this.selectedCharacter();
     const magicItemId = this.selectedMagicItemId();
@@ -531,6 +531,19 @@ export class SessionCharacters implements OnInit {
     this.assigningItem.set(true);
     this.assignmentFeedback.set(null);
     this.characterActionError.set(null);
+
+    if (selection.spellIds !== undefined) {
+      this.magicItemApi.createCharacterSpellbook(character.character.id, {
+        magicItemId, spellIds: selection.spellIds, notes: selection.notes ?? null,
+      }).pipe(finalize(() => this.assigningItem.set(false))).subscribe({
+        next: () => {
+          this.assignmentFeedback.set(`Grimoire créé et donné à ${character.character.name} (${selection.spellIds!.length} sorts).`);
+          this.selectedMagicItemId.set(null);
+        },
+        error: error => this.characterActionError.set(this.apiError(error, 'Impossible de créer ce grimoire.')),
+      });
+      return;
+    }
 
     this.magicItemApi
       .assignToCharacter(

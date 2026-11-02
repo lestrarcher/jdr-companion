@@ -192,8 +192,13 @@ public function assign(
                     throw new \InvalidArgumentException('Quantité supérieure au stock possédé.');
                 }
                 if ($quantity === $ownedItem->getQuantity()) {
-                    $character->removeMagicItem($ownedItem);
-                    $entityManager->remove($ownedItem);
+                    if ($ownedItem->getMagicItem()->getCategory() === 'spellbook') {
+                        $character->removeMagicItem($ownedItem);
+                        $ownedItem->transferTo(null);
+                    } else {
+                        $character->removeMagicItem($ownedItem);
+                        $entityManager->remove($ownedItem);
+                    }
                 } else {
                     $ownedItem->setQuantity($ownedItem->getQuantity() - $quantity);
                 }
@@ -319,7 +324,7 @@ public function assign(
                 $ownedItem->getId(),
             'magicItemId' =>
                 $item->getId(),
-            'name' => $ownedItem->getInscribedSpell() !== null ? 'Parchemin de ' . $ownedItem->getInscribedSpell()->getName() : $item->getName(),
+            'name' => $ownedItem->getInscribedSpell() !== null ? 'Parchemin de ' . $ownedItem->getInscribedSpell()->getName() : $ownedItem->getDisplayName(),
             'inscribedSpellId' => $ownedItem->getInscribedSpell()?->getId(),
             'description' =>
                 $item->getDescription(),

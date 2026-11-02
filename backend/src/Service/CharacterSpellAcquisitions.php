@@ -611,6 +611,9 @@ final readonly class CharacterSpellAcquisitions
                 }
                 $ids[] = (int) $db->fetchOne('INSERT INTO character_spell_acquisition (character_id, spell_id, policy_definition_id, class_level_id, replaces_id, decided_by_id, provenance, quota_bucket, known, in_spellbook, historical_validation, decision_note, decided_at, copy_details, revision_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?) RETURNING id',
                     [$character->getId(), $spell['id'], $policyId, $choice['classLevelId'], $replaces, $actor->getId(), $provenance, $bucket, $bucket !== 'spellbook' ? 1 : 0, $bucket === 'spellbook' ? 1 : 0, $provenance === 'level-history' ? 1 : 0, trim($note), $copyDetails === null ? null : json_encode($copyDetails, JSON_THROW_ON_ERROR), $revisionId]);
+                if ($bucket === 'spellbook') {
+                    (new WizardSpellbookWriter($this->em))->record($character, (int) $spell['id']);
+                }
             }
             return $ids;
         });

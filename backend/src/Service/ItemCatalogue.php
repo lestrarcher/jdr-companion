@@ -38,7 +38,7 @@ final readonly class ItemCatalogue
     public function list(Campaign $campaign, bool $player, string $search = '', ?string $category = null, int $page = 1): array
     {
         if (mb_strlen($search) > 150 || $page < 1 || $page > 100000
-            || ($category !== null && !in_array($category, ['gear','weapon','armor','shield','potion','scroll','other'], true))) {
+            || ($category !== null && !in_array($category, ['gear','weapon','armor','shield','potion','scroll','spellbook','other'], true))) {
             throw new UnprocessableEntityHttpException('Filtres de catalogue invalides.');
         }
         $query = $this->query($campaign, $player);

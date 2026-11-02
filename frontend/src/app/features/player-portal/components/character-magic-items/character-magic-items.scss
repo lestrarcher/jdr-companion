@@ -347,3 +347,16 @@
   .catalogue-dialog__header { padding-top: max(1rem, env(safe-area-inset-top)); }
   .catalogue-dialog__footer { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
 }
+
+/* Physical spellbooks: read-only inscription list. */
+.spellbook-contents { margin: 1rem 0; padding: .75rem; border: 1px solid rgba(205,175,110,.35); border-radius: .4rem; }
+.spellbook-contents h4 { margin: 0 0 .5rem; font-size: .85rem; }
+.spellbook-contents__entry { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: .35rem 0; border-top: 1px solid rgba(205,175,110,.14); }
+.spellbook-contents__entry small { flex-shrink: 0; opacity: .75; }
+
+.spell-copy-dialog { max-width: 31rem; overflow-y: auto; }
+.spell-copy-fields { display: grid; gap: 1rem; padding: 1.2rem; }
+.spell-copy-fields label { display: grid; gap: .4rem; color: #d5c6dd; font-size: .85rem; }
+.spell-copy-fields select, .spell-copy-fields input { width: 100%; min-height: 2.6rem; padding: .5rem; border: 1px solid #65576c; background: #100d17; color: #f7f1e3; font: inherit; }
+.spell-copy-quote { display: grid; gap: .5rem; border: 1px solid #80683f; padding: .85rem; color: #e5cf9d; font-size: .85rem; }
+.spell-copy-quote small { color: #e9a8a8; }

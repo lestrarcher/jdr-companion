@@ -18,15 +18,22 @@ class CharacterMagicItem
     #[ORM\Column]
     private ?int $id = null;
 
+    #[ORM\ManyToOne(targetEntity: Campaign::class)]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
+    private Campaign $campaign;
+
+    #[ORM\Column(length: 200, nullable: true)]
+    private ?string $displayName = null;
+
     #[ORM\ManyToOne(
         inversedBy: 'magicItems',
         targetEntity: Character::class,
     )]
     #[ORM\JoinColumn(
-        nullable: false,
-        onDelete: 'CASCADE',
+        nullable: true,
+        onDelete: 'SET NULL',
     )]
-    private Character $character;
+    private ?Character $character;
 
     #[ORM\ManyToOne(
         targetEntity: MagicItem::class,
@@ -82,20 +89,24 @@ class CharacterMagicItem
     private DateTimeImmutable $updatedAt;
 
     public function __construct(
-        Character $character,
+        Character|Campaign $character,
         MagicItem $magicItem,
     ) {
+        $campaign = $character instanceof Character ? $character->getCampaign() : $character;
+        if ($character instanceof Campaign && ($magicItem->getCategory() !== 'spellbook' || $magicItem->getQuantityMode() !== 'individual')) {
+            throw new \InvalidArgumentException('Seul un grimoire individuel peut être créé dans la réserve.');
+        }
         if (
             $magicItem->getCampaign() !== null
-            && $character->getCampaign()->getId()
-                !== $magicItem->getCampaign()->getId()
+            && $campaign->getId() !== $magicItem->getCampaign()->getId()
         ) {
             throw new \InvalidArgumentException(
                 'Cet objet appartient à une autre campagne.',
             );
         }
 
-        $this->character = $character;
+        $this->character = $character instanceof Character ? $character : null;
+        $this->campaign = $campaign;
         $this->magicItem = $magicItem;
         $this->currentCharges =
             $magicItem->getMaximumCharges();
@@ -111,7 +122,39 @@ class CharacterMagicItem
         return $this->id;
     }
 
-    public function getCharacter(): Character
+    public function getCampaign(): Campaign { return $this->campaign; }
+
+    public function getDisplayName(): string { return $this->displayName ?? $this->magicItem->getName(); }
+
+    public function setDisplayName(?string $name): static
+    {
+        $name = $name === null ? null : trim($name);
+        if ($name !== null && mb_strlen($name) > 200) {
+            throw new \InvalidArgumentException('Nom trop long.');
+        }
+        $this->displayName = $name ?: null;
+        $this->touch();
+        return $this;
+    }
+
+    public function transferTo(?Character $character): static
+    {
+        if ($this->magicItem->getCategory() !== 'spellbook') {
+            throw new \InvalidArgumentException('Seuls les grimoires peuvent être transférés vers la réserve.');
+        }
+        if ($character !== null && $character->getCampaign()->getId() !== $this->campaign->getId()) {
+            throw new \InvalidArgumentException('Le destinataire appartient à une autre campagne.');
+        }
+        $this->character = $character;
+        $this->equipped = false;
+        $this->attuned = false;
+        $this->equippedSlot = null;
+        $this->handsUsed = null;
+        $this->touch();
+        return $this;
+    }
+
+    public function getCharacter(): ?Character
     {
         return $this->character;
     }

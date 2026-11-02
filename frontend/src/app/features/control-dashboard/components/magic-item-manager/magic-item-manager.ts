@@ -14,6 +14,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
+import { CharacterApiService, CharacterApiResponse } from '@core/services/character-api.service';
 
 import {
   CreateMagicItemPayload,
@@ -50,6 +51,63 @@ export class MagicItemManager implements OnInit {
   private readonly formBuilder = inject(FormBuilder);
   private readonly magicItemApi =
     inject(MagicItemApiService);
+  private readonly characterApi = inject(CharacterApiService);
+
+  protected readonly bookDefinitionId = signal<number | null>(null);
+  protected readonly bookSpellIds = signal<number[]>([]);
+  protected readonly bookSpellQuery = signal('');
+  protected readonly bookSpellOptions = signal<SpellOption[]>([]);
+  protected readonly bookCreating = signal(false);
+  protected bookSearch(query: string): void {
+    this.bookSpellQuery.set(query);
+    this.magicItemApi.searchSpells(query).subscribe({
+      next: spells => this.bookSpellOptions.set(spells.filter(spell => spell.level > 0)),
+      error: () => this.reserveError.set('Recherche des sorts impossible.'),
+    });
+  }
+  protected toggleBookSpell(id: number): void {
+    this.bookSpellIds.update(ids => ids.includes(id) ? ids.filter(value => value !== id) : ids.length < 100 ? [...ids, id] : ids);
+  }
+  protected createReserveBook(): void {
+    const definitionId = this.bookDefinitionId();
+    if (!definitionId || this.bookCreating()) return;
+    this.bookCreating.set(true);
+    this.reserveError.set(null);
+    this.magicItemApi.createReservedSpellbook(this.campaignId(), definitionId, this.bookSpellIds()).subscribe({
+      next: () => { this.bookCreating.set(false); this.bookSpellIds.set([]); this.reloadReserve(); },
+      error: (error: HttpErrorResponse) => { this.bookCreating.set(false); this.reserveError.set(error.error?.message ?? 'Création du grimoire impossible.'); },
+    });
+  }
+  protected readonly reservedBooks = signal<{id: number; name: string; spellCount: number; spells?: {spellId: number; name: string; level: number}[]}[]>([]);
+  protected readonly reserveCharacters = signal<CharacterApiResponse[]>([]);
+  protected readonly reserveTargets = signal<Record<number, number>>({});
+  protected setReserveTarget(bookId: number, value: number): void {
+    this.reserveTargets.update(targets => ({...targets, [bookId]: value}));
+  }
+  protected readonly reserveBusy = signal(false);
+  protected readonly reserveError = signal<string | null>(null);
+
+  protected reloadReserve(): void {
+    this.magicItemApi.listSpellbookReserve(this.campaignId()).subscribe({
+      next: ({books}) => this.reservedBooks.set(books),
+      error: () => this.reserveError.set('Impossible de charger la réserve de grimoires.'),
+    });
+    this.characterApi.list(this.campaignId()).subscribe({
+      next: characters => this.reserveCharacters.set(characters),
+      error: () => this.reserveError.set('Impossible de charger les personnages.'),
+    });
+  }
+
+  protected restoreBook(bookId: number): void {
+    const target = this.reserveTargets()[bookId];
+    if (!target || this.reserveBusy()) return;
+    this.reserveBusy.set(true);
+    this.reserveError.set(null);
+    this.magicItemApi.assignReservedSpellbook(this.campaignId(), bookId, target).subscribe({
+      next: () => { this.reserveBusy.set(false); this.reloadReserve(); },
+      error: () => { this.reserveBusy.set(false); this.reserveError.set('Restitution impossible. Actualise la réserve et réessaie.'); },
+    });
+  }
 
   protected readonly catalog =
     signal<MagicItemResponse[]>([]);
@@ -172,6 +230,7 @@ export class MagicItemManager implements OnInit {
   ];
 
   protected readonly form = this.formBuilder.group({
+    category: ['other' as 'other' | 'spellbook'],
     name: [
       '',
       [
@@ -213,6 +272,8 @@ export class MagicItemManager implements OnInit {
 
   ngOnInit(): void {
     this.loadCatalog();
+    this.reloadReserve();
+    this.bookSearch('');
   }
 
   protected addAbilityEffect(): void {
@@ -358,6 +419,7 @@ export class MagicItemManager implements OnInit {
 
     const payload: CreateMagicItemPayload = {
       name: rawValue.name!.trim(),
+      category: rawValue.category ?? 'other',
 
       description:
         rawValue.description?.trim() || null,
@@ -501,6 +563,7 @@ export class MagicItemManager implements OnInit {
 
   private resetForm(): void {
     this.form.reset({
+      category: 'other',
       name: '',
       description: '',
       rarity: 'uncommon',

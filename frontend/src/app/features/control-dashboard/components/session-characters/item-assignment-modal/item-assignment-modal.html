@@ -124,6 +124,30 @@
           </select>
         </label>
       }
+      @if (selectedMagicItem()?.category === 'spellbook') {
+        <section class="modal-field" aria-label="Contenu du grimoire">
+          <span>Sorts inscrits ({{ selectedBookSpells().length }}/100)</span>
+          <input type="search" [value]="bookQuery()" (input)="searchBookSpells($any($event.target).value)" placeholder="Rechercher un sort…" [disabled]="assigning()" />
+          <div class="catalog-results" role="group" aria-label="Sorts disponibles">
+            @for (spell of bookSpells(); track spell.id) {
+              <label class="catalog-option">
+                <input type="checkbox" [checked]="bookSpellSelected(spell.id)" [disabled]="assigning() || (selectedBookSpells().length >= 100 && !bookSpellSelected(spell.id))" (change)="toggleBookSpell(spell)" />
+                {{ spell.name }} (niveau {{ spell.level }})
+              </label>
+            } @empty {
+              <p class="modal-empty">Aucun sort trouvé.</p>
+            }
+          </div>
+          @if (selectedBookSpells().length) {
+            <p>Inscrits : @for (spell of selectedBookSpells(); track spell.id) { {{ spell.name }}{{ $last ? '' : ', ' }} }</p>
+          }
+          <label class="modal-field">
+            <span>Notes (facultatif)</span>
+            <textarea [value]="bookNotes()" (input)="bookNotes.set($any($event.target).value)" maxlength="10000" [disabled]="assigning()"></textarea>
+          </label>
+        </section>
+      }
+      @if (selectedMagicItem()?.category !== 'spellbook') {
       <div class="quantity-picker">
         <span>Quantité</span>
         <div>
@@ -132,6 +156,7 @@
           <button type="button" (click)="changeQuantity(quantity() + 1)" [disabled]="quantity() >= 9999 || assigning()">+</button>
         </div>
       </div>
+      }
       <footer class="modal-actions">
         <button
           type="button"
@@ -155,7 +180,7 @@
           {{
             assigning()
               ? 'Attribution…'
-              : 'Donner × ' + quantity()
+              : selectedMagicItem()?.category === 'spellbook' ? 'Créer et donner le grimoire' : 'Donner × ' + quantity()
           }}
         </button>
       </footer>

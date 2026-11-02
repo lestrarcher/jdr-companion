@@ -216,11 +216,12 @@ class MagicItem
     /** Classification for new catalogue definitions; legacy definitions are not reclassified. */
     public function classify(string $category, bool $magical, bool $equippable, string $slot = 'free', ?string $hands = null): void
     {
-        if (!in_array($category, ['gear', 'weapon', 'armor', 'shield', 'potion', 'scroll', 'other'], true)
+        if (!in_array($category, ['gear', 'weapon', 'armor', 'shield', 'potion', 'scroll', 'spellbook', 'other'], true)
             || !in_array($slot, ['free', 'hand', 'armor'], true)
             || !in_array($hands, [null, 'one', 'two', 'versatile'], true)
             || (!$equippable && ($slot !== 'free' || $hands !== null))
             || (($slot === 'hand') !== ($hands !== null))
+            || ($category === 'spellbook' && ($equippable || $slot !== 'free' || $hands !== null))
             || ($category === 'weapon' && (!$equippable || $slot !== 'hand'))
             || ($category === 'armor' && (!$equippable || $slot !== 'armor'))
             || ($category === 'shield' && (!$equippable || $slot !== 'hand' || $hands !== 'one'))
@@ -232,7 +233,7 @@ class MagicItem
         $this->equippable = $equippable;
         $this->equipmentSlot = $slot;
         $this->handUsage = $hands;
-        $this->quantityMode = $equippable || $this->hasCharges() || $this->requiresAttunement ? 'individual' : 'stackable';
+        $this->quantityMode = $category === 'spellbook' || $equippable || $this->hasCharges() || $this->requiresAttunement ? 'individual' : 'stackable';
     }
 
     public function getEnglishName(): ?string { return $this->englishName; }

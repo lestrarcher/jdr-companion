@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Service\PlayerCharacterAccess;
+use App\Service\SpellbookLibrary;
 
 use App\Entity\Character;
 use App\Entity\CharacterMagicItem;
@@ -24,6 +25,8 @@ use Symfony\Component\Routing\Attribute\Route;
 final class PublicCharacterMagicItemController extends AbstractController
 {
     private const ATTUNEMENT_LIMIT = 3;
+
+    public function __construct(private readonly SpellbookLibrary $spellbookLibrary) {}
 
     #[Route(
         '/public/characters/{accessToken}/magic-items',
@@ -218,7 +221,11 @@ final class PublicCharacterMagicItemController extends AbstractController
                     $ownedItem->setQuantity($remaining);
                 } else {
                     $character->removeMagicItem($ownedItem);
-                    $entityManager->remove($ownedItem);
+                    if ($ownedItem->getMagicItem()->getCategory() === 'spellbook') {
+                        $ownedItem->transferTo(null);
+                    } else {
+                        $entityManager->remove($ownedItem);
+                    }
                 }
                 $entityManager->flush();
                 return $this->json([
@@ -400,6 +407,8 @@ final class PublicCharacterMagicItemController extends AbstractController
             'notes' => $ownedItem->getNotes(),
             'inscribedSpellId' => $ownedItem->getInscribedSpell()?->getId(),
             'inscribedSpellName' => $ownedItem->getInscribedSpell()?->getName(),
+            'spellbookSpells' => $magicItem->getCategory() === 'spellbook'
+                ? $this->spellbookLibrary->contents($ownedItem) : null,
             'magicItem' => [
                 'id' => $magicItem->getId(),
                 'name' => $magicItem->getName(),

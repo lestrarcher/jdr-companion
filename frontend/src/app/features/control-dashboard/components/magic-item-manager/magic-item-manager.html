@@ -32,6 +32,81 @@
     </p>
   }
 
+  <section class="reserve-panel" aria-label="Réserve MJ des grimoires">
+    <header class="reserve-heading">
+      <div>
+        <span class="eyebrow">Objets de campagne</span>
+        <h3>Réserve MJ — Grimoires</h3>
+        <p>Les grimoires retirés restent ici, avec leurs inscriptions intactes.</p>
+      </div>
+      <span class="reserve-count">{{ reservedBooks().length }} en réserve</span>
+    </header>
+
+    @if (reserveError()) { <p class="feedback feedback--error" role="alert">{{ reserveError() }}</p> }
+
+    <div class="reserve-list">
+      @for (book of reservedBooks(); track book.id) {
+        <article class="reserve-book">
+          <div class="reserve-book__heading">
+            <div>
+              <h4>{{ book.name }}</h4>
+              <span>Exemplaire #{{ book.id }} · {{ book.spellCount }} sort{{ book.spellCount > 1 ? 's' : '' }} inscrit{{ book.spellCount > 1 ? 's' : '' }}</span>
+            </div>
+            <span class="reserve-book__symbol" aria-hidden="true">✧</span>
+          </div>
+          <details class="reserve-book__spells">
+            <summary>Consulter les sorts inscrits</summary>
+            <ul>
+              @for (spell of book.spells ?? []; track spell.spellId) {
+                <li><span>{{ spell.name }}</span><span>Niveau {{ spell.level }}</span></li>
+              } @empty { <li class="reserve-book__empty">Ce grimoire est vide.</li> }
+            </ul>
+          </details>
+          <div class="reserve-book__actions">
+            <label class="reserve-target"><span>Restituer à</span>
+              <select (change)="setReserveTarget(book.id, +$any($event.target).value)">
+                <option value="">Choisir un personnage</option>
+                @for (character of reserveCharacters(); track character.id) {
+                  <option [value]="character.id">{{ character.name }}</option>
+                }
+              </select>
+            </label>
+            <button class="reserve-primary" type="button" [disabled]="reserveBusy() || !reserveTargets()[book.id]" (click)="restoreBook(book.id)">Restituer</button>
+          </div>
+        </article>
+      } @empty {
+        <p class="reserve-empty">Aucun grimoire en réserve pour cette campagne.</p>
+      }
+    </div>
+
+    <details class="reserve-creator">
+      <summary><span>Créer un exemplaire de grimoire</span><span class="reserve-creator__hint">À partir du catalogue</span></summary>
+      <div class="reserve-create">
+        <label class="reserve-field"><span>Définition de grimoire</span>
+          <select (change)="bookDefinitionId.set(+$any($event.target).value || null)">
+            <option value="">Choisir un grimoire créé dans le catalogue</option>
+            @for (item of catalog(); track item.id) {
+              @if (item.category === 'spellbook') { <option [value]="item.id">{{ item.name }}</option> }
+            }
+          </select>
+        </label>
+        <label class="reserve-field"><span>Rechercher des sorts à inscrire (facultatif)</span>
+          <input type="search" [value]="bookSpellQuery()" (input)="bookSearch($any($event.target).value)" placeholder="Nom du sort…" />
+        </label>
+        <div class="reserve-spells" role="group" aria-label="Sorts à inscrire">
+          @for (spell of bookSpellOptions(); track spell.id) {
+            <label class="reserve-spell"><input type="checkbox" [checked]="bookSpellIds().includes(spell.id)" (change)="toggleBookSpell(spell.id)" /><span>{{ spell.name }}</span><small>Niv. {{ spell.level }}</small></label>
+          } @empty { <p class="reserve-spells__empty">Aucun sort à afficher. Utilise la recherche pour filtrer.</p> }
+        </div>
+        <div class="reserve-create__footer">
+          <span>{{ bookSpellIds().length }} sort{{ bookSpellIds().length > 1 ? 's' : '' }} sélectionné{{ bookSpellIds().length > 1 ? 's' : '' }} · Un grimoire vide est autorisé.</span>
+          <button class="reserve-primary" type="button" [disabled]="!bookDefinitionId() || bookCreating()" (click)="createReserveBook()">Créer dans la réserve</button>
+        </div>
+      </div>
+    </details>
+    <button class="reserve-refresh" type="button" (click)="reloadReserve()">↻ Actualiser la réserve</button>
+  </section>
+
   <div class="manager-layout">
     <form
       class="creation-form"
@@ -49,6 +124,13 @@
       </header>
 
       <div class="form-grid">
+        <label class="field">
+          <span>Type d’objet</span>
+          <select formControlName="category">
+            <option value="other">Objet classique</option>
+            <option value="spellbook">Grimoire individuel (sans magie)</option>
+          </select>
+        </label>
         <label class="field field--wide">
           <span>Nom</span>
 

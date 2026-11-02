@@ -20,6 +20,7 @@ final readonly class PlayerSpellDirectory
         private CharacterSpellAccessResolver $access,
         private CharacterSpellAcquisitions $acquisitions,
         private CharacterSpellPreparation $preparation,
+        private SpellbookLibrary $spellbooks,
         private SpellCatalogue $catalogue,
         private CharacterSpellAvailabilityContext $availabilityContext,
         private CharacterSpellCastEligibility $eligibility = new CharacterSpellCastEligibility(),
@@ -43,6 +44,7 @@ final readonly class PlayerSpellDirectory
              ORDER BY s.level,s.name,a.id',
             [$id],
         );
+        $accessibleSpellIds = $this->spellbooks->accessibleSpellIds($character);
         $warlockLevel = count(array_filter($character->getClassLevels()->toArray(),
             static fn($level): bool => $level->getCharacterClass()->getSlug() === 'warlock'));
         foreach ($rows as $row) {
@@ -62,7 +64,7 @@ final readonly class PlayerSpellDirectory
                 'source' => $definition->getSource()->getName(), 'sourceType' => 'class',
                 'castingAbility' => $ability->value,
                 ...$this->abilities->spellStatistics($character, $ability),
-                'known' => filter_var($row['known'], FILTER_VALIDATE_BOOL), 'inSpellbook' => filter_var($row['in_spellbook'], FILTER_VALIDATE_BOOL),
+                'known' => filter_var($row['known'], FILTER_VALIDATE_BOOL), 'inSpellbook' => filter_var($row['in_spellbook'], FILTER_VALIDATE_BOOL) && in_array((int)$row['spell_id'], $accessibleSpellIds, true),
                 'prepared' => filter_var($row['in_spellbook'], FILTER_VALIDATE_BOOL)
                     ? in_array((int)$row['spell_id'], $state['preparedSpells'][(string)$row['policy_definition_id']] ?? [], true) : null,
             ];

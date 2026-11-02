@@ -27,6 +27,55 @@
     @if (successMessage()) { <p class="inventory-feedback" role="status">{{ successMessage() }}</p> }
   }
 
+  @if (!readonly() && canCopyWizardSpells() && copyBooks().length && copySources().length > 1) {
+    <button type="button" class="catalogue-toggle" (click)="openSpellCopy()">✧ Recopier un sort</button>
+  }
+  @if (copyOpen()) {
+    <div class="catalogue-backdrop">
+      <section class="catalogue-dialog spell-copy-dialog" role="dialog" aria-modal="true" aria-labelledby="spell-copy-title">
+        <header class="catalogue-dialog__header"><h3 id="spell-copy-title">Recopier un sort</h3><button type="button" class="catalogue-close" [disabled]="copyBusy()" (click)="copyOpen.set(false)">✕</button></header>
+        <div class="spell-copy-fields">
+          <label>Source
+            <select [value]="copySourceId() ?? ''" (change)="copySourceId.set(+$any($event.target).value || null); copySpellId.set(null); resetCopyQuote()">
+              <option value="">Choisir un grimoire ou parchemin</option>
+              @for (item of copySources(); track item.id) { <option [value]="item.id">{{ item.inscribedSpellName ? 'Parchemin de ' + item.inscribedSpellName : item.magicItem.name }} (#{{ item.id }})</option> }
+            </select>
+          </label>
+          <label>Sort à recopier
+            <select [value]="copySpellId() ?? ''" (change)="copySpellId.set(+$any($event.target).value || null); resetCopyQuote()">
+              <option value="">Choisir un sort</option>
+              @for (spell of copySpells(); track spell.id) { <option [value]="spell.id">{{ spell.name }}</option> }
+            </select>
+          </label>
+          <label>Grimoire de destination
+            <select [value]="copyDestinationId() ?? ''" (change)="copyDestinationId.set(+$any($event.target).value || null); resetCopyQuote()">
+              <option value="">Choisir le grimoire</option>
+              @for (book of copyBooks(); track book.id) { <option [value]="book.id">{{ book.magicItem.name }} (#{{ book.id }})</option> }
+            </select>
+          </label>
+          @if (copyQuote(); as quote) {
+            <div class="spell-copy-quote">
+              <strong>Coût indicatif : {{ formatPrice(quote.baseCostCp) }}</strong>
+              <span>Durée : {{ quote.baseMinutes }} minutes · Aucun débit automatique</span>
+              @if (quote.sourceType === 'scroll') {
+                <label>Résultat total du test d'Arcanes (DD {{ quote.arcanaDC }})
+                  <input type="number" [value]="copyArcana() ?? ''" (input)="copyArcana.set($any($event.target).value === '' ? null : +$any($event.target).value)" />
+                </label>
+                <small>Le parchemin sera consommé, même si le jet échoue.</small>
+              }
+            </div>
+          }
+          @if (copyError()) { <p class="magic-items__error" role="alert">{{ copyError() }}</p> }
+          @if (!copyQuote()) {
+            <button type="button" class="catalogue-submit" [disabled]="copyBusy() || !copyPolicyId() || !copySourceId() || !copyDestinationId() || !copySpellId()" (click)="requestCopyQuote()">Voir le coût et les conditions</button>
+          } @else {
+            <button type="button" class="catalogue-submit" [disabled]="copyBusy() || (copyQuote()?.sourceType === 'scroll' && copyArcana() === null)" (click)="confirmSpellCopy()">Confirmer la copie</button>
+          }
+        </div>
+      </section>
+    </div>
+  }
+
   @if (catalogueOpen()) {
     <div class="catalogue-backdrop" (click)="closeCatalogue()">
       <section class="catalogue-dialog" role="dialog" aria-modal="true" aria-labelledby="catalogue-title" (click)="$event.stopPropagation()">
@@ -144,6 +193,19 @@
               @if (ownedItem.magicItem.requiresAttunement) { <p class="magic-item__rarity">Harmonisation requise</p> }
               @if (ownedItem.magicItem.description) { <p class="magic-item__description">{{ ownedItem.magicItem.description }}</p> }
               @if (ownedItem.notes) { <p class="magic-item__notes">{{ ownedItem.notes }}</p> }
+              @if (ownedItem.magicItem.category === 'spellbook') {
+                <section class="spellbook-contents" [attr.aria-label]="'Sorts inscrits dans ' + ownedItem.magicItem.name">
+                  <h4>Sorts inscrits ({{ ownedItem.spellbookSpells?.length ?? 0 }})</h4>
+                  @for (spell of ownedItem.spellbookSpells ?? []; track spell.spellId) {
+                    <div class="spellbook-contents__entry">
+                      <span>{{ spell.name }}</span>
+                      <small>Niveau {{ spell.level }}</small>
+                    </div>
+                  } @empty {
+                    <p>Aucun sort inscrit dans ce grimoire.</p>
+                  }
+                </section>
+              }
               @if (hasCharges(ownedItem)) {
                 <div class="charges">
                   <div class="charges__label"><span>Charges</span>

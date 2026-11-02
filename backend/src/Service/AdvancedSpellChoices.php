@@ -210,6 +210,9 @@ final readonly class AdvancedSpellChoices
             if (mb_strlen($decisionNote)>10000) throw new BadRequestHttpException('Motif trop long.');
             $id=(int)$db->fetchOne('INSERT INTO character_spell_acquisition (character_id,spell_id,policy_definition_id,class_level_id,replaces_id,decided_by_id,provenance,quota_bucket,known,in_spellbook,historical_validation,decision_note,decided_at,revision_id,copy_details) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,?,?) RETURNING id',[$character->getId(),$spell['id'],$policy->getId(),$choice['classLevelId'],$replaces,$actor->getId(),$provenance,$storedBucket,$p->values['result']==='known'?1:0,$p->values['result']==='spellbook'?1:0,$provenance==='level-history'?1:0,$decisionNote,$revisionId,$copyDetails===null?null:json_encode($copyDetails,JSON_THROW_ON_ERROR)]);
             $db->insert('character_spell_choice',['acquisition_id'=>$id,'rule_id'=>$rule->getId(),'opportunity_level_id'=>$originLevel,'decided_by_id'=>$actor->getId(),'reason'=>$note,'origin_known'=>$replaces!==null?(filter_var($old['origin_known'],FILTER_VALIDATE_BOOL)?1:0):($provenance==='level-history'?1:0),'decided_at'=>date('Y-m-d H:i:s')]);
+            if ($p->values['result'] === 'spellbook') {
+                (new WizardSpellbookWriter($this->em))->record($character, (int) $spell['id']);
+            }
             $ids[]=$id;
         }
         return $ids;

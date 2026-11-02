@@ -50,6 +50,7 @@ export interface SpellOption { id: number; name: string; level: number; origin: 
 
 export interface CreateMagicItemPayload {
   name: string;
+  category?: 'other' | 'spellbook';
   description?: string | null;
   rarity: MagicItemRarity;
   requiresAttunement: boolean;
@@ -180,6 +181,24 @@ export class MagicItemApiService {
     ).pipe(map(response => response.item));
   }
 
+  createReservedSpellbook(campaignId: number, magicItemId: number, spellIds: number[]): Observable<{id: number; name: string; spellCount: number}> {
+    return this.http.post<{id: number; name: string; spellCount: number}>(
+      `${this.apiUrl}/campaigns/${campaignId}/spellbook-reserve`, {magicItemId, spellIds},
+    );
+  }
+
+  listSpellbookReserve(campaignId: number): Observable<{books: {id: number; name: string; spellCount: number}[]}> {
+    return this.http.get<{books: {id: number; name: string; spellCount: number}[]}>(
+      `${this.apiUrl}/campaigns/${campaignId}/spellbook-reserve`,
+    );
+  }
+
+  assignReservedSpellbook(campaignId: number, bookId: number, characterId: number): Observable<{id: number; characterId: number}> {
+    return this.http.post<{id: number; characterId: number}>(
+      `${this.apiUrl}/campaigns/${campaignId}/spellbook-reserve/${bookId}/assign`, {characterId},
+    );
+  }
+
   rechargeSessionDawn(campaignId: number, sessionId: number): Observable<{recharged: {characters: number; items: number; grants: number}}> {
     return this.http.post<{recharged: {characters: number; items: number; grants: number}}>(
       `${this.apiUrl}/campaigns/${campaignId}/sessions/${sessionId}/magic-items/recharge-dawn`, {},
@@ -229,6 +248,12 @@ export class MagicItemApiService {
           ),
         ),
       );
+  }
+
+  createCharacterSpellbook(characterId: number, payload: {magicItemId: number; spellIds: number[]; notes?: string | null}): Observable<{ownedItemId: number; magicItemId: number; spells: unknown[]}> {
+    return this.http.post<{ownedItemId: number; magicItemId: number; spells: unknown[]}>(
+      `${this.apiUrl}/characters/${characterId}/spellbooks`, payload,
+    );
   }
 
   removeFromCharacter(
