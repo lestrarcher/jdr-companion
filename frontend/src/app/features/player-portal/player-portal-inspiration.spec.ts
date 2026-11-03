@@ -1,5 +1,5 @@
 import { computed, signal } from '@angular/core';
-import { EMPTY, Subject } from 'rxjs';
+import { EMPTY, Subject, of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { PlayerPortal } from './player-portal';
 
@@ -22,7 +22,9 @@ function portal() {
     sessionStatus: signal('draft'), levelUpAllowed: signal(false),
     inspiration: signal(true), inspirationSaving: signal(false),
     tinkeringNotes: signal(''),
-    pendingRestRequest: signal(null), preparationPending: signal(false),
+    pendingRestRequest: signal(null), latestRestRequest: signal(null),
+    restRequestInitialCheckDone: true, restRequestApi: { getLatest: vi.fn(() => of(null)) },
+    preparationPending: signal(false),
     characterStateService: { revision: signal(0) },
     characterSessionStateApi: { getByAccessToken: vi.fn(() => response) },
     destroyRef: { onDestroy: () => () => {} },

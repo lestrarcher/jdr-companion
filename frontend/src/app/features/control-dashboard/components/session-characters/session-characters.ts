@@ -94,6 +94,9 @@ export class SessionCharacters implements OnInit {
   readonly resolvingRestRequestId = input<number | null>(null);
   readonly restRequestError = input<string | null>(null);
   readonly restRequestResolved = output<RestRequestResolution>();
+  readonly restRequestsRefreshRequested = output<void>();
+  readonly refreshingRestRequests = input(false);
+  readonly sessionLive = input(false);
 
   protected readonly campaignCharacters = signal<CharacterApiResponse[]>([]);
   protected readonly sessionStates =
@@ -232,7 +235,7 @@ export class SessionCharacters implements OnInit {
 
   ngOnInit(): void {
     this.loadCharacters();
-    timer(5000, 5000).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+    timer(60000, 60000).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       if (!this.loading()) this.refreshCharacters(true);
     });
   }

@@ -130,6 +130,9 @@
                 [restRequests]="pendingRestRequests()"
                 [resolvingRestRequestId]="resolvingRestRequestId()"
                 [restRequestError]="restRequestError()"
+                [refreshingRestRequests]="refreshingRestRequests()"
+                [sessionLive]="sessionStatus() === 'live'"
+                (restRequestsRefreshRequested)="refreshRestRequests()"
                 (restRequestResolved)="
                   resolveRestRequest(
                     $event.requestId,
