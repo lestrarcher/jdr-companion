@@ -93,6 +93,13 @@
         }
       </section>
 
+      <div class="attunement">
+        <span>Recharger les objets et sorts à l'aube</span>
+        <button type="button" [disabled]="rechargingDawn()" (click)="dawnRequested.emit()">
+          {{ rechargingDawn() ? 'Recharge en cours…' : 'Déclencher l’aube' }}
+        </button>
+      </div>
+
       <section class="stats-items">
         <header>
           <h3>Objets possédés</h3>
@@ -137,9 +144,7 @@
                   : 'Effets inactifs'
               }}
             </span>
-            <button type="button" [disabled]="removing()" (click)="itemRemoved.emit(ownedItem)">
-              Retirer un exemplaire
-            </button>
+            <button type="button" [disabled]="removing()" (click)="requestRemoval(ownedItem)">Retirer…</button>
           </article>
         } @empty {
           <p class="modal-empty">
@@ -147,6 +152,16 @@
           </p>
         }
       </section>
+      @if (pendingRemoval(); as pending) {
+        <section class="removal-confirmation" role="group" aria-label="Confirmer le retrait">
+          <p>Retirer « {{ pending.magicItem.name }} » de l'inventaire ?</p>
+          <label>Quantité (maximum {{ pending.quantity }})
+            <input type="number" min="1" [max]="pending.quantity" [value]="removalQuantity()" (change)="setRemovalQuantity(+$any($event.target).value)" />
+          </label>
+          <button type="button" (click)="pendingRemoval.set(null)">Annuler</button>
+          <button type="button" [disabled]="removing()" (click)="confirmRemoval()">Confirmer le retrait</button>
+        </section>
+      }
     }
   </section>
 </div>

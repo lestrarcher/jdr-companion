@@ -5,7 +5,7 @@
       <span class="eyebrow">Règles du jeu</span>
       <h1>Référentiel des personnages</h1>
       <p class="editor-context">{{ official ? (readOnly ? 'Officiel — consultation' : 'Officiel — administration') : 'Mes créations — CUSTOM' }}</p>
-      <a [href]="official ? '/dnd/reference' : '/dnd/reference/official'">{{ official ? 'Mes créations' : 'Officiel' }}</a>
+
 
       <p>
         Configure les races, les classes et les capacités utilisées pour
@@ -13,6 +13,13 @@
       </p>
     </div>
   </header>
+
+  <nav class="reference-scope-tabs" aria-label="Type de référentiel">
+    <a class="manager-tab" href="/dnd/reference/official" [class.manager-tab--active]="official"
+       [attr.aria-current]="official ? 'page' : null"><strong>Officiel</strong></a>
+    <a class="manager-tab" href="/dnd/reference" [class.manager-tab--active]="!official"
+       [attr.aria-current]="!official ? 'page' : null"><strong>Mes créations</strong></a>
+  </nav>
 
   <nav class="manager-tabs" aria-label="Sections du référentiel">
     @for (tab of tabs; track tab.section) {
@@ -31,6 +38,9 @@
 
   <main class="manager-content">
     @switch (activeSection()) {
+      @case ('items') {
+        <app-item-reference />
+      }
       @case ('classes') {
         <app-class-manager />
       }

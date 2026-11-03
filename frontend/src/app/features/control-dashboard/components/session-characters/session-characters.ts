@@ -85,6 +85,7 @@ export class SessionCharacters implements OnInit {
   private readonly progressionReferences = signal<ProgressionReference[]>([]);
   private progressionRequestRevision = 0;
   private inventoryRequestRevision = 0;
+  private catalogRequestRevision = 0;
 
   readonly campaignId = input.required<number>();
   readonly sessionId = input.required<number>();
@@ -121,6 +122,8 @@ export class SessionCharacters implements OnInit {
     signal<CharacterMagicItemInventoryResponse | null>(null);
   protected readonly statisticsLoading = signal(false);
   protected readonly removingItem = signal(false);
+  protected readonly rechargingDawn = signal(false);
+  protected readonly rechargingSessionDawn = signal(false);
 
   private readonly progressionCharacterId = signal<number | null>(null);
   private readonly selectedProgressionSlug = signal<string | null>(null);
@@ -498,9 +501,7 @@ export class SessionCharacters implements OnInit {
     this.assignmentFeedback.set(null);
     this.characterActionError.set(null);
 
-    if (this.catalog().length === 0) {
-      this.loadCatalog();
-    }
+    this.loadCatalog('');
   }
 
   protected closeItemAssignment(): void {
@@ -513,7 +514,8 @@ export class SessionCharacters implements OnInit {
     this.assignmentFeedback.set(null);
   }
 
-  protected assignSelectedItem(): void {
+  protected assignSelectedItem(selection: {quantity: number; inscribedSpellId?: number; spellIds?: number[]; notes?: string}): void {
+    const { quantity, inscribedSpellId } = selection;
     const character = this.selectedCharacter();
     const magicItemId = this.selectedMagicItemId();
 
@@ -521,6 +523,7 @@ export class SessionCharacters implements OnInit {
       !character
       || magicItemId === null
       || this.assigningItem()
+      || !Number.isInteger(quantity) || quantity < 1 || quantity > 9999
     ) {
       return;
     }
@@ -529,10 +532,23 @@ export class SessionCharacters implements OnInit {
     this.assignmentFeedback.set(null);
     this.characterActionError.set(null);
 
+    if (selection.spellIds !== undefined) {
+      this.magicItemApi.createCharacterSpellbook(character.character.id, {
+        magicItemId, spellIds: selection.spellIds, notes: selection.notes ?? null,
+      }).pipe(finalize(() => this.assigningItem.set(false))).subscribe({
+        next: () => {
+          this.assignmentFeedback.set(`Grimoire créé et donné à ${character.character.name} (${selection.spellIds!.length} sorts).`);
+          this.selectedMagicItemId.set(null);
+        },
+        error: error => this.characterActionError.set(this.apiError(error, 'Impossible de créer ce grimoire.')),
+      });
+      return;
+    }
+
     this.magicItemApi
       .assignToCharacter(
         character.character.id,
-        { magicItemId },
+        { magicItemId, quantity, ...(inscribedSpellId !== undefined ? {inscribedSpellId} : {}) },
       )
       .pipe(
         finalize(() =>
@@ -542,7 +558,7 @@ export class SessionCharacters implements OnInit {
       .subscribe({
         next: ownedItem => {
           this.assignmentFeedback.set(
-            `${ownedItem.magicItem.name} a été donné à ${character.character.name}.`,
+            `${quantity} × ${ownedItem.magicItem.name} donné à ${character.character.name}.`,
           );
 
           this.selectedMagicItemId.set(null);
@@ -617,15 +633,16 @@ export class SessionCharacters implements OnInit {
       });
   }
 
-  protected removeOwnedItem(item: CharacterMagicItemResponse): void {
+  protected removeOwnedItem(request: {item: CharacterMagicItemResponse; quantity: number}): void {
     const character = this.statisticsCharacter();
-    if (!character || this.removingItem() || !window.confirm(`Retirer un exemplaire de « ${item.magicItem.name} » à ${character.character.name} ?`)) {
+    const { item, quantity } = request;
+    if (!character || this.removingItem() || !Number.isInteger(quantity) || quantity < 1 || quantity > item.quantity) {
       return;
     }
     const revision = this.inventoryRequestRevision;
     this.removingItem.set(true);
     this.statisticsError.set(null);
-    this.magicItemApi.removeFromCharacter(character.character.id, item.id)
+    this.magicItemApi.removeFromCharacter(character.character.id, item.id, quantity)
       .pipe(finalize(() => this.removingItem.set(false)))
       .subscribe({
         next: () => {
@@ -635,6 +652,50 @@ export class SessionCharacters implements OnInit {
         error: error => {
           if (revision === this.inventoryRequestRevision) {
             this.statisticsError.set(this.apiError(error, 'Impossible de retirer cet objet.'));
+          }
+        },
+      });
+  }
+
+  protected rechargeSessionDawn(): void {
+    if (this.rechargingSessionDawn() || !this.hasActiveCharacters()) return;
+    if (!window.confirm(`Déclencher l’aube pour les ${this.activeCharacters().length} personnages actifs de cette session ?`)) return;
+    this.rechargingSessionDawn.set(true);
+    this.characterActionError.set(null);
+    this.magicItemApi.rechargeSessionDawn(this.campaignId(), this.sessionId())
+      .pipe(finalize(() => this.rechargingSessionDawn.set(false)))
+      .subscribe({
+        next: ({recharged}) => {
+          this.characterActionFeedback.set(
+            `Aube déclenchée pour ${recharged.characters} personnage(s) : ${recharged.items} objet(s) rechargé(s), ${recharged.grants} utilisation(s) réinitialisée(s).`,
+          );
+          this.refreshCharacters();
+          const selected = this.statisticsCharacter();
+          if (selected) this.openStatistics(selected);
+        },
+        error: error => this.characterActionError.set(this.apiError(error, 'Impossible de déclencher l’aube pour la session.')),
+      });
+  }
+
+  protected rechargeDawn(): void {
+    const character = this.statisticsCharacter();
+    if (!character || this.rechargingDawn()) return;
+    const revision = this.inventoryRequestRevision;
+    this.rechargingDawn.set(true);
+    this.statisticsError.set(null);
+    this.magicItemApi.rechargeDawn(character.character.id)
+      .pipe(finalize(() => this.rechargingDawn.set(false)))
+      .subscribe({
+        next: ({recharged}) => {
+          if (revision !== this.inventoryRequestRevision) return;
+          this.openStatistics(character);
+          this.characterActionFeedback.set(
+            `Aube déclenchée : ${recharged.items} objet(s), ${recharged.grants} utilisation(s) réinitialisée(s).`,
+          );
+        },
+        error: error => {
+          if (revision === this.inventoryRequestRevision) {
+            this.statisticsError.set(this.apiError(error, 'Impossible de déclencher l’aube.'));
           }
         },
       });
@@ -804,26 +865,21 @@ export class SessionCharacters implements OnInit {
     });
   }
 
-  private loadCatalog(): void {
+  protected loadCatalog(query: string): void {
+    const revision = ++this.catalogRequestRevision;
     this.catalogLoading.set(true);
 
     this.magicItemApi
-      .listCatalog(this.campaignId())
+      .searchAssignmentCatalog(this.campaignId(), query)
       .pipe(
-        finalize(() =>
-          this.catalogLoading.set(false),
-        ),
+        finalize(() => { if (revision === this.catalogRequestRevision) this.catalogLoading.set(false); }),
       )
       .subscribe({
-        next: catalog =>
-          this.catalog.set(catalog),
+        next: result => { if (revision === this.catalogRequestRevision) this.catalog.set(result.items); },
 
         error: error => {
-          this.characterActionError.set(
-            this.apiError(
-              error,
-              'Impossible de charger le catalogue des objets.',
-            ),
+          if (revision === this.catalogRequestRevision) this.characterActionError.set(
+            this.apiError(error, 'Impossible de charger le catalogue des objets.'),
           );
         },
       });

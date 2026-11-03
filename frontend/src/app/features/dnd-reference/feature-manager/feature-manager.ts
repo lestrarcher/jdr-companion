@@ -1,3 +1,4 @@
+import { ItemReference } from '../item-reference/item-reference';
 import { AuthService } from '@core/services/auth.service';
 import { Component, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
@@ -15,6 +16,7 @@ import { BackgroundEditor } from '../../custom-content/background-editor/backgro
 import { SpellEditor } from '../../custom-content/spell-editor/spell-editor';
 
 type ManagerSection =
+  | 'items'
   | 'classes'
   | 'races'
   | 'subclasses'
@@ -41,6 +43,7 @@ interface ManagerTab {
     { provide: REFERENCE_READ_ONLY, useFactory: () => inject(REFERENCE_VIEW_ORIGIN) === 'OFFICIAL' && inject(REFERENCE_EDITOR_SCOPE) !== 'official' }],
   imports: [
     ClassManager,
+    ItemReference,
     RaceManager,
     SubclassManager,
     FeatureDefinitionManager,
@@ -62,6 +65,7 @@ export class FeatureManager {
   protected readonly activeSection = signal<ManagerSection>(this.official ? 'races' : 'classes');
 
   protected readonly tabs: ManagerTab[] = [
+    ...(this.official ? [{ section: 'items' as const, label: 'Équipement', description: 'Objets et matériel officiels' }] : []),
     {
       section: 'classes',
       label: 'Classes',

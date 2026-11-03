@@ -1,0 +1,39 @@
+{% extends 'admin/base.html.twig' %}
+{% block title %}{{ item ? item.name : 'Nouvel objet' }}{% endblock %}
+{% block body %}
+<header><p class="eyebrow"><a href="{{ path('admin_magic_items') }}">Objets magiques</a></p><h1>{{ item ? item.name : 'Nouvel objet officiel' }}</h1></header>
+{% if error %}<p class="flash error" role="alert">{{ error }}</p>{% endif %}
+<section class="panel"><h2>Fiche</h2>
+<form method="post"><input type="hidden" name="_token" value="{{ csrf_token('admin_magic_item_' ~ (item ? item.id : 'new')) }}">
+<p><label>Nom <input name="name" required maxlength="150" value="{{ item ? item.name : '' }}"></label></p>
+<p><label>Description <textarea name="description" rows="10">{{ item ? item.description : '' }}</textarea></label></p>
+<p><label>Rareté <select name="rarity"><option value="">Non renseignée</option>{% for rarity in rarities %}<option value="{{ rarity.value }}" {% if item and item.rarity and item.rarity.value == rarity.value %}selected{% endif %}>{{ rarity.value }}</option>{% endfor %}</select></label></p>
+<p><label><input type="checkbox" name="attunement" value="1" {% if item and item.requiresAttunement %}checked{% endif %}> Harmonisation requise</label></p>
+<p><label>Charges maximales <input name="charges" type="number" min="1" value="{{ item ? item.maximumCharges : '' }}"></label></p>
+<p><label>Recharge <select name="recharge">{% for recharge in recharges %}<option value="{{ recharge.value }}" {% if item and item.rechargeType.value == recharge.value %}selected{% endif %}>{{ recharge.value }}</option>{% endfor %}</select></label></p>
+<p><label>Formule de recharge <input name="formula" maxlength="50" value="{{ item ? item.rechargeFormula : '' }}"></label></p>
+<button type="submit">Enregistrer la fiche</button></form></section>
+{% if item %}
+<section class="panel"><h2>Sorts octroyés</h2>
+<p>Les sorts sont actifs selon la condition choisie. Les charges ou utilisations restent gérées par les règles de lancement existantes.</p>
+{% for grant in item.spellGrants %}<p><strong>{{ grant.spell.name }}</strong> — {{ grant.activation }} — {{ grant.costMode }} (coût {{ grant.cost }}) — niveau {{ grant.castingLevel }}{% if grant.maxCastingLevel %} à {{ grant.maxCastingLevel }} (charges variables){% endif %}
+<form method="post" action="{{ path('admin_magic_item_spell_delete', {id: item.id, grantId: grant.id}) }}"><input type="hidden" name="_token" value="{{ csrf_token('admin_magic_item_spell_delete_' ~ grant.id) }}"><button type="submit">Retirer ce sort</button></form></p>
+{% else %}<p>Aucun sort associé.</p>{% endfor %}
+<form method="get" action="{{ path('admin_magic_item_edit', {id: item.id}) }}"><label>Rechercher un sort <input type="search" name="spell_q" value="{{ spell_q }}" minlength="2"></label><button type="submit">Chercher</button></form>
+<form method="post" action="{{ path('admin_magic_item_spell_add', {id: item.id}) }}">
+<input type="hidden" name="_token" value="{{ csrf_token('admin_magic_item_spell_' ~ item.id) }}">
+<p><label>Sort <select name="spell_id" required>{% for spell in spells %}<option value="{{ spell.id }}">{{ spell.name }} (niveau {{ spell.level }})</option>{% endfor %}</select></label></p>
+<p><label>Activation <select name="activation"><option value="possession">Possession</option>{% if item.equippable %}<option value="equipped">Équipé</option>{% endif %}{% if item.requiresAttunement %}<option value="attuned">Harmonisé</option>{% endif %}</select></label></p>
+<p><label>Coût <select name="mode"><option value="limited">Utilisations limitées</option>{% if item.maximumCharges %}<option value="charges">Charges de l'objet</option>{% endif %}</select></label></p>
+<p><label>Coût par lancement <input type="number" name="cost" min="1" value="1"></label></p>
+<p><label>Niveau de lancement <input type="number" name="casting_level" min="1" max="9" placeholder="Niveau du sort par défaut"></label></p>
+<p><label>Niveau maximal <input type="number" name="max_casting_level" min="1" max="9" placeholder="Vide = coût fixe"></label></p>
+<p><small>Pour une baguette de boules de feu : coût 1, niveau 3, niveau maximal 9. Laissez le niveau maximal vide pour un sort à coût fixe.</small></p>
+<p><label>Utilisations par recharge (mode limité) <input type="number" name="uses" min="1" value="1"></label></p>
+<p><label>Réinitialisation (mode limité) <select name="reset"><option value="manual">Manuelle</option><option value="dawn">Aube</option><option value="short-rest">Repos court</option><option value="long-rest">Repos long</option></select></label></p>
+<button type="submit" {% if spells is empty %}disabled{% endif %}>Ajouter ce sort</button></form>
+</section>
+<section class="panel"><h2>Suppression</h2><p>La suppression est refusée si l'objet figure dans un inventaire.</p>
+<form method="post" action="{{ path('admin_magic_item_delete', {id: item.id}) }}" onsubmit="return confirm('Supprimer définitivement cet objet ?')"><input type="hidden" name="_token" value="{{ csrf_token('admin_magic_item_delete_' ~ item.id) }}"><button type="submit">Supprimer cet objet</button></form></section>
+{% endif %}
+{% endblock %}

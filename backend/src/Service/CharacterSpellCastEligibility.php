@@ -68,13 +68,13 @@ final readonly class CharacterSpellCastEligibility
 
         $normal = $ordinaryGrant ? ($known || $alwaysPrepared) : match ($learningStyle) {
             'known' => $known,
-            'spellbook' => $inSpellbook && $prepared,
+            'spellbook' => $prepared,
             'prepared' => $prepared || $alwaysPrepared,
             default => false,
         };
         $reason = $normal ? null : match ($learningStyle) {
             'known' => 'spell_not_known',
-            'spellbook' => $inSpellbook ? 'spell_not_prepared' : 'spell_not_in_spellbook',
+            'spellbook' => 'spell_not_prepared',
             'prepared' => 'spell_not_prepared',
             default => 'source_policy_unknown',
         };

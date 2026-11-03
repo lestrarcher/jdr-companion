@@ -5,14 +5,18 @@ import {
   inject,
   input,
   OnInit,
+  OnChanges,
+  SimpleChanges,
   signal,
 } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
+import { PlayerSpellApiService } from '@core/services/player-spell-api.service';
 
 import {
   CharacterMagicItemInventoryResponse,
   CharacterMagicItemResponse,
   MagicItemRarity,
+  MagicItemResponse,
   PublicCharacterMagicItemApiService,
 } from '@core/services/public-character-magic-item-api.service';
 
@@ -24,9 +28,83 @@ import {
   styleUrl: './character-magic-items.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class CharacterMagicItems implements OnInit {
+export class CharacterMagicItems implements OnInit, OnChanges {
   readonly readonly = input(false);
   readonly accessToken = input.required<string>();
+  readonly refreshRevision = input(0);
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['refreshRevision'] && !changes['refreshRevision'].firstChange) {
+      this.loadInventory();
+    }
+  }
+
+  private readonly spellApi = inject(PlayerSpellApiService);
+  protected readonly copyOpen = signal(false);
+  protected readonly ritualCopyMode = signal(false);
+  protected readonly copyBusy = signal(false);
+  protected readonly copyPolicyId = signal<number | null>(null);
+  protected readonly copySourceId = signal<number | null>(null);
+  protected readonly copyDestinationId = signal<number | null>(null);
+  protected readonly copySpellId = signal<number | null>(null);
+  protected readonly copyArcana = signal<number | null>(null);
+  protected readonly copyQuote = signal<{spellLevel: number; baseCostCp: number; baseMinutes: number; sourceType: string; arcanaDC: number | null} | null>(null);
+  protected readonly copyError = signal('');
+  protected readonly copyPolicies = signal<{id: number; label: string}[]>([]);
+  protected readonly canCopyWizardSpells = computed(() => this.copyPolicies().length === 1);
+  protected readonly pactBooks = computed(() => this.ownedItems().filter(item => item.magicItem.category === 'spellbook' && (item.spellbookSpells ?? []).some(spell => spell.kind === 'cantrip')));
+  protected readonly copyBooks = computed(() => this.ritualCopyMode() ? this.pactBooks() : this.ownedItems().filter(item => item.magicItem.category === 'spellbook' && !(item.spellbookSpells ?? []).some(spell => spell.kind === 'cantrip')));
+  protected readonly copySources = computed(() => this.ownedItems().filter(item => item.magicItem.category === 'spellbook' || item.magicItem.category === 'scroll'));
+  protected readonly copySpells = computed(() => {
+    const source = this.copySources().find(item => item.id === this.copySourceId());
+    return source?.magicItem.category === 'spellbook' ? (source.spellbookSpells ?? []).filter(spell => !this.ritualCopyMode() || spell.level > 0).map(spell => ({id: spell.spellId, name: spell.name, level: spell.level}))
+      : source?.inscribedSpellId ? [{id: source.inscribedSpellId, name: source.inscribedSpellName ?? 'Sort inscrit', level: 0}] : [];
+  });
+  protected openSpellCopy(): void {
+    this.ritualCopyMode.set(false);
+    this.copyOpen.set(true); this.copyError.set(''); this.copyQuote.set(null);
+    // La progression est résolue lors du chargement du portail ; aucun choix joueur.
+    if (!this.canCopyWizardSpells()) { this.copyOpen.set(false); return; }
+    this.copyPolicyId.set(this.copyPolicies()[0].id);
+  }
+  protected openRitualCopy(): void {
+    this.ritualCopyMode.set(true);
+    this.copyPolicyId.set(null);
+    this.copySourceId.set(null); this.copyDestinationId.set(null); this.copySpellId.set(null);
+    this.copyArcana.set(null); this.copyQuote.set(null); this.copyError.set(''); this.copyOpen.set(true);
+  }
+  protected resetCopyQuote(): void { this.copyQuote.set(null); this.copyError.set(''); }
+  protected requestCopyQuote(): void {
+    const policyId = this.copyPolicyId(), sourceOwnedItemId = this.copySourceId(), destinationOwnedItemId = this.copyDestinationId(), spellId = this.copySpellId();
+    if ((!this.ritualCopyMode() && !policyId) || !sourceOwnedItemId || !destinationOwnedItemId || !spellId) return;
+    this.copyBusy.set(true); this.copyError.set(''); this.copyQuote.set(null);
+    const request = this.ritualCopyMode()
+      ? this.magicItemApi.pactRitualCopyQuote(this.accessToken(), {sourceOwnedItemId, destinationOwnedItemId, spellId})
+      : this.magicItemApi.spellCopyQuote(this.accessToken(), {policyId: policyId!, sourceOwnedItemId, destinationOwnedItemId, spellId});
+    request.subscribe({
+      next: quote => {this.copyQuote.set(quote); this.copyBusy.set(false);},
+      error: (error: HttpErrorResponse) => {this.copyBusy.set(false); this.copyError.set(error.error?.detail ?? error.error?.message ?? 'Copie impossible.');},
+    });
+  }
+  protected confirmSpellCopy(): void {
+    const quote = this.copyQuote(), policyId = this.copyPolicyId(), sourceOwnedItemId = this.copySourceId(), destinationOwnedItemId = this.copyDestinationId(), spellId = this.copySpellId();
+    if (!quote || (!this.ritualCopyMode() && !policyId) || !sourceOwnedItemId || !destinationOwnedItemId || !spellId || this.copyBusy()) return;
+    if (quote.sourceType === 'scroll' && (this.copyArcana() === null || !Number.isInteger(this.copyArcana()))) return;
+    this.copyBusy.set(true); this.copyError.set('');
+    const payload = {sourceOwnedItemId, destinationOwnedItemId, spellId, confirmed: true as const,
+      ...(quote.sourceType === 'scroll' ? {arcanaTotal: this.copyArcana()!} : {})};
+    const request = this.ritualCopyMode()
+      ? this.magicItemApi.pactRitualCopy(this.accessToken(), payload)
+      : this.magicItemApi.spellCopy(this.accessToken(), {...payload, policyId: policyId!});
+    request.subscribe({
+      next: result => {
+        this.copyBusy.set(false); this.copyOpen.set(false); this.copyQuote.set(null);
+        this.successMessage.set(result.success ? 'Sort recopié dans le grimoire.' : 'Échec du test : parchemin consommé, sort non inscrit.');
+        this.loadInventory();
+      },
+      error: (error: HttpErrorResponse) => {this.copyBusy.set(false); this.copyError.set(error.error?.detail ?? error.error?.message ?? 'Erreur pendant la copie. Vérifier l’état des objets avant de réessayer.');},
+    });
+  }
 
   private readonly magicItemApi =
     inject(PublicCharacterMagicItemApiService);
@@ -35,6 +113,75 @@ export class CharacterMagicItems implements OnInit {
     signal<CharacterMagicItemInventoryResponse | null>(null);
 
   protected readonly loading = signal(true);
+  protected readonly catalogueQuery = signal('');
+  protected readonly catalogueItems = signal<MagicItemResponse[]>([]);
+  protected readonly cataloguePage = signal(1);
+  protected readonly catalogueTotal = signal(0);
+  protected readonly catalogueLoading = signal(false);
+  private catalogueRequestId = 0;
+  protected readonly acquiring = signal(false);
+  protected readonly quantity = signal(1);
+  protected readonly scrollSpellQuery = signal('');
+  protected readonly scrollSpells = signal<{id: number; name: string; level: number}[]>([]);
+  protected readonly selectedScrollSpellId = signal<number | null>(null);
+  protected readonly scrollSpellsLoading = signal(false);
+  private scrollRequestId = 0;
+  protected readonly catalogueOpen = signal(false);
+  protected readonly selectedCatalogueItem = signal<MagicItemResponse | null>(null);
+  protected readonly successMessage = signal<string | null>(null);
+
+  protected readonly expandedItemId = signal<number | null>(null);
+  protected readonly pendingAction = signal<{ item: CharacterMagicItemResponse; kind: 'consume' | 'discard' } | null>(null);
+  protected readonly discardQuantity = signal(1);
+
+  protected readonly sortedItems = computed(() => [...this.ownedItems()].sort((a, b) =>
+    (a.inscribedSpellName ?? a.magicItem.name).localeCompare(b.inscribedSpellName ?? b.magicItem.name, 'fr', { sensitivity: 'base' }) || a.id - b.id));
+  protected readonly totalWeightGrams = computed(() => this.ownedItems().reduce((sum, item) =>
+    sum + (item.magicItem.weightGrams ?? 0) * item.quantity, 0));
+  protected readonly unknownWeight = computed(() => this.ownedItems().some(item => item.magicItem.weightGrams == null));
+  protected formatWeight(grams: number): string {
+    return grams >= 1000 ? `${(grams / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} kg` : `${grams} g`;
+  }
+  protected formatPrice(copper: number | null | undefined): string {
+    if (copper == null) return 'Non renseigné';
+    if (copper === 0) return '0 pc';
+    return copper >= 100 ? `${(copper / 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} po` : `${copper} pc`;
+  }
+  protected toggleDetails(id: number): void {
+    this.expandedItemId.set(this.expandedItemId() === id ? null : id);
+  }
+  protected askConsume(item: CharacterMagicItemResponse): void {
+    if (this.readonly() || this.isUpdating(item)) return;
+    this.pendingAction.set({ item, kind: 'consume' });
+  }
+  protected askDiscard(item: CharacterMagicItemResponse): void {
+    if (this.readonly() || this.isUpdating(item)) return;
+    this.discardQuantity.set(1);
+    this.pendingAction.set({ item, kind: 'discard' });
+  }
+  protected cancelAction(): void { this.pendingAction.set(null); }
+  protected confirmAction(): void {
+    const action = this.pendingAction();
+    if (!action || this.readonly() || this.isUpdating(action.item)) return;
+    if (action.kind === 'consume') {
+      this.pendingAction.set(null);
+      this.consumeItem(action.item);
+      return;
+    }
+    const quantity = this.discardQuantity();
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > action.item.quantity) return;
+    this.pendingAction.set(null);
+    this.startUpdate(action.item.id);
+    this.magicItemApi.discard(this.accessToken(), action.item.id, quantity).subscribe({
+      next: response => {
+        this.inventory.set(response);
+        this.successMessage.set(`${quantity} × ${action.item.magicItem.name} retiré de l’inventaire.`);
+        this.finishUpdate();
+      },
+      error: (error: HttpErrorResponse) => this.handleError(error),
+    });
+  }
+
   protected readonly updatingItemId = signal<number | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
 
@@ -56,12 +203,145 @@ export class CharacterMagicItems implements OnInit {
 
   ngOnInit(): void {
     this.loadInventory();
+    this.spellApi.get(this.accessToken()).subscribe({
+      next: view => {
+        const wizardPolicies = view.preparations
+          .filter(p => p.learningStyle === 'spellbook' && /magicien/i.test(p.source))
+          .map(p => ({id: p.policyId, label: p.source}));
+        this.copyPolicies.set(wizardPolicies);
+        this.copyPolicyId.set(wizardPolicies.length === 1 ? wizardPolicies[0].id : null);
+      },
+      error: () => this.copyPolicies.set([]),
+    });
+  }
+
+  protected openCatalogue(): void {
+    if (this.readonly()) return;
+    this.catalogueOpen.set(true);
+    this.selectedCatalogueItem.set(null);
+    this.quantity.set(1);
+    this.loadCatalogue(1);
+  }
+
+  protected closeCatalogue(): void {
+    if (this.acquiring()) return;
+    this.catalogueOpen.set(false);
+    this.selectedCatalogueItem.set(null);
+  }
+
+  protected selectCatalogueItem(item: MagicItemResponse): void {
+    this.selectedCatalogueItem.set(item);
+    this.quantity.set(1);
+    this.selectedScrollSpellId.set(null);
+    this.scrollSpellQuery.set('');
+    this.scrollSpells.set([]);
+    if (item.isSpellScroll) this.searchScrollSpells('');
+  }
+
+  protected searchScrollSpells(query: string): void {
+    this.scrollSpellQuery.set(query);
+    this.selectedScrollSpellId.set(null);
+    const requestId = ++this.scrollRequestId;
+    this.scrollSpellsLoading.set(true);
+    this.magicItemApi.searchScrollSpells(this.accessToken(), query).subscribe({
+      next: response => {
+        if (requestId !== this.scrollRequestId) return;
+        this.scrollSpells.set(response.spells);
+        this.scrollSpellsLoading.set(false);
+      },
+      error: (error: HttpErrorResponse) => {
+        if (requestId !== this.scrollRequestId) return;
+        this.scrollSpellsLoading.set(false);
+        this.handleError(error);
+      },
+    });
+  }
+
+  protected validQuantity(): boolean {
+    return Number.isInteger(this.quantity()) && this.quantity() >= 1 && this.quantity() <= 9999;
+  }
+
+  protected adjustQuantity(change: number): void {
+    this.quantity.set(Math.max(1, Math.min(9999, this.quantity() + change)));
+  }
+
+  protected rarityClass(rarity: MagicItemRarity | null): string {
+    return rarity === null ? 'mundane' : rarity;
+  }
+
+  protected searchCatalogue(value: string): void {
+    this.catalogueQuery.set(value);
+    this.selectedCatalogueItem.set(null);
+    this.loadCatalogue(1);
+  }
+
+  protected loadCatalogue(page: number): void {
+    if (this.readonly()) return;
+    const requestId = ++this.catalogueRequestId;
+    this.catalogueLoading.set(true);
+    this.magicItemApi.catalogue(this.accessToken(), this.catalogueQuery(), page).subscribe({
+      next: response => {
+        if (requestId !== this.catalogueRequestId) return;
+        this.catalogueItems.set(response.items);
+        this.catalogueTotal.set(response.total);
+        this.cataloguePage.set(response.page);
+        this.catalogueLoading.set(false);
+      },
+      error: (error: HttpErrorResponse) => {
+        if (requestId !== this.catalogueRequestId) return;
+        this.catalogueLoading.set(false);
+        this.handleError(error);
+      },
+    });
+  }
+
+  protected acquireItem(item: MagicItemResponse): void {
+    if (this.readonly() || this.acquiring() || this.selectedCatalogueItem()?.id !== item.id) return;
+    const quantity = this.quantity();
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 9999) return;
+    if (item.isSpellScroll && this.selectedScrollSpellId() == null) return;
+    this.acquiring.set(true);
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+    this.magicItemApi.acquire(this.accessToken(), item.id, quantity, item.isSpellScroll ? this.selectedScrollSpellId()! : undefined).subscribe({
+      next: inventory => {
+        this.inventory.set(inventory);
+        this.acquiring.set(false);
+        this.successMessage.set(`${quantity} × ${item.name} ajouté à l’inventaire.`);
+        this.closeCatalogue();
+      },
+      error: (error: HttpErrorResponse) => {
+        this.acquiring.set(false);
+        this.handleError(error);
+      },
+    });
+  }
+
+  protected canEquip(ownedItem: CharacterMagicItemResponse): boolean {
+    return ownedItem.magicItem.equippable === true;
+  }
+
+  protected canConsume(ownedItem: CharacterMagicItemResponse): boolean {
+    return ownedItem.magicItem.category === 'potion';
+  }
+
+  protected consumeItem(ownedItem: CharacterMagicItemResponse): void {
+    if (this.readonly() || this.isUpdating(ownedItem)) return;
+    this.startUpdate(ownedItem.id);
+    this.magicItemApi.consume(this.accessToken(), ownedItem.id).subscribe({
+      next: response => {
+        this.inventory.set(response);
+        this.successMessage.set(`1 × ${ownedItem.magicItem.name} consommé.`);
+        this.finishUpdate();
+      },
+      error: (error: HttpErrorResponse) => this.handleError(error),
+    });
   }
 
   protected toggleEquipped(
     ownedItem: CharacterMagicItemResponse,
   ): void {
-    if (this.readonly()) return;
+    if (this.readonly() || !this.canEquip(ownedItem)) return;
     if (this.isUpdating(ownedItem)) {
       return;
     }
@@ -177,7 +457,7 @@ export class CharacterMagicItems implements OnInit {
   }
 
   protected rarityLabel(
-    rarity: MagicItemRarity,
+    rarity: MagicItemRarity | null,
   ): string {
     const labels: Record<MagicItemRarity, string> = {
       common: 'Commun',
@@ -188,7 +468,7 @@ export class CharacterMagicItems implements OnInit {
       artifact: 'Artefact',
     };
 
-    return labels[rarity];
+    return rarity === null ? 'Sans rareté' : labels[rarity];
   }
 
   private loadInventory(): void {

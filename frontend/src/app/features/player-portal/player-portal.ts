@@ -219,6 +219,7 @@ export class PlayerPortal {
   protected readonly hasTinkering = computed(() => this.features().some(feature => feature.slug === 'magical-tinkering'));
   protected refreshTinkering(): void { this.loadCharacter(false); }
   protected refreshSpells(): void { this.loadCharacter(false); }
+  protected readonly inventoryRefreshRevision = signal(0);
   protected adoptSpellCast(response: SpellCastResponse): void {
     // Invalidate older GETs/queued snapshots. Applying server state never increases
     // the local edit revision and must not enqueue a PATCH for this consumption.
@@ -232,6 +233,7 @@ export class PlayerPortal {
     this.lastQueuedRevision = this.characterStateService.revision();
     this.character.set(character);
     this.playerSpells.set(response.spells);
+    this.inventoryRefreshRevision.update(revision => revision + 1);
     this.inspiration.set(response.state.inspiration === true);
     this.tinkeringNotes.set(response.state.magicalTinkeringNotes ?? '');
     this.abilities.set(response.character.abilities);

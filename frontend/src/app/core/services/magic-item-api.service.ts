@@ -31,8 +31,28 @@ export interface CreateMagicItemAbilityEffectPayload {
   maximumIncrease?: number;
 }
 
+export interface MagicItemSpellGrantPayload {
+  spellId: number;
+  activation: 'possession' | 'equipped' | 'attuned';
+  costMode: 'charges' | 'limited';
+  cost: number;
+  castingLevel?: number | null;
+  maxCastingLevel?: number | null;
+  usesPerReset: number | null;
+  resetTrigger: 'dawn' | 'short-rest' | 'long-rest' | 'manual' | null;
+}
+
+export interface MagicItemSpellGrantResponse extends MagicItemSpellGrantPayload {
+  id: number;
+  spellName: string;
+  spellLevel: number;
+}
+
+export interface SpellOption { id: number; name: string; level: number; origin: string; ritual?: boolean; }
+
 export interface CreateMagicItemPayload {
   name: string;
+  category?: 'other' | 'spellbook';
   description?: string | null;
   rarity: MagicItemRarity;
   requiresAttunement: boolean;
@@ -41,12 +61,14 @@ export interface CreateMagicItemPayload {
   rechargeFormula?: string | null;
   abilityEffects:
     CreateMagicItemAbilityEffectPayload[];
+  spellGrants?: MagicItemSpellGrantPayload[];
 }
 
 export interface AssignMagicItemPayload {
   magicItemId: number;
   quantity?: number;
   notes?: string | null;
+  inscribedSpellId?: number;
 }
 
 interface MagicItemListApiResponse {
@@ -62,7 +84,9 @@ interface OwnedMagicItemApiResponse {
   magicItemId: number;
   name: string;
   description: string | null;
-  rarity: MagicItemRarity;
+  rarity: MagicItemRarity | null;
+  category: string;
+  equippable: boolean;
   rarityLabel: string;
   requiresAttunement: boolean;
   attuned: boolean;
@@ -125,6 +149,13 @@ export class MagicItemApiService {
       );
   }
 
+  searchAssignmentCatalog(campaignId: number, query: string, page = 1): Observable<{items: MagicItemResponse[]; total: number; page: number; pageSize: number}> {
+    return this.http.get<{items: MagicItemResponse[]; total: number; page: number; pageSize: number}>(
+      `${this.apiUrl}/campaigns/${campaignId}/item-catalogue`,
+      { params: { q: query, page } },
+    );
+  }
+
   create(
     campaignId: number,
     payload: CreateMagicItemPayload,
@@ -139,6 +170,56 @@ export class MagicItemApiService {
       );
   }
 
+  searchSpells(query: string): Observable<SpellOption[]> {
+    return this.http.get<{spells: SpellOption[]}>(`${this.apiUrl}/reference/custom/spells`, {
+      params: {q: query, pageSize: 30},
+    }).pipe(map(response => response.spells));
+  }
+
+  replaceSpellGrants(campaignId: number, itemId: number, spellGrants: MagicItemSpellGrantPayload[]): Observable<MagicItemResponse> {
+    return this.http.put<MagicItemCreateApiResponse>(
+      `${this.apiUrl}/campaigns/${campaignId}/magic-items/${itemId}/spell-grants`,
+      {spellGrants},
+    ).pipe(map(response => response.item));
+  }
+
+  createReservedSpellbook(campaignId: number, magicItemId: number, spellIds: number[]): Observable<{id: number; name: string; spellCount: number}> {
+    return this.http.post<{id: number; name: string; spellCount: number}>(
+      `${this.apiUrl}/campaigns/${campaignId}/spellbook-reserve`, {magicItemId, spellIds},
+    );
+  }
+
+  createReservedPactTome(campaignId: number, magicItemId: number, pactCantripIds: number[], pactRitualIds: number[]): Observable<{id: number; name: string; spellCount: number}> {
+    return this.http.post<{id: number; name: string; spellCount: number}>(
+      `${this.apiUrl}/campaigns/${campaignId}/spellbook-reserve`,
+      {magicItemId, spellIds: [], pactCantripIds, pactRitualIds},
+    );
+  }
+
+  listSpellbookReserve(campaignId: number): Observable<{books: {id: number; name: string; spellCount: number}[]}> {
+    return this.http.get<{books: {id: number; name: string; spellCount: number}[]}>(
+      `${this.apiUrl}/campaigns/${campaignId}/spellbook-reserve`,
+    );
+  }
+
+  assignReservedSpellbook(campaignId: number, bookId: number, characterId: number): Observable<{id: number; characterId: number}> {
+    return this.http.post<{id: number; characterId: number}>(
+      `${this.apiUrl}/campaigns/${campaignId}/spellbook-reserve/${bookId}/assign`, {characterId},
+    );
+  }
+
+  rechargeSessionDawn(campaignId: number, sessionId: number): Observable<{recharged: {characters: number; items: number; grants: number}}> {
+    return this.http.post<{recharged: {characters: number; items: number; grants: number}}>(
+      `${this.apiUrl}/campaigns/${campaignId}/sessions/${sessionId}/magic-items/recharge-dawn`, {},
+    );
+  }
+
+  rechargeDawn(characterId: number): Observable<{recharged: {items: number; grants: number}}> {
+    return this.http.post<{recharged: {items: number; grants: number}}>(
+      `${this.apiUrl}/characters/${characterId}/magic-items/recharge-dawn`, {},
+    );
+  }
+
   listCharacterItems(
     characterId: number,
   ): Observable<CharacterMagicItemInventoryResponse> {
@@ -151,6 +232,13 @@ export class MagicItemApiService {
           this.normalizeInventory(response),
         ),
       );
+  }
+
+  searchScrollSpells(characterId: number, query: string): Observable<{spells: {id: number; name: string; level: number}[]}> {
+    return this.http.get<{spells: {id: number; name: string; level: number}[]}>(
+      `${this.apiUrl}/characters/${characterId}/scroll-spells`,
+      { params: { q: query } },
+    );
   }
 
   assignToCharacter(
@@ -171,12 +259,20 @@ export class MagicItemApiService {
       );
   }
 
+  createCharacterSpellbook(characterId: number, payload: {magicItemId: number; spellIds: number[]; notes?: string | null}): Observable<{ownedItemId: number; magicItemId: number; spells: unknown[]}> {
+    return this.http.post<{ownedItemId: number; magicItemId: number; spells: unknown[]}>(
+      `${this.apiUrl}/characters/${characterId}/spellbooks`, payload,
+    );
+  }
+
   removeFromCharacter(
     characterId: number,
     ownedItemId: number,
+    quantity = 1,
   ): Observable<void> {
     return this.http.delete<void>(
       `${this.apiUrl}/characters/${characterId}/magic-items/${ownedItemId}`,
+      { params: { quantity } },
     );
   }
 
@@ -230,6 +326,8 @@ export class MagicItemApiService {
         description:
           item.description,
         rarity: item.rarity,
+        category: item.category,
+        equippable: item.equippable,
 
         requiresAttunement:
           item.requiresAttunement,

@@ -1,0 +1,1394 @@
+{
+  "adamantine-armor": {
+    "name": "Armure d'adamantium",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=armure-d-adamantium",
+    "english": "Adamantine Armor",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "ammunition": {
+    "name": "Munition +1, +2 ou +3",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=munition-1-2-ou-3",
+    "english": "Ammunition, +1, +2, or +3",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "amulet-of-health": {
+    "name": "Amulette de bonne santé",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=amulette-de-bonne-sante",
+    "english": "Amulet of Health",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "amulet-of-proof-against-detection-and-location": {
+    "name": "Amulette d'antidétection",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=amulette-d-antidetection",
+    "english": "Amulet of Proof against Detection and Location",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "amulet-of-the-planes": {
+    "name": "Amulette des plans",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=amulette-des-plans",
+    "english": "Amulet of the Planes",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "animated-shield": {
+    "name": "Bouclier animé",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=bouclier-anime",
+    "english": "Animated Shield",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "armor": {
+    "name": "Armure +1, +2 ou +3",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=armure-1-2-ou-3",
+    "english": "Armor, +1, +2, or +3",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "armor-of-invulnerability": {
+    "name": "Armure d'invulnérabilité",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=armure-d-invulnerabilite",
+    "english": "Armor of Invulnerability",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "armor-of-resistance": {
+    "name": "Armure de résistance",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=armure-de-resistance",
+    "english": "Armor of Resistance",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "armor-of-vulnerability": {
+    "name": "Armure de vulnérabilité",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=armure-de-vulnerabilite",
+    "english": "Armor of Vulnerability",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "arrow-catching-shield": {
+    "name": "Bouclier antiprojectiles",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=bouclier-antiprojectiles",
+    "english": "Arrow-Catching Shield",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "arrow-of-slaying": {
+    "name": "Flèche tueuse",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=fleche-tueuse",
+    "english": "Arrow of Slaying",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "bag-of-beans": {
+    "name": "Sac de haricots",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=sac-de-haricots",
+    "english": "Bag of Beans",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "bag-of-devouring": {
+    "name": "Sac dévoreur",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=sac-devoreur",
+    "english": "Bag of Devouring",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "bag-of-holding": {
+    "name": "Sac sans fond",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=sac-sans-fond",
+    "english": "Bag of Holding",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "bag-of-tricks": {
+    "name": "Sac à malices",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=sac-a-malices",
+    "english": "Bag of Tricks",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "bead-of-force": {
+    "name": "Perle de force",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=perle-de-force",
+    "english": "Bead of Force",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "belt-of-dwarvenkind": {
+    "name": "Ceinturon des nains",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=ceinturon-des-nains",
+    "english": "Belt of Dwarvenkind",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "belt-of-giant-strength": {
+    "name": "Ceinturon de force de géant",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=ceinturon-de-force-de-geant",
+    "english": "Belt of Giant Strength",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "berserker-axe": {
+    "name": "Hache du berserker",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=hache-du-berserker",
+    "english": "Berserker Axe",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "boots-of-elvenkind": {
+    "name": "Bottes elfiques",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=bottes-elfiques",
+    "english": "Boots of Elvenkind",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "boots-of-levitation": {
+    "name": "Bottes de lévitation",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=bottes-de-levitation",
+    "english": "Boots of Levitation",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "boots-of-speed": {
+    "name": "Bottes de rapidité",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=bottes-de-rapidite",
+    "english": "Boots of Speed",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "boots-of-striding-and-springing": {
+    "name": "Bottes de sept lieues",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=bottes-de-sept-lieues",
+    "english": "Boots of Striding and Springing",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "boots-of-the-winterlands": {
+    "name": "Bottes des terres gelées",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=bottes-des-terres-gelees",
+    "english": "Boots of the Winterlands",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "bowl-of-commanding-water-elementals": {
+    "name": "Jatte de contrôle des élémentaires de l'eau",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=jatte-de-controle-des-elementaires-de-l-eau",
+    "english": "Bowl of Commanding Water Elementals",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "bracers-of-archery": {
+    "name": "Bracelets d'archer",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=bracelets-d-archer",
+    "english": "Bracers of Archery",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "bracers-of-defense": {
+    "name": "Bracelets de défense",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=bracelets-de-defense",
+    "english": "Bracers of Defense",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "brazier-of-commanding-fire-elementals": {
+    "name": "Brasero de contrôle des élémentaires du feu",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=brasero-de-controle-des-elementaires-du-feu",
+    "english": "Brazier of Commanding Fire Elementals",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "brooch-of-shielding": {
+    "name": "Broche de défense",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=broche-de-defense",
+    "english": "Brooch of Shielding",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "broom-of-flying": {
+    "name": "Balai volant",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=balai-volant",
+    "english": "Broom of Flying",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "candle-of-invocation": {
+    "name": "Cierge d'invocation",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=cierge-d-invocation",
+    "english": "Candle of Invocation",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "cape-of-the-mountebank": {
+    "name": "Cape du prestidigitateur",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=cape-du-prestidigitateur",
+    "english": "Cape of the Mountebank",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "carpet-of-flying": {
+    "name": "Tapis volant",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=tapis-volant",
+    "english": "Carpet of Flying",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "censer-of-controlling-air-elementals": {
+    "name": "Encensoir de contrôle des élémentaires de l'air",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=encensoir-de-controle-des-elementaires-de-l-air",
+    "english": "Censer of Controlling Air Elementals",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "chime-of-opening": {
+    "name": "Carillon d'ouverture",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=carillon-d-ouverture",
+    "english": "Chime of Opening",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "circlet-of-blasting": {
+    "name": "Diadème de destruction",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=diademe-de-destruction",
+    "english": "Circlet of Blasting",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "cloak-of-arachnida": {
+    "name": "Cape de l'arachnide",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=cape-de-l-arachnide",
+    "english": "Cloak of Arachnida",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "cloak-of-displacement": {
+    "name": "Cape de déplacement",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=cape-de-deplacement",
+    "english": "Cloak of Displacement",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "cloak-of-elvenkind": {
+    "name": "Cape elfique",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=cape-elfique",
+    "english": "Cloak of Elvenkind",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "cloak-of-protection": {
+    "name": "Cape de protection",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=cape-de-protection",
+    "english": "Cloak of Protection",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "cloak-of-the-bat": {
+    "name": "Cape de la chauve-souris",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=cape-de-la-chauve-souris",
+    "english": "Cloak of the Bat",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "cloak-of-the-manta-ray": {
+    "name": "Cape de la raie manta",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=cape-de-la-raie-manta",
+    "english": "Cloak of the Manta Ray",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "crystal-ball": {
+    "name": "Boule de cristal",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=boule-de-cristal",
+    "english": "Crystal Ball",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "cube-of-force": {
+    "name": "Cube de force",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=cube-de-force",
+    "english": "Cube of Force",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "cubic-gate": {
+    "name": "Cube des plans",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=cube-des-plans",
+    "english": "Cubic Gate",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "dagger-of-venom": {
+    "name": "Dague venimeuse",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=dague-venimeuse",
+    "english": "Dagger of Venom",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "dancing-sword": {
+    "name": "Épée dansante",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=epee-dansante",
+    "english": "Dancing Sword",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "decanter-of-endless-water": {
+    "name": "Carafe intarissable",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=carafe-intarissable",
+    "english": "Decanter of Endless Water",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "deck-of-illusions": {
+    "name": "Cartes d'illusion",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=cartes-d-illusion",
+    "english": "Deck of Illusions",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "deck-of-many-things": {
+    "name": "Cartes merveilleuses",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=cartes-merveilleuses",
+    "english": "Deck of Many Things",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "defender": {
+    "name": "Gardienne",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=gardienne",
+    "english": "Defender",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "demon-armor": {
+    "name": "Armure démoniaque",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=armure-demoniaque",
+    "english": "Demon Armor",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "dimensional-shackles": {
+    "name": "Menottes dimensionnelles",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=menottes-dimensionnelles",
+    "english": "Dimensional Shackles",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "dragon-scale-mail": {
+    "name": "Armure d'écailles de dragon",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=armure-d-ecailles-de-dragon",
+    "english": "Dragon Scale Mail",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "dragon-slayer": {
+    "name": "Tueuse de dragons",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=tueuse-de-dragons",
+    "english": "Dragon Slayer",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "dust-of-disappearance": {
+    "name": "Poussière de disparition",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=poussiere-de-disparition",
+    "english": "Dust of Disappearance",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "dust-of-dryness": {
+    "name": "Poussière dessiccative",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=poussiere-dessiccative",
+    "english": "Dust of Dryness",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "dust-of-sneezing-and-choking": {
+    "name": "Poudre à éternuer",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=poudre-a-eternuer",
+    "english": "Dust of Sneezing and Choking",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "dwarven-plate": {
+    "name": "Harnois nain",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=harnois-nain",
+    "english": "Dwarven Plate",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "dwarven-thrower": {
+    "name": "Marteau de lancer nain",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=marteau-de-lancer-nain",
+    "english": "Dwarven Thrower",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "efreeti-bottle": {
+    "name": "Bouteille de l'éfrit",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=bouteille-de-l-efrit",
+    "english": "Efreeti Bottle",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "elemental-gem": {
+    "name": "Gemme élémentaire",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=gemme-elementaire",
+    "english": "Elemental Gem",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "elven-chain": {
+    "name": "Mailles elfiques",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=mailles-elfiques",
+    "english": "Elven Chain",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "eversmoking-bottle": {
+    "name": "Bouteille fumigène",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=bouteille-fumigene",
+    "english": "Eversmoking Bottle",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "eyes-of-charming": {
+    "name": "Regard charmeur",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=regard-charmeur",
+    "english": "Eyes of Charming",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "eyes-of-minute-seeing": {
+    "name": "Yeux grossissants",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=yeux-grossissants",
+    "english": "Eyes of Minute Seeing",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "eyes-of-the-eagle": {
+    "name": "Yeux de lynx",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=yeux-de-lynx",
+    "english": "Eyes of the Eagle",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "figurine-of-wondrous-power": {
+    "name": "Figurine merveilleuse",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=figurine-merveilleuse",
+    "english": "Figurine of Wondrous Power",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "flame-tongue": {
+    "name": "Épée ardente",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=epee-ardente",
+    "english": "Flame Tongue",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "folding-boat": {
+    "name": "Bateau pliable",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=bateau-pliable",
+    "english": "Folding Boat",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "frost-brand": {
+    "name": "Fer gelé",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=fer-gele",
+    "english": "Frost Brand",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "gauntlets-of-ogre-power": {
+    "name": "Gantelets de puissance d'ogre",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=gantelets-de-puissance-d-ogre",
+    "english": "Gauntlets of Ogre Power",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "gem-of-brightness": {
+    "name": "Gemme d'illumination",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=gemme-d-illumination",
+    "english": "Gem of Brightness",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "gem-of-seeing": {
+    "name": "Gemme de vision",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=gemme-de-vision",
+    "english": "Gem of Seeing",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "giant-slayer": {
+    "name": "Tueuse de géants",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=tueuse-de-geants",
+    "english": "Giant Slayer",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "gloves-of-missile-snaring": {
+    "name": "Gants piégeurs de projectiles",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=gants-piegeurs-de-projectiles",
+    "english": "Gloves of Missile Snaring",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "gloves-of-swimming-and-climbing": {
+    "name": "Gants de nage et d'escalade",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=gants-de-nage-et-d-escalade",
+    "english": "Gloves of Swimming and Climbing",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "goggles-of-night": {
+    "name": "Lunettes de nuit",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=lunettes-de-nuit",
+    "english": "Goggles of Night",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "hammer-of-thunderbolts": {
+    "name": "Marteau de tonnerre",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=marteau-de-tonnerre",
+    "english": "Hammer of Thunderbolts",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "hat-of-disguise": {
+    "name": "Chapeau de déguisement",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=chapeau-de-deguisement",
+    "english": "Hat of Disguise",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "headband-of-intellect": {
+    "name": "Bandeau d'intelligence",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=bandeau-d-intelligence",
+    "english": "Headband of Intellect",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "helm-of-brilliance": {
+    "name": "Heaume scintillant",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=heaume-scintillant",
+    "english": "Helm of Brilliance",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "helm-of-comprehending-languages": {
+    "name": "Heaume de compréhension des langues",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=heaume-de-comprehension-des-langues",
+    "english": "Helm of Comprehending Languages",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "helm-of-telepathy": {
+    "name": "Heaume de télépathie",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=heaume-de-telepathie",
+    "english": "Helm of Telepathy",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "helm-of-teleportation": {
+    "name": "Heaume de téléportation",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=heaume-de-teleportation",
+    "english": "Helm of Teleportation",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "holy-avenger": {
+    "name": "Vengeresse sacrée",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=vengeresse-sacree",
+    "english": "Holy Avenger",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "horn-of-blasting": {
+    "name": "Cor de dévastation",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=cor-de-devastation",
+    "english": "Horn of Blasting",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "horn-of-valhalla": {
+    "name": "Cor du Valhalla",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=cor-du-valhalla",
+    "english": "Horn of Valhalla",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "horseshoes-of-a-zephyr": {
+    "name": "Fers de zéphyr",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=fers-de-zephyr",
+    "english": "Horseshoes of a Zephyr",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "horseshoes-of-speed": {
+    "name": "Fers de rapidité",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=fers-de-rapidite",
+    "english": "Horseshoes of Speed",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "immovable-rod": {
+    "name": "Sceptre inamovible",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=sceptre-inamovible",
+    "english": "Immovable Rod",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "ioun-stone": {
+    "name": "Pierre de Ioun",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=pierre-de-ioun",
+    "english": "Ioun Stone",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "iron-flask": {
+    "name": "Flasque de fer",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=flasque-de-fer",
+    "english": "Iron Flask",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "javelin-of-lightning": {
+    "name": "Javeline de foudre",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=javeline-de-foudre",
+    "english": "Javelin of Lightning",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "lantern-of-revealing": {
+    "name": "Lanterne de révélation",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=lanterne-de-revelation",
+    "english": "Lantern of Revealing",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "luck-blade": {
+    "name": "Lame porte-bonheur",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=lame-porte-bonheur",
+    "english": "Luck Blade",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "mace-of-disruption": {
+    "name": "Masse d'anéantissement",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=masse-d-aneantissement",
+    "english": "Mace of Disruption",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "mace-of-smiting": {
+    "name": "Masse destructrice",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=masse-destructrice",
+    "english": "Mace of Smiting",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "mace-of-terror": {
+    "name": "Masse terrifiante",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=masse-terrifiante",
+    "english": "Mace of Terror",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "mantle-of-spell-resistance": {
+    "name": "Manteau de résistance aux sorts",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=manteau-de-resistance-aux-sorts",
+    "english": "Mantle of Spell Resistance",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "manual-of-bodily-health": {
+    "name": "Manuel de vitalité",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=manuel-de-vitalite",
+    "english": "Manual of Bodily Health",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "manual-of-gainful-exercise": {
+    "name": "Manuel d'exercices physiques",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=manuel-d-exercices-physiques",
+    "english": "Manual of Gainful Exercise",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "manual-of-golems": {
+    "name": "Manuel des golems",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=manuel-des-golems",
+    "english": "Manual of Golems",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "manual-of-quickness-of-action": {
+    "name": "Manuel de vivacité",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=manuel-de-vivacite",
+    "english": "Manual of Quickness of Action",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "medallion-of-thoughts": {
+    "name": "Médaillon des pensées",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=medaillon-des-pensees",
+    "english": "Medallion of Thoughts",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "mirror-of-life-trapping": {
+    "name": "Miroir d'emprisonnement",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=miroir-d-emprisonnement",
+    "english": "Mirror of Life Trapping",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "mithral-armor": {
+    "name": "Armure de mithral",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=armure-de-mithral",
+    "english": "Mithral Armor",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "necklace-of-adaptation": {
+    "name": "Collier d'adaptation",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=collier-d-adaptation",
+    "english": "Necklace of Adaptation",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "necklace-of-fireballs": {
+    "name": "Collier de boules de feu",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=collier-de-boules-de-feu",
+    "english": "Necklace of Fireballs",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "necklace-of-prayer-beads": {
+    "name": "Collier de perles de prière",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=collier-de-perles-de-priere",
+    "english": "Necklace of Prayer Beads",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "nine-lives-stealer": {
+    "name": "Voleuse des neuf vies",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=voleuse-des-neuf-vies",
+    "english": "Nine Lives Stealer",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "oathbow": {
+    "name": "Arc du serment",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=arc-du-serment",
+    "english": "Oathbow",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "oil-of-etherealness": {
+    "name": "Huile éthérée",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=huile-etheree",
+    "english": "Oil of Etherealness",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "oil-of-sharpness": {
+    "name": "Huile d'affûtage",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=huile-d-affutage",
+    "english": "Oil of Sharpness",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "oil-of-slipperiness": {
+    "name": "Huile d'insaisissabilité",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=huile-d-insaisissabilite",
+    "english": "Oil of Slipperiness",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "pearl-of-power": {
+    "name": "Perle de pouvoir",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=perle-de-pouvoir",
+    "english": "Pearl of Power",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "periapt-of-health": {
+    "name": "Amulette de santé",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=amulette-de-sante",
+    "english": "Periapt of Health",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "periapt-of-proof-against-poison": {
+    "name": "Amulette de protection contre le poison",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=amulette-de-protection-contre-le-poison",
+    "english": "Periapt of Proof against Poison",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "periapt-of-wound-closure": {
+    "name": "Amulette de cicatrisation",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=amulette-de-cicatrisation",
+    "english": "Periapt of Wound Closure",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "philter-of-love": {
+    "name": "Philtre d'amour",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=philtre-d-amour",
+    "english": "Philter of Love",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "pipes-of-haunting": {
+    "name": "Flûte terrifiante",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=flute-terrifiante",
+    "english": "Pipes of Haunting",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "pipes-of-the-sewers": {
+    "name": "Flûte des égouts",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=flute-des-egouts",
+    "english": "Pipes of the Sewers",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "plate-armor-of-etherealness": {
+    "name": "Harnois éthéré",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=harnois-ethere",
+    "english": "Plate Armor of Etherealness",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "portable-hole": {
+    "name": "Puits portable",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=puits-portable",
+    "english": "Portable Hole",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "potion-of-animal-friendship": {
+    "name": "Potion d'amitié avec les animaux",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=potion-d-amitie-avec-les-animaux",
+    "english": "Potion of Animal Friendship",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "potion-of-clairvoyance": {
+    "name": "Potion de clairvoyance",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=potion-de-clairvoyance",
+    "english": "Potion of Clairvoyance",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "potion-of-climbing": {
+    "name": "Potion d'escalade",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=potion-d-escalade",
+    "english": "Potion of Climbing",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "potion-of-diminution": {
+    "name": "Potion de diminution",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=potion-de-diminution",
+    "english": "Potion of Diminution",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "potion-of-flying": {
+    "name": "Potion de vol",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=potion-de-vol",
+    "english": "Potion of Flying",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "potion-of-gaseous-form": {
+    "name": "Potion de forme gazeuse",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=potion-de-forme-gazeuse",
+    "english": "Potion of Gaseous Form",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "potion-of-giant-strength": {
+    "name": "Potion de force de géant",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=potion-de-force-de-geant",
+    "english": "Potion of Giant Strength",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "potion-of-growth": {
+    "name": "Potion d'agrandissement",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=potion-d-agrandissement",
+    "english": "Potion of Growth",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "potion-of-healing": {
+    "name": "Potion de guérison",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=potion-de-guerison",
+    "english": "Potion of Healing",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "potion-of-healing-common": {
+    "name": "Potion de guérison",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=potion-de-guerison",
+    "english": "Potion of Healing",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "potion-of-heroism": {
+    "name": "Potion d'héroïsme",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=potion-d-heroisme",
+    "english": "Potion of Heroism",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "potion-of-invisibility": {
+    "name": "Potion d'invisibilité",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=potion-d-invisibilite",
+    "english": "Potion of Invisibility",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "potion-of-mind-reading": {
+    "name": "Potion de lecture des pensées",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=potion-de-lecture-des-pensees",
+    "english": "Potion of Mind Reading",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "potion-of-poison": {
+    "name": "Potion de poison",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=potion-de-poison",
+    "english": "Potion of Poison",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "potion-of-resistance": {
+    "name": "Potion de résistance",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=potion-de-resistance",
+    "english": "Potion of Resistance",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "potion-of-speed": {
+    "name": "Potion de vitesse",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=potion-de-vitesse",
+    "english": "Potion of Speed",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "potion-of-water-breathing": {
+    "name": "Potion de respiration aquatique",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=potion-de-respiration-aquatique",
+    "english": "Potion of Water Breathing",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "ring-of-animal-influence": {
+    "name": "Anneau d'influence sur les animaux",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=anneau-d-influence-sur-les-animaux",
+    "english": "Ring of Animal Influence",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "ring-of-djinni-summoning": {
+    "name": "Anneau de convocation de djinn",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=anneau-de-convocation-de-djinn",
+    "english": "Ring of Djinni Summoning",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "ring-of-elemental-command": {
+    "name": "Anneau de contrôle des élémentaires",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=anneau-de-controle-des-elementaires",
+    "english": "Ring of Elemental Command",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "ring-of-evasion": {
+    "name": "Anneau d'esquive totale",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=anneau-d-esquive-totale",
+    "english": "Ring of Evasion",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "ring-of-feather-falling": {
+    "name": "Anneau de feuille morte",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=anneau-de-feuille-morte",
+    "english": "Ring of Feather Falling",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "ring-of-free-action": {
+    "name": "Anneau d'action libre",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=anneau-d-action-libre",
+    "english": "Ring of Free Action",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "ring-of-invisibility": {
+    "name": "Anneau d'invisibilité",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=anneau-d-invisibilite",
+    "english": "Ring of Invisibility",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "ring-of-jumping": {
+    "name": "Anneau de saut",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=anneau-de-saut",
+    "english": "Ring of Jumping",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "ring-of-mind-shielding": {
+    "name": "Anneau de barrière mentale",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=anneau-de-barriere-mentale",
+    "english": "Ring of Mind Shielding",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "ring-of-protection": {
+    "name": "Anneau de protection",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=anneau-de-protection",
+    "english": "Ring of Protection",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "ring-of-regeneration": {
+    "name": "Anneau de régénération",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=anneau-de-regeneration",
+    "english": "Ring of Regeneration",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "ring-of-resistance": {
+    "name": "Anneau de résistance",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=anneau-de-resistance",
+    "english": "Ring of Resistance",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "ring-of-resistance-poison": {
+    "name": "Anneau de résistance au poison",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=anneau-de-resistance-au-poison",
+    "english": "Ring of Poison Resistance",
+    "source": "Dungeon Master´s Guide (BR)"
+  },
+  "ring-of-shooting-stars": {
+    "name": "Anneau de feu d'étoiles",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=anneau-de-feu-d-etoiles",
+    "english": "Ring of Shooting Stars",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "ring-of-spell-storing": {
+    "name": "Anneau de stockage de sort",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=anneau-de-stockage-de-sort",
+    "english": "Ring of Spell Storing",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "ring-of-spell-turning": {
+    "name": "Anneau de renvoi des sorts",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=anneau-de-renvoi-des-sorts",
+    "english": "Ring of Spell Turning",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "ring-of-swimming": {
+    "name": "Anneau de nage",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=anneau-de-nage",
+    "english": "Ring of Swimming",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "ring-of-telekinesis": {
+    "name": "Anneau de télékinésie",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=anneau-de-telekinesie",
+    "english": "Ring of Telekinesis",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "ring-of-the-ram": {
+    "name": "Anneau du bélier",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=anneau-du-belier",
+    "english": "Ring of the Ram",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "ring-of-three-wishes": {
+    "name": "Anneau de triple souhait",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=anneau-de-triple-souhait",
+    "english": "Ring of Three Wishes",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "ring-of-warmth": {
+    "name": "Anneau de chaleur constante",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=anneau-de-chaleur-constante",
+    "english": "Ring of Warmth",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "ring-of-water-walking": {
+    "name": "Anneau de marche sur l'eau",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=anneau-de-marche-sur-l-eau",
+    "english": "Ring of Water Walking",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "ring-of-x-ray-vision": {
+    "name": "Anneau de rayons X",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=anneau-de-rayons-x",
+    "english": "Ring of X-ray Vision",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "robe-of-eyes": {
+    "name": "Robe de vision totale",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=robe-de-vision-totale",
+    "english": "Robe of Eyes",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "robe-of-scintillating-colors": {
+    "name": "Robe prismatique",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=robe-prismatique",
+    "english": "Robe of Scintillating Colors",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "robe-of-stars": {
+    "name": "Robe aux étoiles",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=robe-aux-etoiles",
+    "english": "Robe of Stars",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "robe-of-the-archmagi": {
+    "name": "Robe de l'archimage",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=robe-de-l-archimage",
+    "english": "Robe of the Archmagi",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "robe-of-useful-items": {
+    "name": "Robe de camelot",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=robe-de-camelot",
+    "english": "Robe of Useful Items",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "rod-of-absorption": {
+    "name": "Sceptre d'absorption",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=sceptre-d-absorption",
+    "english": "Rod of Absorption",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "rod-of-alertness": {
+    "name": "Sceptre de vigilance",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=sceptre-de-vigilance",
+    "english": "Rod of Alertness",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "rod-of-lordly-might": {
+    "name": "Sceptre de puissance seigneuriale",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=sceptre-de-puissance-seigneuriale",
+    "english": "Rod of Lordly Might",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "rod-of-rulership": {
+    "name": "Sceptre de suzeraineté",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=sceptre-de-suzerainete",
+    "english": "Rod of Rulership",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "rod-of-security": {
+    "name": "Sceptre de sécurité",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=sceptre-de-securite",
+    "english": "Rod of Security",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "rope-of-climbing": {
+    "name": "Corde d'escalade",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=corde-d-escalade",
+    "english": "Rope of Climbing",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "rope-of-entanglement": {
+    "name": "Corde d'enchevêtrement",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=corde-d-enchevetrement",
+    "english": "Rope of Entanglement",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "scarab-of-protection": {
+    "name": "Scarabée de protection",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=scarabee-de-protection",
+    "english": "Scarab of Protection",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "scimitar-of-speed": {
+    "name": "Cimeterre de rapidité",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=cimeterre-de-rapidite",
+    "english": "Scimitar of Speed",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "shield-of-missile-attraction": {
+    "name": "Bouclier d'attraction des projectiles",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=bouclier-d-attraction-des-projectiles",
+    "english": "Shield of Missile Attraction",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "slippers-of-spider-climbing": {
+    "name": "Chaussons de pattes d'araignée",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=chaussons-de-pattes-d-araignee",
+    "english": "Slippers of Spider Climbing",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "sovereign-glue": {
+    "name": "Colle universelle",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=colle-universelle",
+    "english": "Sovereign Glue",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "spell-scroll": {
+    "name": "Parchemin de sort",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=parchemin-de-sort",
+    "english": "Spell Scroll",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "spellguard-shield": {
+    "name": "Bouclier gardesort",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=bouclier-gardesort",
+    "english": "Spellguard Shield",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "sphere-of-annihilation": {
+    "name": "Sphère d'annihilation",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=sphere-d-annihilation",
+    "english": "Sphere of Annihilation",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "staff-of-charming": {
+    "name": "Bâton d'envoûtement",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=baton-d-envoutement",
+    "english": "Staff of Charming",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "staff-of-fire": {
+    "name": "Bâton de feu",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=baton-de-feu",
+    "english": "Staff of Fire",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "staff-of-frost": {
+    "name": "Bâton de givre",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=baton-de-givre",
+    "english": "Staff of Frost",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "staff-of-healing": {
+    "name": "Bâton de guérison",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=baton-de-guerison",
+    "english": "Staff of Healing",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "staff-of-power": {
+    "name": "Bâton de surpuissance",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=baton-de-surpuissance",
+    "english": "Staff of Power",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "staff-of-striking": {
+    "name": "Bâton percussif",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=baton-percussif",
+    "english": "Staff of Striking",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "staff-of-swarming-insects": {
+    "name": "Bâton de grand essaim",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=baton-de-grand-essaim",
+    "english": "Staff of Swarming Insects",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "staff-of-the-magi": {
+    "name": "Bâton du thaumaturge",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=baton-du-thaumaturge",
+    "english": "Staff of the Magi",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "staff-of-the-python": {
+    "name": "Bâton du python",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=baton-du-python",
+    "english": "Staff of the Python",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "staff-of-the-woodlands": {
+    "name": "Bâton des forêts",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=baton-des-forets",
+    "english": "Staff of the Woodlands",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "staff-of-thunder-and-lightning": {
+    "name": "Bâton de tonnerre et de foudre",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=baton-de-tonnerre-et-de-foudre",
+    "english": "Staff of Thunder and Lightning",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "staff-of-withering": {
+    "name": "Bâton de flétrissement",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=baton-de-fletrissement",
+    "english": "Staff of Withering",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "stone-of-controlling-earth-elementals": {
+    "name": "Pierre de contrôle des élémentaires de la terre",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=pierre-de-controle-des-elementaires-de-la-terre",
+    "english": "Stone of Controlling Earth Elementals",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "stone-of-good-luck-luckstone": {
+    "name": "Pierre porte-bonheur",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=pierre-porte-bonheur",
+    "english": "Stone of Good Luck (Luckstone)",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "sun-blade": {
+    "name": "Épée radieuse",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=epee-radieuse",
+    "english": "Sun Blade",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "sword-of-life-stealing": {
+    "name": "Épée voleuse de vie",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=epee-voleuse-de-vie",
+    "english": "Sword of Life Stealing",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "sword-of-sharpness": {
+    "name": "Épée acérée",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=epee-aceree",
+    "english": "Sword of Sharpness",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "sword-of-wounding": {
+    "name": "Épée mordante",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=epee-mordante",
+    "english": "Sword of Wounding",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "talisman-of-pure-good": {
+    "name": "Talisman du bien ultime",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=talisman-du-bien-ultime",
+    "english": "Talisman of Pure Good",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "talisman-of-the-sphere": {
+    "name": "Talisman de la sphère",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=talisman-de-la-sphere",
+    "english": "Talisman of the Sphere",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "talisman-of-ultimate-evil": {
+    "name": "Talisman du mal absolu",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=talisman-du-mal-absolu",
+    "english": "Talisman of Ultimate Evil",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "tome-of-clear-thought": {
+    "name": "Traité de perspicacité",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=traite-de-perspicacite",
+    "english": "Tome of Clear Thought",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "tome-of-leadership-and-influence": {
+    "name": "Traité d'autorité et d'influence",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=traite-d-autorite-et-d-influence",
+    "english": "Tome of Leadership and Influence",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "tome-of-understanding": {
+    "name": "Traité de compréhension",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=traite-de-comprehension",
+    "english": "Tome of Understanding",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "trident-of-fish-command": {
+    "name": "Trident de domination aquatique",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=trident-de-domination-aquatique",
+    "english": "Trident of Fish Command",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "universal-solvent": {
+    "name": "Solvant universel",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=solvant-universel",
+    "english": "Universal Solvent",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "vicious-weapon": {
+    "name": "Arme vicieuse",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=arme-vicieuse",
+    "english": "Vicious Weapon",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "vorpal-sword": {
+    "name": "Épée vorpale",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=epee-vorpale",
+    "english": "Vorpal Sword",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "wand-of-binding": {
+    "name": "Baguette des entraves",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=baguette-des-entraves",
+    "english": "Wand of Binding",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "wand-of-enemy-detection": {
+    "name": "Baguette de détection de l'ennemi",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=baguette-de-detection-de-l-ennemi",
+    "english": "Wand of Enemy Detection",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "wand-of-fear": {
+    "name": "Baguette de peur",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=baguette-de-peur",
+    "english": "Wand of Fear",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "wand-of-fireballs": {
+    "name": "Baguette de boules de feu",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=baguette-de-boules-de-feu",
+    "english": "Wand of Fireballs",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "wand-of-lightning-bolts": {
+    "name": "Baguette d'éclairs",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=baguette-d-eclairs",
+    "english": "Wand of Lightning Bolts",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "wand-of-magic-detection": {
+    "name": "Baguette de détection de la magie",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=baguette-de-detection-de-la-magie",
+    "english": "Wand of Magic Detection",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "wand-of-magic-missiles": {
+    "name": "Baguette de projectiles magiques",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=baguette-de-projectiles-magiques",
+    "english": "Wand of Magic Missiles",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "wand-of-paralysis": {
+    "name": "Baguette de paralysie",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=baguette-de-paralysie",
+    "english": "Wand of Paralysis",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "wand-of-polymorph": {
+    "name": "Baguette de métamorphose",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=baguette-de-metamorphose",
+    "english": "Wand of Polymorph",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "wand-of-secrets": {
+    "name": "Baguette des secrets",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=baguette-des-secrets",
+    "english": "Wand of Secrets",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "wand-of-the-war-mage": {
+    "name": "Baguette du mage de guerre +1, +2 ou +3",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=baguette-du-mage-de-guerre-1-2-ou-3",
+    "english": "Wand of the War Mage, +1, +2, or +3",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "wand-of-web": {
+    "name": "Baguette de toile d'araignée",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=baguette-de-toile-d-araignee",
+    "english": "Wand of Web",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "wand-of-wonder": {
+    "name": "Baguette des merveilles",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=baguette-des-merveilles",
+    "english": "Wand of Wonder",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "weapon": {
+    "name": "Arme +1, +2 ou +3",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=arme-1-2-ou-3",
+    "english": "Weapon, +1, +2, or +3",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "well-of-many-worlds": {
+    "name": "Puits des mondes",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=puits-des-mondes",
+    "english": "Well of Many Worlds",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "wind-fan": {
+    "name": "Éventail enchanté",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=eventail-enchante",
+    "english": "Wind Fan",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "winged-boots": {
+    "name": "Bottes ailées",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=bottes-ailees",
+    "english": "Winged Boots",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "wings-of-flying": {
+    "name": "Cape de vol",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=cape-de-vol",
+    "english": "Wings of Flying",
+    "source": "Dungeon Master´s Guide (SRD)"
+  },
+  "orb-of-dragonkind": {
+    "name": "Orbe des dragons",
+    "url": "https://www.aidedd.org/dnd/om.php?vf=orbe-des-dragons",
+    "english": "Orb of Dragonkind",
+    "source": "Dungeon Master´s Guide (SRD)"
+  }
+}

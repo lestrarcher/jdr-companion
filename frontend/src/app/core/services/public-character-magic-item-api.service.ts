@@ -42,7 +42,12 @@ export interface MagicItemResponse {
   id: number;
   name: string;
   description: string | null;
-  rarity: MagicItemRarity;
+  rarity: MagicItemRarity | null;
+  category: string;
+  equippable: boolean;
+  priceCopper?: number | null;
+  weightGrams?: number | null;
+  isSpellScroll?: boolean;
   requiresAttunement: boolean;
   maximumCharges: number | null;
   rechargeType: MagicItemRechargeType;
@@ -50,7 +55,16 @@ export interface MagicItemResponse {
   abilityEffects: MagicItemAbilityEffectResponse[];
 }
 
+export interface SpellbookInscriptionResponse {
+  id: number;
+  spellId: number;
+  name: string;
+  level: number;
+  kind?: 'cantrip' | 'ritual';
+}
+
 export interface CharacterMagicItemResponse {
+  spellbookSpells?: SpellbookInscriptionResponse[] | null;
   id: number;
   quantity: number;
   currentCharges: number;
@@ -58,6 +72,8 @@ export interface CharacterMagicItemResponse {
   equipped: boolean;
   effectActive: boolean;
   notes: string | null;
+  inscribedSpellId?: number | null;
+  inscribedSpellName?: string | null;
   magicItem: MagicItemResponse;
 }
 
@@ -79,13 +95,15 @@ export interface CharacterMagicItemInventoryResponse {
 
 export interface CharacterMagicItemUpdateResponse
   extends CharacterMagicItemInventoryResponse {
-  ownedItem: CharacterMagicItemResponse;
+  ownedItem: CharacterMagicItemResponse | null;
 }
 
 export interface CharacterMagicItemUpdatePayload {
   equipped?: boolean;
   attuned?: boolean;
   chargeChange?: number;
+  consume?: boolean;
+  discardQuantity?: number;
 }
 
 @Injectable({
@@ -103,6 +121,47 @@ export class PublicCharacterMagicItemApiService {
     );
   }
 
+  catalogue(accessToken: string, query: string, page = 1): Observable<{items: MagicItemResponse[]; total: number; page: number; pageSize: number}> {
+    return this.http.get<{items: MagicItemResponse[]; total: number; page: number; pageSize: number}>(
+      `${this.apiUrl}/public/characters/${accessToken}/item-catalogue`,
+      { params: { q: query, page } },
+    );
+  }
+
+  acquire(accessToken: string, magicItemId: number, quantity: number, inscribedSpellId?: number): Observable<CharacterMagicItemInventoryResponse> {
+    return this.http.post<CharacterMagicItemInventoryResponse>(
+      `${this.apiUrl}/public/characters/${accessToken}/magic-items`,
+      { magicItemId, quantity, ...(inscribedSpellId != null ? { inscribedSpellId } : {}) },
+    );
+  }
+
+  searchScrollSpells(accessToken: string, query: string): Observable<{spells: {id: number; name: string; level: number}[]}> {
+    return this.http.get<{spells: {id: number; name: string; level: number}[]}>(
+      `${this.apiUrl}/public/characters/${accessToken}/scroll-spells`,
+      { params: { q: query } },
+    );
+  }
+
+  pactRitualCopyQuote(accessToken: string, params: {sourceOwnedItemId: number; destinationOwnedItemId: number; spellId: number}) {
+    return this.http.get<{spellLevel: number; baseCostCp: number; baseMinutes: number; sourceType: string; arcanaDC: number | null}>(
+      `${this.apiUrl}/public/characters/${accessToken}/pact-ritual-copy/quote`, {params});
+  }
+
+  pactRitualCopy(accessToken: string, payload: {sourceOwnedItemId: number; destinationOwnedItemId: number; spellId: number; confirmed: true; arcanaTotal?: number}) {
+    return this.http.post<{success: boolean; scrollConsumed: boolean; walletDebited: boolean}>(
+      `${this.apiUrl}/public/characters/${accessToken}/pact-ritual-copy`, payload);
+  }
+
+  spellCopyQuote(accessToken: string, params: {policyId: number; sourceOwnedItemId: number; destinationOwnedItemId: number; spellId: number}) {
+    return this.http.get<{spellLevel: number; baseCostCp: number; baseMinutes: number; sourceType: string; arcanaDC: number | null}>(
+      `${this.apiUrl}/public/characters/${accessToken}/physical-spell-copy/quote`, {params});
+  }
+
+  spellCopy(accessToken: string, payload: {policyId: number; sourceOwnedItemId: number; destinationOwnedItemId: number; spellId: number; confirmed: true; arcanaTotal?: number}) {
+    return this.http.post<{success: boolean; scrollConsumed: boolean; walletDebited: boolean}>(
+      `${this.apiUrl}/public/characters/${accessToken}/physical-spell-copy`, payload);
+  }
+
   update(
     accessToken: string,
     ownedItemId: number,
@@ -112,6 +171,14 @@ export class PublicCharacterMagicItemApiService {
       `${this.apiUrl}/public/characters/${accessToken}/magic-items/${ownedItemId}`,
       payload,
     );
+  }
+
+  consume(accessToken: string, ownedItemId: number): Observable<CharacterMagicItemUpdateResponse> {
+    return this.update(accessToken, ownedItemId, { consume: true });
+  }
+
+  discard(accessToken: string, ownedItemId: number, quantity: number): Observable<CharacterMagicItemUpdateResponse> {
+    return this.update(accessToken, ownedItemId, { discardQuantity: quantity });
   }
 
   equip(

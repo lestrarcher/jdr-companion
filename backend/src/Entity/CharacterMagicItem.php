@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use DateTimeImmutable;
+use App\Entity\SpellDefinition;
 use App\Repository\CharacterMagicItemRepository;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -17,15 +18,22 @@ class CharacterMagicItem
     #[ORM\Column]
     private ?int $id = null;
 
+    #[ORM\ManyToOne(targetEntity: Campaign::class)]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
+    private Campaign $campaign;
+
+    #[ORM\Column(length: 200, nullable: true)]
+    private ?string $displayName = null;
+
     #[ORM\ManyToOne(
         inversedBy: 'magicItems',
         targetEntity: Character::class,
     )]
     #[ORM\JoinColumn(
-        nullable: false,
-        onDelete: 'CASCADE',
+        nullable: true,
+        onDelete: 'SET NULL',
     )]
-    private Character $character;
+    private ?Character $character;
 
     #[ORM\ManyToOne(
         targetEntity: MagicItem::class,
@@ -35,6 +43,19 @@ class CharacterMagicItem
         onDelete: 'CASCADE',
     )]
     private MagicItem $magicItem;
+
+    #[ORM\ManyToOne(targetEntity: SpellDefinition::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'RESTRICT')]
+    private ?SpellDefinition $inscribedSpell = null;
+
+    public function getInscribedSpell(): ?SpellDefinition { return $this->inscribedSpell; }
+
+    public function setInscribedSpell(SpellDefinition $spell): static
+    {
+        $this->inscribedSpell = $spell;
+        $this->touch();
+        return $this;
+    }
 
     #[ORM\Column(options: ['default' => 1])]
     private int $quantity = 1;
@@ -48,6 +69,16 @@ class CharacterMagicItem
     #[ORM\Column]
     private bool $equipped = false;
 
+    // Reserved for structured equipment; legacy equipped items occupy no inferred slot.
+    #[ORM\Column(length: 16, nullable: true)]
+    private ?string $equippedSlot = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $handsUsed = null;
+
+    #[ORM\Column(options: ['default' => false])]
+    private bool $legacyStack = false;
+
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $notes = null;
 
@@ -58,23 +89,24 @@ class CharacterMagicItem
     private DateTimeImmutable $updatedAt;
 
     public function __construct(
-        Character $character,
+        Character|Campaign $character,
         MagicItem $magicItem,
     ) {
+        $campaign = $character instanceof Character ? $character->getCampaign() : $character;
+        if ($character instanceof Campaign && ($magicItem->getCategory() !== 'spellbook' || $magicItem->getQuantityMode() !== 'individual')) {
+            throw new \InvalidArgumentException('Seul un grimoire individuel peut être créé dans la réserve.');
+        }
         if (
-            $character
-                ->getCampaign()
-                ->getId()
-            !== $magicItem
-                ->getCampaign()
-                ->getId()
+            $magicItem->getCampaign() !== null
+            && $campaign->getId() !== $magicItem->getCampaign()->getId()
         ) {
             throw new \InvalidArgumentException(
-                'Le personnage et l’objet doivent appartenir à la même campagne.',
+                'Cet objet appartient à une autre campagne.',
             );
         }
 
-        $this->character = $character;
+        $this->character = $character instanceof Character ? $character : null;
+        $this->campaign = $campaign;
         $this->magicItem = $magicItem;
         $this->currentCharges =
             $magicItem->getMaximumCharges();
@@ -90,7 +122,39 @@ class CharacterMagicItem
         return $this->id;
     }
 
-    public function getCharacter(): Character
+    public function getCampaign(): Campaign { return $this->campaign; }
+
+    public function getDisplayName(): string { return $this->displayName ?? $this->magicItem->getName(); }
+
+    public function setDisplayName(?string $name): static
+    {
+        $name = $name === null ? null : trim($name);
+        if ($name !== null && mb_strlen($name) > 200) {
+            throw new \InvalidArgumentException('Nom trop long.');
+        }
+        $this->displayName = $name ?: null;
+        $this->touch();
+        return $this;
+    }
+
+    public function transferTo(?Character $character): static
+    {
+        if ($this->magicItem->getCategory() !== 'spellbook') {
+            throw new \InvalidArgumentException('Seuls les grimoires peuvent être transférés vers la réserve.');
+        }
+        if ($character !== null && $character->getCampaign()->getId() !== $this->campaign->getId()) {
+            throw new \InvalidArgumentException('Le destinataire appartient à une autre campagne.');
+        }
+        $this->character = $character;
+        $this->equipped = false;
+        $this->attuned = false;
+        $this->equippedSlot = null;
+        $this->handsUsed = null;
+        $this->touch();
+        return $this;
+    }
+
+    public function getCharacter(): ?Character
     {
         return $this->character;
     }
@@ -105,22 +169,32 @@ class CharacterMagicItem
         return $this->quantity;
     }
 
-    public function setQuantity(
-        int $quantity,
-    ): static {
+    public function getEquippedSlot(): ?string { return $this->equippedSlot; }
+    public function getHandsUsed(): ?int { return $this->handsUsed; }
+    public function isLegacyStack(): bool { return $this->legacyStack; }
+
+    public function setQuantity(int $quantity): static
+    {
         if ($quantity < 1) {
             throw new \InvalidArgumentException(
                 'La quantité doit être supérieure à zéro.',
             );
         }
 
-        if (
-            $quantity > 1
-            && $this->magicItem->hasCharges()
-        ) {
-            throw new \InvalidArgumentException(
-                'Les objets à charges doivent être suivis individuellement.',
-            );
+        if ($quantity > 1) {
+            $mode = $this->magicItem->getQuantityMode();
+
+            if ($mode === 'individual') {
+                throw new \InvalidArgumentException(
+                    'Cet objet doit être suivi individuellement.',
+                );
+            }
+
+            if ($mode === 'legacy' && $this->magicItem->hasCharges()) {
+                throw new \InvalidArgumentException(
+                    'Les objets à charges doivent être suivis individuellement.',
+                );
+            }
         }
 
         $this->quantity = $quantity;
@@ -224,6 +298,9 @@ class CharacterMagicItem
     public function setEquipped(
         bool $equipped,
     ): static {
+        if ($equipped && !$this->magicItem->isEquippable()) {
+            throw new \InvalidArgumentException('Cet objet ne peut pas être équipé.');
+        }
         $this->equipped = $equipped;
         $this->touch();
 

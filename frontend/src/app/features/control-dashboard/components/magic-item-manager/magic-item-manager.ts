@@ -14,9 +14,13 @@ import {
   Validators,
 } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
+import { CharacterApiService, CharacterApiResponse } from '@core/services/character-api.service';
 
 import {
   CreateMagicItemPayload,
+  MagicItemSpellGrantPayload,
+  MagicItemSpellGrantResponse,
+  SpellOption,
   MagicItemApiService,
 } from '@core/services/magic-item-api.service';
 
@@ -47,11 +51,86 @@ export class MagicItemManager implements OnInit {
   private readonly formBuilder = inject(FormBuilder);
   private readonly magicItemApi =
     inject(MagicItemApiService);
+  private readonly characterApi = inject(CharacterApiService);
+
+  protected readonly bookDefinitionId = signal<number | null>(null);
+  protected readonly pactTomeMode = signal(false);
+  protected readonly pactCantripIds = signal<number[]>([]);
+  protected readonly pactRitualIds = signal<number[]>([]);
+  protected readonly bookSpellIds = signal<number[]>([]);
+  protected readonly bookSpellQuery = signal('');
+  protected readonly bookSpellOptions = signal<SpellOption[]>([]);
+  protected readonly bookCreating = signal(false);
+  protected bookSearch(query: string): void {
+    this.bookSpellQuery.set(query);
+    this.magicItemApi.searchSpells(query).subscribe({
+      next: spells => this.bookSpellOptions.set(spells.filter(spell => !this.pactTomeMode() || spell.level === 0 || (spell.level === 1 && spell.ritual === true))),
+      error: () => this.reserveError.set('Recherche des sorts impossible.'),
+    });
+  }
+  protected toggleBookSpell(id: number): void {
+    this.bookSpellIds.update(ids => ids.includes(id) ? ids.filter(value => value !== id) : ids.length < 100 ? [...ids, id] : ids);
+  }
+  protected togglePactSpell(spell: SpellOption): void {
+    if (spell.level === 0) {
+      this.pactCantripIds.update(ids => ids.includes(spell.id) ? ids.filter(id => id !== spell.id) : ids.length < 3 ? [...ids, spell.id] : ids);
+    } else if (spell.level === 1) {
+      this.pactRitualIds.update(ids => ids.includes(spell.id) ? ids.filter(id => id !== spell.id) : ids.length < 2 ? [...ids, spell.id] : ids);
+    }
+  }
+  protected createReserveBook(): void {
+    const definitionId = this.bookDefinitionId();
+    if (!definitionId || this.bookCreating()) return;
+    this.bookCreating.set(true);
+    this.reserveError.set(null);
+    const request = this.pactTomeMode()
+      ? this.magicItemApi.createReservedPactTome(this.campaignId(), definitionId, this.pactCantripIds(), this.pactRitualIds())
+      : this.magicItemApi.createReservedSpellbook(this.campaignId(), definitionId, this.bookSpellIds());
+    request.subscribe({
+      next: () => { this.bookCreating.set(false); this.bookSpellIds.set([]); this.pactCantripIds.set([]); this.pactRitualIds.set([]); this.reloadReserve(); },
+      error: (error: HttpErrorResponse) => { this.bookCreating.set(false); this.reserveError.set(error.error?.message ?? 'Création du grimoire impossible.'); },
+    });
+  }
+  protected readonly reservedBooks = signal<{id: number; name: string; spellCount: number; spells?: {spellId: number; name: string; level: number}[]}[]>([]);
+  protected readonly reserveCharacters = signal<CharacterApiResponse[]>([]);
+  protected readonly reserveTargets = signal<Record<number, number>>({});
+  protected setReserveTarget(bookId: number, value: number): void {
+    this.reserveTargets.update(targets => ({...targets, [bookId]: value}));
+  }
+  protected readonly reserveBusy = signal(false);
+  protected readonly reserveError = signal<string | null>(null);
+
+  protected reloadReserve(): void {
+    this.magicItemApi.listSpellbookReserve(this.campaignId()).subscribe({
+      next: ({books}) => this.reservedBooks.set(books),
+      error: () => this.reserveError.set('Impossible de charger la réserve de grimoires.'),
+    });
+    this.characterApi.list(this.campaignId()).subscribe({
+      next: characters => this.reserveCharacters.set(characters),
+      error: () => this.reserveError.set('Impossible de charger les personnages.'),
+    });
+  }
+
+  protected restoreBook(bookId: number): void {
+    const target = this.reserveTargets()[bookId];
+    if (!target || this.reserveBusy()) return;
+    this.reserveBusy.set(true);
+    this.reserveError.set(null);
+    this.magicItemApi.assignReservedSpellbook(this.campaignId(), bookId, target).subscribe({
+      next: () => { this.reserveBusy.set(false); this.reloadReserve(); },
+      error: () => { this.reserveBusy.set(false); this.reserveError.set('Restitution impossible. Actualise la réserve et réessaie.'); },
+    });
+  }
 
   protected readonly catalog =
     signal<MagicItemResponse[]>([]);
 
   protected readonly loading = signal(true);
+  protected readonly spellOptions = signal<SpellOption[]>([]);
+  protected readonly spellQuery = signal('');
+  protected readonly editingItemId = signal<number | null>(null);
+  protected readonly spellGrants = signal<(MagicItemSpellGrantPayload & {spellName: string})[]>([]);
+
   protected readonly submitting = signal(false);
   protected readonly errorMessage =
     signal<string | null>(null);
@@ -164,6 +243,7 @@ export class MagicItemManager implements OnInit {
   ];
 
   protected readonly form = this.formBuilder.group({
+    category: ['other' as 'other' | 'spellbook'],
     name: [
       '',
       [
@@ -205,6 +285,8 @@ export class MagicItemManager implements OnInit {
 
   ngOnInit(): void {
     this.loadCatalog();
+    this.reloadReserve();
+    this.bookSearch('');
   }
 
   protected addAbilityEffect(): void {
@@ -254,6 +336,89 @@ export class MagicItemManager implements OnInit {
     this.abilityEffects.removeAt(index);
   }
 
+  protected searchSpells(query: string): void {
+    this.spellQuery.set(query);
+    this.magicItemApi.searchSpells(query).subscribe({
+      next: spells => this.spellOptions.set(spells),
+      error: () => this.errorMessage.set('Impossible de rechercher les sorts.'),
+    });
+  }
+
+  protected addSpell(spell: SpellOption): void {
+    if (this.spellGrants().some(grant => grant.spellId === spell.id)) return;
+    this.spellGrants.update(grants => [...grants, {
+      spellId: spell.id, spellName: spell.name, activation: 'possession',
+      costMode: 'limited', cost: 1, usesPerReset: 1, resetTrigger: 'dawn',
+    }]);
+  }
+
+  protected removeSpell(index: number): void {
+    this.spellGrants.update(grants => grants.filter((_, i) => i !== index));
+  }
+
+protected updateSpell(
+  index: number,
+  field: keyof MagicItemSpellGrantPayload,
+  value: string | number | null
+): void {
+  this.spellGrants.update(grants => grants.map((grant, i) => {
+    if (i !== index) return grant;
+
+    const next = { ...grant, [field]: value };
+
+    if (field === 'costMode') {
+      if (value === 'charges') {
+        next.usesPerReset = null;
+        next.resetTrigger = null;
+      } else {
+        next.maxCastingLevel = null;
+        next.usesPerReset = 1;
+        next.resetTrigger = 'dawn';
+      }
+    }
+
+    return next;
+  }));
+}
+
+  protected editGrants(item: MagicItemResponse): void {
+    this.editingItemId.set(item.id);
+    this.spellGrants.set(((item as MagicItemResponse & {spellGrants?: MagicItemSpellGrantResponse[]}).spellGrants ?? [])
+      .map(({spellId, spellName, activation, costMode, cost, usesPerReset, resetTrigger, castingLevel, maxCastingLevel}) =>
+        ({spellId, spellName, activation, costMode, cost, usesPerReset, resetTrigger, castingLevel, maxCastingLevel})));
+    this.searchSpells('');
+  }
+
+  protected cancelEdit(): void {
+    this.editingItemId.set(null);
+    this.spellGrants.set([]);
+  }
+
+  protected saveGrants(): void {
+    const itemId = this.editingItemId();
+    if (itemId === null) return;
+    this.submitting.set(true);
+    this.magicItemApi.replaceSpellGrants(this.campaignId(), itemId, this.grantPayload()).subscribe({
+      next: item => {
+        const updated = this.catalog().map(current => current.id === item.id ? item : current);
+        this.catalog.set(updated);
+        this.catalogChanged.emit(updated);
+        this.cancelEdit();
+        this.successMessage.set('Sorts octroyés mis à jour.');
+        this.submitting.set(false);
+      },
+      error: (error: HttpErrorResponse) => {
+        this.errorMessage.set(error.error?.message ?? 'Impossible de modifier les sorts.');
+        this.submitting.set(false);
+      },
+    });
+  }
+
+  private grantPayload(): MagicItemSpellGrantPayload[] {
+    return this.spellGrants().map(({spellId, activation, costMode, cost, usesPerReset, resetTrigger, castingLevel, maxCastingLevel}) =>
+      ({spellId, activation, costMode, cost, usesPerReset, resetTrigger, castingLevel, maxCastingLevel}));
+  }
+
   protected submit(): void {
     this.errorMessage.set(null);
     this.successMessage.set(null);
@@ -280,6 +445,7 @@ export class MagicItemManager implements OnInit {
 
     const payload: CreateMagicItemPayload = {
       name: rawValue.name!.trim(),
+      category: rawValue.category ?? 'other',
 
       description:
         rawValue.description?.trim() || null,
@@ -302,6 +468,8 @@ export class MagicItemManager implements OnInit {
           ? null
           : rawValue.rechargeFormula?.trim()
             || null,
+
+      spellGrants: this.grantPayload(),
 
       abilityEffects:
         rawAbilityEffects.map(
@@ -361,8 +529,11 @@ export class MagicItemManager implements OnInit {
   }
 
   protected rarityLabel(
-    rarity: MagicItemRarity,
+    rarity: MagicItemRarity | null,
   ): string {
+    if (rarity === null) {
+      return 'Sans rareté';
+    }
     return (
       this.rarities.find(
         (candidate) =>
@@ -418,6 +589,7 @@ export class MagicItemManager implements OnInit {
 
   private resetForm(): void {
     this.form.reset({
+      category: 'other',
       name: '',
       description: '',
       rarity: 'uncommon',
@@ -428,5 +600,6 @@ export class MagicItemManager implements OnInit {
     });
 
     this.abilityEffects.clear();
+    this.spellGrants.set([]);
   }
 }

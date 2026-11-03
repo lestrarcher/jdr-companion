@@ -20,6 +20,8 @@ final readonly class PlayerSpellDirectory
         private CharacterSpellAccessResolver $access,
         private CharacterSpellAcquisitions $acquisitions,
         private CharacterSpellPreparation $preparation,
+        private SpellbookLibrary $spellbooks,
+        private PactTomeLibrary $pactTomes,
         private SpellCatalogue $catalogue,
         private CharacterSpellAvailabilityContext $availabilityContext,
         private CharacterSpellCastEligibility $eligibility = new CharacterSpellCastEligibility(),
@@ -43,6 +45,7 @@ final readonly class PlayerSpellDirectory
              ORDER BY s.level,s.name,a.id',
             [$id],
         );
+        $accessibleSpellIds = $this->spellbooks->accessibleSpellIds($character);
         $warlockLevel = count(array_filter($character->getClassLevels()->toArray(),
             static fn($level): bool => $level->getCharacterClass()->getSlug() === 'warlock'));
         foreach ($rows as $row) {
@@ -62,7 +65,7 @@ final readonly class PlayerSpellDirectory
                 'source' => $definition->getSource()->getName(), 'sourceType' => 'class',
                 'castingAbility' => $ability->value,
                 ...$this->abilities->spellStatistics($character, $ability),
-                'known' => filter_var($row['known'], FILTER_VALIDATE_BOOL), 'inSpellbook' => filter_var($row['in_spellbook'], FILTER_VALIDATE_BOOL),
+                'known' => filter_var($row['known'], FILTER_VALIDATE_BOOL), 'inSpellbook' => filter_var($row['in_spellbook'], FILTER_VALIDATE_BOOL) && in_array((int)$row['spell_id'], $accessibleSpellIds, true),
                 'prepared' => filter_var($row['in_spellbook'], FILTER_VALIDATE_BOOL)
                     ? in_array((int)$row['spell_id'], $state['preparedSpells'][(string)$row['policy_definition_id']] ?? [], true) : null,
             ];
@@ -115,6 +118,89 @@ final readonly class PlayerSpellDirectory
                 'known' => true, 'inSpellbook' => false, 'prepared' => null,
             ];
         }
+        // Magic-item permissions are per owned instance: identical items may have
+        // different charges, equipment states and attunement states.
+        // This is read-only. Casting through items is intentionally unsupported
+        // until the executor can atomically spend item charges / limited uses.
+        foreach ($character->getMagicItems() as $ownedItem) {
+            $item = $ownedItem->getMagicItem();
+            // A spell scroll stores its spell on the owned instance, not on a grant.
+            $inscribed = $ownedItem->getInscribedSpell();
+            if ($item->getImportKey() === 'srd-5.1:magic-item:spell-scroll' && $inscribed !== null) {
+                $classSlugs = array_unique(array_map(
+                    static fn($level): string => $level->getCharacterClass()->getSlug(),
+                    $character->getClassLevels()->toArray(),
+                ));
+                $allowed = $classSlugs !== [] && (bool) $this->db->fetchOne(
+                    'SELECT 1 FROM spell_class_list_entry e JOIN character_class c ON c.id=e.character_class_id WHERE e.spell_id=? AND c.slug IN (?) LIMIT 1',
+                    [$inscribed->getId(), $classSlugs],
+                    [\Doctrine\DBAL\ParameterType::INTEGER, \Doctrine\DBAL\ArrayParameterType::STRING],
+                );
+                $result[] = [
+                    'key' => 'scroll:'.$ownedItem->getId(), 'policyId' => null,
+                    'alwaysPrepared' => false, 'spellId' => $inscribed->getId(),
+                    'name' => $inscribed->getName(), 'level' => $inscribed->getLevel(),
+                    'school' => $inscribed->getSchool()->value,
+                    'source' => 'Parchemin de '.$inscribed->getName(), 'sourceType' => 'item',
+                    'castingAbility' => null, 'spellSaveDc' => null, 'spellAttackBonus' => null,
+                    'known' => false, 'inSpellbook' => false, 'prepared' => null,
+                    'scroll' => ['ownedItemId' => $ownedItem->getId(), 'eligible' => $allowed],
+                ];
+            }
+            // Book of Shadows: physical source, never a known warlock spell or slot grant.
+            // Invocation is temporarily treated as active; actual invocation tracking comes later.
+            if ($item->getCategory() === 'spellbook' && $warlockLevel >= 3) {
+                foreach ($this->pactTomes->entries($ownedItem) as $pactSpell) {
+                    $spell = $this->em->find(\App\Entity\SpellDefinition::class, $pactSpell['spellId']);
+                    if ($spell === null) continue;
+                    $kind = $pactSpell['kind'];
+                    $result[] = [
+                        'key'=>'pact-tome:'.$ownedItem->getId().':'.$spell->getId(),
+                        'policyId'=>null, 'alwaysPrepared'=>false,
+                        'spellId'=>$spell->getId(), 'name'=>$spell->getName(),
+                        'level'=>$spell->getLevel(), 'school'=>$spell->getSchool()->value,
+                        'source'=>'Grimoire des Ombres', 'sourceType'=>'item',
+                        'castingAbility'=>'charisma',
+                        ...$this->abilities->spellStatistics($character, \App\Enum\Ability::Charisma),
+                        'known'=>$kind === 'cantrip', 'inSpellbook'=>false, 'prepared'=>null,
+                        'pactTomeKind'=>$kind,
+                    ];
+                }
+            }
+            foreach ($item->getSpellGrants() as $grant) {
+                $spell = $grant->getSpell();
+                $active = match ($grant->getActivation()) {
+                    'possession' => true,
+                    'equipped' => $ownedItem->isEquipped(),
+                    'attuned' => $ownedItem->isAttuned(),
+                    default => false,
+                };
+                $result[] = [
+                    'key' => 'item:'.$ownedItem->getId().':'.$grant->getId(),
+                    'policyId' => null, 'alwaysPrepared' => false,
+                    'spellId' => $spell->getId(), 'name' => $spell->getName(),
+                    'level' => $spell->getLevel(), 'school' => $spell->getSchool()->value,
+                    'source' => $item->getName(), 'sourceType' => 'item',
+                    'castingAbility' => null, 'spellSaveDc' => null, 'spellAttackBonus' => null,
+                    'known' => false, 'inSpellbook' => false, 'prepared' => null,
+                    'itemGrant' => [
+                        'ownedItemId' => $ownedItem->getId(),
+                        'grantId' => $grant->getId(),
+                        'activation' => $grant->getActivation(),
+                        'active' => $active,
+                        'costMode' => $grant->getCostMode(),
+                        'cost' => $grant->getCost(),
+                        'castingLevel' => $grant->getCastingLevel(),
+                        'maxCastingLevel' => $grant->getMaxCastingLevel(),
+                        'currentCharges' => $grant->getCostMode() === 'charges' ? $ownedItem->getCurrentCharges() : null,
+                        'usesPerReset' => $grant->getUsesPerReset(),
+                        'remainingUses' => $grant->getCostMode() === 'limited' ? ($this->em->getRepository(\App\Entity\CharacterMagicItemSpellUsage::class)->findOneBy(['ownedItem'=>$ownedItem, 'grant'=>$grant])?->getRemaining() ?? $grant->getUsesPerReset()) : null,
+                        'resetTrigger' => $grant->getResetTrigger(),
+                        'castingSupported' => true,
+                    ],
+                ];
+            }
+        }
         // Prepared-list casters do not acquire every spell on their class list.
         foreach ($state['preparedSpells'] ?? [] as $policyId => $ids) {
             $definition = $this->em->find(SpellcastingPolicyDefinition::class, (int)$policyId);
@@ -146,6 +232,68 @@ final readonly class PlayerSpellDirectory
                 ? $this->em->find(SpellcastingPolicyDefinition::class, $entry['policyId']) : null;
             if ($entry['sourceType'] === 'subclass' && $entry['castingAbility'] !== null) {
                 $policy = $castingPolicies[$entry['castingClass']['id'] ?? 0] ?? null;
+            }
+            if (isset($entry['scroll'])) {
+                $available = $entry['scroll']['eligible'];
+                $reason = $available ? null : 'scroll_class_not_allowed';
+                $entry['castingEligibility'] = [
+                    'canCastNormally' => $available, 'canCastAsRitual' => false,
+                    'reason' => $reason, 'ritualReason' => 'item_ritual_not_supported',
+                    'requiresGrantReview' => false,
+                ];
+                $entry['castingAvailability'] = [
+                    'sourceKey' => $entry['key'], 'policyId' => null,
+                    'status' => $available ? 'available' : 'unavailable', 'reason' => $reason,
+                    'methods' => [[
+                        'kind' => 'scroll', 'castingLevel' => $entry['level'], 'poolSlug' => null,
+                        'cost' => 1, 'status' => $available ? 'available' : 'unavailable', 'reason' => $reason,
+                    ]],
+                ];
+                continue;
+            }
+            if (isset($entry['pactTomeKind'])) {
+                $kind = $entry['pactTomeKind'];
+                $level = $entry['level'];
+                $entry['castingEligibility'] = [
+                    'canCastNormally'=>$kind === 'cantrip', 'canCastAsRitual'=>$kind === 'ritual',
+                    'reason'=>$kind === 'ritual' ? 'ritual_only' : null,
+                    'ritualReason'=>$kind === 'cantrip' ? 'not_a_ritual' : null,
+                    'requiresGrantReview'=>false,
+                ];
+                $entry['castingAvailability'] = [
+                    'sourceKey'=>$entry['key'], 'policyId'=>null, 'status'=>'available', 'reason'=>null,
+                    'methods'=>[[
+                        'kind'=>$kind, 'castingLevel'=>$level, 'poolSlug'=>null,
+                        'cost'=>0, 'status'=>'available', 'reason'=>null,
+                    ]],
+                ];
+                continue;
+            }
+            if ($entry['sourceType'] === 'item') {
+                $grant = $entry['itemGrant'];
+                $kind = $grant['costMode'] === 'charges' ? 'item-charges' : 'item-limited';
+                $remaining = $grant['costMode'] === 'charges' ? $grant['currentCharges'] : $grant['remainingUses'];
+                $available = $grant['active'] && $remaining !== null && $remaining >= $grant['cost'];
+                $reason = !$grant['active'] ? 'item_inactive' : (!$available ? 'insufficient_item_uses' : null);
+                $entry['castingEligibility'] = [
+                    'canCastNormally' => $available, 'canCastAsRitual' => false,
+                    'reason' => $reason, 'ritualReason' => 'item_ritual_not_supported',
+                    'requiresGrantReview' => false,
+                ];
+                $entry['castingAvailability'] = [
+                    'sourceKey' => $entry['key'], 'policyId' => null,
+                    'status' => $available ? 'available' : 'unavailable', 'reason' => $reason,
+                    'methods' => array_map(static function (int $level) use ($kind, $grant, $remaining): array {
+                        $cost = $grant['cost'] + $level - $grant['castingLevel'];
+                        $availableAtLevel = $grant['active'] && $remaining !== null && $remaining >= $cost;
+                        return [
+                            'kind' => $kind, 'castingLevel' => $level, 'poolSlug' => null,
+                            'cost' => $cost, 'status' => $availableAtLevel ? 'available' : 'unavailable',
+                            'reason' => !$grant['active'] ? 'item_inactive' : ($availableAtLevel ? null : 'insufficient_item_uses'),
+                        ];
+                    }, range($grant['castingLevel'], $grant['maxCastingLevel'] ?? $grant['castingLevel'])),
+                ];
+                continue;
             }
             $entry['castingEligibility'] = $this->eligibility->evaluate(
                 $entry, $policy?->policy()->learningStyle, $policy?->getCharacterClass()->getSlug(),

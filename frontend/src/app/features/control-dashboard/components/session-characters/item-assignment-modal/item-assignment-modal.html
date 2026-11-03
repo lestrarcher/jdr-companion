@@ -49,37 +49,22 @@
       </p>
     }
 
+    <label class="modal-field">
+      <span>Rechercher un objet</span>
+      <input type="search" [value]="search()" (input)="updateSearch($any($event.target).value)" placeholder="Nom de l’objet…" />
+    </label>
     @if (loading()) {
-      <p class="modal-empty">
-        Chargement du catalogue…
-      </p>
-    } @else if (catalog().length === 0) {
-      <p class="modal-empty">
-        Aucun objet n’existe dans le catalogue de cette campagne.
-      </p>
+      <p class="modal-empty">Recherche dans le catalogue…</p>
     } @else {
-      <label class="modal-field">
-        <span>Objet magique</span>
-
-        <select
-          [value]="selectedMagicItemId() ?? ''"
-          (change)="selectMagicItem($event)"
-        >
-          <option value="">
-            Sélectionner un objet…
-          </option>
-
-          @for (
-            magicItem of catalog();
-            track magicItem.id
-          ) {
-            <option [value]="magicItem.id">
-              {{ magicItem.name }}
-            </option>
-          }
-        </select>
-      </label>
-
+      <div class="catalog-results" role="listbox" aria-label="Objets disponibles">
+        @for (item of filteredCatalog(); track item.id) {
+          <button type="button" class="catalog-option" [class.catalog-option--selected]="selectedMagicItemId() === item.id" (click)="selectItem(item.id)" [disabled]="assigning()">
+            <strong>{{ item.name }}</strong><small>{{ item.rarity ?? 'Sans rareté' }}</small>
+          </button>
+        } @empty {
+          <p class="modal-empty">Aucun résultat. Essayez un autre nom.</p>
+        }
+      </div>
       @if (selectedMagicItem(); as magicItem) {
         <article class="item-preview">
           <header>
@@ -127,6 +112,51 @@
         </article>
       }
 
+      @if (selectedMagicItem()?.isSpellScroll) {
+        <label class="modal-field">
+          <span>Sort inscrit (choix du MJ)</span>
+          <input type="search" [value]="scrollQuery()" (input)="searchScrollSpells($any($event.target).value)" placeholder="Rechercher un sort…" />
+          <select [value]="selectedScrollSpellId() ?? ''" (change)="selectedScrollSpellId.set(+$any($event.target).value || null)">
+            <option value="">Choisir un sort</option>
+            @for (spell of scrollSpells(); track spell.id) {
+              <option [value]="spell.id">{{ spell.name }} (niveau {{ spell.level }})</option>
+            }
+          </select>
+        </label>
+      }
+      @if (selectedMagicItem()?.category === 'spellbook') {
+        <section class="modal-field" aria-label="Contenu du grimoire">
+          <span>Sorts inscrits ({{ selectedBookSpells().length }}/100)</span>
+          <input type="search" [value]="bookQuery()" (input)="searchBookSpells($any($event.target).value)" placeholder="Rechercher un sort…" [disabled]="assigning()" />
+          <div class="catalog-results" role="group" aria-label="Sorts disponibles">
+            @for (spell of bookSpells(); track spell.id) {
+              <label class="catalog-option">
+                <input type="checkbox" [checked]="bookSpellSelected(spell.id)" [disabled]="assigning() || (selectedBookSpells().length >= 100 && !bookSpellSelected(spell.id))" (change)="toggleBookSpell(spell)" />
+                {{ spell.name }} (niveau {{ spell.level }})
+              </label>
+            } @empty {
+              <p class="modal-empty">Aucun sort trouvé.</p>
+            }
+          </div>
+          @if (selectedBookSpells().length) {
+            <p>Inscrits : @for (spell of selectedBookSpells(); track spell.id) { {{ spell.name }}{{ $last ? '' : ', ' }} }</p>
+          }
+          <label class="modal-field">
+            <span>Notes (facultatif)</span>
+            <textarea [value]="bookNotes()" (input)="bookNotes.set($any($event.target).value)" maxlength="10000" [disabled]="assigning()"></textarea>
+          </label>
+        </section>
+      }
+      @if (selectedMagicItem()?.category !== 'spellbook') {
+      <div class="quantity-picker">
+        <span>Quantité</span>
+        <div>
+          <button type="button" (click)="changeQuantity(quantity() - 1)" [disabled]="quantity() <= 1 || assigning()">−</button>
+          <input type="number" min="1" max="9999" [value]="quantity()" (change)="changeQuantity(+$any($event.target).value)" aria-label="Quantité à donner" />
+          <button type="button" (click)="changeQuantity(quantity() + 1)" [disabled]="quantity() >= 9999 || assigning()">+</button>
+        </div>
+      </div>
+      }
       <footer class="modal-actions">
         <button
           type="button"
@@ -143,13 +173,14 @@
           [disabled]="
             assigning()
             || selectedMagicItemId() === null
+            || (selectedMagicItem()?.isSpellScroll && selectedScrollSpellId() === null)
           "
-          (click)="assignmentRequested.emit()"
+          (click)="requestAssignment()"
         >
           {{
             assigning()
               ? 'Attribution…'
-              : 'Donner cet objet'
+              : selectedMagicItem()?.category === 'spellbook' ? 'Créer et donner le grimoire' : 'Donner × ' + quantity()
           }}
         </button>
       </footer>

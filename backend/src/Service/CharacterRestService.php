@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\Character;
+use App\Entity\CharacterMagicItemSpellUsage;
+use App\Enum\MagicItemRechargeType;
 use App\Entity\CharacterSessionState;
 use App\Entity\RestRequest;
 use App\Entity\TrackableResourceDefinition;
@@ -27,6 +29,7 @@ final readonly class CharacterRestService
         private CharacterActiveEffectRepository $activeEffectRepository,
         private CharacterActiveEffectService $activeEffectService,
         private EntityManagerInterface $entityManager,
+        private MagicItemRechargeService $itemRechargeService,
     ) {
     }
 
@@ -51,6 +54,7 @@ final readonly class CharacterRestService
             throw new \InvalidArgumentException(sprintf('Type de repos invalide : "%s".', $restType));
         }
 
+        $this->itemRechargeService->apply($character, $restType);
         $sessionState->setState($state);
     }
 

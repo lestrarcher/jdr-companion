@@ -10,8 +10,11 @@ use App\Entity\MagicItem;
 use App\Repository\CharacterRepository;
 use App\Security\Voter\CampaignVoter;
 use App\Service\CharacterAbilityCalculator;
+use App\Service\CharacterInventory;
+use App\Service\MagicItemRechargeService;
 use Doctrine\ORM\EntityManagerInterface;
 use JsonException;
+use Doctrine\DBAL\LockMode;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -21,6 +24,24 @@ use Symfony\Component\Routing\Attribute\Route;
 final class CharacterMagicItemController
     extends AbstractController
 {
+    #[Route('/characters/{characterId}/scroll-spells', name: 'api_character_scroll_spells', requirements: ['characterId' => '\d+'], methods: ['GET'])]
+    public function scrollSpells(int $characterId, Request $request, CharacterRepository $characters, EntityManagerInterface $em): JsonResponse
+    {
+        $this->getOwnedCharacter($characterId, $characters);
+        $query = trim($request->query->getString('q'));
+        if (mb_strlen($query) > 150) {
+            return $this->json(['message' => 'Recherche trop longue.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+        $qb = $em->createQueryBuilder()->select('s')->from(\App\Entity\SpellDefinition::class, 's');
+        if ($query !== '') {
+            $qb->where('LOWER(s.name) LIKE :q')->setParameter('q', '%'.mb_strtolower($query).'%');
+        }
+        $spells = $qb->orderBy('s.name', 'ASC')->setMaxResults(50)->getQuery()->getResult();
+        return $this->json(['spells' => array_map(static fn (\App\Entity\SpellDefinition $spell): array => [
+            'id' => $spell->getId(), 'name' => $spell->getName(), 'level' => $spell->getLevel(),
+        ], $spells)]);
+    }
+
     #[Route(
         '/characters/{characterId}/magic-items',
         name: 'api_character_magic_item_list',
@@ -45,156 +66,97 @@ final class CharacterMagicItemController
         );
     }
 
-    #[Route(
-        '/characters/{characterId}/magic-items',
-        name: 'api_character_magic_item_assign',
-        requirements: [
-            'characterId' => '\d+',
-        ],
-        methods: ['POST'],
-    )]
-    public function assign(
-        int $characterId,
-        Request $request,
-        CharacterRepository $characterRepository,
-        EntityManagerInterface $entityManager,
-        CharacterAbilityCalculator $abilityCalculator,
-    ): JsonResponse {
-        $character = $this->getOwnedCharacter(
-            $characterId,
-            $characterRepository,
-        );
+#[Route(
+    '/characters/{characterId}/magic-items',
+    name: 'api_character_magic_item_assign',
+    requirements: ['characterId' => '\d+'],
+    methods: ['POST'],
+)]
+public function assign(
+    int $characterId,
+    Request $request,
+    CharacterRepository $characterRepository,
+    EntityManagerInterface $entityManager,
+    CharacterAbilityCalculator $abilityCalculator,
+    CharacterInventory $inventory,
+): JsonResponse {
+    $character = $this->getOwnedCharacter($characterId, $characterRepository);
 
-        try {
-            $payload = $request->toArray();
-        } catch (JsonException) {
-            return $this->json(
-                [
-                    'message' =>
-                        'Le corps JSON est invalide.',
-                ],
-                Response::HTTP_BAD_REQUEST,
-            );
-        }
-
-        $magicItemId = filter_var(
-            $payload['magicItemId'] ?? null,
-            FILTER_VALIDATE_INT,
-        );
-
-        if (
-            $magicItemId === false
-            || $magicItemId <= 0
-        ) {
-            return $this->json(
-                [
-                    'message' =>
-                        'L’identifiant de l’objet est invalide.',
-                ],
-                Response::HTTP_UNPROCESSABLE_ENTITY,
-            );
-        }
-
-        $magicItem = $entityManager
-            ->getRepository(MagicItem::class)
-            ->find($magicItemId);
-
-        if (!$magicItem instanceof MagicItem) {
-            return $this->json(
-                [
-                    'message' =>
-                        'Objet magique introuvable.',
-                ],
-                Response::HTTP_NOT_FOUND,
-            );
-        }
-
-        if (
-            $magicItem
-                ->getCampaign()
-                ->getId()
-            !== $character
-                ->getCampaign()
-                ->getId()
-        ) {
-            return $this->json(
-                [
-                    'message' =>
-                        'Cet objet n’appartient pas à la campagne du personnage.',
-                ],
-                Response::HTTP_UNPROCESSABLE_ENTITY,
-            );
-        }
-
-        try {
-            $ownedItem =
-                new CharacterMagicItem(
-                    character: $character,
-                    magicItem: $magicItem,
-                );
-
-            if (
-                array_key_exists(
-                    'quantity',
-                    $payload,
-                )
-            ) {
-                $quantity = filter_var(
-                    $payload['quantity'],
-                    FILTER_VALIDATE_INT,
-                );
-
-                if ($quantity === false) {
-                    throw new \InvalidArgumentException(
-                        'La quantité doit être un entier.',
-                    );
-                }
-
-                $ownedItem->setQuantity(
-                    $quantity,
-                );
-            }
-
-            $ownedItem->setNotes(
-                $this->nullableString(
-                    $payload['notes'] ?? null,
-                ),
-            );
-
-            $character->addMagicItem(
-                $ownedItem,
-            );
-        } catch (\InvalidArgumentException $exception) {
-            return $this->json(
-                [
-                    'message' =>
-                        $exception->getMessage(),
-                ],
-                Response::HTTP_UNPROCESSABLE_ENTITY,
-            );
-        }
-
-        $entityManager->persist(
-            $ownedItem,
-        );
-
-        $entityManager->flush();
-
+    try {
+        $payload = $request->toArray();
+    } catch (JsonException) {
         return $this->json(
-            [
-                'ownedItem' =>
-                    $this->serializeOwnedItem(
-                        $ownedItem,
-                    ),
-                'abilities' =>
-                    $this->serializeAbilities(
-                        $character,
-                        $abilityCalculator,
-                    ),
-            ],
-            Response::HTTP_CREATED,
+            ['message' => 'Le corps JSON est invalide.'],
+            Response::HTTP_BAD_REQUEST
         );
     }
+
+    // Validation de l'identifiant de la définition.
+    $magicItemId = filter_var($payload['magicItemId'] ?? null, FILTER_VALIDATE_INT);
+
+    if ($magicItemId === false || $magicItemId === null || $magicItemId <= 0) {
+        return $this->json(
+            ['message' => 'L’identifiant de l’objet est invalide.'],
+            Response::HTTP_UNPROCESSABLE_ENTITY
+        );
+    }
+
+    try {
+        $quantity = $payload['quantity'] ?? 1;
+
+        if (!is_int($quantity)) {
+            throw new \InvalidArgumentException('La quantité doit être un entier.');
+        }
+
+        $notes = $payload['notes'] ?? null;
+        $inscribedSpellId = $payload['inscribedSpellId'] ?? null;
+
+        if ($notes !== null && !is_string($notes)) {
+            throw new \InvalidArgumentException('Les notes doivent être du texte.');
+        }
+
+        if ($inscribedSpellId !== null && (!is_int($inscribedSpellId) || $inscribedSpellId < 1)) {
+            throw new \InvalidArgumentException('Identifiant de sort invalide.');
+        }
+
+        $ownedItems = $entityManager->wrapInTransaction(function () use (
+            $entityManager,
+            $inventory,
+            $character,
+            $magicItemId,
+            $quantity,
+            $notes,
+            $inscribedSpellId
+        ): array {
+            $entityManager->lock($character, LockMode::PESSIMISTIC_WRITE);
+            $entityManager->refresh($character);
+
+            return $inventory->acquire(
+                $character,
+                $magicItemId,
+                $quantity,
+                false,
+                $notes,
+                $inscribedSpellId
+            );
+        });
+    } catch (\InvalidArgumentException $exception) {
+        return $this->json(
+            ['message' => $exception->getMessage()],
+            Response::HTTP_UNPROCESSABLE_ENTITY
+        );
+    }
+
+    return $this->json([
+        'ownedItem' => $this->serializeOwnedItem($ownedItems[0]),
+        'ownedItems' => array_map(
+            fn (CharacterMagicItem $item) => $this->serializeOwnedItem($item),
+            $ownedItems
+        ),
+        'abilities' => $this->serializeAbilities($character, $abilityCalculator),
+    ], Response::HTTP_CREATED);
+}
+
 
     #[Route(
         '/characters/{characterId}/magic-items/{ownedItemId}',
@@ -208,50 +170,70 @@ final class CharacterMagicItemController
     public function remove(
         int $characterId,
         int $ownedItemId,
+        Request $request,
         CharacterRepository $characterRepository,
         EntityManagerInterface $entityManager,
     ): JsonResponse {
-        $character = $this->getOwnedCharacter(
-            $characterId,
-            $characterRepository,
-        );
-
-        $ownedItem = $entityManager
-            ->getRepository(
-                CharacterMagicItem::class,
-            )
-            ->find($ownedItemId);
-
-        if (
-            !$ownedItem instanceof
-                CharacterMagicItem
-            || $ownedItem
-                ->getCharacter()
-                ->getId()
-                !== $character->getId()
-        ) {
-            return $this->json(
-                [
-                    'message' =>
-                        'Objet possédé introuvable.',
-                ],
-                Response::HTTP_NOT_FOUND,
-            );
+        $character = $this->getOwnedCharacter($characterId, $characterRepository);
+        $quantityRaw = $request->query->get('quantity', '1');
+        $quantity = filter_var($quantityRaw, FILTER_VALIDATE_INT);
+        if ($quantity === false || $quantity < 1 || $quantity > 9999) {
+            return $this->json(['message' => 'Quantité invalide.'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
-
-        if ($ownedItem->getQuantity() > 1) {
-            $ownedItem->setQuantity($ownedItem->getQuantity() - 1);
-        } else {
-            $character->removeMagicItem($ownedItem);
-            $entityManager->remove($ownedItem);
+        try {
+            $entityManager->wrapInTransaction(function () use ($entityManager, $character, $ownedItemId, $quantity): void {
+                $entityManager->lock($character, LockMode::PESSIMISTIC_WRITE);
+                $ownedItem = $entityManager->getRepository(CharacterMagicItem::class)->find($ownedItemId);
+                if (!$ownedItem instanceof CharacterMagicItem || $ownedItem->getCharacter()->getId() !== $character->getId()) {
+                    throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException('Objet possédé introuvable.');
+                }
+                $entityManager->lock($ownedItem, LockMode::PESSIMISTIC_WRITE);
+                if ($quantity > $ownedItem->getQuantity()) {
+                    throw new \InvalidArgumentException('Quantité supérieure au stock possédé.');
+                }
+                if ($quantity === $ownedItem->getQuantity()) {
+                    if ($ownedItem->getMagicItem()->getCategory() === 'spellbook') {
+                        $character->removeMagicItem($ownedItem);
+                        $ownedItem->transferTo(null);
+                    } else {
+                        $character->removeMagicItem($ownedItem);
+                        $entityManager->remove($ownedItem);
+                    }
+                } else {
+                    $ownedItem->setQuantity($ownedItem->getQuantity() - $quantity);
+                }
+            });
+        } catch (\InvalidArgumentException $exception) {
+            return $this->json(['message' => $exception->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
+        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+    }
 
-        $entityManager->flush();
-
-        return new JsonResponse(
-            null,
-            Response::HTTP_NO_CONTENT,
-        );
+    /** Explicit GM action: dawn is never inferred from a long rest. */
+    #[Route(
+        '/characters/{characterId}/magic-items/recharge-dawn',
+        name: 'api_character_magic_item_recharge_dawn',
+        requirements: ['characterId' => '\d+'],
+        methods: ['POST'],
+    )]
+    public function rechargeDawn(
+        int $characterId,
+        CharacterRepository $characterRepository,
+        EntityManagerInterface $entityManager,
+        MagicItemRechargeService $rechargeService,
+        CharacterAbilityCalculator $abilityCalculator,
+    ): JsonResponse {
+        $character = $this->getOwnedCharacter($characterId, $characterRepository);
+        $summary = $entityManager->wrapInTransaction(function () use ($entityManager, $character, $rechargeService): array {
+            $entityManager->lock($character, LockMode::PESSIMISTIC_WRITE);
+            foreach ($character->getMagicItems() as $owned) {
+                $entityManager->lock($owned, LockMode::PESSIMISTIC_WRITE);
+            }
+            return $rechargeService->apply($character, 'dawn');
+        });
+        return $this->json(['recharged' => $summary, 'inventory' => json_decode(
+            $this->serializeInventory($character, $abilityCalculator)->getContent(), true, 512, JSON_THROW_ON_ERROR
+        )]);
     }
 
     private function getOwnedCharacter(
@@ -342,16 +324,16 @@ final class CharacterMagicItemController
                 $ownedItem->getId(),
             'magicItemId' =>
                 $item->getId(),
-            'name' =>
-                $item->getName(),
+            'name' => $ownedItem->getInscribedSpell() !== null ? 'Parchemin de ' . $ownedItem->getInscribedSpell()->getName() : $ownedItem->getDisplayName(),
+            'inscribedSpellId' => $ownedItem->getInscribedSpell()?->getId(),
             'description' =>
                 $item->getDescription(),
             'rarity' =>
-                $item->getRarity()->value,
+                $item->getRarity()?->value,
+            'category' => $item->getCategory(),
+            'equippable' => $item->isEquippable(),
             'rarityLabel' =>
-                $item
-                    ->getRarity()
-                    ->label(),
+                $item->getRarity()?->label(),
             'requiresAttunement' =>
                 $item
                     ->requiresAttunement(),

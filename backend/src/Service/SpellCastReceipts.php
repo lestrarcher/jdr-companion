@@ -28,7 +28,7 @@ final class SpellCastReceipts
             || array_diff(array_keys($command), [...$required, 'targetCharacterIds', 'hitPointRoll'])
             || !is_int($command['revision']) || $command['revision'] < 1
             || !is_string($command['sourceKey']) || $command['sourceKey'] === '' || strlen($command['sourceKey']) > 255
-            || !in_array($command['method'], ['standard-slot','pact-slot','cantrip','ritual','resource','arcanum'], true)
+            || !in_array($command['method'], ['standard-slot','pact-slot','cantrip','ritual','resource','arcanum','item-charges','item-limited','scroll'], true)
             || !is_int($command['castingLevel']) || $command['castingLevel'] < 0 || $command['castingLevel'] > 9) {
             throw new \InvalidArgumentException('invalid_command');
         }
@@ -86,10 +86,17 @@ final class SpellCastReceipts
                     || $cast['source']['key'] !== $command['sourceKey']
                     || !is_int($cast['source']['spellId']) || $cast['source']['spellId'] < 1
                     || ($cast['source']['policyId'] !== null && (!is_int($cast['source']['policyId']) || $cast['source']['policyId'] < 1))
-                    || !in_array($cast['source']['sourceType'], ['class','subclass','feature'], true)
+                    || !in_array($cast['source']['sourceType'], ['class','subclass','feature','item'], true)
                     || $cast['method'] !== $command['method'] || $cast['castingLevel'] !== $command['castingLevel']) throw new \InvalidArgumentException();
                 $method=$cast['method']; $level=$cast['castingLevel'];
                 // Historical facts only: never consult current catalogue configuration.
+                if (in_array($method, ['item-charges', 'item-limited', 'scroll'], true)) {
+                    if ($cast['source']['sourceType'] !== 'item' || $cast['poolSlug'] !== null
+                        || !is_int($cast['cost']) || $cast['cost'] < 1 || $level < 0 || $level > 9) {
+                        throw new \InvalidArgumentException();
+                    }
+                    continue;
+                }
                 if ($method === 'resource') {
                     if ($cast['source']['sourceType'] !== 'feature'
                         || !is_int($cast['cost']) || $cast['cost'] < 1 || $cast['cost'] > 2147483647

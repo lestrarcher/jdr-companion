@@ -237,3 +237,17 @@
     border-left: 0;
   }
 }
+
+.item-rarity-panel {
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  border: 1px solid rgba(199, 165, 91, 0.25);
+  background: rgba(10, 11, 18, 0.76);
+  h2 { margin: .35rem 0 1rem; }
+  p { color: rgba(244, 239, 229, .75); }
+  .item-rarity-choice { display: flex; gap: .7rem; align-items: center; margin: .7rem 0; cursor: pointer; }
+  input { accent-color: #c7a55b; }
+  button { padding: .8rem 1.1rem; margin-top: .8rem; border: 1px solid #c7a55b; background: #c7a55b; color: #11121a; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: wait; }
+  .item-rarity-note { font-size: .85rem; }
+}

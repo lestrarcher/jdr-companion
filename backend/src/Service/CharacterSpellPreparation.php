@@ -12,7 +12,7 @@ use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 /** Preparation is session state, never an acquisition or a spell-slot expenditure. */
 final readonly class CharacterSpellPreparation
 {
-    public function __construct(private CharacterSpellAcquisitions $acquisitions, private CharacterAbilityCalculator $abilities) {}
+    public function __construct(private CharacterSpellAcquisitions $acquisitions, private CharacterAbilityCalculator $abilities, private SpellbookLibrary $spellbooks) {}
 
     public function plan(Character $character, array $options, array $state): ?array
     {
@@ -23,14 +23,20 @@ final readonly class CharacterSpellPreparation
         $maximum = $missingAbility ? 0 : max(1, $base + $statistics['spellAttackBonus'] - $character->getProficiencyBonus());
         $maximum = max(0, $maximum - $options['preparation']['automaticCounted']);
         $automatic = array_column(array_filter($options['automatic'], static fn(array $grant): bool => $grant['bucket'] === 'preparation'), 'spellId');
+        $accessibleIds = $options['learningStyle'] === 'spellbook' ? $this->spellbooks->accessibleSpellIds($character) : [];
         $candidates = $options['learningStyle'] === 'spellbook'
             ? array_map(static fn(array $row): array => ['id'=>(int)$row['spell_id'], 'name'=>$row['spell_name'], 'level'=>(int)$row['spell_level']],
-                array_values(array_filter($options['acquisitions'], static fn(array $row): bool => filter_var($row['in_spellbook'], FILTER_VALIDATE_BOOL))))
+                array_values(array_filter($options['acquisitions'], static fn(array $row): bool => filter_var($row['in_spellbook'], FILTER_VALIDATE_BOOL) && in_array((int)$row['spell_id'], $accessibleIds, true))))
             : $options['available'];
         $candidates = array_values(array_filter($candidates, static fn(array $spell): bool => $spell['level'] > 0
             && $spell['level'] <= $options['limits']['maxSpellLevel'] && !in_array($spell['id'], $automatic, true)));
         $selected = $state['preparedSpells'][(string)$options['policyId']] ?? [];
-        $selected = array_values(array_intersect(is_array($selected) ? $selected : [], array_column($candidates, 'id')));
+        // Previously prepared wizard spells survive the loss of their physical spellbook.
+        // They cannot be selected again after a preparation change unless still accessible.
+        $historicalIds = $options['learningStyle'] === 'spellbook'
+            ? array_map(static fn(array $row): int => (int)$row['spell_id'], array_filter($options['acquisitions'], static fn(array $row): bool => filter_var($row['in_spellbook'], FILTER_VALIDATE_BOOL)))
+            : array_column($candidates, 'id');
+        $selected = array_values(array_intersect(is_array($selected) ? $selected : [], $historicalIds));
         // A lower maximum does not revoke the active preparation. Only an explicit
         // preparation confirmation replaces it, using the current maximum.
         $excessCount = max(0, count($selected) - $maximum);

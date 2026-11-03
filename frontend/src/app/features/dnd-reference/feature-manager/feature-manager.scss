@@ -40,8 +40,8 @@
 
 .manager-tabs {
   display: grid;
-  grid-template-columns: repeat(10, minmax(140px, 1fr));
-  margin: 1rem 0;
+  grid-template-columns: repeat(11, minmax(0, 1fr));
+  margin: 0 0 1rem;
   border: 1px solid rgba(202, 165, 86, 0.22);
   overflow-x: auto;
 }
@@ -115,4 +115,26 @@
     border-right: 1px solid rgba(202, 165, 86, 0.18);
     border-bottom: 0;
   }
+}
+
+/* Même composant visuel pour les deux niveaux, sans espace entre eux. */
+.reference-scope-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 1rem;
+  border: 1px solid rgba(202, 165, 86, 0.22);
+  border-bottom: 0;
+}
+.reference-scope-tabs .manager-tab {
+  min-width: 0;
+  min-height: 3.4rem;
+  text-decoration: none;
+  justify-content: center;
+}
+.reference-scope-tabs + .manager-tabs { border-top: 1px solid rgba(202, 165, 86, 0.22); }
+.manager-tabs .manager-tab { min-width: 0; }
+.reference-scope-tabs a:focus-visible { outline: 2px solid #f0cf73; outline-offset: -2px; }
+@media (max-width: 760px) {
+  .reference-scope-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .manager-tabs .manager-tab { flex: 0 0 155px; }
 }

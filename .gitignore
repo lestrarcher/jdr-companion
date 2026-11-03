@@ -24,8 +24,14 @@ Thumbs.db
 
 # Fichiers temporaires de tests HTTP
 /cookies.txt
-jdr-companion-frontend.tar.gz
 
+# Fichiers locaux
+/backups/
+/scripts/*
 /backend/public/uploads/
-
 /start-jdr-dev.sh
+
+# Données temporaires AideDD
+/backend/data/aidedd-cache/
+/backend/data/aidedd-translations.errors.json
+/backend/data/aidedd-unmatched.csv

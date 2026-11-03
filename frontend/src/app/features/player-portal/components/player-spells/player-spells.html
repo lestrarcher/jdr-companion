@@ -9,6 +9,12 @@
     }
     <span class="spell-count">{{ displayed().length }} entrées</span>
   </header>
+  @if (inactiveItemSpellCount() > 0) {
+    <label class="inactive-item-spells-toggle">
+      <input type="checkbox" [checked]="showInactiveItemSpells()" (change)="showInactiveItemSpells.set(!showInactiveItemSpells())" />
+      Afficher les sorts des objets inactifs ({{ inactiveItemSpellCount() }})
+    </label>
+  }
   @if (mode() === 'portal' && preparationAvailable()) {
     <a class="spellbook-link preparation-link" [routerLink]="['prepare-spells']">Préparer mes sorts</a>
   }
@@ -27,7 +33,7 @@
   } @else {
     <div class="quickbar-shell">
       <p class="eyebrow" id="spell-quickbar-label">Répertoire rapide</p>
-      <app-spell-quick-list [spells]="displayed()" [mode]="mode() === 'portal' ? 'play' : 'directory'" [levelFilter]="mode() === 'portal' ? levelFilter() : null" [selectedKey]="selectedSpell() ? spellKey(selectedSpell()!) : null" (selected)="selectQuickSpell($event)" />
+      <app-spell-quick-list [spells]="displayed()" [showInactiveItemSpells]="showInactiveItemSpells()" [mode]="mode() === 'portal' ? 'play' : 'directory'" [levelFilter]="mode() === 'portal' ? levelFilter() : null" [selectedKey]="selectedSpell() ? spellKey(selectedSpell()!) : null" (selected)="selectQuickSpell($event)" />
       <!-- Reserved for future functional metamagic controls; empty projection stays hidden. -->
       <div class="spell-modifiers"><ng-content select="[spell-modifiers]" /></div>
     </div>

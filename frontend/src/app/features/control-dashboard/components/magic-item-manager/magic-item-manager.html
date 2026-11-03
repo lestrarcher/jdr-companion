@@ -32,6 +32,92 @@
     </p>
   }
 
+  <section class="reserve-panel" aria-label="Réserve MJ des grimoires">
+    <header class="reserve-heading">
+      <div>
+        <span class="eyebrow">Objets de campagne</span>
+        <h3>Réserve MJ — Grimoires</h3>
+        <p>Les grimoires retirés restent ici, avec leurs inscriptions intactes.</p>
+      </div>
+      <span class="reserve-count">{{ reservedBooks().length }} en réserve</span>
+    </header>
+
+    @if (reserveError()) { <p class="feedback feedback--error" role="alert">{{ reserveError() }}</p> }
+
+    <div class="reserve-list">
+      @for (book of reservedBooks(); track book.id) {
+        <article class="reserve-book">
+          <div class="reserve-book__heading">
+            <div>
+              <h4>{{ book.name }}</h4>
+              <span>Exemplaire #{{ book.id }} · {{ book.spellCount }} sort{{ book.spellCount > 1 ? 's' : '' }} inscrit{{ book.spellCount > 1 ? 's' : '' }}</span>
+            </div>
+            <span class="reserve-book__symbol" aria-hidden="true">✧</span>
+          </div>
+          <details class="reserve-book__spells">
+            <summary>Consulter les sorts inscrits</summary>
+            <ul>
+              @for (spell of book.spells ?? []; track spell.spellId) {
+                <li><span>{{ spell.name }}</span><span>Niveau {{ spell.level }}</span></li>
+              } @empty { <li class="reserve-book__empty">Ce grimoire est vide.</li> }
+            </ul>
+          </details>
+          <div class="reserve-book__actions">
+            <label class="reserve-target"><span>Restituer à</span>
+              <select (change)="setReserveTarget(book.id, +$any($event.target).value)">
+                <option value="">Choisir un personnage</option>
+                @for (character of reserveCharacters(); track character.id) {
+                  <option [value]="character.id">{{ character.name }}</option>
+                }
+              </select>
+            </label>
+            <button class="reserve-primary" type="button" [disabled]="reserveBusy() || !reserveTargets()[book.id]" (click)="restoreBook(book.id)">Restituer</button>
+          </div>
+        </article>
+      } @empty {
+        <p class="reserve-empty">Aucun grimoire en réserve pour cette campagne.</p>
+      }
+    </div>
+
+    <details class="reserve-creator">
+      <summary><span>Créer un exemplaire de grimoire</span><span class="reserve-creator__hint">À partir du catalogue</span></summary>
+      <div class="reserve-create">
+        <label class="reserve-field"><span>Définition de grimoire</span>
+          <select (change)="bookDefinitionId.set(+$any($event.target).value || null)">
+            <option value="">Choisir un grimoire créé dans le catalogue</option>
+            @for (item of catalog(); track item.id) {
+              @if (item.category === 'spellbook') { <option [value]="item.id">{{ item.name }}</option> }
+            }
+          </select>
+        </label>
+        <label class="reserve-field"><span>Type de grimoire</span>
+          <select [value]="pactTomeMode() ? 'pact' : 'wizard'" (change)="pactTomeMode.set($any($event.target).value === 'pact'); bookSearch(bookSpellQuery())">
+            <option value="wizard">Grimoire ordinaire</option>
+            <option value="pact">Grimoire des Ombres (Pacte du Grimoire)</option>
+          </select>
+        </label>
+        @if (pactTomeMode()) { <p>Choisir exactement 3 sorts mineurs et 2 sorts de niveau 1 avec l’étiquette Rituel. La manifestation Livre des secrets anciens est temporairement considérée active.</p> }
+        <label class="reserve-field"><span>Rechercher des sorts à inscrire (facultatif)</span>
+          <input type="search" [value]="bookSpellQuery()" (input)="bookSearch($any($event.target).value)" placeholder="Nom du sort…" />
+        </label>
+        <div class="reserve-spells" role="group" aria-label="Sorts à inscrire">
+          @for (spell of bookSpellOptions(); track spell.id) {
+            @if (pactTomeMode()) {
+              <label class="reserve-spell"><input type="checkbox" [checked]="pactCantripIds().includes(spell.id) || pactRitualIds().includes(spell.id)" (change)="togglePactSpell(spell)" /><span>{{ spell.name }}</span><small>{{ spell.level === 0 ? 'Mineur' : 'Rituel niv. 1' }}</small></label>
+            } @else {
+              <label class="reserve-spell"><input type="checkbox" [checked]="bookSpellIds().includes(spell.id)" (change)="toggleBookSpell(spell.id)" /><span>{{ spell.name }}</span><small>Niv. {{ spell.level }}</small></label>
+            }
+          } @empty { <p class="reserve-spells__empty">Aucun sort à afficher. Utilise la recherche pour filtrer.</p> }
+        </div>
+        <div class="reserve-create__footer">
+          <span>{{ pactTomeMode() ? (pactCantripIds().length + ' / 3 mineurs · ' + pactRitualIds().length + ' / 2 rituels') : (bookSpellIds().length + ' sorts sélectionnés · Un grimoire vide est autorisé.') }}</span>
+          <button class="reserve-primary" type="button" [disabled]="!bookDefinitionId() || bookCreating() || (pactTomeMode() && (pactCantripIds().length !== 3 || pactRitualIds().length !== 2))" (click)="createReserveBook()">Créer dans la réserve</button>
+        </div>
+      </div>
+    </details>
+    <button class="reserve-refresh" type="button" (click)="reloadReserve()">↻ Actualiser la réserve</button>
+  </section>
+
   <div class="manager-layout">
     <form
       class="creation-form"
@@ -49,6 +135,13 @@
       </header>
 
       <div class="form-grid">
+        <label class="field">
+          <span>Type d’objet</span>
+          <select formControlName="category">
+            <option value="other">Objet classique</option>
+            <option value="spellbook">Grimoire individuel (sans magie)</option>
+          </select>
+        </label>
         <label class="field field--wide">
           <span>Nom</span>
 
@@ -244,6 +337,64 @@
         }
       </section>
 
+
+      <section class="spell-grants">
+        <h4>Sorts octroyés</h4>
+        <label class="field"><span>Rechercher un sort</span>
+          <input type="search" [value]="spellQuery()" (input)="searchSpells($any($event.target).value)" placeholder="Nom du sort…" />
+        </label>
+        <div class="spell-results">
+          @for (spell of spellOptions(); track spell.id) {
+            <button type="button" class="secondary-button" (click)="addSpell(spell)">
+              + {{ spell.name }} (niveau {{ spell.level }})
+            </button>
+          }
+        </div>
+        @for (grant of spellGrants(); track grant.spellId; let index = $index) {
+          <div class="spell-grant-row">
+            <strong>{{ grant.spellName }}</strong>
+            <label class="field"><span>Condition</span>
+              <select [value]="grant.activation" (change)="updateSpell(index, 'activation', $any($event.target).value)">
+                <option value="possession">Possession</option>
+                <option value="equipped">Équipé</option>
+                <option value="attuned">Harmonisé</option>
+              </select>
+            </label>
+            <label class="field"><span>Consommation</span>
+              <select [value]="grant.costMode" (change)="updateSpell(index, 'costMode', $any($event.target).value)">
+                <option value="limited">Utilisations limitées</option>
+                <option value="charges">Charges de l'objet</option>
+              </select>
+            </label>
+            <label class="field"><span>Coût</span>
+              <input type="number" min="1" [value]="grant.cost" (change)="updateSpell(index, 'cost', $any($event.target).valueAsNumber)" />
+            </label>
+            <label class="field"><span>Niveau de lancement (vide = niveau du sort)</span>
+              <input type="number" min="0" max="9" [value]="grant.castingLevel ?? ''" (change)="updateSpell(index, 'castingLevel', $any($event.target).value === '' ? null : $any($event.target).valueAsNumber)" />
+            </label>
+            @if (grant.costMode === 'charges') {
+              <label class="field"><span>Niveau maximal (vide = coût fixe, +1 charge/niveau supplémentaire)</span>
+                <input type="number" min="1" max="9" [value]="grant.maxCastingLevel ?? ''" (change)="updateSpell(index, 'maxCastingLevel', $any($event.target).value === '' ? null : $any($event.target).valueAsNumber)" />
+              </label>
+            }
+            @if (grant.costMode === 'limited') {
+              <label class="field"><span>Utilisations par recharge</span>
+                <input type="number" min="1" [value]="grant.usesPerReset" (change)="updateSpell(index, 'usesPerReset', $any($event.target).valueAsNumber)" />
+              </label>
+              <label class="field"><span>Recharge</span>
+                <select [value]="grant.resetTrigger" (change)="updateSpell(index, 'resetTrigger', $any($event.target).value)">
+                  <option value="dawn">À l'aube</option>
+                  <option value="short-rest">Repos court</option>
+                  <option value="long-rest">Repos long</option>
+                  <option value="manual">Manuelle</option>
+                </select>
+              </label>
+            }
+            <button type="button" class="secondary-button" (click)="removeSpell(index)">Retirer</button>
+          </div>
+        }
+      </section>
+
       <button
         type="submit"
         class="primary-button"
@@ -311,6 +462,70 @@
                 </p>
               }
 
+              <button type="button" class="secondary-button" (click)="editGrants(magicItem)">Gérer les sorts</button>
+              @if (editingItemId() === magicItem.id) {
+                <div class="grant-editor">
+
+      <section class="spell-grants">
+        <h4>Sorts octroyés</h4>
+        <label class="field"><span>Rechercher un sort</span>
+          <input type="search" [value]="spellQuery()" (input)="searchSpells($any($event.target).value)" placeholder="Nom du sort…" />
+        </label>
+        <div class="spell-results">
+          @for (spell of spellOptions(); track spell.id) {
+            <button type="button" class="secondary-button" (click)="addSpell(spell)">
+              + {{ spell.name }} (niveau {{ spell.level }})
+            </button>
+          }
+        </div>
+        @for (grant of spellGrants(); track grant.spellId; let index = $index) {
+          <div class="spell-grant-row">
+            <strong>{{ grant.spellName }}</strong>
+            <label class="field"><span>Condition</span>
+              <select [value]="grant.activation" (change)="updateSpell(index, 'activation', $any($event.target).value)">
+                <option value="possession">Possession</option>
+                <option value="equipped">Équipé</option>
+                <option value="attuned">Harmonisé</option>
+              </select>
+            </label>
+            <label class="field"><span>Consommation</span>
+              <select [value]="grant.costMode" (change)="updateSpell(index, 'costMode', $any($event.target).value)">
+                <option value="limited">Utilisations limitées</option>
+                <option value="charges">Charges de l'objet</option>
+              </select>
+            </label>
+            <label class="field"><span>Coût</span>
+              <input type="number" min="1" [value]="grant.cost" (change)="updateSpell(index, 'cost', $any($event.target).valueAsNumber)" />
+            </label>
+            <label class="field"><span>Niveau de lancement (vide = niveau du sort)</span>
+              <input type="number" min="0" max="9" [value]="grant.castingLevel ?? ''" (change)="updateSpell(index, 'castingLevel', $any($event.target).value === '' ? null : $any($event.target).valueAsNumber)" />
+            </label>
+            @if (grant.costMode === 'charges') {
+              <label class="field"><span>Niveau maximal (vide = coût fixe, +1 charge/niveau supplémentaire)</span>
+                <input type="number" min="1" max="9" [value]="grant.maxCastingLevel ?? ''" (change)="updateSpell(index, 'maxCastingLevel', $any($event.target).value === '' ? null : $any($event.target).valueAsNumber)" />
+              </label>
+            }
+            @if (grant.costMode === 'limited') {
+              <label class="field"><span>Utilisations par recharge</span>
+                <input type="number" min="1" [value]="grant.usesPerReset" (change)="updateSpell(index, 'usesPerReset', $any($event.target).valueAsNumber)" />
+              </label>
+              <label class="field"><span>Recharge</span>
+                <select [value]="grant.resetTrigger" (change)="updateSpell(index, 'resetTrigger', $any($event.target).value)">
+                  <option value="dawn">À l'aube</option>
+                  <option value="short-rest">Repos court</option>
+                  <option value="long-rest">Repos long</option>
+                  <option value="manual">Manuelle</option>
+                </select>
+              </label>
+            }
+            <button type="button" class="secondary-button" (click)="removeSpell(index)">Retirer</button>
+          </div>
+        }
+      </section>
+                  <button type="button" class="primary-button" [disabled]="submitting()" (click)="saveGrants()">Enregistrer les sorts</button>
+                  <button type="button" class="secondary-button" (click)="cancelEdit()">Annuler</button>
+                </div>
+              }
               <footer>
                 @if (
                   magicItem.maximumCharges !== null

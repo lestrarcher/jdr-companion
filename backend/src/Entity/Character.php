@@ -116,7 +116,6 @@ class Character
         mappedBy: 'character',
         targetEntity: CharacterMagicItem::class,
         cascade: ['persist', 'remove'],
-        orphanRemoval: true,
     )]
     private Collection $magicItems;
 
