@@ -23,7 +23,6 @@ use App\Service\PlayerCharacterAccess;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -125,8 +124,9 @@ final class CharacterAcquisitionTest extends TestCase
 
     private function controller(): PublicCharacterMagicItemController
     {
-        $controller = new PublicCharacterMagicItemController();
-        $controller->setContainer(new Container());
+        $container = $this->kernel->getContainer()->get('test.service_container');
+        $controller = $container->get(PublicCharacterMagicItemController::class);
+        $controller->setContainer($container);
 
         return $controller;
     }

@@ -85,24 +85,12 @@ final class PublicCharacterMagicItemController extends AbstractController
         if ($inscribedSpellId !== null) {
             return $this->json(['message' => 'Le sort d’un parchemin doit être défini par le MJ.'], Response::HTTP_FORBIDDEN);
         }
-        // Les parchemins sont préparés par le MJ, jamais définis par le joueur.
-        if ($inscribedSpellId !== null) {
-            return $this->json(['message' => 'Le sort d’un parchemin doit être défini par le MJ.'], Response::HTTP_FORBIDDEN);
-        }
-        // Les parchemins sont préparés par le MJ, jamais définis par le joueur.
-        if ($inscribedSpellId !== null) {
-            return $this->json(['message' => 'Le sort d’un parchemin doit être défini par le MJ.'], Response::HTTP_FORBIDDEN);
-        }
 
         if ($definitionId === false || $definitionId === null || $definitionId <= 0) {
             return $this->json(
                 ['message' => 'L’identifiant de l’objet est invalide.'],
                 Response::HTTP_UNPROCESSABLE_ENTITY
             );
-        }
-
-        if (($inscribedSpellId !== null && (!is_int($inscribedSpellId) || $inscribedSpellId < 1))) {
-            return $this->json(['message' => 'Identifiant de sort invalide.'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         if (!is_int($quantity) || ($notes !== null && !is_string($notes))) {

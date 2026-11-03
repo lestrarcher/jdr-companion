@@ -356,18 +356,30 @@ export class MagicItemManager implements OnInit {
     this.spellGrants.update(grants => grants.filter((_, i) => i !== index));
   }
 
-  protected updateSpell(index: number, field: keyof MagicItemSpellGrantPayload, value: string | number | null): void {
-    this.spellGrants.update(grants => grants.map((grant, i) => {
-      if (i !== index) return grant;
-      const next = {...grant, [field]: value};
-      if (field === 'costMode') {
-        if (value === 'charges') { next.usesPerReset = null; next.resetTrigger = null; }
-        else { next.maxCastingLevel = null; }
-        else { next.usesPerReset = 1; next.resetTrigger = 'dawn'; }
+protected updateSpell(
+  index: number,
+  field: keyof MagicItemSpellGrantPayload,
+  value: string | number | null
+): void {
+  this.spellGrants.update(grants => grants.map((grant, i) => {
+    if (i !== index) return grant;
+
+    const next = { ...grant, [field]: value };
+
+    if (field === 'costMode') {
+      if (value === 'charges') {
+        next.usesPerReset = null;
+        next.resetTrigger = null;
+      } else {
+        next.maxCastingLevel = null;
+        next.usesPerReset = 1;
+        next.resetTrigger = 'dawn';
       }
-      return next;
-    }));
-  }
+    }
+
+    return next;
+  }));
+}
 
   protected editGrants(item: MagicItemResponse): void {
     this.editingItemId.set(item.id);
