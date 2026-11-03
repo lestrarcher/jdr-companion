@@ -10,12 +10,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import {
-  catchError,
   finalize,
   forkJoin,
-  of,
-  switchMap,
-  timer,
   Subject,
   takeUntil,
 } from 'rxjs';
@@ -116,6 +112,8 @@ export class ControlDashboard {
   protected readonly pendingRestRequests =
     signal<RestRequestApiResponse[]>([]);
 
+  protected readonly refreshingRestRequests = signal(false);
+
   protected readonly resolvingRestRequestId =
     signal<number | null>(null);
 
@@ -211,6 +209,8 @@ export class ControlDashboard {
     this.campaign = null;
     this.backendSession.set(null);
     this.pendingRestRequests.set([]);
+    this.refreshingRestRequests.set(false);
+    this.resolvingRestRequestId.set(null);
     this.sessionStatusError.set(null);
     this.restRequestError.set(null);
     this.backendCampaignId = campaignId;
@@ -590,7 +590,7 @@ export class ControlDashboard {
             status: session.status,
           });
 
-          this.initializeRestRequestPolling();
+          this.refreshRestRequests();
         },
 
         error: (error: any) => {
@@ -660,49 +660,28 @@ export class ControlDashboard {
       });
   }
 
-  // TODO : remplacer ce polling par Mercure.
-  private initializeRestRequestPolling(): void {
-    timer(0, 5000)
+  protected refreshRestRequests(): void {
+    if (this.refreshingRestRequests() || this.sessionStatus() !== 'live') {
+      return;
+    }
+
+    this.refreshingRestRequests.set(true);
+    this.restRequestError.set(null);
+
+    this.restRequestApi.listPending(this.backendSessionId)
       .pipe(
-        switchMap(() => {
-          if (
-            this.sessionStatus() !==
-            'live'
-          ) {
-            return of<
-              RestRequestApiResponse[]
-            >([]);
-          }
-
-          return this.restRequestApi
-            .listPending(
-              this.backendSessionId,
-            )
-            .pipe(
-              catchError(
-                (error: unknown) => {
-                  console.error(
-                    'Impossible de récupérer les demandes de repos.',
-                    error,
-                  );
-
-                  return of<
-                    RestRequestApiResponse[]
-                  >([]);
-                },
-              ),
-            );
-        }),
-
         takeUntil(this.contextChanged),
-        takeUntilDestroyed(
-          this.destroyRef,
-        ),
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.refreshingRestRequests.set(false)),
       )
-      .subscribe((requests) => {
-        this.pendingRestRequests.set(
-          requests,
-        );
+      .subscribe({
+        next: (requests) => this.pendingRestRequests.set(requests),
+        error: (error: any) => {
+          console.error('Impossible de récupérer les demandes de repos.', error);
+          this.restRequestError.set(
+            error?.error?.message ?? 'Impossible de récupérer les demandes de repos.',
+          );
+        },
       });
   }
 

@@ -52,7 +52,8 @@ describe('One player sheet, read-only outside LIVE',()=> {
     const closed=status==='closed';
     expect(fixture.nativeElement.querySelector('.character-dashboard')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.portal-message')).toBeNull();
-    expect(fixture.nativeElement.textContent).toContain('Emplacements niveau 1');
+    expect(fixture.nativeElement.textContent).toContain('Emplacements & sorts');
+    expect(fixture.nativeElement.textContent).toContain('I');
     const vitals=fixture.debugElement.query(By.directive(CharacterVitals)).componentInstance as any;
     const resources=fixture.debugElement.query(By.directive(CharacterResources)).componentInstance as any;
     expect(vitals.readonly()).toBe(closed); expect(resources.readonly()).toBe(closed);
@@ -87,6 +88,8 @@ describe('One player sheet, read-only outside LIVE',()=> {
     }
     http.expectNone(r=>r.method!=='GET');
     for (const request of http.match('/api/public/characters/test')) request.flush(snapshot(status as string, artificer as boolean));
+    // The spells tab loads its own directory; complete that GET before verifying the test backend.
+    for (const request of http.match('/api/public/characters/test/spells')) request.flush({ spells: [], preparations: [] });
     fixture.destroy(); http.verify({ignoreCancelled:true});
   });
 

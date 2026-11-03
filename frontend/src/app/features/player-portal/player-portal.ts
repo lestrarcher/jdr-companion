@@ -190,6 +190,7 @@ export class PlayerPortal {
   private readonly latestRestRequest = signal<RestRequestApiResponse | null>(null);
   private readonly restRequestSubmitting = signal(false);
   private readonly handledRestRequest = signal<string | null>(null);
+  private restRequestInitialCheckDone = false;
   protected readonly pendingRestRequest = computed(() => {
     const request = this.latestRestRequest();
     return request?.status === 'pending' ? request : undefined;
@@ -261,6 +262,12 @@ export class PlayerPortal {
       this.saveStatus.set('idle');
     }
     this.sessionStatus.set(status);
+    if (status !== 'live') {
+      this.latestRestRequest.set(null);
+      this.restRequestInitialCheckDone = false;
+    } else if (this.character() && !this.loading()) {
+      this.checkRestRequestOnActivation();
+    }
   }
 
   constructor() {
@@ -523,6 +530,7 @@ export class PlayerPortal {
           this.remoteSynchronizationEnabled.set(true);
 
           this.loading.set(false);
+          this.checkRestRequestOnActivation();
         },
 
         error: (error: any) => {
@@ -626,7 +634,7 @@ export class PlayerPortal {
   }
 
   private refreshCharacterIfChanged(): void {
-    if (!this.character() || this.loading() || !this.remoteSynchronizationEnabled()
+    if (!this.character() || this.loading() || this.pendingRestRequest() || !this.remoteSynchronizationEnabled()
       || this.refreshPending) return;
     const generation = this.loadGeneration;
     const revision = this.serverRevision;
@@ -638,7 +646,7 @@ export class PlayerPortal {
       catchError(() => of(null)),
       finalize(() => { this.refreshPending = false; }),
     ).subscribe(response => {
-      if (!response || generation !== this.loadGeneration || revision !== this.serverRevision
+      if (!response || this.pendingRestRequest() || generation !== this.loadGeneration || revision !== this.serverRevision
         || response.revision < this.serverRevision) return;
       const statusChanged = response.session.status !== this.sessionStatus();
       if (response.session.status !== 'closed' && (localRevision !== this.characterStateService.revision() || this.saveStatus() === 'saving')) return;
@@ -670,32 +678,62 @@ export class PlayerPortal {
       this.levelUpAllowed.set(response.levelUpAllowed);
     });
   }
-// TODO: remplacer ce polling temporaire par des événements Mercure.
-private initializeRestRequestPolling(): void {
-  timer(0, 5000)
-    .pipe(
-      exhaustMap(() => {
-        this.refreshCharacterIfChanged();
+  // Character synchronization remains independent of rest requests.
+  private initializeRestRequestPolling(): void {
+    timer(0, 5000)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        if (!this.pendingRestRequest()) this.refreshCharacterIfChanged();
+      });
 
-        if (this.sessionStatus() !== 'live') {
-          this.latestRestRequest.set(null);
-          return of(null);
-        }
-
-        return this.restRequestApi.getLatest(this.accessToken)
-          .pipe(
+    // Poll for a decision only while this player has a pending request.
+    timer(5000, 5000)
+      .pipe(
+        exhaustMap(() => {
+          if (this.sessionStatus() !== 'live' || !this.pendingRestRequest()) {
+            return EMPTY;
+          }
+          return this.restRequestApi.getLatest(this.accessToken).pipe(
             catchError((error: unknown) => {
               console.error('Impossible de vérifier la demande de repos.', error);
-              return of(null);
+              return EMPTY; // Do not discard a pending request on a network error.
             }),
           );
-      }),
-      takeUntilDestroyed(this.destroyRef),
-    )
-    .subscribe(request => {
-      this.handleRestRequestUpdate(request);
-    });
-}
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(request => {
+        const pending = this.pendingRestRequest();
+        if (pending && request && request.id < pending.id) return;
+        this.handleRestRequestUpdate(request);
+      });
+  }
+
+  // Recover an existing pending request once when entering a live session.
+  private checkRestRequestOnActivation(): void {
+    if (this.sessionStatus() !== 'live' || this.restRequestInitialCheckDone) return;
+    this.restRequestInitialCheckDone = true;
+
+    this.restRequestApi.getLatest(this.accessToken)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        catchError((error: unknown) => {
+          console.error('Impossible de retrouver la demande de repos.', error);
+          return EMPTY;
+        }),
+      )
+      .subscribe(request => {
+        if (this.sessionStatus() !== 'live') return;
+        const current = this.latestRestRequest();
+        if (current && (!request || request.id < current.id)) return;
+
+        // Do not replay a previously resolved request's notification.
+        if (request && request.status !== 'pending') {
+          this.handledRestRequest.set(`${request.id}:${request.status}`);
+        }
+        this.latestRestRequest.set(request);
+      });
+  }
 
   private handleRestRequestUpdate(
     request: RestRequestApiResponse | null,
@@ -737,6 +775,8 @@ private initializeRestRequestPolling(): void {
     this.showRestFeedback(
       'Le MJ a refusé le repos.',
     );
+    // Catch up on any changes made while character polling was paused.
+    this.loadCharacter(false);
   }
 
   private showRestFeedback(

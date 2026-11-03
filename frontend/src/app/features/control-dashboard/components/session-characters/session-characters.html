@@ -17,6 +17,17 @@
         participant{{ activeCharacters().length > 1 ? 's' : '' }}
       </span>
 
+      @if (sessionLive()) {
+        <button
+          type="button"
+          class="refresh-button"
+          [disabled]="refreshingRestRequests()"
+          (click)="restRequestsRefreshRequested.emit()"
+        >
+          {{ refreshingRestRequests() ? 'Recherche en cours…' : 'Rechercher les demandes de repos' }}
+        </button>
+      }
+
       @if (hasActiveCharacters()) {
         <button
           type="button"
