@@ -1,4 +1,5 @@
-import { Component, computed, input, signal } from '@angular/core';
+import { Component, computed, input, output, signal, inject, OnInit, OnChanges, SimpleChanges } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { CharacterAbilityScore, CharacterFeatSummary, CharacterFeatureSummary } from '@core/services/character-api.service';
 
 interface FeatureFilter {
@@ -18,12 +19,55 @@ interface ReaderEntry {
   activationType: string | null;
 }
 
+type RacialAbilityChoice = { grantId: number; featureName: string; spellName: string; chosenAbility: string | null; allowedAbilities: string[] };
+
 @Component({
   selector: 'app-character-features',
   templateUrl: './character-features.html',
   styleUrl: './character-features.scss',
 })
-export class CharacterFeatures {
+export class CharacterFeatures implements OnInit, OnChanges {
+  private readonly http = inject(HttpClient);
+  readonly accessToken = input('');
+  readonly readonly = input(true);
+  readonly abilityChanged = output<void>();
+  protected readonly racialAbilities = signal<RacialAbilityChoice[]>([]);
+  protected readonly racialAbilityBusy = signal(false);
+  protected readonly racialAbilityError = signal('');
+  protected readonly editingGrantId = signal<number | null>(null);
+  protected readonly currentFeatureChoices = computed(() => this.racialAbilities().filter(choice => choice.featureName === this.selectedEntry()?.name));
+  protected abilityLabel(value: string | null): string {
+    return ({ intelligence: 'Intelligence', wisdom: 'Sagesse', charisma: 'Charisme' } as Record<string, string>)[value ?? ''] ?? 'À définir';
+  }
+  ngOnInit(): void { this.loadRacialAbilities(); }
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['accessToken'] && !changes['accessToken'].firstChange) this.loadRacialAbilities();
+  }
+  private loadRacialAbilities(): void {
+    if (!this.accessToken()) { this.racialAbilities.set([]); return; }
+    this.http.get<{ choices: RacialAbilityChoice[] }>(`/api/public/characters/${this.accessToken()}/spells/ability-choices`).subscribe({
+      next: result => this.racialAbilities.set(result.choices),
+      error: () => this.racialAbilityError.set('Impossible de charger les choix de caractéristique.'),
+    });
+  }
+  protected chooseRacialAbility(grantId: number, ability: string): void {
+    if (!ability || this.readonly() || this.racialAbilityBusy()) return;
+    this.racialAbilityBusy.set(true);
+    this.racialAbilityError.set('');
+    this.http.put<{ choices: RacialAbilityChoice[] }>(`/api/public/characters/${this.accessToken()}/spells/${grantId}/ability`, { ability }).subscribe({
+      next: result => {
+        this.racialAbilities.set(result.choices);
+        this.racialAbilityBusy.set(false);
+        this.editingGrantId.set(null);
+        this.abilityChanged.emit();
+      },
+      error: () => {
+        this.racialAbilityBusy.set(false);
+        this.racialAbilityError.set('Impossible d’enregistrer la caractéristique.');
+      },
+    });
+  }
+
   readonly abilities = input<CharacterAbilityScore[]>([]);
   readonly features = input.required<CharacterFeatureSummary[]>();
   readonly feats = input<CharacterFeatSummary[]>([]);
@@ -108,7 +152,7 @@ export class CharacterFeatures {
   private sourceLabel(sourceType: string): string {
     const labels: Record<string, string> = {
       class: 'Classe', subclass: 'Sous-classe', race: 'Race',
-      ancestry: 'Ascendance', progression: 'Progression', feat: 'Don',
+      ancestry: 'Ascendance', progression: 'Progression', feat: 'Don', character: 'Personnage',
     };
     return labels[sourceType] ?? sourceType;
   }

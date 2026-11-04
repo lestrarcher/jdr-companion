@@ -7,6 +7,7 @@ import { SpellInitializationPreview } from '@core/models/spell-initialization.mo
 import { CharacterApiService } from '@core/services/character-api.service';
 import { SpellHistorical } from './spell-historical';
 
+type RacialAbilityChoice = { grantId: number; featureName: string; spellName: string; chosenAbility: string | null; allowedAbilities: string[] };
 type FeatureSpellStatus = { known: { grantId: number; spellId: number; spellName: string; featureName: string; castingAbility?: string | null; spellSaveDc?: number | null; spellAttackBonus?: number | null }[]; pending: { grantId: number; featureName: string; spellLevel: number; classId: number | null; schools: string[]; castingAbility?: string | null }[] };
 type FeatureSpellOption = { id: number; name: string; level: number; school?: string };
 type Policy = { className: string; status: string; policyIds: number[] };
@@ -29,6 +30,17 @@ export class CharacterSpells {
   historicalSaved(): void { this.refresh.update(value => value + 1); }
   readonly refresh = signal(0);
   readonly featureSpells = signal<FeatureSpellStatus>({ known: [], pending: [] });
+  readonly racialAbilities = signal<RacialAbilityChoice[]>([]);
+  readonly racialAbilityBusy = signal(false);
+  setRacialAbility(grantId: number, ability: string): void {
+    if (!ability || this.racialAbilityBusy()) return;
+    this.racialAbilityBusy.set(true); this.featureError.set('');
+    this.http.put<{ choices: RacialAbilityChoice[] }>(`/api/characters/${this.character().id}/feature-spells/${grantId}/ability`, { ability }).subscribe({
+      next: result => { this.racialAbilities.set(result.choices); this.racialAbilityBusy.set(false); this.refresh.update(n => n + 1); },
+      error: () => { this.racialAbilityBusy.set(false); this.featureError.set('Impossible de sauvegarder la caractéristique.'); },
+    });
+  }
+
   readonly featureOptions = signal<Record<number, FeatureSpellOption[]>>({});
   readonly selectedFeatureSpells = signal<Record<number, number>>({});
   readonly featureBusy = signal(false);
@@ -129,10 +141,11 @@ export class CharacterSpells {
         }),
         switchMap(options => forkJoin({
           policies: of(options),
+          racial: this.http.get<{ choices: RacialAbilityChoice[] }>(`/api/characters/${id}/feature-spells/ability-choices`).pipe(catchError(() => of({ choices: [] }))),
           features: this.http.get<FeatureSpellStatus>(`/api/characters/${id}/feature-spells`).pipe(catchError(() => of({ known: [], pending: [] } as FeatureSpellStatus))),
         })),
-        switchMap(({ policies: options, features }) => {
-          this.featureSpells.set(features);
+        switchMap(({ policies: options, features, racial }) => {
+          this.featureSpells.set(features); this.racialAbilities.set(racial.choices);
           this.castingPolicies.set(options);
           const raw = [...options.flatMap(({className,data}) => [
             ...(data.acquisitions ?? []).map(a => ({id:Number(a.spell_id), fallback:a.spell_name, level:Number(a.spell_level ?? 0), origin:className})),

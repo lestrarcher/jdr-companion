@@ -32,7 +32,7 @@ final readonly class CharacterFeatureSpellCastingResolver
         foreach ($this->features->applicableRules($character,$progressionValues) as $rule) {
             if ($rule->getFeatureDefinition()->getId()!==(int)$grant['feature_id']) continue;
             foreach (['feat'=>$rule->getFeat(),'class'=>$rule->getCharacterClass(),'subclass'=>$rule->getCharacterSubclass(),
-                'race'=>$rule->getCharacterRace(),'progression'=>$rule->getProgressionDefinition()] as $type=>$source) {
+                'race'=>$rule->getCharacterRace(),'progression'=>$rule->getProgressionDefinition(),'character'=>$rule->getCharacter()] as $type=>$source) {
                 if ($source===null) continue;
                 $key=$type.':'.$source->getId();
                 $origins[$key] ??= ['type'=>$type,'id'=>$source->getId(),'ruleIds'=>[],'characterFeatId'=>null];
@@ -61,8 +61,12 @@ final readonly class CharacterFeatureSpellCastingResolver
             $ability = $progressionAbility;
             $abilityReason = 'ability_not_configured';
         } elseif ($grant['casting_ability']==='CHOICE') {
-            $ability=$assignments===[] ? null : $assignments[0]->getChosenAbility();
-            $abilityReason=$origin['type']==='feat'?'ability_choice_missing':'ability_choice_unsupported';
+            $ability=$origin['type']==='feat' ? ($assignments[0]->getChosenAbility() ?? null) : null;
+            if (in_array($origin['type'], ['race','character'], true)) {
+                $chosen=$this->db->fetchOne('SELECT ability FROM character_spell_grant_ability_choice WHERE character_id=? AND grant_id=?', [$character->getId(), $grantId]);
+                $ability=$chosen===false ? null : CharacterFeatureSpellService::castingAbility($chosen);
+            }
+            $abilityReason=in_array($origin['type'], ['feat','race','character'], true)?'ability_choice_missing':'ability_choice_unsupported';
         } else {
             $ability=CharacterFeatureSpellService::castingAbility($grant['casting_ability']);
             $abilityReason=$grant['casting_ability']===null?'ability_not_configured':'ability_invalid';

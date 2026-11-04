@@ -251,7 +251,8 @@
               }
 
               @case ('features') {
-                <app-character-features [features]="visibleFeatures()" [feats]="feats()" />
+                <app-character-features [features]="visibleFeatures()" [feats]="feats()"
+                  [accessToken]="accessToken" [readonly]="!canEdit()" (abilityChanged)="refreshSpells()" />
               }
 
               @case ('spells') {

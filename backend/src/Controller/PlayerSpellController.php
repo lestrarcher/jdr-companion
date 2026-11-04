@@ -24,6 +24,15 @@ final class PlayerSpellController extends AbstractController
         private readonly CharacterSpellPreparation $preparation,
     ) {}
 
+    #[Route('/ability-choices', name: 'api_public_character_spell_ability_choices', methods: ['GET'])]
+    public function abilityChoices(string $accessToken, \App\Service\CharacterFeatureSpellAbilityChoice $choices): JsonResponse {
+        return $this->json(['choices'=>$choices->list($this->access->requireParticipating($accessToken)->getCharacter())]);
+    }
+    #[Route('/{grantId}/ability', name: 'api_public_character_spell_ability', requirements: ['grantId'=>'\d+'], methods: ['PUT'])]
+    public function chooseAbility(string $accessToken,int $grantId,Request $request,\App\Service\CharacterFeatureSpellAbilityChoice $choices): JsonResponse {
+        $session=$this->access->requireParticipating($accessToken);
+        return $this->json(['choices'=>$choices->choose($session->getCharacter(),$grantId,$request->toArray()['ability']??null)]);
+    }
     #[Route('', name: 'api_public_character_spells', methods: ['GET'])]
     public function show(string $accessToken): JsonResponse
     {

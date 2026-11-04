@@ -1,3 +1,6 @@
+import { CampaignApiService, CampaignApiResponse } from '@core/services/campaign-api.service';
+import { CharacterApiService, CharacterApiResponse } from '@core/services/character-api.service';
+import { CharacterFeatureAssignmentApiService, FeatureAssignment } from '@core/services/character-feature-assignment-api.service';
 import { ReferencePicker } from '../reference-picker/reference-picker';
 import { REFERENCE_VIEW_ORIGIN, REFERENCE_READ_ONLY, matchesReferenceOrigin } from '@core/services/reference-editor-context';
 import { ReferenceFeatureEditorApiService, FeatureSpellGrant, FeatureSpellGrantPayload } from '@core/services/reference-feature-editor-api.service';
@@ -37,6 +40,70 @@ export class FeatureDefinitionManager {
   protected readonly viewOrigin = inject(REFERENCE_VIEW_ORIGIN);
 
   private readonly api = inject(ReferenceFeatureEditorApiService);
+  private readonly campaignApi = inject(CampaignApiService);
+  private readonly characterApi = inject(CharacterApiService);
+  private readonly assignmentApi = inject(CharacterFeatureAssignmentApiService);
+  protected readonly assignmentCampaigns = signal<CampaignApiResponse[]>([]);
+  protected readonly assignmentCharacters = signal<CharacterApiResponse[]>([]);
+  protected readonly featureAssignments = signal<FeatureAssignment[]>([]);
+  protected readonly assignmentBusy = signal(false);
+  protected readonly assignmentMessage = signal<string | null>(null);
+  protected assignmentCampaignId: number | null = null;
+  protected assignmentCharacterId: number | null = null;
+
+  protected loadAssignmentCampaigns(): void {
+    this.campaignApi.list().subscribe({
+      next: campaigns => {
+        this.assignmentCampaigns.set(campaigns);
+        if (campaigns.length && this.assignmentCampaignId === null) {
+          this.assignmentCampaignId = campaigns[0].id;
+          this.loadAssignmentCharacters();
+        }
+      },
+      error: () => this.assignmentMessage.set('Impossible de charger les campagnes.'),
+    });
+  }
+
+  protected loadAssignmentCharacters(): void {
+    this.assignmentCharacterId = null;
+    this.assignmentCharacters.set([]);
+    if (this.assignmentCampaignId === null) return;
+    this.characterApi.list(this.assignmentCampaignId).subscribe({
+      next: characters => this.assignmentCharacters.set(characters),
+      error: () => this.assignmentMessage.set('Impossible de charger les personnages.'),
+    });
+  }
+
+  protected loadFeatureAssignments(featureId: number): void {
+    this.featureAssignments.set([]);
+    this.assignmentMessage.set(null);
+    this.assignmentApi.list(featureId).subscribe({
+      next: response => { if (this.selectedFeatureId() === featureId) this.featureAssignments.set(response.assignments); },
+      error: () => this.assignmentMessage.set('Impossible de charger les attributions.'),
+    });
+  }
+
+  protected assignFeatureToCharacter(): void {
+    const featureId = this.selectedFeatureId();
+    const characterId = this.assignmentCharacterId;
+    if (featureId === null || characterId === null || this.assignmentBusy()) return;
+    this.assignmentBusy.set(true);
+    this.assignmentApi.assign(featureId, characterId).subscribe({
+      next: () => { this.assignmentBusy.set(false); this.assignmentMessage.set('Capacité attribuée.'); this.loadFeatureAssignments(featureId); },
+      error: error => { this.assignmentBusy.set(false); this.assignmentMessage.set(error.error?.message ?? 'Attribution impossible.'); },
+    });
+  }
+
+  protected removeFeatureFromCharacter(characterId: number): void {
+    const featureId = this.selectedFeatureId();
+    if (featureId === null || this.assignmentBusy()) return;
+    this.assignmentBusy.set(true);
+    this.assignmentApi.remove(featureId, characterId).subscribe({
+      next: () => { this.assignmentBusy.set(false); this.assignmentMessage.set('Attribution retirée.'); this.loadFeatureAssignments(featureId); },
+      error: error => { this.assignmentBusy.set(false); this.assignmentMessage.set(error.error?.message ?? 'Retrait impossible.'); },
+    });
+  }
+
 
   protected readonly features = signal<CharacterFeatureDefinition[]>([]);
   protected readonly resources = signal<TrackableResourceDefinition[]>([]);
@@ -93,7 +160,7 @@ export class FeatureDefinitionManager {
     this.grantClassId = grant.classId; this.grantSchool = grant.schools?.[0] ?? '';
     this.grantUnlockLevel = grant.unlockLevel; this.grantCastingAbility = grant.castingAbility ?? '';
     const free = grant.castingRules?.methods.find(method => method.kind === 'resource');
-    this.configureCasting = false; // Editing the ability alone preserves legacy methods/costs.
+    this.configureCasting = Array.isArray(grant.castingRules?.methods) && grant.castingRules.methods.length > 0;
     this.freeCasting = !!free; this.freeUses = grant.freeUses ?? 1;
     this.freeRecharge = grant.rechargeType === 'short-rest' ? 'short-rest' : 'long-rest';
     this.freeLevel = free?.kind === 'resource' ? free.castingLevel : null;
@@ -192,10 +259,12 @@ export class FeatureDefinitionManager {
 
   public constructor() {
     this.loadData();
+    this.loadAssignmentCampaigns();
   }
 
   protected selectFeature(feature: CharacterFeatureDefinition): void {
     this.selectedFeatureId.set(feature.id);
+    this.loadFeatureAssignments(feature.id);
     this.spellGrants.set([]); this.spellGrantEditing.set(false); this.loadSpellGrants(feature.id);
     this.form = {
       slug: feature.slug,
@@ -220,6 +289,7 @@ export class FeatureDefinitionManager {
   }
   protected startCreation(): void {
     this.selectedFeatureId.set(null);
+    this.featureAssignments.set([]);
     this.spellGrants.set([]); this.spellGrantEditing.set(false);
     this.form = this.emptyForm();
     this.clearMessages();

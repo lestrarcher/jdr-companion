@@ -64,6 +64,34 @@
           </div>
           <h2>{{ selected.name }}</h2>
           <div class="features-reader__rule"></div>
+          @if (currentFeatureChoices().length) {
+            <section class="feature-spell-settings" aria-label="Caractéristique des sorts de cette capacité">
+              <h3>Caractéristique d’incantation</h3>
+              <p>La caractéristique choisie est propre à ce personnage et détermine les jets liés aux sorts accordés.</p>
+              @if (racialAbilityError()) { <p class="feature-spell-settings__error" role="alert">{{ racialAbilityError() }}</p> }
+              @for (choice of currentFeatureChoices(); track choice.grantId) {
+                <div class="feature-spell-setting">
+                  <div class="feature-spell-setting__info">
+                    <strong>{{ choice.spellName }}</strong>
+                    <span>Caractéristique : {{ abilityLabel(choice.chosenAbility) }}</span>
+                  </div>
+                  @if (!readonly() && (editingGrantId() === choice.grantId || !choice.chosenAbility)) {
+                    <label class="feature-spell-setting__edit">
+                      <span class="sr-only">Choisir la caractéristique pour {{ choice.spellName }}</span>
+                      <select [disabled]="racialAbilityBusy()" [attr.aria-label]="'Caractéristique pour ' + choice.spellName" #racialAbility (change)="chooseRacialAbility(choice.grantId, racialAbility.value)">
+                        <option value="" [selected]="!choice.chosenAbility">Choisir…</option>
+                        @for (ability of choice.allowedAbilities; track ability) {
+                          <option [value]="ability" [selected]="choice.chosenAbility === ability">{{ abilityLabel(ability) }}</option>
+                        }
+                      </select>
+                    </label>
+                  } @else if (!readonly()) {
+                    <button type="button" class="feature-spell-setting__button" (click)="editingGrantId.set(choice.grantId)">Modifier</button>
+                  }
+                </div>
+              }
+            </section>
+          }
           <div class="features-reader__description">{{ selected.description || 'Aucune description renseignée.' }}</div>
         </article>
       }

@@ -130,3 +130,33 @@ $muted: rgba(244, 239, 229, 0.62);
   }
   &--selected { box-shadow: inset 0 0 0 1px var(--origin-color); }
 }
+
+.feature-spell-settings {
+  margin: 0 0 1.1rem; padding: 0.9rem 1rem;
+  border: 1px solid rgba(130, 172, 214, 0.3); border-radius: 0.65rem;
+  background: rgba(130, 172, 214, 0.06);
+  h3 { margin: 0 0 0.3rem; font: 500 1.05rem Georgia, serif; color: #e6d6b1; }
+  > p { margin: 0 0 0.7rem; font-size: 0.8rem; color: $muted; line-height: 1.45; }
+  .feature-spell-settings__error { color: #ffaaaa; }
+}
+.feature-spell-setting {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  gap: 0.6rem; padding: 0.65rem 0;
+  border-top: 1px solid $border;
+}
+.feature-spell-setting__info {
+  display: grid; gap: 0.25rem; min-width: 0;
+  strong { color: #f4efe5; font-size: 0.88rem; }
+  span { color: $muted; font-size: 0.78rem; }
+}
+.feature-spell-setting__edit select {
+  max-width: 100%; min-height: 2.2rem; padding: 0.4rem 0.6rem;
+  border: 1px solid $border; border-radius: 0.4rem;
+  background: #202434; color: #f4efe5; font: inherit; font-size: 0.82rem;
+}
+.feature-spell-setting__button {
+  border: 1px solid $border; border-radius: 0.4rem;
+  background: transparent; color: $gold; padding: 0.4rem 0.65rem;
+  cursor: pointer; font: inherit; font-size: 0.8rem;
+  &:hover, &:focus-visible { border-color: $gold; }
+}

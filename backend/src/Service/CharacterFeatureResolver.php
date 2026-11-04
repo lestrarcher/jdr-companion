@@ -6,6 +6,8 @@ namespace App\Service;
 
 use App\Entity\Character;
 use App\Entity\CharacterFeatureRule;
+use App\Entity\CharacterFeatureAssignment;
+use Doctrine\ORM\EntityManagerInterface;
 use App\Entity\CharacterRace;
 use App\Repository\CharacterFeatureRuleRepository;
 
@@ -13,6 +15,7 @@ final readonly class CharacterFeatureResolver
 {
     public function __construct(
         private CharacterFeatureRuleRepository $ruleRepository,
+        private EntityManagerInterface $entityManager,
     ) {
     }
 
@@ -77,22 +80,37 @@ final readonly class CharacterFeatureResolver
     public function applicableRules(Character $character, array $progressionValues = []): array
     {
         $owner = $character->getCampaign()->getOwner();
-        return array_values(array_filter($this->ruleRepository->findVisibleForOwner($owner),
+        $rules = array_values(array_filter($this->ruleRepository->findVisibleForOwner($owner),
             fn(CharacterFeatureRule $rule): bool => ReferenceVisibility::allows($rule, $owner)
                 && $this->isRuleApplicable($character, $rule, $progressionValues)));
+        foreach ($this->entityManager->getRepository(CharacterFeatureAssignment::class)->findBy(['character' => $character]) as $assignment) {
+            $definition = $assignment->getFeatureDefinition();
+            if (ReferenceVisibility::allows($definition, $owner)
+                && !array_filter($rules, static fn (CharacterFeatureRule $rule): bool => $rule->getFeatureDefinition()->getId() === $definition->getId())) {
+                $rules[] = CharacterFeatureRule::forCharacter($definition, $character);
+            }
+        }
+        return $rules;
     }
 
     /** Source ownership for persisted acquisitions, never runtime permission. */
     public function acquisitionRules(Character $character): array
     {
         $owner = $character->getCampaign()->getOwner();
-        return array_values(array_filter($this->ruleRepository->findVisibleForOwner($owner),
+        $rules = array_values(array_filter($this->ruleRepository->findVisibleForOwner($owner),
             fn(CharacterFeatureRule $rule): bool => ReferenceVisibility::allows($rule, $owner)
                 && ($rule->getProgressionDefinition() !== null
                     ? ($rule->getProgressionDefinition()->isIrreversible()
                         ? $this->isRuleApplicable($character, $rule, [])
                         : $character->hasProgression($rule->getProgressionDefinition()))
                     : $this->isRuleApplicable($character, $rule, []))));
+        foreach ($this->entityManager->getRepository(CharacterFeatureAssignment::class)->findBy(['character' => $character]) as $assignment) {
+            if (ReferenceVisibility::allows($assignment->getFeatureDefinition(), $owner)
+                && !array_filter($rules, static fn (CharacterFeatureRule $rule): bool => $rule->getFeatureDefinition()->getId() === $assignment->getFeatureDefinition()->getId())) {
+                $rules[] = CharacterFeatureRule::forCharacter($assignment->getFeatureDefinition(), $character);
+            }
+        }
+        return $rules;
     }
 
     private function shouldReplaceRule(

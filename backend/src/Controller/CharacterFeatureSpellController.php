@@ -17,6 +17,14 @@ final class CharacterFeatureSpellController extends AbstractController
         if (!$actor instanceof User || $actor->getId()!==$character->getCampaign()->getOwner()->getId()) throw new NotFoundHttpException('Personnage indisponible.');
         return $actor;
     }
+    #[Route('/ability-choices',name:'api_character_feature_spell_ability_choices',methods:['GET'])]
+    public function abilityChoices(Character $character, \App\Service\CharacterFeatureSpellAbilityChoice $choices): JsonResponse {
+        $this->owner($character); return $this->json(['choices'=>$choices->list($character)]);
+    }
+    #[Route('/{grantId}/ability',name:'api_character_feature_spell_ability',requirements:['grantId'=>'\d+'],methods:['PUT'])]
+    public function chooseAbility(Character $character,int $grantId,Request $request,\App\Service\CharacterFeatureSpellAbilityChoice $choices): JsonResponse {
+        $this->owner($character); return $this->json(['choices'=>$choices->choose($character,$grantId,$request->toArray()['ability']??null)]);
+    }
     #[Route('',name:'api_character_feature_spells',methods:['GET'])]
     public function status(Character $character,CharacterFeatureSpellService $service): JsonResponse {
         $this->owner($character); return $this->json($service->status($character));
