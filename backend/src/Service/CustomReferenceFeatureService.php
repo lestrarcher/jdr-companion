@@ -58,7 +58,7 @@ final class CustomReferenceFeatureService
             unset($payload['activationType'],$payload['visible']);
             $current=['name'=>$row['name']??'','description'=>$row['description']??null,'resourceDefinitionId'=>isset($row['resource_definition_id'])?(int)$row['resource_definition_id']:null];
             $data=$this->validate($payload,$current);
-            if ($row && $data['resourceDefinitionId'] !== $current['resourceDefinitionId'] && $this->isUsed($id)) {
+            if ($row && $data['resourceDefinitionId'] !== null && $data['resourceDefinitionId'] !== $current['resourceDefinitionId'] && $this->isUsed($id)) {
                 throw new ConflictHttpException('Cette capacité est utilisée : sa relation à une ressource est figée.');
             }
             $this->validateResource($data['resourceDefinitionId'],$actor);
@@ -121,7 +121,7 @@ final class CustomReferenceFeatureService
                 'resourceDefinitionId' => $row['resource_definition_id'] === null ? null : (int) $row['resource_definition_id'],
             ];
             $data = $this->validate($payload, $current);
-            if ($data['resourceDefinitionId'] !== $current['resourceDefinitionId'] && $this->isUsed($id)) {
+            if ($data['resourceDefinitionId'] !== null && $data['resourceDefinitionId'] !== $current['resourceDefinitionId'] && $this->isUsed($id)) {
                 throw new ConflictHttpException('Cette capacité est utilisée : sa relation à une ressource est figée.');
             }
             $this->validateResource($data['resourceDefinitionId'], $owner);

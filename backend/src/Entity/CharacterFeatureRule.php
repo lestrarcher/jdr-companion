@@ -122,6 +122,9 @@ class CharacterFeatureRule
     #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
     private ?ProgressionDefinition $progressionDefinition = null;
 
+    /** Only set on virtual rules; not a mapped association. */
+    private ?Character $character = null;
+
     #[ORM\Column(nullable: true)]
     private ?int $progressionThreshold = null;
 
@@ -144,6 +147,16 @@ class CharacterFeatureRule
         $this->featureDefinition = $featureDefinition;
         $this->setUnlockLevel($unlockLevel);
         $this->setDisplayOrder($displayOrder);
+    }
+
+    /** Virtual rule for a direct assignment; persisted by CharacterFeatureAssignment. */
+    public static function forCharacter(
+        CharacterFeatureDefinition $featureDefinition,
+        Character $character,
+    ): self {
+        $rule = new self($featureDefinition, 1);
+        $rule->character = $character;
+        return $rule;
     }
 
     public static function forClass(
@@ -306,9 +319,15 @@ class CharacterFeatureRule
         return $this;
     }
 
+    public function getCharacter(): ?Character
+    {
+        return $this->character;
+    }
+
     public function sourceType(): string
     {
         return match (true) {
+            $this->character !== null => 'character',
             $this->characterClass !== null => 'class',
             $this->characterSubclass !== null => 'subclass',
             $this->characterRace !== null => 'race',
@@ -321,6 +340,7 @@ class CharacterFeatureRule
     public function sourceId(): int
     {
         $id = match ($this->sourceType()) {
+            'character' => $this->character?->getId(),
             'class' => $this->characterClass?->getId(),
             'subclass' => $this->characterSubclass?->getId(),
             'race' => $this->characterRace?->getId(),
@@ -334,6 +354,7 @@ class CharacterFeatureRule
     public function sourceName(): string
     {
         return match ($this->sourceType()) {
+            'character' => $this->character->getName(),
             'class' => $this->characterClass->getName(),
             'subclass' => $this->characterSubclass->getName(),
             'race' => $this->characterRace->getName(),

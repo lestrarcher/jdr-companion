@@ -17,7 +17,7 @@ final readonly class CharacterSpellCastAvailability
         $result=['grantId'=>$resolution['grantId']??null,'status'=>'unknown','reason'=>null,'methods'=>[]];
         if (($resolution['status']??null)!=='resolved') return array_replace($result,['reason'=>$resolution['reason']??'grant_resolution_unknown']);
         if (!is_array($resolution['provenance']??null)
-            || !in_array($resolution['provenance']['type']??null,['feat','class','subclass','race','progression'],true)
+            || !in_array($resolution['provenance']['type']??null,['feat','class','subclass','race','progression','character'],true)
             || !is_int($resolution['provenance']['id']??null) || $resolution['provenance']['id']<1
             || ($resolution['abilityReason']??null)!==null
             || !in_array($resolution['castingAbility']??null,array_column(\App\Enum\Ability::cases(),'value'),true)

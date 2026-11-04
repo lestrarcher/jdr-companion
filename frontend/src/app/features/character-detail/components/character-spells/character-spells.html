@@ -9,6 +9,18 @@
     <div class="feature-spell-heading"><div><h3>Sorts des capacités</h3><p>Sorts raciaux, dons et autres capacités, indépendants des quotas de classe.</p></div>
     </div>
     @if (featureError()) { <p class="spell-error" role="alert">{{ featureError() }}</p> }
+    @if (racialAbilities().length) {
+      <h4>Caractéristique des sorts raciaux</h4>
+      @for (choice of racialAbilities(); track choice.grantId) {
+        <div class="feature-spell-choice">
+          <div><strong>{{ choice.spellName }}</strong><p>{{ choice.featureName }} · Choix propre à ce personnage</p></div>
+          <select aria-label="Caractéristique d’incantation raciale" [disabled]="racialAbilityBusy()" #racialAbility (change)="setRacialAbility(choice.grantId, racialAbility.value)">
+            <option value="" [selected]="!choice.chosenAbility">Choisir une caractéristique…</option>
+            @for (ability of choice.allowedAbilities; track ability) { <option [value]="ability" [selected]="choice.chosenAbility === ability">{{ abilityLabel(ability) }}</option> }
+          </select>
+        </div>
+      }
+    }
     @if (featureSpells().pending.length) {
       <h4>Choix à effectuer ({{ featureSpells().pending.length }})</h4>
       @for (grant of featureSpells().pending; track grant.grantId) {

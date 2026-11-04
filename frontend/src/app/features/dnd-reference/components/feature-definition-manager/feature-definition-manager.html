@@ -103,6 +103,51 @@
       }
     </header>
 
+    @if (selectedFeatureId() !== null) {
+      <section class="feature-assignments" aria-label="Attributions aux personnages">
+        <div class="feature-assignments__header">
+          <div>
+            <span class="feature-assignments__eyebrow">Gestion des personnages</span>
+            <h3>Attributions directes</h3>
+            <p>Accordez cette capacité à plusieurs personnages. Chaque personnage conserve ses propres ressources.</p>
+          </div>
+          <span class="feature-assignments__count">{{ featureAssignments().length }} attribué(s)</span>
+        </div>
+        <div class="feature-assignments__controls">
+          <label class="field"><span>Campagne</span>
+            <select name="assignmentCampaign" [(ngModel)]="assignmentCampaignId" (ngModelChange)="loadAssignmentCharacters()">
+              @for (campaign of assignmentCampaigns(); track campaign.id) {
+                <option [ngValue]="campaign.id">{{ campaign.name }}</option>
+              }
+            </select>
+          </label>
+          <label class="field"><span>Personnage</span>
+            <select name="assignmentCharacter" [(ngModel)]="assignmentCharacterId">
+              <option [ngValue]="null">Choisir un personnage</option>
+              @for (character of assignmentCharacters(); track character.id) {
+                <option [ngValue]="character.id">{{ character.name }}</option>
+              }
+            </select>
+          </label>
+          <button class="feature-assignments__add" type="button" [disabled]="assignmentBusy() || assignmentCharacterId === null" (click)="assignFeatureToCharacter()">Attribuer</button>
+        </div>
+        @if (assignmentMessage()) { <p class="feature-assignments__message" role="status">{{ assignmentMessage() }}</p> }
+        @if (featureAssignments().length) {
+          <div class="feature-assignments__members">
+            <span class="feature-assignments__members-label">Personnages attributaires</span>
+            <ul>
+              @for (assignment of featureAssignments(); track assignment.characterId) {
+                <li>
+                  <span class="feature-assignments__member-name">{{ assignment.characterName }}</span>
+                  <button class="feature-assignments__remove" type="button" [disabled]="assignmentBusy()" [attr.aria-label]="'Retirer la capacité à ' + assignment.characterName" (click)="removeFeatureFromCharacter(assignment.characterId)">Retirer</button>
+                </li>
+              }
+            </ul>
+          </div>
+        }
+      </section>
+    }
+
     <form class="feature-form" (ngSubmit)="save()">
       @if (readOnly()) { <p>Référence officielle en consultation.</p> }
       <fieldset [disabled]="readOnly() || submitting()" style="border:0;padding:0;margin:0;min-width:0">

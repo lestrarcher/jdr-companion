@@ -3,8 +3,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Location } from '@angular/common';
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, finalize } from 'rxjs';
+
 import { SpellQuickList, spellSchoolIcon } from '../spell-quick-list/spell-quick-list';
 import { SpellHistorical } from '../../../character-detail/components/character-spells/spell-historical';
 import { SpellCastDialog, SpellCastSelection } from '../spell-cast-dialog/spell-cast-dialog';

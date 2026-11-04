@@ -55,7 +55,7 @@ final readonly class AdvancedSpellChoices
         return $this->em->getConnection()->fetchAllAssociative('SELECT a.*, c.rule_id, c.opportunity_level_id, (c.origin_known OR EXISTS (SELECT 1 FROM character_spell_qualification q WHERE q.acquisition_id=a.id AND q.rule_id=c.rule_id)) AS origin_known, s.level AS spell_level, s.name AS spell_name FROM character_spell_acquisition a LEFT JOIN character_spell_choice c ON c.acquisition_id=a.id JOIN spell_definition s ON s.id=a.spell_id WHERE a.character_id=? AND a.policy_definition_id=? AND a.retirement_id IS NULL ORDER BY a.id',[$character->getId(),$policy->getId()]);
     }
 
-    private function eligible(SpellPolicyChoiceRule $rule,array $spell,int $level,bool $replacement,User $owner,array $extensions=[]): bool
+    private function eligible(SpellPolicyChoiceRule $rule,array $spell,int $level,bool $replacement,User $owner,array $extensions=[],array $additionalLists=[]): bool
     {
         $p=$rule->parameters()->values;
         if ($spell['level']<$p[$replacement?'replacementMinimumSpellLevel':'minimumSpellLevel'] || $spell['level']>$p['maxSpellLevels'][$level-1]) return false;
@@ -69,6 +69,9 @@ final readonly class AdvancedSpellChoices
         // The catalogue already checked every dependency and visibility before exposing this spell.
         foreach ($spell['classes'] as $class) if ($list===null || $class['id']===$list->getId()) return true;
         if ($list!==null && isset($extensions[$list->getId()][$spell['id']])) return true;
+        if ($list!==null) foreach ($spell['classes'] as $class) {
+            if (in_array($class['id'], $additionalLists[$list->getId()] ?? [], true)) return true;
+        }
         return false;
     }
 
@@ -111,6 +114,26 @@ final readonly class AdvancedSpellChoices
                 elseif (!isset($occupied[$bucket][$path->spell['id']])) { ++$used[$bucket]; $occupied[$bucket][$path->spell['id']]=true; }
             }
         }
+        // Divine Soul 2014 extends the sorcerer list, not its spell quotas.
+        $additionalLists = [];
+        $sorcererClass = $policy->getCharacterClass();
+        if ($sorcererClass->getSlug() === 'sorcerer' && $sorcererClass->getOrigin()->value === 'OFFICIAL') {
+            $selected = [];
+            foreach ($levels as $classLevel) {
+                if ($classLevel->getPosition() > $position || $classLevel->getCharacterClass()->getId() !== $sorcererClass->getId()) continue;
+                $subclass = $classLevel->getSubclass();
+                if ($subclass !== null) $selected[$subclass->getId()] = $subclass;
+            }
+            if (count($selected) === 1) {
+                $subclass = reset($selected);
+                if ($subclass->getSlug() === 'divine-soul' && $subclass->getOrigin()->value === 'OFFICIAL') {
+                    $clericId = $this->em->getConnection()->fetchOne(
+                        "SELECT id FROM character_class WHERE slug = 'cleric' AND origin = 'OFFICIAL' AND owner_id IS NULL"
+                    );
+                    if ($clericId !== false) $additionalLists[$sorcererClass->getId()] = [(int) $clericId];
+                }
+            }
+        }
         $all=[]; $page=1;
         do {
             $batch=$catalogue->search(['page'=>$page++,'pageSize'=>100],$owner);
@@ -120,12 +143,12 @@ final readonly class AdvancedSpellChoices
         foreach ($rules as $id=>$rule) {
             $p=$rule->parameters();
             $spent=count(array_filter($rows,static fn($r)=>$r['provenance']!=='spellbook-copy' && (int)$r['rule_id']===$id && (int)$r['class_level_id']===$levels[$index]->getId() && $r['replaces_id']===null));
-            $eligible=array_values(array_filter($all,fn($s)=>$this->eligible($rule,$s,$index+1,false,$owner,$extensions)));
+            $eligible=array_values(array_filter($all,fn($s)=>$this->eligible($rule,$s,$index+1,false,$owner,$extensions,$additionalLists)));
             foreach ($eligible as $spell) $available[$spell['id']]=$spell;
             $choices[]=['ruleId'=>$id,'key'=>$rule->getKey(),'quota'=>$p->values['quota'],'result'=>$p->values['result'],'remaining'=>max(0,$p->at('opportunities',$index+1)-$spent),
                 'castingClassId'=>$rule->getCastingClass()?->getId() ?? $policy->getCharacterClass()->getId(),
                 'available'=>$eligible,
-                'replacementAvailable'=>array_values(array_filter($all,fn($s)=>$this->eligible($rule,$s,$index+1,true,$owner,$extensions)))];
+                'replacementAvailable'=>array_values(array_filter($all,fn($s)=>$this->eligible($rule,$s,$index+1,true,$owner,$extensions,$additionalLists)))];
         }
         $limits=$policy->policy()->atLevel($index+1);
         // Prepared casters choose daily from their class list, not from acquisition rules.
