@@ -14,8 +14,9 @@ export class CustomContentApiService {
   readonly viewOrigin = inject(REFERENCE_VIEW_ORIGIN);
   private readonly base = `/api/reference/${this.scope}`;
 
-  spells(params: Record<string, string | number>) {
-    return this.http.get<SpellPage>(`${this.base}/spells`, { params: this.viewOrigin ? { ...params, origin: this.viewOrigin } : params, withCredentials: true });
+  spells(params: Record<string, string | number>, includeOfficial = false) {
+    const origin = this.viewOrigin && !(this.scope === 'custom' && includeOfficial) ? this.viewOrigin : null;
+    return this.http.get<SpellPage>(`${this.base}/spells`, { params: origin ? { ...params, origin } : params, withCredentials: true });
   }
   spellOptions() { return this.http.get<SpellOptions>(`${this.base}/spells/options`, { withCredentials: true }); }
   saveSpell(id: number | null, payload: Partial<SpellPayload>) {

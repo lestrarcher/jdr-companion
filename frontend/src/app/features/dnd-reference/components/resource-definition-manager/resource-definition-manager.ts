@@ -193,7 +193,7 @@ export class ResourceDefinitionManager {
     }
 
     if (
-      this.form.maximumType === 'ability_modifier' &&
+      this.form.maximumType === 'ability-modifier' &&
       !this.form.scalingAbility
     ) {
       this.error.set(
@@ -211,7 +211,7 @@ export class ResourceDefinitionManager {
       baseMaximum: Number(this.form.baseMaximum),
       multiplier: Number(this.form.multiplier),
       minimumMaximum: Number(this.form.minimumMaximum),
-      scalingAbility: this.form.maximumType === 'ability_modifier'
+      scalingAbility: this.form.maximumType === 'ability-modifier'
         ? this.form.scalingAbility
         : null,
       custom: this.form.custom,

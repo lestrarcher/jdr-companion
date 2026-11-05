@@ -17,6 +17,11 @@ export class SpellEditor {
   readonly official = this.api.scope === 'official';
   readonly viewOrigin = this.api.viewOrigin;
   classSearch = '';
+  includeOfficial = false;
+  toggleOfficial(checked: boolean): void {
+    this.includeOfficial = checked;
+    this.load(1);
+  }
   classChoices() { return this.options().classes.filter(c => this.draft.classIds.includes(c.id) || c.name.toLocaleLowerCase('fr').includes(this.classSearch.toLocaleLowerCase('fr'))); }
   readonly contextReadOnly = inject(REFERENCE_READ_ONLY);
   readOnly(): boolean { return this.contextReadOnly || this.selected() !== null && (this.selected()!.origin === 'OFFICIAL') !== this.official; }
@@ -63,7 +68,7 @@ export class SpellEditor {
     if (this.busy() || !this.canDiscard()) return;
     this.opened.set(false);
     this.pending?.unsubscribe(); this.loading.set(true); this.error.set('');
-    this.pending = forkJoin({ result: this.api.spells({ ...this.filters, page }), options: this.api.spellOptions() })
+    this.pending = forkJoin({ result: this.api.spells({ ...this.filters, page }, this.includeOfficial), options: this.api.spellOptions() })
       .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.loading.set(false)))
       .subscribe({ next: ({ result, options }) => { this.result.set(result); this.options.set(options); }, error: error => this.showError(error) });
   }
