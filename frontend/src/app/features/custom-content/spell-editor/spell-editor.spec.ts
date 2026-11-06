@@ -53,6 +53,20 @@ describe('Spell editor in personal content', () => {
   });
   afterEach(() => { http.verify(); vi.restoreAllMocks(); });
 
+  it('can include official spells in the personal catalogue without enabling official spell edits', async () => {
+    await load([]);
+    const toggle = root().querySelector<HTMLInputElement>('input[name="includeOfficial"]')!;
+    expect(toggle).not.toBeNull();
+    toggle.click(); await settle();
+    const request = http.expectOne(r => r.url === base);
+    expect(request.request.params.get('origin')).not.toBe('CUSTOM');
+    request.flush({ spells: [{ ...item, origin: 'OFFICIAL', editable: false, deletable: false }], total: 1, page: 1, pageSize: 25 });
+    http.expectOne(base + '/options').flush({ schools: [], classes: [] }); await settle();
+    await click('Consulter');
+    expect(root().querySelector('.spell-form fieldset')?.hasAttribute('disabled')).toBe(true);
+    expect(root().querySelector('app-spell-grants')).not.toBeNull();
+  });
+
   it('consults official mechanics and classes without mutation controls', async () => {
     await load([{ ...item, origin: 'OFFICIAL', editable: false, deletable: false, classIds: [8], classes: [{ id: 8, name: 'Classe officielle', origin: 'OFFICIAL' }] }]);
     await click('Consulter');

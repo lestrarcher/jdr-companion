@@ -11,6 +11,9 @@
     <form class="filters" (ngSubmit)="load()">
       <fieldset [disabled]="busy() || loading()">
         <legend>Rechercher des sorts</legend>
+        @if (!official) {
+          <label class="field"><input type="checkbox" [ngModel]="includeOfficial" (ngModelChange)="toggleOfficial($event)" name="includeOfficial"> Inclure les sorts officiels (consultation et attributions personnelles)</label>
+        }
         <label class="field">Nom ou slug<input name="q" [(ngModel)]="filters.q" maxlength="200" placeholder="Rechercher un sort…"></label>
         <div class="filter-grid">
           <label class="field">Niveau<select name="level" [(ngModel)]="filters.level"><option value="">Tous</option>@for (level of [0,1,2,3,4,5,6,7,8,9]; track level) { <option [value]="level">{{ level === 0 ? 'Sort mineur' : level }}</option> }</select></label>
