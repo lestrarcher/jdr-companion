@@ -35,7 +35,7 @@ final readonly class SpellbookLibrary
     {
         $ids = [];
         foreach ($character->getMagicItems() as $owned) {
-            if ($owned->getMagicItem()->getCategory() !== 'spellbook') {
+            if ($owned->getMagicItem()?->getCategory() !== 'spellbook') {
                 continue;
             }
             foreach ($this->contents($owned) as $entry) {
@@ -63,7 +63,7 @@ final readonly class SpellbookLibrary
 
     private function assertSpellbook(CharacterMagicItem $book): void
     {
-        if ($book->getMagicItem()->getCategory() !== 'spellbook' || $book->getQuantity() !== 1) {
+        if ($book->getMagicItem()?->getCategory() !== 'spellbook' || $book->getQuantity() !== 1) {
             throw new \InvalidArgumentException('Objet invalide : un grimoire doit être individuel.');
         }
     }

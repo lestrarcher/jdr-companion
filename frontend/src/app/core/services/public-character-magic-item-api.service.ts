@@ -64,6 +64,8 @@ export interface SpellbookInscriptionResponse {
 }
 
 export interface CharacterMagicItemResponse {
+  custom: boolean;
+  quantityAdjustable?: boolean;
   spellbookSpells?: SpellbookInscriptionResponse[] | null;
   id: number;
   quantity: number;
@@ -74,7 +76,7 @@ export interface CharacterMagicItemResponse {
   notes: string | null;
   inscribedSpellId?: number | null;
   inscribedSpellName?: string | null;
-  magicItem: MagicItemResponse;
+  magicItem: Omit<MagicItemResponse, 'id'> & { id: number | null };
 }
 
 export interface EffectiveAbilityResponse {
@@ -99,6 +101,7 @@ export interface CharacterMagicItemUpdateResponse
 }
 
 export interface CharacterMagicItemUpdatePayload {
+  quantityChange?: number;
   equipped?: boolean;
   attuned?: boolean;
   chargeChange?: number;
@@ -132,6 +135,13 @@ export class PublicCharacterMagicItemApiService {
     return this.http.post<CharacterMagicItemInventoryResponse>(
       `${this.apiUrl}/public/characters/${accessToken}/magic-items`,
       { magicItemId, quantity, ...(inscribedSpellId != null ? { inscribedSpellId } : {}) },
+    );
+  }
+
+  createCustom(accessToken: string, name: string, description: string, quantity: number): Observable<CharacterMagicItemInventoryResponse> {
+    return this.http.post<CharacterMagicItemInventoryResponse>(
+      `${this.apiUrl}/public/characters/${accessToken}/magic-items/custom`,
+      { name, description, quantity },
     );
   }
 

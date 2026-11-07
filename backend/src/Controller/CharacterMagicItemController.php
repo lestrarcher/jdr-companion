@@ -192,7 +192,7 @@ public function assign(
                     throw new \InvalidArgumentException('Quantité supérieure au stock possédé.');
                 }
                 if ($quantity === $ownedItem->getQuantity()) {
-                    if ($ownedItem->getMagicItem()->getCategory() === 'spellbook') {
+                    if ($ownedItem->getMagicItem()?->getCategory() === 'spellbook') {
                         $character->removeMagicItem($ownedItem);
                         $ownedItem->transferTo(null);
                     } else {
@@ -323,20 +323,20 @@ public function assign(
             'id' =>
                 $ownedItem->getId(),
             'magicItemId' =>
-                $item->getId(),
+                $item?->getId(),
             'name' => $ownedItem->getInscribedSpell() !== null ? 'Parchemin de ' . $ownedItem->getInscribedSpell()->getName() : $ownedItem->getDisplayName(),
             'inscribedSpellId' => $ownedItem->getInscribedSpell()?->getId(),
             'description' =>
-                $item->getDescription(),
+                $item?->getDescription() ?? $ownedItem->getCustomDescription(),
             'rarity' =>
-                $item->getRarity()?->value,
-            'category' => $item->getCategory(),
-            'equippable' => $item->isEquippable(),
+                $item?->getRarity()?->value,
+            'category' => $item?->getCategory() ?? 'other',
+            'equippable' => $item?->isEquippable() ?? false,
             'rarityLabel' =>
-                $item->getRarity()?->label(),
+                $item?->getRarity()?->label(),
             'requiresAttunement' =>
                 $item
-                    ->requiresAttunement(),
+                    ?->requiresAttunement() ?? false,
             'attuned' =>
                 $ownedItem->isAttuned(),
             'equipped' =>
@@ -351,18 +351,18 @@ public function assign(
                     ->getCurrentCharges(),
             'maximumCharges' =>
                 $item
-                    ->getMaximumCharges(),
+                    ?->getMaximumCharges(),
             'rechargeType' =>
                 $item
-                    ->getRechargeType()
-                    ->value,
+                    ?->getRechargeType()
+                    ->value ?? 'none',
             'rechargeLabel' =>
                 $item
-                    ->getRechargeType()
-                    ->label(),
+                    ?->getRechargeType()
+                    ->label() ?? 'Aucune',
             'rechargeFormula' =>
                 $item
-                    ->getRechargeFormula(),
+                    ?->getRechargeFormula(),
             'notes' =>
                 $ownedItem->getNotes(),
             'acquiredAt' =>

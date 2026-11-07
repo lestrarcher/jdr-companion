@@ -106,7 +106,7 @@ final readonly class CharacterSpellCastExecutor
                     }
                     $owned = $this->em->find(CharacterMagicItem::class, (int)$parts[1], LockMode::PESSIMISTIC_WRITE);
                     if ($owned === null || $owned->getCharacter()->getId() !== $session->getCharacter()->getId()
-                        || $owned->getMagicItem()->getImportKey() !== 'srd-5.1:magic-item:spell-scroll'
+                        || $owned->getMagicItem()?->getImportKey() !== 'srd-5.1:magic-item:spell-scroll'
                         || $owned->getInscribedSpell()?->getId() !== $validation['source']['spellId']
                         || $owned->getQuantity() !== 1) {
                         throw new UnprocessableEntityHttpException('invalid_scroll_cast');
@@ -121,7 +121,7 @@ final readonly class CharacterSpellCastExecutor
                     $owned = $this->em->find(CharacterMagicItem::class, (int)$parts[1], LockMode::PESSIMISTIC_WRITE);
                     $grant = $this->em->find(MagicItemSpellGrant::class, (int)$parts[2]);
                     if ($owned === null || $grant === null || $owned->getCharacter()->getId() !== $session->getCharacter()->getId()
-                        || $owned->getMagicItem()->getId() !== $grant->getMagicItem()->getId()
+                        || $owned->getMagicItem()?->getId() !== $grant->getMagicItem()->getId()
                         || $grant->getSpell()->getId() !== $validation['source']['spellId']
                         || $owned->getQuantity() !== 1
                         || ($grant->getCostMode() === 'charges' ? 'item-charges' : 'item-limited') !== $method) {

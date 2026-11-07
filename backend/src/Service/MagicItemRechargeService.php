@@ -25,6 +25,7 @@ final readonly class MagicItemRechargeService
         $grants = 0;
         foreach ($character->getMagicItems() as $owned) {
             $definition = $owned->getMagicItem();
+            if ($definition === null) continue;
             $type = $definition->getRechargeType();
             $recharge = match ($event) {
                 'dawn' => $type === MagicItemRechargeType::Daily,

@@ -37,7 +37,7 @@ final class BackfillCharacterSpellbookCommand extends Command
         $character = $this->em->find(Character::class, (int) $input->getArgument('character-id'));
         $book = $this->em->find(CharacterMagicItem::class, (int) $input->getArgument('book-id'));
         if (!$character || !$book || $book->getCharacter()->getId() !== $character->getId()
-            || $book->getMagicItem()->getCategory() !== 'spellbook' || $book->getQuantity() !== 1) {
+            || $book->getMagicItem()?->getCategory() !== 'spellbook' || $book->getQuantity() !== 1) {
             $output->writeln('<error>Character or owned individual spellbook not found.</error>');
             return Command::FAILURE;
         }

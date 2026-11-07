@@ -16,6 +16,31 @@ final readonly class CharacterInventory
         private ItemCatalogue $catalogue,
     ) {}
 
+    public function createCustom(Character $character, string $name, ?string $description = null, int $quantity = 1): CharacterMagicItem
+    {
+        $owned = CharacterMagicItem::custom($character, $name, $description, $quantity);
+        // The caller holds the character mutation lock, including for concurrent creations.
+        $normalizeName = static fn (string $value): string => mb_strtolower(trim(preg_replace('/\s+/u', ' ', $value) ?? $value), 'UTF-8');
+        foreach ($this->em->getRepository(CharacterMagicItem::class)->findBy(
+            ['character' => $character, 'magicItem' => null], ['id' => 'ASC'],
+        ) as $existing) {
+            $this->em->refresh($existing);
+            if (!$existing->isStackableCustom()
+                || $normalizeName($existing->getDisplayName()) !== $normalizeName($owned->getDisplayName())
+                || $existing->getCustomDescription() !== $owned->getCustomDescription()) {
+                continue;
+            }
+            $existing->setQuantity($existing->getQuantity() + $quantity);
+            $this->em->flush();
+
+            return $existing;
+        }
+        $character->addMagicItem($owned);
+        $this->em->persist($owned);
+        $this->em->flush();
+
+        return $owned;
+    }
 
     public function acquire(
         Character $character,

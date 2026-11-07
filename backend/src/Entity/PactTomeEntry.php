@@ -29,7 +29,7 @@ class PactTomeEntry
 
     public function __construct(CharacterMagicItem $book, SpellDefinition $spell, string $kind)
     {
-        if ($book->getMagicItem()->getCategory() !== 'spellbook' || $book->getQuantity() !== 1
+        if ($book->getMagicItem()?->getCategory() !== 'spellbook' || $book->getQuantity() !== 1
             || !in_array($kind, ['cantrip', 'ritual'], true)
             || ($kind === 'cantrip' && $spell->getLevel() !== 0)
             || ($kind === 'ritual' && ($spell->getLevel() < 1 || !$spell->isRitual()))) {

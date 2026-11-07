@@ -29,7 +29,7 @@ final class CampaignSpellbookReserveController extends AbstractController
         $books = $em->getRepository(CharacterMagicItem::class)->findBy(['campaign' => $campaign, 'character' => null]);
         $result = [];
         foreach ($books as $book) {
-            if ($book->getMagicItem()->getCategory() !== 'spellbook') { continue; }
+            if ($book->getMagicItem()?->getCategory() !== 'spellbook') { continue; }
             $spells = $library->contents($book);
             $pactSpells = $pact->entries($book);
             $result[] = ['id' => $book->getId(), 'name' => $book->getDisplayName(), 'spellCount' => count($spells) + count($pactSpells), 'spells' => array_merge($spells, $pactSpells), 'pactTome' => $pactSpells !== []];
@@ -111,7 +111,7 @@ final class CampaignSpellbookReserveController extends AbstractController
             $em->wrapInTransaction(function () use ($em, $campaign, $bookId, $character): void {
                 $book = $em->find(CharacterMagicItem::class, $bookId, LockMode::PESSIMISTIC_WRITE);
                 if (!$book instanceof CharacterMagicItem || $book->getCampaign()->getId() !== $campaign->getId()
-                    || $book->getMagicItem()->getCategory() !== 'spellbook' || $book->getCharacter() !== null) {
+                    || $book->getMagicItem()?->getCategory() !== 'spellbook' || $book->getCharacter() !== null) {
                     throw new \DomainException('Ce grimoire n’est plus disponible dans la réserve.');
                 }
                 $em->lock($character, LockMode::PESSIMISTIC_WRITE);

@@ -141,6 +141,41 @@ final class PublicCharacterMagicItemController extends AbstractController
         });
     }
 
+    #[Route('/public/characters/{accessToken}/magic-items/custom', name: 'api_public_character_custom_item_create', requirements: ['accessToken' => '[a-f0-9]{64}'], methods: ['POST'])]
+    public function createCustom(
+        string $accessToken,
+        Request $request,
+        PlayerCharacterAccess $playerAccess,
+        CharacterInventory $inventory,
+        CharacterAbilityCalculator $abilityCalculator,
+        EntityManagerInterface $entityManager,
+    ): JsonResponse {
+        $state = $playerAccess->requireParticipating($accessToken);
+        try {
+            $payload = $request->toArray();
+        } catch (JsonException) {
+            return $this->json(['message' => 'Le corps JSON est invalide.'], Response::HTTP_BAD_REQUEST);
+        }
+        $name = $payload['name'] ?? null;
+        $description = $payload['description'] ?? null;
+        $quantity = array_key_exists('quantity', $payload) ? $payload['quantity'] : 1;
+        if (array_diff(array_keys($payload), ['name', 'description', 'quantity'])
+            || !is_string($name) || ($description !== null && !is_string($description)) || !is_int($quantity)) {
+            return $this->json(['message' => 'Nom, description ou quantité invalides.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        return $entityManager->wrapInTransaction(function () use ($state, $inventory, $abilityCalculator, $entityManager, $name, $description, $quantity): JsonResponse {
+            PlayerCharacterAccess::lockForMutation($entityManager, $state);
+            try {
+                $inventory->createCustom($state->getCharacter(), $name, $description, $quantity);
+            } catch (\InvalidArgumentException $exception) {
+                throw new \Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException($exception->getMessage(), $exception);
+            }
+
+            return $this->json($this->serializeCharacterInventory($state->getCharacter(), $abilityCalculator), Response::HTTP_CREATED);
+        });
+    }
+
     #[Route(
         '/public/characters/{accessToken}/magic-items/{ownedItemId}',
         name: 'api_public_character_magic_item_update',
@@ -179,7 +214,7 @@ final class PublicCharacterMagicItemController extends AbstractController
 
             if (
                 !$ownedItem instanceof CharacterMagicItem
-                || $ownedItem->getCharacter()->getId() !== $character->getId()
+                || $ownedItem->getCharacter()?->getId() !== $character->getId()
             ) {
                 return $this->json(
                     ['message' => 'Objet magique introuvable.'],
@@ -197,7 +232,27 @@ final class PublicCharacterMagicItemController extends AbstractController
             }
 
             foreach ($character->getMagicItems() as $item) {
-                $entityManager->refresh($item, \Doctrine\DBAL\LockMode::PESSIMISTIC_WRITE);
+                $entityManager->lock($item, \Doctrine\DBAL\LockMode::PESSIMISTIC_WRITE);
+                $entityManager->refresh($item);
+            }
+
+            if (array_key_exists('quantityChange', $payload)) {
+                $change = $payload['quantityChange'];
+                if (count($payload) !== 1 || !is_int($change) || $change === 0
+                    || $change < -9999 || $change > 9999 || !$ownedItem->isStackableCustom()
+                    || $ownedItem->getQuantity() + $change < 0 || $ownedItem->getQuantity() + $change > 9999) {
+                    return $this->json(['message' => 'Variation de quantité invalide pour cet objet.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+                }
+                if ($change > 0) {
+                    $ownedItem->setQuantity($ownedItem->getQuantity() + $change);
+                    $entityManager->flush();
+                    return $this->json([
+                        'ownedItem' => $this->serializeOwnedItem($ownedItem),
+                        ...$this->serializeCharacterInventory($character, $abilityCalculator),
+                    ]);
+                }
+                // Reuse the existing removal path, including deletion at zero.
+                $payload = ['discardQuantity' => -$change];
             }
 
             if (array_key_exists('discardQuantity', $payload)) {
@@ -210,7 +265,7 @@ final class PublicCharacterMagicItemController extends AbstractController
                     $ownedItem->setQuantity($remaining);
                 } else {
                     $character->removeMagicItem($ownedItem);
-                    if ($ownedItem->getMagicItem()->getCategory() === 'spellbook') {
+                    if ($ownedItem->getMagicItem()?->getCategory() === 'spellbook') {
                         $ownedItem->transferTo(null);
                     } else {
                         $entityManager->remove($ownedItem);
@@ -227,7 +282,7 @@ final class PublicCharacterMagicItemController extends AbstractController
                 if (count($payload) !== 1 || $payload['consume'] !== true) {
                     return $this->json(['message' => 'Action de consommation invalide.'], Response::HTTP_UNPROCESSABLE_ENTITY);
                 }
-                if ($ownedItem->getMagicItem()->getCategory() !== 'potion') {
+                if ($ownedItem->getMagicItem()?->getCategory() !== 'potion') {
                     return $this->json(['message' => 'Seules les potions peuvent être consommées.'], Response::HTTP_UNPROCESSABLE_ENTITY);
                 }
                 if ($ownedItem->getQuantity() > 1) {
@@ -332,7 +387,7 @@ final class PublicCharacterMagicItemController extends AbstractController
 
             $maximumCharges = $ownedItem
                 ->getMagicItem()
-                ->getMaximumCharges();
+                ?->getMaximumCharges();
 
             if ($maximumCharges === null) {
                 throw new \InvalidArgumentException(
@@ -388,6 +443,8 @@ final class PublicCharacterMagicItemController extends AbstractController
 
         return [
             'id' => $ownedItem->getId(),
+            'custom' => $magicItem === null,
+            'quantityAdjustable' => $ownedItem->isStackableCustom(),
             'quantity' => $ownedItem->getQuantity(),
             'currentCharges' => $ownedItem->getCurrentCharges(),
             'attuned' => $ownedItem->isAttuned(),
@@ -396,25 +453,26 @@ final class PublicCharacterMagicItemController extends AbstractController
             'notes' => $ownedItem->getNotes(),
             'inscribedSpellId' => $ownedItem->getInscribedSpell()?->getId(),
             'inscribedSpellName' => $ownedItem->getInscribedSpell()?->getName(),
-            'spellbookSpells' => $magicItem->getCategory() === 'spellbook'
+            'spellbookSpells' => $magicItem?->getCategory() === 'spellbook'
                 ? array_merge($this->spellbookLibrary->contents($ownedItem), $this->pactTomes->entries($ownedItem)) : null,
+            // Keep the existing inventory view shape; a null ID is not a catalogue entry.
             'magicItem' => [
-                'id' => $magicItem->getId(),
-                'name' => $magicItem->getName(),
-                'description' => $magicItem->getDescription(),
-                'rarity' => $magicItem->getRarity()?->value,
-                'category' => $magicItem->getCategory(),
-                'equippable' => $magicItem->isEquippable(),
-                'priceCopper' => $magicItem->getPriceCopper(),
-                'weightGrams' => $magicItem->getWeightGrams(),
+                'id' => $magicItem?->getId(),
+                'name' => $magicItem?->getName() ?? $ownedItem->getDisplayName(),
+                'description' => $magicItem?->getDescription() ?? $ownedItem->getCustomDescription(),
+                'rarity' => $magicItem?->getRarity()?->value,
+                'category' => $magicItem?->getCategory() ?? 'other',
+                'equippable' => $magicItem?->isEquippable() ?? false,
+                'priceCopper' => $magicItem?->getPriceCopper(),
+                'weightGrams' => $magicItem?->getWeightGrams(),
                 'requiresAttunement' =>
-                    $magicItem->requiresAttunement(),
+                    $magicItem?->requiresAttunement() ?? false,
                 'maximumCharges' =>
-                    $magicItem->getMaximumCharges(),
+                    $magicItem?->getMaximumCharges(),
                 'rechargeType' =>
-                    $magicItem->getRechargeType()->value,
+                    $magicItem?->getRechargeType()->value ?? 'none',
                 'rechargeFormula' =>
-                    $magicItem->getRechargeFormula(),
+                    $magicItem?->getRechargeFormula(),
                 'abilityEffects' => array_map(
                     static fn ($effect): array => [
                         'ability' => $effect->getAbility()->value,
@@ -424,7 +482,7 @@ final class PublicCharacterMagicItemController extends AbstractController
                         'maximumIncrease' =>
                             $effect->getMaximumIncrease(),
                     ],
-                    $magicItem->getAbilityEffects()->toArray(),
+                    $magicItem?->getAbilityEffects()->toArray() ?? [],
                 ),
             ],
         ];

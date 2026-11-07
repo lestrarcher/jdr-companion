@@ -31,7 +31,7 @@ class SpellbookEntry
 
     public function __construct(CharacterMagicItem $spellbook, SpellDefinition $spell)
     {
-        if ($spellbook->getMagicItem()->getCategory() !== 'spellbook') {
+        if ($spellbook->getMagicItem()?->getCategory() !== 'spellbook') {
             throw new \InvalidArgumentException('Cet objet n’est pas un grimoire.');
         }
         if ($spellbook->getQuantity() !== 1) {
