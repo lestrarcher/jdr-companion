@@ -58,6 +58,76 @@ class MagicItem
     #[ORM\Column(length: 16, nullable: true)]
     private ?string $handUsage = null;
 
+    #[ORM\Column(length: 12, nullable: true)]
+    private ?string $armorType = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $baseArmorClass = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $armorStrengthRequirement = null;
+
+    // null means unconfigured, false explicitly means no disadvantage.
+    #[ORM\Column(nullable: true)]
+    private ?bool $armorStealthDisadvantage = null;
+
+    public function getArmorType(): ?string { return $this->armorType; }
+    public function getBaseArmorClass(): ?int { return $this->baseArmorClass; }
+    public function getArmorStrengthRequirement(): ?int { return $this->armorStrengthRequirement; }
+    public function getArmorStealthDisadvantage(): ?bool { return $this->armorStealthDisadvantage; }
+    public function getArmorDexterityMode(): ?string
+    {
+        return match ($this->armorType) {
+            'light' => 'full', 'medium' => 'capped', 'heavy', 'shield' => 'none', default => null,
+        };
+    }
+    public function getArmorDexterityCap(): ?int { return $this->armorType === 'medium' ? 2 : null; }
+
+    public function getArmorProfile(): array
+    {
+        return ['type' => $this->armorType, 'baseArmorClass' => $this->baseArmorClass,
+            'dexterityMode' => $this->getArmorDexterityMode(), 'dexterityCap' => $this->getArmorDexterityCap(),
+            'strengthRequirement' => $this->armorStrengthRequirement, 'stealthDisadvantage' => $this->armorStealthDisadvantage];
+    }
+
+    public function configureArmorRestrictions(?int $strength, ?bool $stealth): void
+    {
+        if (($strength !== null && ($strength < 1 || $strength > 30 || $this->armorType !== 'heavy'))
+            || ($stealth !== null && $this->armorType === null)
+            || ($this->armorType === 'shield' && $stealth === true)) {
+            throw new \InvalidArgumentException('Restrictions physiques d’armure invalides.');
+        }
+        $this->armorStrengthRequirement = $strength;
+        $this->armorStealthDisadvantage = $stealth;
+        $this->touch();
+    }
+
+    /** Physical armor only: magical AC bonuses are deliberately separate. */
+    public function configureArmor(?string $type, ?int $base): void
+    {
+        if ($type === null && $base === null) {
+            $this->armorType = null;
+            $this->baseArmorClass = null;
+            $this->armorStrengthRequirement = null;
+            $this->armorStealthDisadvantage = null;
+            $this->touch();
+            return;
+        }
+        if (!in_array($type, ['light', 'medium', 'heavy', 'shield'], true)
+            || $base === null || $base < 1 || $base > 30
+            || ($type === 'shield' && ($this->category !== 'shield' || $base !== 2))
+            || ($type !== 'shield' && $this->category !== 'armor')) {
+            throw new \InvalidArgumentException('Profil d’armure invalide (bouclier ordinaire : +2).');
+        }
+        if ($this->armorType !== $type || $this->baseArmorClass !== $base) {
+            $this->armorStrengthRequirement = null;
+            $this->armorStealthDisadvantage = null;
+        }
+        $this->armorType = $type;
+        $this->baseArmorClass = $base;
+        $this->touch();
+    }
+
     #[ORM\Column(length: 4, nullable: true)]
     private ?string $edition = null;
 

@@ -345,6 +345,9 @@ class CharacterMagicItem
             throw new \InvalidArgumentException('Cet objet ne peut pas être équipé.');
         }
         $this->equipped = $equipped;
+        $this->equippedSlot = $equipped ? $this->magicItem?->getEquipmentSlot() : null;
+        $this->handsUsed = $equipped && $this->equippedSlot === 'hand'
+            ? ($this->magicItem?->getHandUsage() === 'two' ? 2 : 1) : null;
         $this->touch();
 
         return $this;

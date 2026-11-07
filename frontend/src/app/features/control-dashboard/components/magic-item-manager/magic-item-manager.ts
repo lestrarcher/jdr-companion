@@ -129,6 +129,19 @@ export class MagicItemManager implements OnInit {
   protected readonly spellOptions = signal<SpellOption[]>([]);
   protected readonly spellQuery = signal('');
   protected readonly editingItemId = signal<number | null>(null);
+  protected saveArmor(item: MagicItemResponse, type: string, base: string): void {
+    if (this.submitting()) return;
+    this.submitting.set(true);
+    this.errorMessage.set(null);
+    this.magicItemApi.configureArmor(this.campaignId(), item.id, type || null, base === '' ? null : Number(base)).subscribe({
+      next: updated => {
+        this.catalog.update(items => items.map(current => current.id === updated.id ? updated : current));
+        this.submitting.set(false);
+        this.successMessage.set('Profil d’armure enregistré.');
+      },
+      error: (error: HttpErrorResponse) => { this.submitting.set(false); this.errorMessage.set(error.error?.message ?? 'Profil invalide.'); },
+    });
+  }
   protected readonly spellGrants = signal<(MagicItemSpellGrantPayload & {spellName: string})[]>([]);
 
   protected readonly submitting = signal(false);
@@ -243,7 +256,10 @@ export class MagicItemManager implements OnInit {
   ];
 
   protected readonly form = this.formBuilder.group({
-    category: ['other' as 'other' | 'spellbook'],
+    category: ['other' as 'other' | 'spellbook' | 'armor' | 'shield'],
+    magical: [true],
+    armorType: ['light' as 'light' | 'medium' | 'heavy'],
+    baseArmorClass: [11, [Validators.min(1), Validators.max(30)]],
     name: [
       '',
       [
@@ -446,6 +462,9 @@ protected updateSpell(
     const payload: CreateMagicItemPayload = {
       name: rawValue.name!.trim(),
       category: rawValue.category ?? 'other',
+      magical: rawValue.magical ?? true,
+      armorType: rawValue.category === 'shield' ? 'shield' : rawValue.category === 'armor' ? rawValue.armorType : null,
+      baseArmorClass: rawValue.category === 'shield' ? 2 : rawValue.category === 'armor' ? rawValue.baseArmorClass : null,
 
       description:
         rawValue.description?.trim() || null,
@@ -590,6 +609,9 @@ protected updateSpell(
   private resetForm(): void {
     this.form.reset({
       category: 'other',
+      magical: true,
+      armorType: 'light',
+      baseArmorClass: 11,
       name: '',
       description: '',
       rarity: 'uncommon',

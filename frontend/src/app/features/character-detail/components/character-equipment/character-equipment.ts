@@ -30,6 +30,16 @@ export class CharacterEquipment implements OnInit {
 
   ngOnInit(): void { this.refresh(); }
 
+  protected equip(ownedId: number, equipped: boolean): void {
+    if (this.busy()) return;
+    this.busy.set(true);
+    this.error.set(null);
+    this.api.equipCharacterItem(this.character().id, ownedId, equipped).subscribe({
+      next: () => { this.busy.set(false); this.refresh(); },
+      error: error => { this.busy.set(false); this.fail(error); },
+    });
+  }
+
   protected refresh(): void {
     this.loading.set(true);
     this.error.set(null);

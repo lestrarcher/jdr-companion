@@ -74,7 +74,7 @@ final class CustomInventoryItemTest extends TestCase
 
     private function controller(): PublicCharacterMagicItemController
     {
-        $controller = new PublicCharacterMagicItemController(new SpellbookLibrary($this->em), new PactTomeLibrary($this->em));
+        $controller = new PublicCharacterMagicItemController(new SpellbookLibrary($this->em), new PactTomeLibrary($this->em), new \App\Service\CharacterEquipmentService());
         $controller->setContainer(new Container());
         return $controller;
     }
@@ -82,6 +82,116 @@ final class CustomInventoryItemTest extends TestCase
     private function access(): PlayerCharacterAccess
     {
         return new PlayerCharacterAccess($this->em->getRepository(CharacterSessionState::class));
+    }
+
+    public function testArmorEnrichmentIsDryRunIdempotentAndPreservesPossessions(): void
+    {
+        [$state] = $this->fixture();
+        $character = $state->getCharacter();
+        $armor = new MagicItem(null, 'Armure démoniaque', MagicItemRarity::VeryRare, null, \App\Enum\ReferenceOrigin::Official);
+        $armor->setImportMetadata('srd-5.1:magic-item:demon-armor', 'SRD 5.1');
+        $armor->classify('armor', true, true, 'armor');
+        $armor->setRequiresAttunement(true);
+        $owned = (new CharacterMagicItem($character, $armor))->setEquipped(true)->setAttuned(true)->setNotes('Conserver');
+        $character->addMagicItem($owned);
+        $ambiguous = new MagicItem(null, 'Armure de mithral', null, null, \App\Enum\ReferenceOrigin::Official);
+        $ambiguous->setImportMetadata('srd-5.1:magic-item:mithral-armor', 'SRD 5.1');
+        $ambiguous->classify('armor', true, true, 'armor');
+        foreach ([$armor, $owned, $ambiguous] as $entity) $this->em->persist($entity);
+        $this->em->flush();
+        $before = $this->db->fetchAllAssociative('SELECT * FROM character_magic_item ORDER BY id');
+        $stateBefore = $state->getState();
+        $definitionBefore = $this->db->fetchAssociative('SELECT * FROM magic_item WHERE id = ?', [$armor->getId()]);
+        $service = new \App\Service\ArmorProfileEnricher();
+        $preview = $service->run($this->db);
+        self::assertSame(0, $preview['applied']);
+        self::assertSame($definitionBefore, $this->db->fetchAssociative('SELECT * FROM magic_item WHERE id = ?', [$armor->getId()]));
+        $report = $service->run($this->db, true);
+        self::assertSame(1, $report['applied']);
+        self::assertSame($report['possessionsBefore'], $report['possessionsAfter']);
+        self::assertSame($before, $this->db->fetchAllAssociative('SELECT * FROM character_magic_item ORDER BY id'));
+        $after = $this->db->fetchAssociative('SELECT * FROM magic_item WHERE id = ?', [$armor->getId()]);
+        $fields = array_flip(['armor_type','base_armor_class','armor_strength_requirement','armor_stealth_disadvantage','updated_at']);
+        self::assertSame(array_diff_key($definitionBefore, $fields), array_diff_key($after, $fields));
+        self::assertSame(18, $after['base_armor_class']);
+        self::assertSame(15, $after['armor_strength_requirement']);
+        self::assertTrue($after['armor_stealth_disadvantage']);
+        self::assertNull($this->db->fetchOne('SELECT armor_type FROM magic_item WHERE id = ?', [$ambiguous->getId()]));
+        $again = $service->run($this->db, true);
+        self::assertSame(0, $again['applied']);
+        self::assertSame($after, $this->db->fetchAssociative('SELECT * FROM magic_item WHERE id = ?', [$armor->getId()]));
+        $this->em->refresh($armor);
+        $calculated = (new \App\Service\CharacterArmorClassCalculator(new CharacterAbilityCalculator(), new \App\Service\CharacterEquipmentService()))->calculate($character);
+        self::assertSame(18, $calculated['value']);
+        self::assertNotEmpty($calculated['warnings']);
+        self::assertSame($stateBefore, $state->getState());
+        // A conflicting explicit value blocks the complete batch, without changing possessions.
+        $this->db->update('magic_item', ['base_armor_class' => 19], ['id' => $armor->getId()]);
+        $conflict = $service->run($this->db, true);
+        self::assertSame(1, $conflict['conflicts']);
+        self::assertSame(0, $conflict['applied']);
+    }
+
+    public function testArmorRestrictionsMigrationPreservesCatalogue(): void
+    {
+        [, , $wand] = $this->fixture();
+        $before = $this->db->fetchAllAssociative('SELECT * FROM character_magic_item ORDER BY id');
+        $this->db->executeStatement('ALTER TABLE magic_item DROP COLUMN armor_strength_requirement, DROP COLUMN armor_stealth_disadvantage');
+        require_once dirname(__DIR__, 2).'/migrations/Version20261107020000.php';
+        $migration = new \DoctrineMigrations\Version20261107020000($this->db, new \Psr\Log\NullLogger());
+        $migration->up(new \Doctrine\DBAL\Schema\Schema());
+        foreach ($migration->getSql() as $query) $this->db->executeStatement($query->getStatement(), $query->getParameters(), $query->getTypes());
+        self::assertSame($before, $this->db->fetchAllAssociative('SELECT * FROM character_magic_item ORDER BY id'));
+        self::assertNull($this->db->fetchOne('SELECT armor_stealth_disadvantage FROM magic_item WHERE id = ?', [$wand->getMagicItem()->getId()]));
+    }
+
+    public function testArmorEquipmentEndpointPersistsProfileAndRejectsConflict(): void
+    {
+        [$state, $otherState, $wand] = $this->fixture();
+        $character = $state->getCharacter();
+        $character->getAbilityScore(\App\Enum\Ability::Dexterity)->setBaseValue(16);
+        $definition = new MagicItem($character->getCampaign(), 'Cuir', null);
+        $definition->classify('armor', false, true, 'armor');
+        $definition->configureArmor('light', 11);
+        $first = new CharacterMagicItem($character, $definition);
+        $second = new CharacterMagicItem($character, $definition);
+        $character->addMagicItem($first)->addMagicItem($second);
+        foreach ([$definition, $first, $second] as $entity) $this->em->persist($entity);
+        $this->em->flush();
+        $id = $first->getId();
+        $secondId = $second->getId();
+        $token = $state->getAccessToken();
+        $beforeState = $state->getState();
+        self::assertSame(404, $this->update($otherState->getAccessToken(), $id, ['equipped' => true])->getStatusCode());
+        self::assertSame(200, $this->update($token, $id, ['equipped' => true])->getStatusCode());
+        $this->em->clear();
+        $first = $this->em->find(CharacterMagicItem::class, $id);
+        self::assertSame('armor', $first->getEquippedSlot());
+        self::assertSame('light', $first->getMagicItem()->getArmorType());
+        $calculator = new \App\Service\CharacterArmorClassCalculator(new CharacterAbilityCalculator(), new \App\Service\CharacterEquipmentService());
+        self::assertSame(14, $calculator->calculate($first->getCharacter())['value']);
+        self::assertSame($beforeState, $this->access()->requireParticipating($token)->getState());
+        self::assertSame(200, $this->update($token, $id, ['equipped' => false])->getStatusCode());
+        self::assertSame(13, $calculator->calculate($first->getCharacter())['value']);
+        self::assertSame(200, $this->update($token, $id, ['equipped' => true])->getStatusCode());
+        $this->expectException(\Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException::class);
+        $this->update($token, $secondId, ['equipped' => true]);
+    }
+
+    public function testArmorMigrationPreservesExistingPossessions(): void
+    {
+        [$state, , $wand] = $this->fixture();
+        $before = $this->db->fetchAllAssociative('SELECT * FROM character_magic_item ORDER BY id');
+        $this->db->executeStatement('ALTER TABLE magic_item DROP COLUMN armor_type, DROP COLUMN base_armor_class');
+        require_once dirname(__DIR__, 2).'/migrations/Version20261107010000.php';
+        $migration = new \DoctrineMigrations\Version20261107010000($this->db, new \Psr\Log\NullLogger());
+        $migration->up(new \Doctrine\DBAL\Schema\Schema());
+        foreach ($migration->getSql() as $query) $this->db->executeStatement($query->getStatement(), $query->getParameters(), $query->getTypes());
+        self::assertSame($before, $this->db->fetchAllAssociative('SELECT * FROM character_magic_item ORDER BY id'));
+        self::assertNull($this->db->fetchOne('SELECT armor_type FROM magic_item WHERE id = ?', [$wand->getMagicItem()->getId()]));
+        self::assertSame($state->getState(), $this->access()->requireParticipating($state->getAccessToken())->getState());
+        $this->db->executeStatement("UPDATE magic_item SET category = 'armor', armor_type = 'light', base_armor_class = 11 WHERE id = ?", [$wand->getMagicItem()->getId()]);
+        self::assertSame(11, $this->db->fetchOne('SELECT base_armor_class FROM magic_item WHERE id = ?', [$wand->getMagicItem()->getId()]));
     }
 
     private function create(string $token, array $payload): \Symfony\Component\HttpFoundation\JsonResponse

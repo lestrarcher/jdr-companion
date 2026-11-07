@@ -27,7 +27,7 @@ final class PublicCharacterMagicItemController extends AbstractController
 {
     private const ATTUNEMENT_LIMIT = 3;
 
-    public function __construct(private readonly SpellbookLibrary $spellbookLibrary, private readonly PactTomeLibrary $pactTomes) {}
+    public function __construct(private readonly SpellbookLibrary $spellbookLibrary, private readonly PactTomeLibrary $pactTomes, private readonly \App\Service\CharacterEquipmentService $equipment) {}
 
     #[Route(
         '/public/characters/{accessToken}/magic-items',
@@ -347,7 +347,7 @@ final class PublicCharacterMagicItemController extends AbstractController
                 );
             }
 
-            $ownedItem->setEquipped($payload['equipped']);
+            $this->equipment->equip($character, $ownedItem, $payload['equipped']);
         }
 
         if (array_key_exists('attuned', $payload)) {

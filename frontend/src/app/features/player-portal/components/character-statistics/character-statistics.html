@@ -1,7 +1,7 @@
 <div class="character-statistics" [class.character-statistics--summary]="mode() === 'summary'">
   @if (mode() === 'summary') {
     <div class="statistics-derived statistics-derived--summary" aria-label="Statistiques secondaires">
-      <div class="statistics-derived-card"><span aria-hidden="true">♜</span><strong>—</strong><small>Classe d'armure</small></div>
+      <div class="statistics-derived-card"><span aria-hidden="true">♜</span><strong>{{ armorClass()?.value ?? '—' }}</strong><small>Classe d'armure</small><small>{{ armorClass()?.source }}</small><small>{{ armorClass()?.formula }}</small>@for (reason of armorClass()?.reasons ?? []; track reason) { <small>{{ reason }}</small> }@for (warning of armorClass()?.warnings ?? []; track warning) { <small>{{ warning }}</small> }</div>
       <div class="statistics-derived-card" title="Modificateur de Dextérité uniquement, hors bonus et malus"><span aria-hidden="true">⚔</span><strong>{{ baseInitiative() === null ? '—' : format(baseInitiative()!) }}</strong><small>Initiative (base)</small></div>
       <div class="statistics-derived-card"><span aria-hidden="true">➤</span><strong>—</strong><small>Vitesse</small></div>
       <div class="statistics-derived-card" title="10 + bonus de Perception, hors bonus circonstanciels"><span aria-hidden="true">◉</span><strong>{{ basePassivePerception() ?? '—' }}</strong><small>Perception passive (base)</small></div>
@@ -40,7 +40,7 @@
     </div>
 
     <div class="statistics-derived" aria-label="Statistiques dérivées à venir">
-      <div class="statistics-derived-card"><span aria-hidden="true">♜</span><strong>—</strong><small>Classe d'armure</small></div>
+      <div class="statistics-derived-card"><span aria-hidden="true">♜</span><strong>{{ armorClass()?.value ?? '—' }}</strong><small>Classe d'armure</small><small>{{ armorClass()?.source }}</small><small>{{ armorClass()?.formula }}</small>@for (reason of armorClass()?.reasons ?? []; track reason) { <small>{{ reason }}</small> }@for (warning of armorClass()?.warnings ?? []; track warning) { <small>{{ warning }}</small> }</div>
       <div class="statistics-derived-card"><span aria-hidden="true">⚔</span><strong>—</strong><small>Initiative</small></div>
       <div class="statistics-derived-card"><span aria-hidden="true">➤</span><strong>—</strong><small>Vitesse</small></div>
       <div class="statistics-derived-card"><span aria-hidden="true">◉</span><strong>—</strong><small>Perception passive</small></div>

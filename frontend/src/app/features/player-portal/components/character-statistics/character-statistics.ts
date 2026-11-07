@@ -1,5 +1,5 @@
 import { Component, computed, input, signal } from '@angular/core';
-import { CharacterAbilityScore, CharacterTraining } from '@core/services/character-api.service';
+import { CharacterAbilityScore, CharacterArmorClass, CharacterTraining } from '@core/services/character-api.service';
 
 type Ability = 'strength' | 'dexterity' | 'constitution' | 'intelligence' | 'wisdom' | 'charisma';
 type Skill = { slug: string; name: string; ability: Ability };
@@ -53,6 +53,7 @@ function initialOrdering(): Ordering {
   styleUrl: './character-statistics.scss',
 })
 export class CharacterStatistics {
+  readonly armorClass = input<CharacterArmorClass | null>(null);
   readonly abilities = input.required<CharacterAbilityScore[]>();
   readonly training = input<CharacterTraining | null>(null);
   readonly proficiencyBonus = input(0);

@@ -22,6 +22,9 @@
             @if (owned.notes) { <p>{{ owned.notes }}</p> }
           </div>
           <button type="button" (click)="remove(owned.id)" [disabled]="busy()">Retirer</button>
+          @if (owned.magicItem.equippable || owned.equipped) {
+            <button type="button" (click)="equip(owned.id, !owned.equipped)" [disabled]="busy()">{{ owned.equipped ? 'Déséquiper' : 'Équiper' }}</button>
+          }
         </article>
       }
     </div>

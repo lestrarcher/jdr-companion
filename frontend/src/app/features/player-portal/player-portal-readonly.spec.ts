@@ -47,6 +47,33 @@ async function setup(status: string, artificer: boolean, desktop = false) {
 afterEach(()=> { TestBed.resetTestingModule(); vi.unstubAllGlobals(); });
 
 describe('One player sheet, read-only outside LIVE',()=> {
+  it('refreshes armor class and its source immediately after equipping an item', async () => {
+    const {fixture, http, component} = await setup('live', false);
+    component.selectTab('possessions'); await fixture.whenStable();
+    http.expectOne('/api/public/characters/test/wallet').flush({wallet:{goldPieces:0}});
+    const owned = {id: 71, quantity: 1, equipped: false, attuned: false, magicItem: {id: 8, name: 'Cuir', category: 'armor', equippable: true, abilityEffects: [], requiresAttunement: false}};
+    http.expectOne('/api/public/characters/test/magic-items').flush({ownedItems:[owned],attunedCount:0,attunementLimit:3});
+    await fixture.whenStable();
+    const items = fixture.debugElement.query(By.directive(CharacterMagicItems)).componentInstance as any;
+    // Complete the initial background refresh before asserting the mutation-triggered GET.
+    for (const request of http.match('/api/public/characters/test')) request.flush(snapshot('live', false));
+    items.toggleEquipped(owned);
+    const mutation = http.expectOne('/api/public/characters/test/magic-items/71');
+    expect(mutation.request.body).toEqual({equipped:true});
+    mutation.flush({ownedItems:[{...owned,equipped:true}],attunedCount:0,attunementLimit:3});
+    const response = snapshot('live', false) as any;
+    response.character.armorClass = {value:14, complete:true, source:'Cuir', formula:'11 + DEX retenue (3)', reasons:[], warnings:['Bonus magiques non calculés.']};
+    http.expectOne('/api/public/characters/test').flush(response);
+    await fixture.whenStable();
+    component.selectTab('statistics'); await fixture.whenStable();
+    expect(fixture.nativeElement.textContent).toContain('Cuir');
+    expect(fixture.nativeElement.textContent).toContain('11 + DEX retenue (3)');
+    expect(component.armorClass().value).toBe(14);
+    expect(fixture.nativeElement.textContent).toContain('Bonus magiques non calculés.');
+    for (const request of http.match('/api/public/characters/test/spells')) request.flush({ spells: [], preparations: [] });
+    fixture.destroy(); http.verify({ignoreCancelled:true});
+  });
+
   it.each([['live',true],['closed',true],['live',false],['closed',false]])('renders the same sections: %s artificer=%s',async(status,artificer)=> {
     const {fixture,http,component}=await setup(status as string,artificer as boolean);
     const closed=status==='closed';
@@ -90,6 +117,7 @@ describe('One player sheet, read-only outside LIVE',()=> {
     for (const request of http.match('/api/public/characters/test')) request.flush(snapshot(status as string, artificer as boolean));
     // The spells tab loads its own directory; complete that GET before verifying the test backend.
     for (const request of http.match('/api/public/characters/test/spells')) request.flush({ spells: [], preparations: [] });
+    for (const request of http.match('/api/public/characters/test/spells/ability-choices')) request.flush({ choices: [] });
     fixture.destroy(); http.verify({ignoreCancelled:true});
   });
 

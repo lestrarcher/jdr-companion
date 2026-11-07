@@ -29,6 +29,39 @@ use Symfony\Component\Routing\Attribute\Route;
 final class MagicItemController
     extends AbstractController
 {
+    #[Route('/campaigns/{campaignId}/magic-items/{itemId}/armor-profile', name: 'api_campaign_item_armor_profile', requirements: ['campaignId' => '\d+', 'itemId' => '\d+'], methods: ['PUT'])]
+    public function armorProfile(int $campaignId, int $itemId, Request $request, CampaignRepository $campaignRepository, EntityManagerInterface $entityManager): JsonResponse
+    {
+        $campaign = $this->getOwnedCampaign($campaignId, $campaignRepository);
+        $item = $entityManager->find(MagicItem::class, $itemId);
+        if (!$item || $item->getCampaign()?->getId() !== $campaign->getId()) {
+            throw $this->createNotFoundException('Objet de campagne introuvable.');
+        }
+        try { $payload = $request->toArray(); } catch (JsonException) {
+            return $this->json(['message' => 'JSON invalide.'], 400);
+        }
+        try {
+            if (array_diff(array_keys($payload), ['armorType', 'baseArmorClass']) !== []) {
+                throw new \InvalidArgumentException('Propriétés de profil invalides.');
+            }
+            $this->configureArmor($item, $payload);
+        } catch (\InvalidArgumentException $error) {
+            return $this->json(['message' => $error->getMessage()], 422);
+        }
+        $entityManager->flush();
+        return $this->json(['item' => $this->serializeItem($item)]);
+    }
+
+    private function configureArmor(MagicItem $item, array $payload): void
+    {
+        $type = $payload['armorType'] ?? null;
+        $base = $payload['baseArmorClass'] ?? null;
+        if (($type !== null && !is_string($type)) || ($base !== null && !is_int($base))) {
+            throw new \InvalidArgumentException('Type d’armure et CA de base invalides.');
+        }
+        $item->configureArmor($type, $base);
+    }
+
     #[Route('/dnd/items', name: 'api_official_item_reference', methods: ['GET'])]
     public function officialReference(EntityManagerInterface $entityManager): JsonResponse
     {
@@ -40,6 +73,7 @@ final class MagicItemController
             'id' => $item->getId(),
             'name' => $item->getName(),
             'englishName' => $item->getEnglishName(),
+            'armorProfile' => $item->getArmorProfile(),
             'description' => $item->getDescription(),
             'category' => $item->getCategory(),
             'rarity' => $item->getRarity()?->value,
@@ -259,7 +293,7 @@ final class MagicItemController
                 );
 
             $category = $payload['category'] ?? 'other';
-            if (!is_string($category) || !in_array($category, ['other', 'spellbook'], true)) {
+            if (!is_string($category) || !in_array($category, ['other', 'spellbook', 'armor', 'shield'], true)) {
                 throw new \InvalidArgumentException('Catégorie inconnue.');
             }
             if ($category === 'spellbook') {
@@ -267,6 +301,14 @@ final class MagicItemController
                     throw new \InvalidArgumentException('Un grimoire ordinaire ne possède ni charges, ni harmonisation, ni octrois de sorts.');
                 }
                 $item->classify('spellbook', false, false);
+            }
+            if (in_array($category, ['armor', 'shield'], true)) {
+                $magical = $payload['magical'] ?? true;
+                if (!is_bool($magical) || (!$magical && ($effectsPayload !== [] || $grantsPayload !== []))) {
+                    throw new \InvalidArgumentException('Propriétés magiques incompatibles.');
+                }
+                $item->classify($category, $magical, true, $category === 'armor' ? 'armor' : 'hand', $category === 'shield' ? 'one' : null);
+                $this->configureArmor($item, $payload);
             }
             foreach ($this->buildSpellGrants($item, $grantsPayload, $entityManager, $spellCatalogue) as $grant) {
                 $item->addSpellGrant($grant);
@@ -580,6 +622,9 @@ final class MagicItemController
                     ?->getId(),
             'name' => $item->getName(),
             'category' => $item->getCategory(),
+            'armorType' => $item->getArmorType(),
+            'baseArmorClass' => $item->getBaseArmorClass(),
+            'armorProfile' => $item->getArmorProfile(),
             'quantityMode' => $item->getQuantityMode(),
             'description' =>
                 $item->getDescription(),

@@ -4,6 +4,7 @@ import {
   computed,
   inject,
   input,
+  output,
   OnInit,
   OnChanges,
   SimpleChanges,
@@ -29,6 +30,7 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CharacterMagicItems implements OnInit, OnChanges {
+  readonly equipmentChanged = output<void>();
   readonly readonly = input(false);
   readonly accessToken = input.required<string>();
   readonly refreshRevision = input(0);
@@ -203,6 +205,7 @@ export class CharacterMagicItems implements OnInit, OnChanges {
     this.magicItemApi.update(this.accessToken(), item.id, { quantityChange: change }).subscribe({
       next: response => {
         this.inventory.set(response);
+        this.equipmentChanged.emit();
         this.finishUpdate();
       },
       error: (error: HttpErrorResponse) => this.handleError(error),
@@ -230,6 +233,7 @@ export class CharacterMagicItems implements OnInit, OnChanges {
     this.magicItemApi.discard(this.accessToken(), action.item.id, quantity).subscribe({
       next: response => {
         this.inventory.set(response);
+        this.equipmentChanged.emit();
         this.successMessage.set(`${quantity} × ${action.item.magicItem.name} retiré de l’inventaire.`);
         this.finishUpdate();
       },
@@ -373,7 +377,7 @@ export class CharacterMagicItems implements OnInit, OnChanges {
   }
 
   protected canEquip(ownedItem: CharacterMagicItemResponse): boolean {
-    return ownedItem.magicItem.equippable === true;
+    return ownedItem.equipped || ownedItem.magicItem.equippable === true;
   }
 
   protected canConsume(ownedItem: CharacterMagicItemResponse): boolean {
@@ -386,6 +390,7 @@ export class CharacterMagicItems implements OnInit, OnChanges {
     this.magicItemApi.consume(this.accessToken(), ownedItem.id).subscribe({
       next: response => {
         this.inventory.set(response);
+        this.equipmentChanged.emit();
         this.successMessage.set(`1 × ${ownedItem.magicItem.name} consommé.`);
         this.finishUpdate();
       },
@@ -412,6 +417,7 @@ export class CharacterMagicItems implements OnInit, OnChanges {
       .subscribe({
         next: (response) => {
           this.inventory.set(response);
+          this.equipmentChanged.emit();
           this.finishUpdate();
         },
         error: (error: HttpErrorResponse) => {
@@ -443,6 +449,7 @@ export class CharacterMagicItems implements OnInit, OnChanges {
       .subscribe({
         next: (response) => {
           this.inventory.set(response);
+          this.equipmentChanged.emit();
           this.finishUpdate();
         },
         error: (error: HttpErrorResponse) => {
@@ -560,6 +567,7 @@ export class CharacterMagicItems implements OnInit, OnChanges {
       .subscribe({
         next: (response) => {
           this.inventory.set(response);
+          this.equipmentChanged.emit();
           this.finishUpdate();
         },
         error: (error: HttpErrorResponse) => {
