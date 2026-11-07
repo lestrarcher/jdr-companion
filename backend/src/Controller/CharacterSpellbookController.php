@@ -66,7 +66,7 @@ final class CharacterSpellbookController extends AbstractController
         }
         $this->denyAccessUnlessGranted(CampaignVoter::MANAGE, $character->getCampaign());
         $book = $em->getRepository(CharacterMagicItem::class)->find($ownedItemId);
-        if (!$book instanceof CharacterMagicItem || $book->getCharacter()->getId() !== $character->getId() || $book->getMagicItem()->getCategory() !== 'spellbook' || $book->getQuantity() !== 1) {
+        if (!$book instanceof CharacterMagicItem || $book->getCharacter()->getId() !== $character->getId() || $book->getMagicItem()?->getCategory() !== 'spellbook' || $book->getQuantity() !== 1) {
             throw $this->createNotFoundException('Grimoire introuvable.');
         }
         return $book;

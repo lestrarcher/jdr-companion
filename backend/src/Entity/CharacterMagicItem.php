@@ -39,10 +39,13 @@ class CharacterMagicItem
         targetEntity: MagicItem::class,
     )]
     #[ORM\JoinColumn(
-        nullable: false,
+        nullable: true,
         onDelete: 'CASCADE',
     )]
-    private MagicItem $magicItem;
+    private ?MagicItem $magicItem;
+
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $customDescription = null;
 
     #[ORM\ManyToOne(targetEntity: SpellDefinition::class)]
     #[ORM\JoinColumn(nullable: true, onDelete: 'RESTRICT')]
@@ -52,6 +55,9 @@ class CharacterMagicItem
 
     public function setInscribedSpell(SpellDefinition $spell): static
     {
+        if ($this->magicItem === null) {
+            throw new \InvalidArgumentException('Un objet personnel ne peut pas contenir de sort.');
+        }
         $this->inscribedSpell = $spell;
         $this->touch();
         return $this;
@@ -90,14 +96,18 @@ class CharacterMagicItem
 
     public function __construct(
         Character|Campaign $character,
-        MagicItem $magicItem,
+        ?MagicItem $magicItem,
+        ?string $customName = null,
     ) {
+        if ($magicItem === null && (!$character instanceof Character || $customName === null || trim($customName) === '')) {
+            throw new \InvalidArgumentException('Un objet personnel exige un personnage et un nom.');
+        }
         $campaign = $character instanceof Character ? $character->getCampaign() : $character;
         if ($character instanceof Campaign && ($magicItem->getCategory() !== 'spellbook' || $magicItem->getQuantityMode() !== 'individual')) {
             throw new \InvalidArgumentException('Seul un grimoire individuel peut être créé dans la réserve.');
         }
         if (
-            $magicItem->getCampaign() !== null
+            $magicItem?->getCampaign() !== null
             && $campaign->getId() !== $magicItem->getCampaign()->getId()
         ) {
             throw new \InvalidArgumentException(
@@ -109,12 +119,39 @@ class CharacterMagicItem
         $this->campaign = $campaign;
         $this->magicItem = $magicItem;
         $this->currentCharges =
-            $magicItem->getMaximumCharges();
+            $magicItem?->getMaximumCharges();
 
         $now = new DateTimeImmutable();
 
         $this->acquiredAt = $now;
         $this->updatedAt = $now;
+        if ($magicItem === null) {
+            $this->setDisplayName($customName);
+        }
+    }
+
+    public static function custom(Character $character, string $name, ?string $description = null, int $quantity = 1): self
+    {
+        if ($quantity < 1 || $quantity > 9999) {
+            throw new \InvalidArgumentException('La quantité doit être comprise entre 1 et 9999.');
+        }
+        if ($description !== null && mb_strlen($description) > 10000) {
+            throw new \InvalidArgumentException('La description ne peut pas dépasser 10000 caractères.');
+        }
+        $item = new self($character, null, $name);
+        $description = $description === null ? null : trim($description);
+        $item->customDescription = $description === '' ? null : $description;
+        return $item->setQuantity($quantity);
+    }
+
+    public function getCustomDescription(): ?string { return $this->customDescription; }
+
+    public function isStackableCustom(): bool
+    {
+        return $this->magicItem === null && $this->character !== null
+            && $this->currentCharges === null && !$this->attuned && !$this->equipped
+            && $this->equippedSlot === null && $this->handsUsed === null
+            && $this->inscribedSpell === null && $this->notes === null && !$this->legacyStack;
     }
 
     public function getId(): ?int
@@ -124,22 +161,25 @@ class CharacterMagicItem
 
     public function getCampaign(): Campaign { return $this->campaign; }
 
-    public function getDisplayName(): string { return $this->displayName ?? $this->magicItem->getName(); }
+    public function getDisplayName(): string { return $this->displayName ?? $this->magicItem?->getName() ?? ''; }
 
     public function setDisplayName(?string $name): static
     {
         $name = $name === null ? null : trim($name);
+        if ($this->magicItem === null && ($name === null || $name === '')) {
+            throw new \InvalidArgumentException('Le nom est obligatoire.');
+        }
         if ($name !== null && mb_strlen($name) > 200) {
             throw new \InvalidArgumentException('Nom trop long.');
         }
-        $this->displayName = $name ?: null;
+        $this->displayName = $name === '' ? null : $name;
         $this->touch();
         return $this;
     }
 
     public function transferTo(?Character $character): static
     {
-        if ($this->magicItem->getCategory() !== 'spellbook') {
+        if ($this->magicItem?->getCategory() !== 'spellbook') {
             throw new \InvalidArgumentException('Seuls les grimoires peuvent être transférés vers la réserve.');
         }
         if ($character !== null && $character->getCampaign()->getId() !== $this->campaign->getId()) {
@@ -159,7 +199,7 @@ class CharacterMagicItem
         return $this->character;
     }
 
-    public function getMagicItem(): MagicItem
+    public function getMagicItem(): ?MagicItem
     {
         return $this->magicItem;
     }
@@ -175,6 +215,9 @@ class CharacterMagicItem
 
     public function setQuantity(int $quantity): static
     {
+        if ($this->magicItem === null && $quantity > 9999) {
+            throw new \InvalidArgumentException('La quantité maximale est 9999.');
+        }
         if ($quantity < 1) {
             throw new \InvalidArgumentException(
                 'La quantité doit être supérieure à zéro.',
@@ -182,7 +225,7 @@ class CharacterMagicItem
         }
 
         if ($quantity > 1) {
-            $mode = $this->magicItem->getQuantityMode();
+            $mode = $this->magicItem?->getQuantityMode() ?? 'stackable';
 
             if ($mode === 'individual') {
                 throw new \InvalidArgumentException(
@@ -213,7 +256,7 @@ class CharacterMagicItem
     ): static {
         $maximumCharges =
             $this->magicItem
-                ->getMaximumCharges();
+                ?->getMaximumCharges();
 
         if ($maximumCharges === null) {
             if ($currentCharges !== null) {
@@ -277,7 +320,7 @@ class CharacterMagicItem
         if (
             $attuned
             && !$this->magicItem
-                ->requiresAttunement()
+                ?->requiresAttunement()
         ) {
             throw new \InvalidArgumentException(
                 'Cet objet ne nécessite pas d’harmonisation.',
@@ -298,7 +341,7 @@ class CharacterMagicItem
     public function setEquipped(
         bool $equipped,
     ): static {
-        if ($equipped && !$this->magicItem->isEquippable()) {
+        if ($equipped && !$this->magicItem?->isEquippable()) {
             throw new \InvalidArgumentException('Cet objet ne peut pas être équipé.');
         }
         $this->equipped = $equipped;
@@ -309,7 +352,7 @@ class CharacterMagicItem
 
     public function isEffectActive(): bool
     {
-        if (!$this->equipped) {
+        if ($this->magicItem === null || !$this->equipped) {
             return false;
         }
 

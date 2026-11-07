@@ -81,7 +81,7 @@ interface MagicItemCreateApiResponse {
 
 interface OwnedMagicItemApiResponse {
   id: number;
-  magicItemId: number;
+  magicItemId: number | null;
   name: string;
   description: string | null;
   rarity: MagicItemRarity | null;
@@ -310,6 +310,7 @@ export class MagicItemApiService {
     item: OwnedMagicItemApiResponse,
   ): CharacterMagicItemResponse {
     return {
+      custom: item.magicItemId === null,
       id: item.id,
       quantity: item.quantity,
       currentCharges:

@@ -124,6 +124,7 @@ final readonly class PlayerSpellDirectory
         // until the executor can atomically spend item charges / limited uses.
         foreach ($character->getMagicItems() as $ownedItem) {
             $item = $ownedItem->getMagicItem();
+            if ($item === null) continue;
             // A spell scroll stores its spell on the owned instance, not on a grant.
             $inscribed = $ownedItem->getInscribedSpell();
             if ($item->getImportKey() === 'srd-5.1:magic-item:spell-scroll' && $inscribed !== null) {

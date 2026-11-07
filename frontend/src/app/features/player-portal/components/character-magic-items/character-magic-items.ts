@@ -33,6 +33,44 @@ export class CharacterMagicItems implements OnInit, OnChanges {
   readonly accessToken = input.required<string>();
   readonly refreshRevision = input(0);
 
+  protected readonly customOpen = signal(false);
+  protected readonly customName = signal('');
+  protected readonly customDescription = signal('');
+  protected readonly customQuantity = signal(1);
+  protected readonly customBusy = signal(false);
+  protected readonly customError = signal<string | null>(null);
+  protected readonly validCustomItem = computed(() => this.customName().trim().length > 0
+    && this.customName().trim().length <= 200 && this.customDescription().length <= 10000
+    && Number.isInteger(this.customQuantity()) && this.customQuantity() >= 1 && this.customQuantity() <= 9999);
+
+  protected openCustom(): void {
+    if (this.readonly()) return;
+    this.customName.set('');
+    this.customDescription.set('');
+    this.customQuantity.set(1);
+    this.customError.set(null);
+    this.customOpen.set(true);
+  }
+
+  protected createCustom(): void {
+    if (this.readonly() || this.customBusy() || !this.validCustomItem()) return;
+    this.customBusy.set(true);
+    this.customError.set(null);
+    this.successMessage.set(null);
+    this.magicItemApi.createCustom(this.accessToken(), this.customName().trim(), this.customDescription(), this.customQuantity()).subscribe({
+      next: inventory => {
+        this.inventory.set(inventory);
+        this.customBusy.set(false);
+        this.customOpen.set(false);
+        this.successMessage.set('Objet personnel ajouté à l’inventaire.');
+      },
+      error: (error: HttpErrorResponse) => {
+        this.customBusy.set(false);
+        this.customError.set(typeof error.error?.message === 'string' ? error.error.message : 'Impossible de créer cet objet.');
+      },
+    });
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['refreshRevision'] && !changes['refreshRevision'].firstChange) {
       this.loadInventory();
@@ -154,6 +192,23 @@ export class CharacterMagicItems implements OnInit, OnChanges {
     if (this.readonly() || this.isUpdating(item)) return;
     this.pendingAction.set({ item, kind: 'consume' });
   }
+  protected changeItemQuantity(item: CharacterMagicItemResponse, change: number): void {
+    if (this.readonly() || this.updatingItemId() !== null || !item.quantityAdjustable) return;
+    if (change === -1 && item.quantity === 1) {
+      this.askDiscard(item);
+      return;
+    }
+    this.startUpdate(item.id);
+    this.successMessage.set(null);
+    this.magicItemApi.update(this.accessToken(), item.id, { quantityChange: change }).subscribe({
+      next: response => {
+        this.inventory.set(response);
+        this.finishUpdate();
+      },
+      error: (error: HttpErrorResponse) => this.handleError(error),
+    });
+  }
+
   protected askDiscard(item: CharacterMagicItemResponse): void {
     if (this.readonly() || this.isUpdating(item)) return;
     this.discardQuantity.set(1);

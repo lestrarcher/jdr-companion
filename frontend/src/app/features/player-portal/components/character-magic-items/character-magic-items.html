@@ -21,9 +21,12 @@
   </header>
 
   @if (!readonly()) {
+    <div class="inventory-add-actions">
     <button type="button" class="catalogue-toggle" (click)="openCatalogue()">
       <span aria-hidden="true">＋</span> Ajouter un objet
     </button>
+    <button type="button" class="catalogue-toggle" (click)="openCustom()">＋ Créer un objet personnel</button>
+    </div>
     @if (successMessage()) { <p class="inventory-feedback" role="status">{{ successMessage() }}</p> }
   }
 
@@ -75,6 +78,27 @@
             <button type="button" class="catalogue-submit" [disabled]="copyBusy() || (copyQuote()?.sourceType === 'scroll' && copyArcana() === null)" (click)="confirmSpellCopy()">Confirmer la copie</button>
           }
         </div>
+      </section>
+    </div>
+  }
+
+  @if (customOpen()) {
+    <div class="catalogue-backdrop">
+      <section class="catalogue-dialog" role="dialog" aria-modal="true" aria-labelledby="custom-item-title" (keydown.escape)="!customBusy() && customOpen.set(false)">
+        <header class="catalogue-dialog__header">
+          <h3 id="custom-item-title">Créer un objet personnel</h3>
+          <button type="button" class="catalogue-close" aria-label="Fermer" [disabled]="customBusy()" (click)="customOpen.set(false)">✕</button>
+        </header>
+        <form class="spell-copy-fields" (submit)="$event.preventDefault(); createCustom()">
+          <label for="custom-item-name">Nom obligatoire</label>
+          <input id="custom-item-name" type="text" required maxlength="200" [disabled]="customBusy()" [value]="customName()" (input)="customName.set($any($event.target).value)" />
+          <label for="custom-item-description">Description (facultative)</label>
+          <textarea id="custom-item-description" rows="4" maxlength="10000" [disabled]="customBusy()" [value]="customDescription()" (input)="customDescription.set($any($event.target).value)"></textarea>
+          <label for="custom-item-quantity">Quantité</label>
+          <input id="custom-item-quantity" type="number" required min="1" max="9999" step="1" [disabled]="customBusy()" [value]="customQuantity()" (input)="customQuantity.set(+$any($event.target).value)" />
+          @if (customError()) { <p class="magic-items__error" role="alert">{{ customError() }}</p> }
+          <button type="submit" class="catalogue-submit" [disabled]="customBusy() || !validCustomItem()">{{ customBusy() ? 'Création en cours…' : 'Ajouter à l’inventaire' }}</button>
+        </form>
       </section>
     </div>
   }
@@ -174,24 +198,34 @@
     <div class="magic-items__list">
       @for (ownedItem of sortedItems(); track ownedItem.id) {
         <article class="magic-item" [class]="'magic-item rarity--' + rarityClass(ownedItem.magicItem.rarity)" [class.magic-item--active]="ownedItem.effectActive" [class.magic-item--updating]="isUpdating(ownedItem)">
-          <button type="button" class="magic-item__summary" [attr.aria-expanded]="expandedItemId() === ownedItem.id"
+          <div class="magic-item__summary">
+          <button type="button" class="magic-item__summary-main" [attr.aria-expanded]="expandedItemId() === ownedItem.id"
             [attr.aria-controls]="'item-details-' + ownedItem.id" (click)="toggleDetails(ownedItem.id)">
-            <span class="magic-item__summary-main">
-              <strong>{{ ownedItem.inscribedSpellName ? 'Parchemin de ' + ownedItem.inscribedSpellName : ownedItem.magicItem.name }}</strong>
-              <span class="magic-item__statuses">
-                <span>× {{ ownedItem.quantity }}</span>
-                @if (ownedItem.equipped) { <span class="item-status">Équipé</span> }
-                @if (ownedItem.attuned) { <span class="item-status">Harmonisé</span> }
-              </span>
-            </span>
-            <span class="magic-item__chevron" aria-hidden="true">{{ expandedItemId() === ownedItem.id ? '⌃' : '⌄' }}</span>
+              <strong [title]="ownedItem.inscribedSpellName ? 'Parchemin de ' + ownedItem.inscribedSpellName : ownedItem.magicItem.name">{{ ownedItem.inscribedSpellName ? 'Parchemin de ' + ownedItem.inscribedSpellName : ownedItem.magicItem.name }}</strong>
+                @if (ownedItem.custom) { <span class="item-status">Personnel</span> }
           </button>
+            <div class="magic-item__quantity" role="group" [attr.aria-label]="'Quantité de ' + ownedItem.magicItem.name">
+              @if (!readonly() && ownedItem.quantityAdjustable) {
+              <button type="button" class="item-action" [disabled]="updatingItemId() !== null" [attr.aria-label]="'Diminuer la quantité de ' + ownedItem.magicItem.name" (click)="changeItemQuantity(ownedItem, -1)">−</button>
+              }
+              <span aria-live="polite">{{ ownedItem.quantity }}</span>
+              @if (!readonly() && ownedItem.quantityAdjustable) {
+              <button type="button" class="item-action" [disabled]="updatingItemId() !== null || ownedItem.quantity >= 9999" [attr.aria-label]="'Augmenter la quantité de ' + ownedItem.magicItem.name" (click)="changeItemQuantity(ownedItem, 1)">+</button>
+              }
+            </div>
+            <button type="button" class="magic-item__chevron" [attr.aria-label]="'Détails de ' + ownedItem.magicItem.name" [attr.aria-expanded]="expandedItemId() === ownedItem.id" [attr.aria-controls]="'item-details-' + ownedItem.id" (click)="toggleDetails(ownedItem.id)">
+              <span aria-hidden="true">{{ expandedItemId() === ownedItem.id ? '⌃' : '⌄' }}</span>
+            </button>
+          </div>
           @if (expandedItemId() === ownedItem.id) {
             <div class="magic-item__details" [id]="'item-details-' + ownedItem.id">
+              <strong class="magic-item__description">{{ ownedItem.inscribedSpellName ? 'Parchemin de ' + ownedItem.inscribedSpellName : ownedItem.magicItem.name }}</strong>
               <div class="magic-item__metadata">
                 <span>{{ rarityLabel(ownedItem.magicItem.rarity) }}</span>
                 <span>Poids : {{ ownedItem.magicItem.weightGrams == null ? 'Non renseigné' : formatWeight(ownedItem.magicItem.weightGrams) }}</span>
                 <span>Prix : {{ formatPrice(ownedItem.magicItem.priceCopper) }}</span>
+                @if (ownedItem.equipped) { <span class="item-status">Équipé</span> }
+                @if (ownedItem.attuned) { <span class="item-status">Harmonisé</span> }
               </div>
               @if (ownedItem.magicItem.requiresAttunement) { <p class="magic-item__rarity">Harmonisation requise</p> }
               @if (ownedItem.magicItem.description) { <p class="magic-item__description">{{ ownedItem.magicItem.description }}</p> }

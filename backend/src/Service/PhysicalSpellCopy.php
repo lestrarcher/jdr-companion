@@ -20,10 +20,10 @@ final readonly class PhysicalSpellCopy
         $this->authorize($character, $actor);
         $source = $this->owned($character, $sourceId);
         $destination = $this->owned($character, $destinationId);
-        if ($destination->getMagicItem()->getCategory() !== 'spellbook' || $destination->getQuantity() !== 1 || $sourceId === $destinationId || $this->em->getConnection()->fetchOne('SELECT 1 FROM pact_tome_entry WHERE owned_item_id = ?', [$destinationId])) {
+        if ($destination->getMagicItem()?->getCategory() !== 'spellbook' || $destination->getQuantity() !== 1 || $sourceId === $destinationId || $this->em->getConnection()->fetchOne('SELECT 1 FROM pact_tome_entry WHERE owned_item_id = ?', [$destinationId])) {
             throw new BadRequestHttpException('Le grimoire de destination est invalide.');
         }
-        $sourceType = $source->getMagicItem()->getCategory();
+        $sourceType = $source->getMagicItem()?->getCategory();
         if ($sourceType === 'spellbook') {
             if ($this->em->getConnection()->fetchOne('SELECT 1 FROM pact_tome_entry WHERE owned_item_id = ?', [$sourceId])) throw new BadRequestHttpException('Ce Grimoire des Ombres ne contient pas de sorts de magicien à recopier.');
             if (!$this->em->getConnection()->fetchOne('SELECT 1 FROM spellbook_entry WHERE owned_item_id = ? AND spell_id = ?', [$sourceId, $spellId])) {

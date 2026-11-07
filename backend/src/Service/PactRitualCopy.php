@@ -27,7 +27,7 @@ final readonly class PactRitualCopy
         if (!$spell || !$spell->isRitual() || $spell->getLevel() < 1 || $spell->getLevel() > (int) ceil($level / 2)) {
             throw new BadRequestHttpException('Rituel non admissible pour le niveau d’occultiste.');
         }
-        $sourceType = $source->getMagicItem()->getCategory();
+        $sourceType = $source->getMagicItem()?->getCategory();
         if ($sourceType === 'scroll') {
             if ($source->getInscribedSpell()?->getId() !== $spellId) throw new BadRequestHttpException('Sort absent du parchemin.');
         } elseif ($sourceType === 'spellbook') {
