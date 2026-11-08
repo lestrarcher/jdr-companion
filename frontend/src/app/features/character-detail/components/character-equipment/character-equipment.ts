@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, inject, input, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, input, OnInit, output, signal } from '@angular/core';
 import { CharacterProfile } from '@core/services/character-api.service';
 import { MagicItemApiService } from '@core/services/magic-item-api.service';
 import { CharacterMagicItemInventoryResponse, MagicItemResponse } from '@core/services/public-character-magic-item-api.service';
@@ -13,6 +13,7 @@ import { CharacterMagicItemInventoryResponse, MagicItemResponse } from '@core/se
 export class CharacterEquipment implements OnInit {
   readonly character = input.required<CharacterProfile>();
   readonly campaignId = input.required<number>();
+  readonly equipmentChanged = output<void>();
   private readonly api = inject(MagicItemApiService);
   protected readonly inventory = signal<CharacterMagicItemInventoryResponse | null>(null);
   protected readonly catalogue = signal<MagicItemResponse[]>([]);
@@ -29,6 +30,16 @@ export class CharacterEquipment implements OnInit {
   });
 
   ngOnInit(): void { this.refresh(); }
+
+  protected equip(ownedId: number, equipped: boolean): void {
+    if (this.busy()) return;
+    this.busy.set(true);
+    this.error.set(null);
+    this.api.equipCharacterItem(this.character().id, ownedId, equipped).subscribe({
+      next: () => { this.busy.set(false); this.refresh(); this.equipmentChanged.emit(); },
+      error: error => { this.busy.set(false); this.fail(error); },
+    });
+  }
 
   protected refresh(): void {
     this.loading.set(true);
@@ -69,6 +80,7 @@ export class CharacterEquipment implements OnInit {
     this.api.removeFromCharacter(this.character().id, ownedId).subscribe({
       next: () => {
         this.busy.set(false);
+        this.equipmentChanged.emit();
         this.api.listCharacterItems(this.character().id).subscribe({
           next: inventory => this.inventory.set(inventory),
           error: error => this.fail(error),

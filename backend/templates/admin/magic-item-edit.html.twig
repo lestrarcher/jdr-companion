@@ -12,6 +12,13 @@
 <p><label>Charges maximales <input name="charges" type="number" min="1" value="{{ item ? item.maximumCharges : '' }}"></label></p>
 <p><label>Recharge <select name="recharge">{% for recharge in recharges %}<option value="{{ recharge.value }}" {% if item and item.rechargeType.value == recharge.value %}selected{% endif %}>{{ recharge.value }}</option>{% endfor %}</select></label></p>
 <p><label>Formule de recharge <input name="formula" maxlength="50" value="{{ item ? item.rechargeFormula : '' }}"></label></p>
+{% if item and item.category in ['armor', 'shield'] %}
+<p><label>Profil physique <select name="armor_type"><option value="">Non renseigné</option>{% for value, label in {'light': 'Légère', 'medium': 'Intermédiaire', 'heavy': 'Lourde', 'shield': 'Bouclier'} %}<option value="{{ value }}" {% if item.armorType == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label></p>
+<p><label>CA de base, sans bonus magique (bouclier : 2) <input name="base_armor_class" type="number" min="1" max="30" value="{{ item.baseArmorClass }}"></label></p>
+<p>Dextérité : {{ item.armorDexterityMode ?? 'non renseignée' }}{% if item.armorDexterityCap is not null %}, plafond +{{ item.armorDexterityCap }}{% endif %} (déduite de la catégorie).</p>
+<p><label>Force requise (vide : aucune ou non renseignée) <input name="armor_strength" type="number" min="1" max="30" value="{{ item.armorStrengthRequirement }}"></label></p>
+<p><label>Désavantage en Discrétion <select name="armor_stealth"><option value="" {% if item.armorStealthDisadvantage is null %}selected{% endif %}>Non renseigné</option><option value="yes" {% if item.armorStealthDisadvantage is same as(true) %}selected{% endif %}>Oui</option><option value="no" {% if item.armorStealthDisadvantage is same as(false) %}selected{% endif %}>Non</option></select></label></p>
+{% endif %}
 <button type="submit">Enregistrer la fiche</button></form></section>
 {% if item %}
 <section class="panel"><h2>Sorts octroyés</h2>

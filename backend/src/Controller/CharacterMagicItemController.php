@@ -24,6 +24,35 @@ use Symfony\Component\Routing\Attribute\Route;
 final class CharacterMagicItemController
     extends AbstractController
 {
+    #[Route('/characters/{characterId}/magic-items/{ownedItemId}/equipment', name: 'api_character_item_equipment', requirements: ['characterId' => '\d+', 'ownedItemId' => '\d+'], methods: ['PATCH'])]
+    public function equip(int $characterId, int $ownedItemId, Request $request, CharacterRepository $characters, EntityManagerInterface $em, \App\Service\CharacterEquipmentService $equipment, CharacterAbilityCalculator $abilities): JsonResponse
+    {
+        $character = $this->getOwnedCharacter($characterId, $characters);
+        try { $payload = $request->toArray(); } catch (JsonException) {
+            return $this->json(['message' => 'JSON invalide.'], 400);
+        }
+        if (array_keys($payload) !== ['equipped'] || !is_bool($payload['equipped'])) {
+            return $this->json(['message' => 'Un booléen equipped est attendu.'], 422);
+        }
+        return $em->wrapInTransaction(function () use ($em, $character, $ownedItemId, $equipment, $payload, $abilities): JsonResponse {
+            $em->lock($character, LockMode::PESSIMISTIC_WRITE);
+            $em->refresh($character);
+            $owned = null;
+            foreach ($character->getMagicItems() as $item) {
+                $em->lock($item, LockMode::PESSIMISTIC_WRITE);
+                $em->refresh($item);
+                if ($item->getId() === $ownedItemId) $owned = $item;
+            }
+            if ($owned === null) throw $this->createNotFoundException('Objet possédé introuvable.');
+            try { $equipment->equip($character, $owned, $payload['equipped']); }
+            catch (\InvalidArgumentException $error) {
+                throw new \Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException($error->getMessage(), $error);
+            }
+            $em->flush();
+            return $this->serializeInventory($character, $abilities);
+        });
+    }
+
     #[Route('/characters/{characterId}/scroll-spells', name: 'api_character_scroll_spells', requirements: ['characterId' => '\d+'], methods: ['GET'])]
     public function scrollSpells(int $characterId, Request $request, CharacterRepository $characters, EntityManagerInterface $em): JsonResponse
     {

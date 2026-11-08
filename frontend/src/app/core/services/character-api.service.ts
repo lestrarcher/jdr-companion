@@ -59,6 +59,17 @@ export interface CharacterHitPoints {
   missingLevelPositions: number[];
 }
 
+export interface CharacterArmorClass {
+  contributions?: Array<{kind: 'base' | 'ability' | 'shield' | 'bonus'; source: string; label: string; value: number}>;
+  excluded?: Array<{source: string; label: string; reason: string}>;
+  warnings?: string[];
+  value: number | null;
+  complete: boolean;
+  source: string | null;
+  formula: string | null;
+  reasons: string[];
+}
+
 export interface CharacterAbilityScore {
   ability: AbilityKey;
   label: string;
@@ -152,6 +163,7 @@ export interface CharacterTraining {
 }
 
 export interface CharacterProfile extends CharacterApiResponse {
+  armorClass?: CharacterArmorClass;
   training?: CharacterTraining;
   hitPoints: CharacterHitPoints;
   classSummary: CharacterClassSummary[];

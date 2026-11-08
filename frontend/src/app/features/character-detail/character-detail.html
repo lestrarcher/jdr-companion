@@ -84,7 +84,7 @@
             </app-character-sheet>
           </section>
           <section id="panel-equipment" role="tabpanel" aria-labelledby="tab-equipment" tabindex="0" [hidden]="activeTab() !== 'equipment'">
-            <app-character-equipment [character]="character" [campaignId]="campaignId" />
+            <app-character-equipment [character]="character" [campaignId]="campaignId" (equipmentChanged)="refreshProfile()" />
           </section>
           <section id="panel-spells" role="tabpanel" aria-labelledby="tab-spells" tabindex="0" [hidden]="activeTab() !== 'spells'">
             <app-character-spells [character]="character" [campaignId]="campaignId" />

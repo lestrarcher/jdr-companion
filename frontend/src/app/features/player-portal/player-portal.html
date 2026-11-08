@@ -106,7 +106,7 @@
                       <h2>Caractéristiques</h2>
                       <button type="button" (click)="selectTab('statistics')" aria-label="Ouvrir les caractéristiques">Voir tout ↗</button>
                     </div>
-                    <app-character-statistics [abilities]="abilities()" [training]="training()" [proficiencyBonus]="proficiencyBonus()" mode="summary" />
+                    <app-character-statistics [armorClass]="armorClass()" [abilities]="abilities()" [training]="training()" [proficiencyBonus]="proficiencyBonus()" mode="summary" />
                   </section>
                   @if (hasProgressions()) {
                     <div class="overview-progression">
@@ -135,7 +135,7 @@
               }
               @case ('statistics') {
                 <section class="overview-panel statistics-detail">
-                  <app-character-statistics [abilities]="abilities()" [training]="training()" [proficiencyBonus]="proficiencyBonus()" mode="detail" />
+                  <app-character-statistics [armorClass]="armorClass()" [abilities]="abilities()" [training]="training()" [proficiencyBonus]="proficiencyBonus()" mode="detail" />
                 </section>
               }
               @case ('status') {
@@ -261,7 +261,7 @@
               @case ('possessions') {
                 <div class="possessions-sections">
                   <app-character-wallet [accessToken]="accessToken" [disabled]="sessionStatus() !== 'live'" />
-                  <app-character-magic-items [readonly]="!canEdit()" [accessToken]="accessToken" [refreshRevision]="inventoryRefreshRevision()" />
+                  <app-character-magic-items (equipmentChanged)="refreshSpells()" [readonly]="!canEdit()" [accessToken]="accessToken" [refreshRevision]="inventoryRefreshRevision()" />
                 </div>
               }
             }

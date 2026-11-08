@@ -39,6 +39,8 @@ export interface MagicItemAbilityEffectResponse {
 }
 
 export interface MagicItemResponse {
+  armorType?: 'light' | 'medium' | 'heavy' | 'shield' | null;
+  baseArmorClass?: number | null;
   id: number;
   name: string;
   description: string | null;

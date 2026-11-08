@@ -62,6 +62,9 @@ final readonly class ItemCatalogue
             'origin'=>$item->getOrigin()->value, 'category'=>$item->getCategory(), 'magical'=>$item->isMagical(),
             'rarity'=>$item->getRarity()?->value, 'equippable'=>$item->isEquippable(),
             'quantityMode'=>$item->getQuantityMode(), 'equipmentSlot'=>$item->getEquipmentSlot(), 'handUsage'=>$item->getHandUsage(),
+            'armorType'=>$item->getArmorType(), 'baseArmorClass'=>$item->getBaseArmorClass(),
+            'armorProfile'=>$item->getArmorProfile(),
+            'armorClassEffects'=>$item->getArmorClassEffects(),
             'requiresAttunement'=>$item->requiresAttunement(), 'maximumCharges'=>$item->getMaximumCharges(),
             'rechargeType'=>$item->getRechargeType()->value, 'rechargeFormula'=>$item->getRechargeFormula(),
             'edition'=>$item->getEdition(), 'sourceReference'=>$item->getSourceReference(),
@@ -125,7 +128,7 @@ final readonly class ItemCatalogue
     /** Only CUSTOM creation is available to a GM; origin and owner never come from the request. */
     public function create(Campaign $campaign, array $payload): MagicItem
     {
-        $allowed = ['name','description','category','magical','rarity','equippable','equipmentSlot','handUsage','requiresAttunement','maximumCharges','rechargeType','rechargeFormula','abilityEffects'];
+        $allowed = ['name','description','category','magical','rarity','equippable','equipmentSlot','handUsage','requiresAttunement','maximumCharges','rechargeType','rechargeFormula','abilityEffects','armorType','baseArmorClass'];
         if (array_diff(array_keys($payload), $allowed)) throw new UnprocessableEntityHttpException('Propriété de définition inconnue ou protégée.');
         try {
             $name = $this->text($payload['name'] ?? null, 150, false);
@@ -158,6 +161,9 @@ final readonly class ItemCatalogue
             }
             $item->classify($this->text($payload['category'] ?? 'gear', 24, false), $payload['magical'] ?? false,
                 $payload['equippable'] ?? false, $this->text($payload['equipmentSlot'] ?? 'free', 16, false), $this->text($payload['handUsage'] ?? null, 16));
+            $base = $payload['baseArmorClass'] ?? null;
+            if ($base !== null && !is_int($base)) throw new \InvalidArgumentException('CA de base invalide.');
+            $item->configureArmor($this->text($payload['armorType'] ?? null, 12), $base);
         } catch (\InvalidArgumentException $exception) {
             throw new UnprocessableEntityHttpException($exception->getMessage(), $exception);
         }

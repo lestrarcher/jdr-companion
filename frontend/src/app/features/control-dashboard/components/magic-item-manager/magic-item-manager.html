@@ -139,9 +139,18 @@
           <span>Type d’objet</span>
           <select formControlName="category">
             <option value="other">Objet classique</option>
+            <option value="armor">Armure</option>
+            <option value="shield">Bouclier</option>
             <option value="spellbook">Grimoire individuel (sans magie)</option>
           </select>
         </label>
+        @if (form.controls.category.value === 'armor' || form.controls.category.value === 'shield') {
+          <label class="field"><span><input type="checkbox" formControlName="magical" /> Objet magique</span></label>
+          @if (form.controls.category.value === 'armor') {
+            <label class="field"><span>Catégorie d’armure</span><select formControlName="armorType"><option value="light">Légère</option><option value="medium">Intermédiaire</option><option value="heavy">Lourde</option></select></label>
+            <label class="field"><span>CA de base (sans bonus magique)</span><input type="number" min="1" max="30" formControlName="baseArmorClass" /></label>
+          } @else { <p>Bouclier : +2 à la CA, une main occupée.</p> }
+        }
         <label class="field field--wide">
           <span>Nom</span>
 
@@ -437,6 +446,11 @@
               <header>
                 <div>
                   <h4>{{ magicItem.name }}</h4>
+                  @if (magicItem.category === 'armor' || magicItem.category === 'shield') {
+                    <label class="field"><span>Profil physique</span><select #armorType [value]="magicItem.armorType ?? ''"><option value="">Non renseigné</option>@if (magicItem.category === 'armor') {<option value="light">Légère</option><option value="medium">Intermédiaire</option><option value="heavy">Lourde</option>} @else {<option value="shield">Bouclier</option>}</select></label>
+                    <label class="field"><span>CA de base sans bonus magique (bouclier : 2)</span><input #armorBase type="number" min="1" max="30" [value]="magicItem.baseArmorClass ?? ''" /></label>
+                    <button type="button" class="secondary-button" [disabled]="submitting()" (click)="saveArmor(magicItem, armorType.value, armorBase.value)">Enregistrer le profil</button>
+                  }
 
                   <span>
                     {{

@@ -16,6 +16,18 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\HasLifecycleCallbacks]
 class CharacterFeatureDefinition
 {
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $armorClassEffects = null;
+
+    public function getArmorClassEffects(): ?array { return $this->armorClassEffects; }
+
+    public function configureArmorClassEffects(?array $effects): static
+    {
+        $this->armorClassEffects = $effects === null ? null : \App\Service\ArmorClassEffectSchema::validate($effects);
+        $this->touch();
+        return $this;
+    }
+
     // Existing constructors and factories create official references only.
     #[ORM\Column(length: 8, enumType: ReferenceOrigin::class, options: ['default' => 'OFFICIAL'])]
     private ReferenceOrigin $origin = ReferenceOrigin::Official;

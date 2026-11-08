@@ -52,7 +52,10 @@ export interface SpellOption { id: number; name: string; level: number; origin: 
 
 export interface CreateMagicItemPayload {
   name: string;
-  category?: 'other' | 'spellbook';
+  category?: 'other' | 'spellbook' | 'armor' | 'shield';
+  magical?: boolean;
+  armorType?: 'light' | 'medium' | 'heavy' | 'shield' | null;
+  baseArmorClass?: number | null;
   description?: string | null;
   rarity: MagicItemRarity;
   requiresAttunement: boolean;
@@ -181,6 +184,14 @@ export class MagicItemApiService {
       `${this.apiUrl}/campaigns/${campaignId}/magic-items/${itemId}/spell-grants`,
       {spellGrants},
     ).pipe(map(response => response.item));
+  }
+
+  configureArmor(campaignId: number, itemId: number, armorType: string | null, baseArmorClass: number | null): Observable<MagicItemResponse> {
+    return this.http.put<MagicItemCreateApiResponse>(`${this.apiUrl}/campaigns/${campaignId}/magic-items/${itemId}/armor-profile`, {armorType, baseArmorClass}).pipe(map(response => response.item));
+  }
+
+  equipCharacterItem(characterId: number, ownedItemId: number, equipped: boolean): Observable<unknown> {
+    return this.http.patch(`${this.apiUrl}/characters/${characterId}/magic-items/${ownedItemId}/equipment`, {equipped});
   }
 
   createReservedSpellbook(campaignId: number, magicItemId: number, spellIds: number[]): Observable<{id: number; name: string; spellCount: number}> {

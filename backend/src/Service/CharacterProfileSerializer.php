@@ -21,6 +21,7 @@ final readonly class CharacterProfileSerializer
         private CharacterSpellSlotCalculator $spellSlotCalculator,
         private CharacterActionResolver $actionResolver,
         private CharacterTrainingPresenter $trainingPresenter,
+        private CharacterArmorClassCalculator $armorClassCalculator,
     ) {
     }
 
@@ -34,6 +35,13 @@ final readonly class CharacterProfileSerializer
         array $progressionValues = [],
     ): array {
         $resources = $this->serializeResources($character, $progressionValues);
+        $features = $this->featureResolver->resolve($character, $progressionValues);
+        $armorEffects = [];
+        foreach ($features as $rule) {
+            $feature = $rule->getFeatureDefinition();
+            if ($feature->getActivationType() !== \App\Enum\FeatureActivationType::Passive || $feature->getArmorClassEffects() === null) continue;
+            $armorEffects[] = ['identity' => 'feature:'.$feature->getSlug(), 'source' => $feature->getName(), 'effects' => $feature->getArmorClassEffects()];
+        }
 
         return [
             'id' => $character->getId(),
@@ -51,6 +59,7 @@ final readonly class CharacterProfileSerializer
                 : null,
             'totalLevel' => $character->getTotalLevel(),
             'proficiencyBonus' => $character->getProficiencyBonus(),
+            'armorClass' => $this->armorClassCalculator->calculate($character, $armorEffects),
             'training' => $this->trainingPresenter->resolved($character, includeManualGrantDetails: false),
             'hitPoints' => $this->hitPointCalculator->calculate($character)->toArray(),
             'classLevels' => array_map(
@@ -101,7 +110,7 @@ final readonly class CharacterProfileSerializer
             ),
             'features' => array_values(array_map(
                 $this->serializeFeature(...),
-                $this->featureResolver->resolve($character, $progressionValues),
+                $features,
             )),
             'actions' => array_values(array_map(
                 fn ($action): array => [

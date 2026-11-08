@@ -8,7 +8,7 @@ import { CharacterMagicItems } from './components/character-magic-items/characte
 import { EMPTY, Subject, catchError, concatMap, map, takeUntil, exhaustMap, finalize, of, switchMap, tap, timer } from 'rxjs';
 
 import { Character } from '@core/models/character.model';
-import { CharacterAbilityScore, CharacterTraining, CharacterActionSummary, CharacterFeatSummary, CharacterFeatureSummary } from '@core/services/character-api.service';
+import { CharacterArmorClass, CharacterAbilityScore, CharacterTraining, CharacterActionSummary, CharacterFeatSummary, CharacterFeatureSummary } from '@core/services/character-api.service';
 
 import { CharacterActionsState, CharacterSessionStatePayload, characterProfileToCharacter, toCharacterSessionStatePayload } from '@core/mappers/character-api.mapper';
 import { ActionPreparationModal } from './components/action-preparation-modal/action-preparation-modal';
@@ -121,6 +121,7 @@ export class PlayerPortal {
   }
 
   // Features and actions
+  protected readonly armorClass = signal<CharacterArmorClass | null>(null);
   protected readonly abilities = signal<CharacterAbilityScore[]>([]);
   protected readonly training = signal<CharacterTraining | null>(null);
   protected readonly proficiencyBonus = signal(0);
@@ -238,6 +239,7 @@ export class PlayerPortal {
     this.inspiration.set(response.state.inspiration === true);
     this.tinkeringNotes.set(response.state.magicalTinkeringNotes ?? '');
     this.abilities.set(response.character.abilities);
+    this.armorClass.set(response.character.armorClass ?? null);
     this.training.set(response.character.training ?? null);
     this.proficiencyBonus.set(response.character.proficiencyBonus);
     this.features.set(response.character.features);
@@ -506,6 +508,7 @@ export class PlayerPortal {
           this.character.set(loadedCharacter);
           this.playerSpells.set(response.spells ?? []);
           this.abilities.set(response.character.abilities);
+          this.armorClass.set(response.character.armorClass ?? null);
           this.training.set(response.character.training ?? null);
           this.proficiencyBonus.set(response.character.proficiencyBonus);
           this.features.set(response.character.features);
@@ -591,6 +594,7 @@ export class PlayerPortal {
                 this.characterStateService.applyServerState(character);
                 this.character.set(character);
                 this.abilities.set(response.character.abilities);
+                this.armorClass.set(response.character.armorClass ?? null);
                 this.training.set(response.character.training ?? null);
                 this.proficiencyBonus.set(response.character.proficiencyBonus);
                 this.features.set(response.character.features);
@@ -668,6 +672,7 @@ export class PlayerPortal {
       this.lastQueuedRevision = this.characterStateService.revision();
       this.character.set(character);
       this.abilities.set(response.character.abilities);
+      this.armorClass.set(response.character.armorClass ?? null);
       this.training.set(response.character.training ?? null);
       this.proficiencyBonus.set(response.character.proficiencyBonus);
       this.features.set(response.character.features);

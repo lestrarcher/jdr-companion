@@ -1,0 +1,427 @@
+{
+    "source":  "magic_items_prod.csv",
+    "sourceSha256":  "F0D958C3F631251D409E918C76AFA64CA47D278251D5B4D487EEEB569C8F2D08",
+    "developmentSha256":  "A56EEF20F7FCEEF580E202572D9121769A2288025EF35AFAB663B6527B28A1CB",
+    "items":  [
+                  {
+                      "import_key":  "tcoe:barrier-tattoo-uncommon",
+                      "name":  "Tatouage barrière (peu commun)",
+                      "description":  "Tatouage magique nécessitant un lien. Sans armure, votre CA est égale à 12 + votre modificateur de Dextérité. Un bouclier reste utilisable.",
+                      "rarity":  "uncommon",
+                      "english_name":  "Barrier Tattoo (Uncommon)",
+                      "source_reference":  "Tasha\u0027s Cauldron of Everything",
+                      "weight_grams":  "",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "tcoe:barrier-tattoo-rare",
+                      "name":  "Tatouage barrière (rare)",
+                      "description":  "Tatouage magique nécessitant un lien. Sans armure, votre CA est égale à 15 + votre modificateur de Dextérité (maximum +2). Un bouclier reste utilisable.",
+                      "rarity":  "rare",
+                      "english_name":  "Barrier Tattoo (Rare)",
+                      "source_reference":  "Tasha\u0027s Cauldron of Everything",
+                      "weight_grams":  "",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "tcoe:barrier-tattoo-very-rare",
+                      "name":  "Tatouage barrière (très rare)",
+                      "description":  "Tatouage magique nécessitant un lien. Sans armure, votre CA est égale à 18. Un bouclier reste utilisable.",
+                      "rarity":  "very-rare",
+                      "english_name":  "Barrier Tattoo (Very Rare)",
+                      "source_reference":  "Tasha\u0027s Cauldron of Everything",
+                      "weight_grams":  "",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-padded-plus-1",
+                      "name":  "Armure matelassée +1",
+                      "description":  "Armure magique conférant un bonus de +1 à la CA.",
+                      "rarity":  "rare",
+                      "english_name":  "Padded +1",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "4000",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-padded-plus-2",
+                      "name":  "Armure matelassée +2",
+                      "description":  "Armure magique conférant un bonus de +2 à la CA.",
+                      "rarity":  "very-rare",
+                      "english_name":  "Padded +2",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "4000",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-padded-plus-3",
+                      "name":  "Armure matelassée +3",
+                      "description":  "Armure magique conférant un bonus de +3 à la CA.",
+                      "rarity":  "legendary",
+                      "english_name":  "Padded +3",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "4000",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-leather-plus-1",
+                      "name":  "Armure de cuir +1",
+                      "description":  "Armure magique conférant un bonus de +1 à la CA.",
+                      "rarity":  "rare",
+                      "english_name":  "Leather +1",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "5000",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-leather-plus-2",
+                      "name":  "Armure de cuir +2",
+                      "description":  "Armure magique conférant un bonus de +2 à la CA.",
+                      "rarity":  "very-rare",
+                      "english_name":  "Leather +2",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "5000",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-leather-plus-3",
+                      "name":  "Armure de cuir +3",
+                      "description":  "Armure magique conférant un bonus de +3 à la CA.",
+                      "rarity":  "legendary",
+                      "english_name":  "Leather +3",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "5000",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-studded-leather-plus-1",
+                      "name":  "Armure de cuir clouté +1",
+                      "description":  "Armure magique conférant un bonus de +1 à la CA.",
+                      "rarity":  "rare",
+                      "english_name":  "Studded leather +1",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "6500",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-studded-leather-plus-2",
+                      "name":  "Armure de cuir clouté +2",
+                      "description":  "Armure magique conférant un bonus de +2 à la CA.",
+                      "rarity":  "very-rare",
+                      "english_name":  "Studded leather +2",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "6500",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-studded-leather-plus-3",
+                      "name":  "Armure de cuir clouté +3",
+                      "description":  "Armure magique conférant un bonus de +3 à la CA.",
+                      "rarity":  "legendary",
+                      "english_name":  "Studded leather +3",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "6500",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-hide-plus-1",
+                      "name":  "Armure de peaux +1",
+                      "description":  "Armure magique conférant un bonus de +1 à la CA.",
+                      "rarity":  "rare",
+                      "english_name":  "Hide +1",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "6000",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-hide-plus-2",
+                      "name":  "Armure de peaux +2",
+                      "description":  "Armure magique conférant un bonus de +2 à la CA.",
+                      "rarity":  "very-rare",
+                      "english_name":  "Hide +2",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "6000",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-hide-plus-3",
+                      "name":  "Armure de peaux +3",
+                      "description":  "Armure magique conférant un bonus de +3 à la CA.",
+                      "rarity":  "legendary",
+                      "english_name":  "Hide +3",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "6000",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-chain-shirt-plus-1",
+                      "name":  "Chemise de mailles +1",
+                      "description":  "Armure magique conférant un bonus de +1 à la CA.",
+                      "rarity":  "rare",
+                      "english_name":  "Chain shirt +1",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "10000",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-chain-shirt-plus-2",
+                      "name":  "Chemise de mailles +2",
+                      "description":  "Armure magique conférant un bonus de +2 à la CA.",
+                      "rarity":  "very-rare",
+                      "english_name":  "Chain shirt +2",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "10000",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-chain-shirt-plus-3",
+                      "name":  "Chemise de mailles +3",
+                      "description":  "Armure magique conférant un bonus de +3 à la CA.",
+                      "rarity":  "legendary",
+                      "english_name":  "Chain shirt +3",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "10000",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-scale-mail-plus-1",
+                      "name":  "Armure d\u0027écailles +1",
+                      "description":  "Armure magique conférant un bonus de +1 à la CA.",
+                      "rarity":  "rare",
+                      "english_name":  "Scale mail +1",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "22500",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-scale-mail-plus-2",
+                      "name":  "Armure d\u0027écailles +2",
+                      "description":  "Armure magique conférant un bonus de +2 à la CA.",
+                      "rarity":  "very-rare",
+                      "english_name":  "Scale mail +2",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "22500",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-scale-mail-plus-3",
+                      "name":  "Armure d\u0027écailles +3",
+                      "description":  "Armure magique conférant un bonus de +3 à la CA.",
+                      "rarity":  "legendary",
+                      "english_name":  "Scale mail +3",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "22500",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-breastplate-plus-1",
+                      "name":  "Cuirasse +1",
+                      "description":  "Armure magique conférant un bonus de +1 à la CA.",
+                      "rarity":  "rare",
+                      "english_name":  "Breastplate +1",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "10000",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-breastplate-plus-2",
+                      "name":  "Cuirasse +2",
+                      "description":  "Armure magique conférant un bonus de +2 à la CA.",
+                      "rarity":  "very-rare",
+                      "english_name":  "Breastplate +2",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "10000",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-breastplate-plus-3",
+                      "name":  "Cuirasse +3",
+                      "description":  "Armure magique conférant un bonus de +3 à la CA.",
+                      "rarity":  "legendary",
+                      "english_name":  "Breastplate +3",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "10000",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-half-plate-plus-1",
+                      "name":  "Demi-harnois +1",
+                      "description":  "Armure magique conférant un bonus de +1 à la CA.",
+                      "rarity":  "rare",
+                      "english_name":  "Half plate +1",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "20000",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-half-plate-plus-2",
+                      "name":  "Demi-harnois +2",
+                      "description":  "Armure magique conférant un bonus de +2 à la CA.",
+                      "rarity":  "very-rare",
+                      "english_name":  "Half plate +2",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "20000",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-half-plate-plus-3",
+                      "name":  "Demi-harnois +3",
+                      "description":  "Armure magique conférant un bonus de +3 à la CA.",
+                      "rarity":  "legendary",
+                      "english_name":  "Half plate +3",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "20000",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-ring-mail-plus-1",
+                      "name":  "Broigne +1",
+                      "description":  "Armure magique conférant un bonus de +1 à la CA.",
+                      "rarity":  "rare",
+                      "english_name":  "Ring mail +1",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "20000",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-ring-mail-plus-2",
+                      "name":  "Broigne +2",
+                      "description":  "Armure magique conférant un bonus de +2 à la CA.",
+                      "rarity":  "very-rare",
+                      "english_name":  "Ring mail +2",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "20000",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-ring-mail-plus-3",
+                      "name":  "Broigne +3",
+                      "description":  "Armure magique conférant un bonus de +3 à la CA.",
+                      "rarity":  "legendary",
+                      "english_name":  "Ring mail +3",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "20000",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-chain-mail-plus-1",
+                      "name":  "Cotte de mailles +1",
+                      "description":  "Armure magique conférant un bonus de +1 à la CA.",
+                      "rarity":  "rare",
+                      "english_name":  "Chain mail +1",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "27500",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-chain-mail-plus-2",
+                      "name":  "Cotte de mailles +2",
+                      "description":  "Armure magique conférant un bonus de +2 à la CA.",
+                      "rarity":  "very-rare",
+                      "english_name":  "Chain mail +2",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "27500",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-chain-mail-plus-3",
+                      "name":  "Cotte de mailles +3",
+                      "description":  "Armure magique conférant un bonus de +3 à la CA.",
+                      "rarity":  "legendary",
+                      "english_name":  "Chain mail +3",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "27500",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-splint-plus-1",
+                      "name":  "Armure à plaques +1",
+                      "description":  "Armure magique conférant un bonus de +1 à la CA.",
+                      "rarity":  "rare",
+                      "english_name":  "Splint +1",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "30000",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-splint-plus-2",
+                      "name":  "Armure à plaques +2",
+                      "description":  "Armure magique conférant un bonus de +2 à la CA.",
+                      "rarity":  "very-rare",
+                      "english_name":  "Splint +2",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "30000",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-splint-plus-3",
+                      "name":  "Armure à plaques +3",
+                      "description":  "Armure magique conférant un bonus de +3 à la CA.",
+                      "rarity":  "legendary",
+                      "english_name":  "Splint +3",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "30000",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-plate-plus-1",
+                      "name":  "Harnois +1",
+                      "description":  "Armure magique conférant un bonus de +1 à la CA.",
+                      "rarity":  "rare",
+                      "english_name":  "Plate +1",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "32500",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-plate-plus-2",
+                      "name":  "Harnois +2",
+                      "description":  "Armure magique conférant un bonus de +2 à la CA.",
+                      "rarity":  "very-rare",
+                      "english_name":  "Plate +2",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "32500",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-armor-plate-plus-3",
+                      "name":  "Harnois +3",
+                      "description":  "Armure magique conférant un bonus de +3 à la CA.",
+                      "rarity":  "legendary",
+                      "english_name":  "Plate +3",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "32500",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-shield-plus-1",
+                      "name":  "Bouclier +1",
+                      "description":  "Bouclier magique conférant un bonus de +1 à la CA, en plus du bonus normal du bouclier.",
+                      "rarity":  "rare",
+                      "english_name":  "Shield +1",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "3000",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-shield-plus-2",
+                      "name":  "Bouclier +2",
+                      "description":  "Bouclier magique conférant un bonus de +2 à la CA, en plus du bonus normal du bouclier.",
+                      "rarity":  "very-rare",
+                      "english_name":  "Shield +2",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "3000",
+                      "price_copper":  ""
+                  },
+                  {
+                      "import_key":  "phb2014-magic-shield-plus-3",
+                      "name":  "Bouclier +3",
+                      "description":  "Bouclier magique conférant un bonus de +3 à la CA, en plus du bonus normal du bouclier.",
+                      "rarity":  "legendary",
+                      "english_name":  "Shield +3",
+                      "source_reference":  "DMG 2014",
+                      "weight_grams":  "3000",
+                      "price_copper":  ""
+                  }
+              ]
+}

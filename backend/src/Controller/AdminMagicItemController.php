@@ -64,6 +64,20 @@ final class AdminMagicItemController extends AbstractController
                     if ($recharge === null) throw new \InvalidArgumentException('Recharge invalide.');
                     $item->setRechargeType($recharge);
                     $item->setRechargeFormula((string) ($data['formula'] ?? ''));
+                    if (in_array($item->getCategory(), ['armor', 'shield'], true) && array_key_exists('armor_type', $data)) {
+                        $type = trim((string) $data['armor_type']);
+                        $base = trim((string) ($data['base_armor_class'] ?? ''));
+                        if ($base !== '' && !ctype_digit($base)) throw new \InvalidArgumentException('CA de base invalide.');
+                        $item->configureArmor($type === '' ? null : $type, $base === '' ? null : (int) $base);
+                        if (array_key_exists('armor_strength', $data) || array_key_exists('armor_stealth', $data)) {
+                            $strength = trim((string) ($data['armor_strength'] ?? ''));
+                            $stealth = (string) ($data['armor_stealth'] ?? '');
+                            if (($strength !== '' && !ctype_digit($strength)) || !in_array($stealth, ['', 'yes', 'no'], true)) {
+                                throw new \InvalidArgumentException('Force requise ou Discrétion invalide.');
+                            }
+                            $item->configureArmorRestrictions($strength === '' ? null : (int) $strength, $stealth === '' ? null : $stealth === 'yes');
+                        }
+                    }
                     $em->persist($item);
                     $em->flush();
                     $this->addFlash('success', 'Objet enregistré.');
