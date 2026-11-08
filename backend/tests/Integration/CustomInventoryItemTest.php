@@ -79,6 +79,31 @@ final class CustomInventoryItemTest extends TestCase
         return $controller;
     }
 
+    public function testPermanentArmorFeatureRequiresAcquiredFeatAndResolvesOnlyOnce(): void
+    {
+        [$state] = $this->fixture();
+        $character = $state->getCharacter();
+        $class = new \App\Entity\CharacterClass('fixture-class', 'Fixture', 8, 3);
+        $level = new \App\Entity\CharacterClassLevel($character, $class, 1);
+        $character->addClassLevel($level);
+        $feat = new \App\Entity\Feat('fixture-scales', 'Scales');
+        $feature = (new \App\Entity\CharacterFeatureDefinition('fixture-scales', 'Scales'))
+            ->configureArmorClassEffects([['key'=>'scales','label'=>'Scales','type'=>'formula','value'=>13,'dexterity'=>'full','conditions'=>['no-armor']]]);
+        $rule = \App\Entity\CharacterFeatureRule::forFeat($feature, $feat, 1);
+        foreach ([$class,$level,$feat,$feature,$rule] as $entity) $this->em->persist($entity);
+        $this->em->flush();
+        $resolver = new \App\Service\CharacterFeatureResolver($this->em->getRepository(\App\Entity\CharacterFeatureRule::class), $this->em);
+        self::assertSame([], $resolver->resolve($character));
+        $owned = new \App\Entity\CharacterFeat($character, $feat);
+        $character->addFeat($owned);
+        $this->em->persist($owned);
+        $this->em->persist(\App\Entity\CharacterFeatureRule::forClass($feature, $class, 1));
+        $this->em->flush();
+        $resolved = $resolver->resolve($character);
+        self::assertCount(1, $resolved);
+        self::assertSame($feature->getArmorClassEffects(), $resolved['fixture-scales']->getFeatureDefinition()->getArmorClassEffects());
+    }
+
     public function testArmorCatalogueSyncImportsOnlyReviewedDefinitionsAndIsIdempotent(): void
     {
         [, , $owned] = $this->fixture();

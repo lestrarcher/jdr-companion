@@ -12,6 +12,37 @@ use PHPUnit\Framework\TestCase;
 
 final class ArmorClassEffectsTest extends TestCase
 {
+    public function testPermanentFeatureFormulasCompeteWithItemsAndArmor(): void
+    {
+        foreach (['dragon-hide', 'draconic-resilience'] as $slug) {
+            $feature = new \App\Entity\CharacterFeatureDefinition($slug, $slug);
+            $feature->configureArmorClassEffects([['key'=>'natural-armor', 'label'=>'Armure naturelle', 'type'=>'formula', 'value'=>13, 'dexterity'=>'full', 'conditions'=>['no-armor']]]);
+            $context = [['identity'=>'feature:'.$slug, 'source'=>$slug, 'effects'=>$feature->getArmorClassEffects()]];
+            $character = $this->character();
+            self::assertSame(16, $this->calculate($character, $context)['value']);
+            self::assertSame(16, $this->calculate($character, [...$context, ...$context])['value']);
+            $shield = $this->item($character, [], 'shield', 'hand');
+            self::assertSame(18, $this->calculate($character, $context)['value']);
+            $armor = $this->item($character, [], 'armor', 'armor');
+            self::assertSame(16, $this->calculate($character, $context)['value']);
+            (new CharacterEquipmentService())->equip($character, $armor, false);
+            self::assertSame(18, $this->calculate($character, $context)['value']);
+            $this->item($character, [['key'=>'alternative','label'=>'Alternative','type'=>'formula','value'=>15,'dexterity'=>'capped','dexterityCap'=>2,'conditions'=>['no-armor']]]);
+            $result = $this->calculate($character, $context);
+            self::assertSame(19, $result['value']);
+            self::assertCount(1, array_filter($result['contributions'], fn ($p) => $p['kind'] === 'base'));
+        }
+    }
+
+    public function testContextIdentitiesAndSharedStackingGroups(): void
+    {
+        $a = ['identity'=>'feature:a','source'=>'Same display name','effects'=>[$this->bonus()]];
+        $b = ['identity'=>'feature:b','source'=>'Same display name','effects'=>[$this->bonus()]];
+        self::assertSame(15, $this->calculate($this->character(), [$a,$a,$b])['value']);
+        $a['effects'] = $b['effects'] = [$this->bonus(1, [], 'shared')];
+        self::assertSame(14, $this->calculate($this->character(), [$a,$b])['value']);
+    }
+
     private function character(): Character
     {
         $character = new Character($this->createMock(Campaign::class), 'fixture', 'Fixture', Character::TYPE_PLAYER);

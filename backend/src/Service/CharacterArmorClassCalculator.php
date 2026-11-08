@@ -17,7 +17,7 @@ final readonly class CharacterArmorClassCalculator
     /**
      * Explicitly active effects from a trusted caller, never inferred from known spells.
      * No session lookup, duration management or persistence occurs here.
-     * @param list<array{source: string, effects: array}> $contextEffects
+     * @param list<array{source: string, effects: array, identity?: string}> $contextEffects
      */
     public function calculate(Character $character, array $contextEffects = []): array
     {
@@ -79,13 +79,14 @@ final readonly class CharacterArmorClassCalculator
             }
         }
         foreach ($contextEffects as $context) {
-            if (!is_array($context) || array_diff(array_keys($context), ['source', 'effects'])
+            if (!is_array($context) || array_diff(array_keys($context), ['source', 'effects', 'identity'])
+                || (isset($context['identity']) && (!is_string($context['identity']) || trim($context['identity']) === ''))
                 || !is_string($context['source'] ?? null) || trim($context['source']) === '') {
                 throw new \InvalidArgumentException('Contexte de CA invalide.');
             }
             foreach (ArmorClassEffectSchema::validate($context['effects'] ?? null) as $effect) {
                 $reason = $this->conditionFailure($effect, $armor !== null, $shield !== null, false);
-                $this->collect($character, $effect, $context['source'], 'context', $reason, $dex, $formulas, $bonuses, $excluded);
+                $this->collect($character, $effect, $context['source'], 'context:'.($context['identity'] ?? $context['source']), $reason, $dex, $formulas, $bonuses, $excluded);
             }
         }
         // Select one complete formula, never sum alternative bases or ability modifiers.
