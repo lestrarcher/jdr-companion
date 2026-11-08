@@ -37,6 +37,7 @@ final readonly class CharacterFeatureSpellCastingResolver
                 $key=$type.':'.$source->getId();
                 $origins[$key] ??= ['type'=>$type,'id'=>$source->getId(),'ruleIds'=>[],'characterFeatId'=>null];
                 $origins[$key]['ruleIds'][]=$rule->getId();
+                if ($rule->getChoiceProvenance() !== null) $origins[$key]['choiceKeys'][] = $rule->getChoiceProvenance();
             }
         }
         if (count($origins)!==1) return array_replace($result,['reason'=>$origins===[]?'provenance_missing':'provenance_ambiguous']);

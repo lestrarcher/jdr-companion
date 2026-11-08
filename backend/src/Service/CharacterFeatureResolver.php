@@ -16,6 +16,7 @@ final readonly class CharacterFeatureResolver
     public function __construct(
         private CharacterFeatureRuleRepository $ruleRepository,
         private EntityManagerInterface $entityManager,
+        private ?FeatureChoiceReader $choices = null,
     ) {
     }
 
@@ -77,7 +78,7 @@ final readonly class CharacterFeatureResolver
      * @param array<string,int> $progressionValues
      * @return list<CharacterFeatureRule>
      */
-    public function applicableRules(Character $character, array $progressionValues = []): array
+    public function applicableRules(Character $character, array $progressionValues = [], bool $includeChoices = true): array
     {
         $owner = $character->getCampaign()->getOwner();
         $rules = array_values(array_filter($this->ruleRepository->findVisibleForOwner($owner),
@@ -90,11 +91,11 @@ final readonly class CharacterFeatureResolver
                 $rules[] = CharacterFeatureRule::forCharacter($definition, $character);
             }
         }
-        return $rules;
+        return $includeChoices && $this->choices !== null ? $this->choices->selectedRules($character, $rules) : $rules;
     }
 
     /** Source ownership for persisted acquisitions, never runtime permission. */
-    public function acquisitionRules(Character $character): array
+    public function acquisitionRules(Character $character, bool $includeChoices = true): array
     {
         $owner = $character->getCampaign()->getOwner();
         $rules = array_values(array_filter($this->ruleRepository->findVisibleForOwner($owner),
@@ -110,7 +111,7 @@ final readonly class CharacterFeatureResolver
                 $rules[] = CharacterFeatureRule::forCharacter($assignment->getFeatureDefinition(), $character);
             }
         }
-        return $rules;
+        return $includeChoices && $this->choices !== null ? $this->choices->selectedRules($character, $rules) : $rules;
     }
 
     private function shouldReplaceRule(

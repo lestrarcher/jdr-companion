@@ -227,6 +227,7 @@ final readonly class CharacterProfileSerializer
             'sourceType' => $rule->sourceType(),
             'sourceId' => $rule->sourceId(),
             'sourceName' => $rule->sourceName(),
+            'choiceProvenance' => $rule->getChoiceProvenance(),
             'unlockLevel' => $rule->getUnlockLevel(),
             'displayOrder' => $rule->getDisplayOrder(),
             'resource' => $resource !== null

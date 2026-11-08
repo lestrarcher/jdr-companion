@@ -36,6 +36,7 @@ final readonly class CharacterLevelUpRequestResolver
     public function resolve(array $payload, \App\Entity\Character $character): array
     {
         $spellChoices = LevelUpSpellChoices::fromPayload($payload);
+        $featureChoices = CharacterFeatureChoices::selections($payload['featureChoices'] ?? []);
         foreach ([CharacterClass::class => $payload['classId'] ?? null, CharacterSubclass::class => $payload['subclassId'] ?? null,
             Feat::class => is_array($payload['advancement'] ?? null) ? ($payload['advancement']['featId'] ?? null) : null] as $type => $rawId) {
             $id = $this->integer($rawId);
@@ -81,6 +82,7 @@ final readonly class CharacterLevelUpRequestResolver
 
         return [
             'spellChoices' => $spellChoices,
+            'featureChoices' => $featureChoices,
             'training' => $training,
             'characterClass' => $characterClass,
             'subclass' => $subclass,

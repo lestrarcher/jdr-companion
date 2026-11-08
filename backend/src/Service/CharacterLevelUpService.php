@@ -33,6 +33,7 @@ final readonly class CharacterLevelUpService
         private CharacterTrainingPresenter $trainingPresenter,
         private ?CharacterLevelUpSpells $levelUpSpells = null,
         private ?CharacterFeatureSpellService $featureSpells = null,
+        private ?CharacterFeatureChoices $featureChoices = null,
     ) {
     }
 
@@ -46,6 +47,7 @@ final readonly class CharacterLevelUpService
         ?CharacterSessionState $authorization = null,
         array $training = [],
         ?array $spellChoices = null,
+        array $featureChoices = [],
     ): CharacterClassLevel {
         foreach ([$characterClass, $subclass, $advancement?->getFeat(), $character->getSubclassFor($characterClass)] as $reference) {
             if ($reference !== null) ReferenceVisibility::requireVisible($reference, $character->getCampaign()->getOwner());
@@ -60,6 +62,7 @@ final readonly class CharacterLevelUpService
             $authorization,
             $training,
             $spellChoices,
+            $featureChoices,
         ): CharacterClassLevel {
             if ($authorization !== null) {
                 if ($authorization->getCharacter() !== $character) {
@@ -74,6 +77,7 @@ final readonly class CharacterLevelUpService
                 $this->entityManager->refresh($character);
             }
             $this->validateCharacterCanLevelUp($character);
+            $featureChoicesBefore = $this->featureChoices?->preview($character);
             if ($spellChoices !== null) {
                 if ($this->levelUpSpells === null) throw new \LogicException('Service de choix de sorts indisponible.');
                 $this->levelUpSpells->lockReferences();
@@ -141,6 +145,9 @@ final readonly class CharacterLevelUpService
 
             $character->addClassLevel($level);
             $this->entityManager->persist($level);
+            if ($this->featureChoices !== null) {
+                $this->featureChoices->applyLevel($character, $level, $featureChoicesBefore, $featureChoices);
+            }
 
             // The builder validates first-level training inside its enclosing transaction.
             if ($totalLevel > 1) {

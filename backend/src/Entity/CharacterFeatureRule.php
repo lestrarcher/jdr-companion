@@ -64,6 +64,10 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\HasLifecycleCallbacks]
 class CharacterFeatureRule
 {
+    /** Runtime provenance of a selected option; never an ordinary manual assignment. */
+    private ?string $choiceProvenance = null;
+    public function setChoiceProvenance(string $key): void { $this->choiceProvenance = $key; }
+    public function getChoiceProvenance(): ?string { return $this->choiceProvenance; }
     // Existing constructors and factories create official references only.
     #[ORM\Column(length: 8, enumType: ReferenceOrigin::class, options: ['default' => 'OFFICIAL'])]
     private ReferenceOrigin $origin = ReferenceOrigin::Official;

@@ -106,6 +106,7 @@ final class CharacterBuilderController extends AbstractController
                 startingSubclass: $startingSubclass,
                 background: $this->resolveBackground($payload, $entityManager),
                 training: $this->parseTraining($payload),
+                featureChoices: \App\Service\CharacterFeatureChoices::selections($payload['featureChoices'] ?? []),
             );
 
             return $this->json(
