@@ -40,8 +40,7 @@ final readonly class CharacterFeatureChoices
             $new = array_diff(array_column($result['grants'],'key'),array_column($before['grants'],'key'));
             foreach ($result['grants'] as &$grant) {
                 $grant['newAtLevel'] = in_array($grant['key'],$new,true);
-                $grant['replacementAvailable'] = $grant['classKey'] === $classKey && ($grant['replacement'] === 'class-level'
-                    || ($grant['replacement'] === 'grant-level' && array_filter($result['grants'],static fn ($g) => $g['group_key'] === $grant['group_key'] && in_array($g['key'],$new,true))));
+                $grant['replacementAvailable'] = $this->reader->replacementAllowed($character, $grant, $classKey, $new, $result['grants']);
             }
             unset($grant);
             $result['baseFingerprint'] = $before['fingerprint'];
@@ -63,7 +62,7 @@ final readonly class CharacterFeatureChoices
         }
         unset($grant);
         return ['fingerprint'=>hash('sha256', json_encode([$grants,$history,$character->getTotalLevel()], JSON_THROW_ON_ERROR)),
-            'grants'=>$grants, 'history'=>$history,
+            'grants'=>$grants, 'history'=>$history, 'legacyAttributions'=>$this->reader->legacyAttributions($character),
             'missing'=>array_values(array_map(static fn ($g) => $g['key'], array_filter($grants, static fn ($g) => $g['remaining'] > 0))),
             'issues'=>array_values(array_filter($result['selections'], static fn ($row, $index) => !isset($result['valid'][$index]), ARRAY_FILTER_USE_BOTH))];
     }
@@ -139,10 +138,9 @@ final readonly class CharacterFeatureChoices
                 $old = $oldRows[$replaces] ?? null;
                 if ($old === null || isset($retired[$replaces]) || $old['grant_key'] !== $grant['key'] || (int)$old['slot'] !== $selection['slot'] || $old['option_key'] === $selection['optionKey']) throw new \DomainException('Remplacement invalide.');
                 if ($level !== null) {
-                    $allowed = $grant['classKey'] === $level->getCharacterClass()->getSlug()
-                        && ($grant['replacement'] === 'class-level' || ($grant['replacement'] === 'grant-level' && array_filter($current['grants'], static fn ($g) => $g['group_key'] === $grant['group_key'] && in_array($g['key'], $newKeys, true))));
+                    $allowed = $this->reader->replacementAllowed($character, $grant, $level->getCharacterClass()->getSlug(), $newKeys, $current['grants']);
                     if (!$allowed) throw new \DomainException('Remplacement non autorisé à ce niveau.');
-                    $event = 'replace:'.$grant['group_key'].':'.$level->getPosition();
+                    $event = 'replace:'.($grant['replacement_event_key'] ?? $grant['group_key']).':'.$level->getPosition();
                     if (isset($events[$event]) || $this->em->getConnection()->fetchOne('SELECT 1 FROM character_feature_choice WHERE character_id=? AND event_key=?', [$character->getId(),$event])) throw new \DomainException('Droit de remplacement déjà utilisé.');
                     $events[$event] = true;
                 }

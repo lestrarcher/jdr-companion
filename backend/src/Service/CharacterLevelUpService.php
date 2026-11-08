@@ -145,9 +145,6 @@ final readonly class CharacterLevelUpService
 
             $character->addClassLevel($level);
             $this->entityManager->persist($level);
-            if ($this->featureChoices !== null) {
-                $this->featureChoices->applyLevel($character, $level, $featureChoicesBefore, $featureChoices);
-            }
 
             // The builder validates first-level training inside its enclosing transaction.
             if ($totalLevel > 1) {
@@ -162,6 +159,11 @@ final readonly class CharacterLevelUpService
             if ($spellChoices !== null) {
                 $this->entityManager->flush();
                 $this->levelUpSpells->apply($level, $spellChoices, $authorization !== null);
+            }
+
+            // Spell prerequisites inspect the final acquisition choices of this same transaction.
+            if ($this->featureChoices !== null) {
+                $this->featureChoices->applyLevel($character, $level, $featureChoicesBefore, $featureChoices);
             }
 
             $this->stateSynchronizer->synchronizeAfterLevelUp(

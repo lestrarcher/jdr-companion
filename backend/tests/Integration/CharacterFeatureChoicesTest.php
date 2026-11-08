@@ -36,6 +36,10 @@ final class CharacterFeatureChoicesTest extends TestCase
         foreach (\DoctrineMigrations\Version20261108020000::statements() as $sql) {
             $this->db->executeStatement(preg_replace('/^CREATE TABLE /','CREATE TEMP TABLE ', $sql));
         }
+        require_once dirname(__DIR__,2).'/migrations/Version20261108030000.php';
+        foreach (\DoctrineMigrations\Version20261108030000::statements() as $sql) {
+            $this->db->executeStatement(preg_replace('/^CREATE TABLE /','CREATE TEMP TABLE ', $sql));
+        }
         foreach (['Version20261022220000','Version20261023001000'] as $version) {
             require_once dirname(__DIR__,2).'/migrations/'.$version.'.php';
             $class = 'DoctrineMigrations\\'.$version;
@@ -89,6 +93,218 @@ final class CharacterFeatureChoicesTest extends TestCase
     {
         return ['grantKey'=>$grant,'optionKey'=>$option,'slot'=>$slot];
     }
+    private function catalogue(bool $apply = true): \App\Service\Catalogue\FeatureChoiceCatalogue
+    {
+        $catalogue = new \App\Service\Catalogue\FeatureChoiceCatalogue($this->db, dirname(__DIR__, 2));
+        $this->em->persist(new \App\Entity\TrackableResourceDefinition('sorcery-points','Sorcery points',\App\Enum\ResourceRechargeType::LongRest,\App\Enum\ResourceMaximumType::Fixed,20));
+        $this->em->flush();
+        foreach ($catalogue->load()['grants'] as $grant) {
+            $class = $this->em->getRepository(CharacterClass::class)->findOneBy(['slug'=>$grant['class']]);
+            if (!$class) { $class = new CharacterClass($grant['class'], $grant['class'], 8, 3); $this->em->persist($class); $this->em->flush(); }
+            if ($grant['subclass'] && !$this->em->getRepository(\App\Entity\CharacterSubclass::class)->findOneBy(['slug'=>$grant['subclass']])) {
+                $this->em->persist(new \App\Entity\CharacterSubclass($class, $grant['subclass'], $grant['subclass']));
+            }
+            if (!$this->em->getRepository(CharacterFeatureDefinition::class)->findOneBy(['slug'=>$grant['feature']])) {
+                $this->em->persist(new CharacterFeatureDefinition($grant['feature'], $grant['feature']));
+            }
+            $this->em->flush();
+        }
+        // Existing level-3 identities, as in the real class catalogue; no automatic option rules by default.
+        foreach (['bear','eagle','wolf','elk','tiger'] as $animal) {
+            $this->em->persist(new CharacterFeatureDefinition('totem-warrior-'.$animal, $animal));
+        }
+        $this->em->flush();
+        if ($apply) $catalogue->run(true);
+        return $catalogue;
+    }
+
+    private function levels(string $slug, int $count, ?string $subclass = null): void
+    {
+        $class = $this->em->getRepository(CharacterClass::class)->findOneBy(['slug'=>$slug]);
+        $sub = $subclass ? $this->em->getRepository(\App\Entity\CharacterSubclass::class)->findOneBy(['slug'=>$subclass]) : null;
+        for ($i=0; $i<$count; ++$i) {
+            $level = new CharacterClassLevel($this->character, $class, $this->character->getNextLevelPosition(), $sub);
+            $this->character->addClassLevel($level); $this->em->persist($level);
+        }
+        $this->em->flush();
+    }
+
+    private function pick(string $group, int $level, string $feature, int $slot = 1): array
+    {
+        return ['grantKey'=>$group.'-'.$level, 'optionKey'=>$group.'-'.$feature, 'slot'=>$slot];
+    }
+
+    public function testConcreteCatalogueIsReadOnlyInPreviewAndIdempotentAfterInstallation(): void
+    {
+        $catalogue = $this->catalogue(false);
+        $before = $this->db->fetchOne('SELECT count(*) FROM character_feature_definition');
+        self::assertNotEmpty($catalogue->run()['created']);
+        self::assertSame($before, $this->db->fetchOne('SELECT count(*) FROM character_feature_definition'));
+        $catalogue->run(true);
+        self::assertSame([], $catalogue->run()['created']);
+        self::assertSame([], $catalogue->run(true)['created']);
+        self::assertSame(54, (int)$this->db->fetchOne("SELECT count(*) FROM feature_choice_option WHERE group_key='eldritch-invocations'"));
+        self::assertSame(10, (int)$this->db->fetchOne("SELECT count(*) FROM feature_choice_option WHERE group_key='metamagic'"));
+        self::assertSame(0, (int)$this->db->fetchOne('SELECT count(*) FROM character_feature_choice'));
+    }
+
+    public function testCatalogueConflictDoesNotOverwritePersonalConfiguration(): void
+    {
+        $catalogue = $this->catalogue();
+        $this->db->executeStatement("UPDATE feature_choice_group SET replacement='class-level' WHERE key='metamagic'");
+        $this->expectException(\DomainException::class);
+        $catalogue->run(true);
+    }
+
+    public function testConcreteStylesExcludeOtherClassOptionsAndDeduplicateManualDefense(): void
+    {
+        $this->catalogue(); $this->levels('paladin', 2);
+        $feature = $this->em->getRepository(CharacterFeatureDefinition::class)->findOneBy(['slug'=>'fighting-style-defense']);
+        $this->em->persist(new CharacterFeatureAssignment($this->character, $feature)); $this->em->flush();
+        $this->save([$this->pick('fighting-style-paladin', 2, 'fighting-style-defense')]);
+        $resolved = $this->resolver->resolve($this->character);
+        self::assertArrayHasKey('fighting-style-defense', $resolved);
+        self::assertCount(1, array_filter($resolved, fn ($r) => $r->getFeatureDefinition() === $feature));
+        self::assertSame(1, (int)$this->db->fetchOne('SELECT count(*) FROM character_feature_assignment'));
+        $grants = array_column($this->service->preview($this->character)['grants'], null, 'key');
+        self::assertNotContains('fighting-style-archery', array_column($grants['fighting-style-paladin-2']['options'], 'featureKey'));
+        self::assertSame(['armor'], $feature->getArmorClassEffects()[0]['conditions']);
+        $profile = $this->kernel->getContainer()->get('test.service_container')->get(\App\Service\CharacterProfileSerializer::class);
+        self::assertSame(10, $profile->serialize($this->character)['armorClass']['value']);
+        $armor = new \App\Entity\MagicItem(null, 'Fixture armor', null, $this->owner);
+        $armor->classify('armor', true, true, 'armor', null);
+        $armor->configureArmor('light',11);
+        $owned = new \App\Entity\CharacterMagicItem($this->character, $armor);
+        $this->character->addMagicItem($owned); $owned->setEquipped(true);
+        $this->em->persist($armor); $this->em->persist($owned); $this->em->flush();
+        self::assertSame(12, $profile->serialize($this->character)['armorClass']['value']);
+        $owned->setEquipped(false);
+        self::assertSame(10, $profile->serialize($this->character)['armorClass']['value']);
+    }
+
+    public function testInvocationCantripPrerequisiteUsesActiveFeatureSpellAcquisition(): void
+    {
+        $this->catalogue(); $this->levels('warlock',2);
+        $spell = new \App\Entity\SpellDefinition('eldritch-blast','Fixture blast',0,\App\Enum\SpellSchool::cases()[0],'1 action','36 m','Instant','Fixture');
+        $this->em->persist($spell); $this->em->flush();
+        $this->db->insert('feature_spell_grant',['feature_id'=>$this->features['source']->getId(),'spell_id'=>$spell->getId(),'mode'=>'fixed','casting_ability'=>'CHA']);
+        $this->kernel->getContainer()->get('test.service_container')->get(\App\Service\CharacterFeatureSpellService::class)->synchronize($this->character);
+        $this->save([$this->pick('eldritch-invocations',2,'eldritch-invocation-agonizing-blast'),$this->pick('eldritch-invocations',2,'eldritch-invocation-repelling-blast',2)]);
+        self::assertArrayHasKey('eldritch-invocation-agonizing-blast',$this->resolver->resolve($this->character));
+        $this->db->executeStatement('UPDATE feature_spell_grant SET enabled=false');
+        self::assertArrayNotHasKey('eldritch-invocation-agonizing-blast',$this->resolver->resolve($this->character));
+        self::assertCount(2,$this->service->preview($this->character)['issues']);
+        self::assertSame(2,(int)$this->db->fetchOne('SELECT count(*) FROM character_feature_choice'));
+    }
+
+    public function testInvocationReplacementAtNewWarlockLevelPreservesItsHistory(): void
+    {
+        $this->catalogue(); $this->levels('warlock',2);
+        $result = $this->save([$this->pick('eldritch-invocations',2,'eldritch-invocation-armor-of-shadows'),$this->pick('eldritch-invocations',2,'eldritch-invocation-devils-sight',2)]);
+        $old = array_values(array_filter($result['history'], fn ($r) => $r['slot']===1))[0];
+        $before = $this->service->preview($this->character);
+        $this->levels('warlock',1);
+        $level = $this->character->getClassLevels()->last();
+        $this->service->applyLevel($this->character,$level,$before,[
+            $this->pick('pact-boon',3,'pact-of-the-chain'),
+            $this->pick('eldritch-invocations',2,'eldritch-invocation-voice-of-the-chain-master')+['replacesKey'=>$old['key']],
+        ]);
+        self::assertArrayNotHasKey('eldritch-invocation-armor-of-shadows',$this->resolver->resolve($this->character));
+        self::assertArrayHasKey('eldritch-invocation-voice-of-the-chain-master',$this->resolver->resolve($this->character));
+        self::assertFalse($this->db->fetchOne('SELECT active FROM character_feature_choice WHERE key=?',[$old['key']]));
+        self::assertSame(4,(int)$this->db->fetchOne('SELECT count(*) FROM character_feature_choice'));
+    }
+
+    public function testMetamagicQuotasAndOptionalReplacementWindow(): void
+    {
+        $this->catalogue(); $this->levels('sorcerer', 3);
+        $saved = $this->save([$this->pick('metamagic', 3, 'metamagic-subtle-spell'), $this->pick('metamagic', 3, 'metamagic-quickened-spell', 2)]);
+        $reader = new FeatureChoiceReader($this->em);
+        $this->levels('sorcerer', 1);
+        $g = array_column($this->service->preview($this->character)['grants'], null, 'key')['metamagic-3'];
+        self::assertFalse($reader->replacementAllowed($this->character, $g, 'sorcerer', [], [$g]));
+        $flag = $this->em->getRepository(CharacterFeatureDefinition::class)->findOneBy(['slug'=>'sorcerous-versatility']);
+        $this->em->persist(new CharacterFeatureAssignment($this->character, $flag)); $this->em->flush();
+        $g = array_column($this->service->preview($this->character)['grants'], null, 'key')['metamagic-3'];
+        self::assertTrue($reader->replacementAllowed($this->character, $g, 'sorcerer', [], [$g]));
+        $this->levels('sorcerer', 6);
+        $grants = array_filter($this->service->preview($this->character)['grants'], fn ($r) => $r['group_key']==='metamagic');
+        self::assertSame(3, array_sum(array_column($grants, 'choice_count')));
+        $this->levels('sorcerer', 7);
+        $grants = array_filter($this->service->preview($this->character)['grants'], fn ($r) => $r['group_key']==='metamagic');
+        self::assertSame(4, array_sum(array_column($grants, 'choice_count')));
+    }
+
+    public function testInvocationPactDependenciesAndClassLevelQuotas(): void
+    {
+        $this->catalogue(); $this->levels('warlock', 5);
+        $this->save([$this->pick('pact-boon',3,'pact-of-the-blade'),
+            $this->pick('eldritch-invocations',2,'eldritch-invocation-thirsting-blade'),
+            $this->pick('eldritch-invocations',2,'eldritch-invocation-armor-of-shadows',2),
+            $this->pick('eldritch-invocations',5,'eldritch-invocation-improved-pact-weapon')]);
+        self::assertArrayHasKey('eldritch-invocation-thirsting-blade',$this->resolver->resolve($this->character));
+        $g = array_column($this->service->preview($this->character)['grants'], null, 'key')['eldritch-invocations-2'];
+        $opts = array_column($g['options'], null, 'featureKey');
+        self::assertContains('classLevels:warlock', $opts['eldritch-invocation-lifedrinker']['reasons']);
+        self::assertContains('spellsKnown:eldritch-blast', $opts['eldritch-invocation-agonizing-blast']['reasons']);
+        self::assertContains('features:pact-of-the-chain', $opts['eldritch-invocation-voice-of-the-chain-master']['reasons']);
+        $this->levels('warlock',13);
+        $grants = array_filter($this->service->preview($this->character)['grants'], fn ($r) => $r['group_key']==='eldritch-invocations');
+        self::assertSame(8, array_sum(array_column($grants,'choice_count')));
+    }
+
+    public function testTotemChoicesAreIndependentAtEachTier(): void
+    {
+        $this->catalogue(); $this->levels('barbarian',14,'totem-warrior');
+        $this->save([$this->pick('totem-3',3,'totem-warrior-bear'), $this->pick('totem-6',6,'totem-warrior-eagle-6'), $this->pick('totem-14',14,'totem-warrior-wolf-14')]);
+        $resolved = $this->resolver->resolve($this->character);
+        foreach (['totem-warrior-bear','totem-warrior-eagle-6','totem-warrior-wolf-14'] as $key) self::assertArrayHasKey($key,$resolved);
+        self::assertArrayNotHasKey('totem-warrior-tiger',$resolved);
+        foreach ($this->service->preview($this->character)['grants'] as $g) if (str_starts_with($g['key'],'totem-')) {
+            self::assertCount(5,$g['options']); self::assertSame('none',$g['replacement']);
+        }
+    }
+
+    public function testChampionAndFighterShareOneOptionalReplacementPerLevel(): void
+    {
+        $this->catalogue(); $this->levels('fighter',11,'champion');
+        $saved = $this->save([$this->pick('fighting-style-fighter',1,'fighting-style-defense'),$this->pick('fighting-style-champion',10,'fighting-style-dueling')]);
+        $flag = $this->em->getRepository(CharacterFeatureDefinition::class)->findOneBy(['slug'=>'martial-versatility-fighter']);
+        $this->em->persist(new CharacterFeatureAssignment($this->character,$flag)); $this->em->flush();
+        $before = $this->service->preview($this->character);
+        $this->levels('fighter',1,'champion');
+        $old = array_column($saved['history'], null, 'grant_key');
+        try {
+            $this->service->applyLevel($this->character,$this->character->getClassLevels()->last(),$before,[
+                $this->pick('fighting-style-fighter',1,'fighting-style-archery')+['replacesKey'=>$old['fighting-style-fighter-1']['key']],
+                $this->pick('fighting-style-champion',10,'fighting-style-great-weapon-fighting')+['replacesKey'=>$old['fighting-style-champion-10']['key']],
+            ]);
+            self::fail('Two style replacements accepted');
+        } catch (\DomainException $error) {
+            self::assertStringContainsString('déjà utilisé',$error->getMessage());
+            self::assertSame(2,(int)$this->db->fetchOne('SELECT count(*) FROM character_feature_choice WHERE active'));
+            self::assertSame(2,(int)$this->db->fetchOne('SELECT count(*) FROM character_feature_choice'));
+        }
+    }
+
+    public function testLegacyAutomaticTotemsArePreservedUntilExplicitRegularization(): void
+    {
+        $catalogue = $this->catalogue(false); $this->levels('barbarian',3,'totem-warrior');
+        $sub = $this->em->getRepository(\App\Entity\CharacterSubclass::class)->findOneBy(['slug'=>'totem-warrior']);
+        foreach (['bear','wolf'] as $animal) {
+            $feature = $this->em->getRepository(CharacterFeatureDefinition::class)->findOneBy(['slug'=>'totem-warrior-'.$animal]);
+            $this->em->persist(CharacterFeatureRule::forSubclass($feature,$sub,3));
+        }
+        $this->em->flush(); $catalogue->run(true);
+        self::assertSame(2,(int)$this->db->fetchOne('SELECT count(*) FROM feature_choice_legacy_rule'));
+        self::assertArrayHasKey('totem-warrior-wolf',$this->resolver->resolve($this->character));
+        $this->save([$this->pick('totem-3',3,'totem-warrior-bear')]);
+        self::assertArrayNotHasKey('totem-warrior-wolf',$this->resolver->resolve($this->character));
+        self::assertArrayHasKey('totem-warrior-bear',$this->resolver->resolve($this->character));
+        self::assertSame([], $catalogue->run()['created']);
+        self::assertSame(2,(int)$this->db->fetchOne('SELECT count(*) FROM feature_choice_legacy_rule'));
+    }
+
     public function testExistingCharacterPreviewDoesNotWriteAndSingleChoiceFlowsToBothResolvers(): void
     {
         self::assertSame(['first'],$this->service->preview($this->character)['missing']);

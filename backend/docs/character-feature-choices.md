@@ -43,8 +43,10 @@ Prérequis actuellement reconnus (conjonction) :
 
 Une option peut dépendre d'une autre sélection dans la même soumission. La résolution
 par point fixe rejette les cycles et l'autojustification. Les prérequis inconnus sont
-indisponibles, jamais ignorés. Les conditions de sort connu, les alternatives OR et
-les conditions de combat ne sont pas encore implémentées.
+indisponibles, jamais ignorés. Les conditions de combat ne sont pas implémentées.
+Le lot 2 ajoute `anyOf`
+(alternatives de prérequis) et `spellsKnown` (clés de sorts effectivement acquis,
+non remplacés/non retirés, ou octrois actifs provenant d'une capacité résolue).
 
 Les références sont filtrées par ReferenceVisibility et le propriétaire du groupe.
 Pas de nouvelle interprétation des restrictions de campagne.
@@ -106,15 +108,110 @@ Pas de réinitialisation des progressions, inventaires ou consommations. Le retr
 d'une source n'efface pas les acquisitions historiques. Les choix dont la source
 est désactivée sont signalés ; la correction de catalogue est une opération séparée.
 
-## Lot 2
+## Lot 2 : catalogue 2014 installé
 
-Ajouter les définitions et options de styles, leur configuration CA, puis les écrans
-Angular. Le modèle n'implique ni choix automatique de Défense ni mécanique de classe.
-Prévoir l'administration/import des groupes et les prérequis supplémentaires avant
-les familles plus complexes. Aucun éditeur de catalogue n'est livré dans ce lot.
+Source versionnée : `data/reference/dnd-2014-feature-choices.json`. Les définitions
+sont résolues par slug ; aucun ID local n'est transporté dans le catalogue.
+
+| Famille | Options concrètes | Acquisitions et remplacement |
+| --- | --- | --- |
+| Styles | 13 styles distincts PHB/TCE, répartis dans 5 listes de classe/sous-classe | Guerrier 1, paladin/rôdeur 2, collège des épées 3, champion 10 : un choix par droit. Unicité par personnage. |
+| Métamagies | 8 PHB + 2 TCE | Deux à ensorceleur 3, une à 10, une à 17. Aucun échange PHB automatique. |
+| Manifestations | 32 PHB + 14 XGE + 8 TCE | Deux à occultiste 2, une à 5/7/9/12/15/18 : huit au total. Un échange par nouveau niveau d'occultiste. |
+| Totems | Ours, aigle, loup, élan, tigre à chacun des trois paliers | Un choix indépendant à barbare 3/6/14, exclusivement Voie du guerrier totémique. Aucun remplacement automatique. |
+| Pactes, support aux prérequis | Lame, chaîne, grimoire, talisman | Un choix à occultiste 3 ; les prérequis des manifestations lisent ces capacités. |
+
+Les options donnent nom, description, source bibliographique, prérequis et raisons
+d'indisponibilité. `alreadyAcquired` signale une capacité déjà issue d'une source
+existante ; elle peut être régularisée sans recopier une attribution manuelle.
+Les paliers d'une famille sont cumulés avant la déduplication finale.
+
+Les remplacements facultatifs TCE nécessitent une capacité explicitement attribuée
+par le MJ : `sorcerous-versatility` ou `martial-versatility-{fighter,paladin,ranger}`.
+Ces définitions n'ont aucune attribution automatique. Les fenêtres correspondent
+aux niveaux d'ASI de la classe ; le champion partage le budget de remplacement
+du guerrier. Le remplacement de métamagie est refusé si un tour de magie a déjà
+été remplacé lors de ce même niveau. Les choix de sorts sont donc validés avant
+les choix de capacités, dans la même transaction de montée de niveau.
+
+Le style Défense configure le moteur existant : +1 CA avec armure, jamais avec un
+bouclier seul, sans cumul du même style. Les métamagies référencent la ressource
+`sorcery-points` existante : aucune seconde réserve et aucune consommation automatique.
+
+### Installation et réinstallation
+
+Après les migrations et l'import du catalogue de classes 2014 :
+
+```sh
+php bin/console app:features:initialize-choices-2014
+php bin/console app:features:initialize-choices-2014 --apply
+php bin/console app:features:initialize-choices-2014
+```
+
+Sans `--apply`, le plan n'écrit rien, pas même les séquences. L'application prend un
+verrou de catalogue et préserve les niveaux pendant la capture historique. Elle
+est transactionnelle et additive : collisions personnelles ou configuration
+divergente provoquent un refus, pas un écrasement. Les descriptions des définitions
+réutilisées restent intactes. La commande ne synchronise aucun personnage.
+
+Migration structurelle `Version20261108030000` : fenêtres/budget de remplacement,
+code source des options, tables de rattachement des anciennes règles automatiques
+aux choix et de conservation de leurs bénéficiaires historiques.
+
+DEV : 95 nouvelles définitions, 5 définitions réutilisées, 11 groupes, 121 options
+de groupe, 19 droits, 6 règles de palier ajoutées et 15 règles automatiques encadrées.
+Dix droits historiques totémiques sont conservés, sans sélection arbitraire.
+Deuxième aperçu : aucune création restante. Les empreintes des possessions, états
+de session, attributions manuelles et acquisitions de sorts sont identiques avant/après.
+
+### Personnages existants et totems
+
+L'ancien catalogue attribuait tous les animaux automatiquement. Les règles ne sont
+pas supprimées : `feature_choice_rule_gate` les rend dépendantes du mécanisme de
+choix pour les nouveaux droits. `feature_choice_legacy_rule` conserve leurs anciens
+bénéficiaires, capturés une seule fois à l'installation. Le GET expose ces cas dans
+`legacyAttributions`. Tant que le palier n'est pas régularisé, ces anciennes capacités
+restent disponibles. Une sélection explicite du MJ remplace ces attributions
+automatiques pour ce palier ; les attributions manuelles restent indépendantes.
+
+Les identités animales historiques sont réutilisées au niveau 3. Des définitions
+distinctes aux niveaux 6 et 14 évitent de confondre des effets différents portant le
+même animal. Les données de provenance historique ne sont jamais effacées.
+
+### Frontières de cette livraison
+
+La sélection, les prérequis, quotas, remplacements et la résolution des options
+concrètes fonctionnent. Cela ne constitue pas une automatisation de tous leurs
+effets en combat. Les invocations à volonté ou consommant à la fois un emplacement
+de pacte et une utilisation limitée ne disposent pas encore de méthode de lancement
+compatible : aucun octroi de sort incomplet ou coût approximatif n'est créé.
+Leurs effets sont décrits, mais ne deviennent pas des boutons de lancement utilisables.
+
+Restent à raccorder : sous-choix de sorts des styles Guerrier béni/druidique et des
+pactes, rituels du Livre des secrets anciens, manœuvre de Technique supérieure,
+maîtrises d'Influence trompeuse et du totem tigre 6, automation des autres bonus,
+réactions et consommations. Les familles ont leurs options concrètes sélectionnables,
+mais ces effets/sous-choix ne doivent pas être présentés comme terminés.
+Le changement de pacte par Polyvalence occulte TCE reste hors de ce catalogue.
+
+La visibilité réutilise `ReferenceVisibility` et les propriétaires existants ;
+`source_code` est une référence bibliographique, pas une nouvelle autorisation de livre
+par campagne. Aucun système d'activation des suppléments par campagne n'est inventé.
+Pas d'interface Angular ni d'éditeur des familles dans cette livraison.
+
+Références de vérification : règles de classes
+[2014](https://www.dndbeyond.com/sources/dnd/basic-rules-2014/classes),
+[manifestations 2014](https://www.aidedd.org/dnd-filters/eldritch-invocations.php),
+[métamagies et polyvalence](https://dnd5e.wikidot.com/sorcerer),
+[totems](https://dnd5e.wikidot.com/barbarian:totem-warrior).
 
 Tests : CharacterFeatureChoicesTest utilise exclusivement des tables PostgreSQL
 temporaires vérifiées, et rollback. Exécuter avec php bin/phpunit.
+
+Validation du 8 novembre 2026 : suite complète, 169 tests / 4 553 assertions ;
+puis test additionnel du budget partagé guerrier/champion, 1 test / 12 assertions.
+`lint:container` et `git diff --check` réussis. Aucune migration en attente en DEV.
+Le frontend est inchangé ; aucun build Angular n'est requis pour ces lots backend.
 
 ## Validation globale du schéma DEV
 

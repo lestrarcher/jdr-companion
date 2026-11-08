@@ -84,6 +84,7 @@ final readonly class CharacterFeatureResolver
         $rules = array_values(array_filter($this->ruleRepository->findVisibleForOwner($owner),
             fn(CharacterFeatureRule $rule): bool => ReferenceVisibility::allows($rule, $owner)
                 && $this->isRuleApplicable($character, $rule, $progressionValues)));
+        $rules = $this->choices?->filterBaseRules($character, $rules) ?? $rules;
         foreach ($this->entityManager->getRepository(CharacterFeatureAssignment::class)->findBy(['character' => $character]) as $assignment) {
             $definition = $assignment->getFeatureDefinition();
             if (ReferenceVisibility::allows($definition, $owner)
@@ -105,6 +106,7 @@ final readonly class CharacterFeatureResolver
                         ? $this->isRuleApplicable($character, $rule, [])
                         : $character->hasProgression($rule->getProgressionDefinition()))
                     : $this->isRuleApplicable($character, $rule, []))));
+        $rules = $this->choices?->filterBaseRules($character, $rules) ?? $rules;
         foreach ($this->entityManager->getRepository(CharacterFeatureAssignment::class)->findBy(['character' => $character]) as $assignment) {
             if (ReferenceVisibility::allows($assignment->getFeatureDefinition(), $owner)
                 && !array_filter($rules, static fn (CharacterFeatureRule $rule): bool => $rule->getFeatureDefinition()->getId() === $assignment->getFeatureDefinition()->getId())) {
