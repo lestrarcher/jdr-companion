@@ -94,6 +94,9 @@
           </section>
           <section id="panel-resources" role="tabpanel" aria-labelledby="tab-resources" tabindex="0" [hidden]="activeTab() !== 'resources'">
             <app-character-abilities-resources [character]="character" />
+            @if (activeTab() === 'resources') {
+              <app-character-feature-choices [load]="loadFeatures" [save]="saveFeatures" (saved)="refreshProfile()" />
+            }
           </section>
 
         } @else if (profileError()) {

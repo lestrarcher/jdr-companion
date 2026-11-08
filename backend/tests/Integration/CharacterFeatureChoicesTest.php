@@ -305,6 +305,29 @@ final class CharacterFeatureChoicesTest extends TestCase
         self::assertSame(2,(int)$this->db->fetchOne('SELECT count(*) FROM feature_choice_legacy_rule'));
     }
 
+    public function testTransientBuilderCharacterCanPreviewFirstLevelChoicesWithoutWrites(): void
+    {
+        $character = new Character($this->character->getCampaign(),'preview','Preview',Character::TYPE_PLAYER);
+        $character->addClassLevel(new CharacterClassLevel($character,$this->class,1));
+        $before = $this->db->fetchOne('SELECT count(*) FROM character');
+        $view = $this->service->preview($character);
+        self::assertSame(['first'],$view['missing']);
+        self::assertNull($character->getId());
+        self::assertSame($before,$this->db->fetchOne('SELECT count(*) FROM character'));
+        self::assertSame([], $view['history']);
+    }
+
+    public function testFirstLevelChoiceCanBeSavedForANewCharacter(): void
+    {
+        $character = new Character($this->character->getCampaign(),'new-hero','New hero',Character::TYPE_PLAYER);
+        $this->em->persist($character);
+        $service = $this->kernel->getContainer()->get('test.service_container')->get(\App\Service\CharacterLevelUpService::class);
+        $service->levelUp($character,$this->class,featureChoices:[$this->selection()]);
+        self::assertSame(1,$character->getTotalLevel());
+        self::assertSame([], $this->service->preview($character)['missing']);
+        self::assertArrayHasKey('a',$this->resolver->resolve($character));
+    }
+
     public function testExistingCharacterPreviewDoesNotWriteAndSingleChoiceFlowsToBothResolvers(): void
     {
         self::assertSame(['first'],$this->service->preview($this->character)['missing']);

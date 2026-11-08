@@ -140,6 +140,7 @@ final class CharacterBuilderController extends AbstractController
         EntityManagerInterface $entityManager,
         CharacterTrainingService $trainingService,
         CharacterTrainingPresenter $presenter,
+        \App\Service\CharacterFeatureChoices $featureChoices,
     ): JsonResponse {
         $this->denyAccessUnlessGranted(CampaignVoter::MANAGE, $campaign);
         try {
@@ -163,7 +164,10 @@ final class CharacterBuilderController extends AbstractController
                 $character->addFeat((new CharacterFeat($character, $choice['feat']))->setChosenAbility($choice['ability'])->setAcquiredAtLevel(1));
             }
             $trainingService->apply($character, $this->parseTraining($payload), $campaign->getOwner(), false);
-            return $this->json($presenter->options($character));
+            $choices = $featureChoices->preview($character);
+            foreach ($choices['grants'] as &$grant) $grant['newAtLevel'] = true;
+            unset($grant);
+            return $this->json([...$presenter->options($character), 'featureChoices'=>$choices]);
         } catch (\DomainException|\InvalidArgumentException|\JsonException $exception) {
             return $this->json(['message' => $exception->getMessage()], 422);
         }

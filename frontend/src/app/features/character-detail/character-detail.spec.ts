@@ -12,6 +12,7 @@ import { routes } from '../../app.routes';
 import { CharacterLevelUpPage } from '../character-level-up-page/character-level-up-page';
 import { CharacterHistory } from './components/character-history/character-history';
 import { By } from '@angular/platform-browser';
+import { FeatureChoicesApi } from '@core/services/feature-choices-api.service';
 
 describe('Character list/detail separation', () => {
   let api: any;
@@ -28,6 +29,7 @@ describe('Character list/detail separation', () => {
     };
     reference = { getCampaignProgressions:vi.fn(() => of({progressions:[]})), getCampaignReference:vi.fn() };
     TestBed.configureTestingModule({providers:[
+      {provide:FeatureChoicesApi,useValue:{get:()=>of({grants:[],history:[],issues:[]})}},
       provideRouter([]), {provide:ActivatedRoute,useFactory:()=>({snapshot:{paramMap:convertToParamMap(params)}})},
       {provide:CharacterApiService,useValue:api}, {provide:DndReferenceApiService,useValue:reference},
     ]});

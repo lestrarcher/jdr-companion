@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { AbilityKey, AbilityReference, FeatReference } from './dnd-reference-api.service';
 import type { Spell } from '../models/spell.model';
+import type { FeatureChoiceSelection } from './feature-choices-api.service';
 import type { SpellInitializationPreview, SpellInitializationPayload, SpellInitializationResult } from '../models/spell-initialization.model';
 
 export type HitPointGainMethod =
@@ -439,6 +440,7 @@ export interface LevelUpSpellPolicyPreview {
 }
 
 export interface LevelUpPayload {
+  featureChoices?: FeatureChoiceSelection[];
   spellChoices?: LevelUpSpellChoice[];
   classId: number;
   subclassId: number | null;

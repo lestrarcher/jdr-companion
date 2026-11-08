@@ -223,3 +223,27 @@ et de noms d'index sur les attributions, possessions et usages de sorts d'objets
 Ce SQL ne doit pas être exécuté : il détruirait des données hors mapping ORM.
 La migration additive gère explicitement les quatre nouvelles tables ; la validation
 globale n'est donc pas annoncée comme verte. Les tests isolés valident leurs contraintes.
+
+## Lot 3 — Raccordement Angular
+
+Le composant partagé `CharacterFeatureChoices` consomme les aperçus backend dans
+la création au niveau 1, la montée de niveau MJ/joueur et la régularisation MJ
+depuis l'onglet des capacités et ressources de la fiche. Il transmet les clés
+stables des options et des choix remplacés aux commandes existantes ; aucun
+effet mécanique n'est calculé côté Angular.
+
+L'API des options de création expose désormais `featureChoices` sur le personnage
+transitoire. Le resolver ignore ses attributions persistées tant qu'il n'a pas
+d'identifiant. Les nouveaux choix obligatoires bloquent la validation ; les choix
+historiques manquants restent régularisables par le MJ sans bloquer un niveau.
+
+Les descriptions, prérequis et erreurs proviennent du backend. Les dépendances
+entre choix du même formulaire sont vérifiées ensemble à l'enregistrement.
+Un changement de classe annule l'ancien aperçu et efface sa sélection ; une erreur
+de validation conserve le brouillon. Une régularisation périmée (409) impose un
+rechargement explicite, avec avertissement de perte du brouillon.
+
+Validation Angular : 48 tests ciblés (éditeur partagé, création, montée de niveau
+et fiche), build réussi. Les budgets SCSS de `player-portal` et
+`character-magic-items` restent dépassés, sans changement de ces styles.
+Aucune migration, configuration de catalogue ou nouvelle mécanique dans ce lot.

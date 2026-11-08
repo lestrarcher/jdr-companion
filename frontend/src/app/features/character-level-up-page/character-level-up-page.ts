@@ -2,6 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize, forkJoin, map } from 'rxjs';
+import { FeatureChoicesApi } from '@core/services/feature-choices-api.service';
 import {
   CharacterApiService,
   CharacterProfile,
@@ -22,6 +23,9 @@ export class CharacterLevelUpPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(CharacterApiService);
+  private readonly choicesApi = inject(FeatureChoicesApi);
+  protected readonly loadFeatures = (classKey: string, subclassKey: string | null) =>
+    this.choicesApi.preview(this.campaignId, this.characterId, classKey, subclassKey);
 
   protected readonly campaignId = Number(this.route.snapshot.paramMap.get('campaignId'));
   protected readonly characterId = Number(this.route.snapshot.paramMap.get('characterId'));

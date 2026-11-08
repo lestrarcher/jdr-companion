@@ -3,7 +3,9 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, ElementRef, inject, signal, ViewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { finalize } from 'rxjs';
+import { finalize, of, throwError } from 'rxjs';
+import { FeatureChoiceLoader, FeatureChoiceSelection } from '@core/services/feature-choices-api.service';
+import { CharacterFeatureChoices } from '../campaign-characters/components/character-feature-choices/character-feature-choices';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CharacterBuilderIdentity } from './character-builder-identity/character-builder-identity';
 import { CharacterBuilderTraining } from './character-builder-training/character-builder-training';
@@ -45,11 +47,18 @@ interface FeatFormChoice {
     RouterLink,
     CharacterBuilderIdentity,
     CharacterBuilderTraining,
+    CharacterFeatureChoices,
   ],
   templateUrl: './character-builder.html',
   styleUrl: './character-builder.scss',
 })
 export class CharacterBuilder {
+  protected readonly featuresComplete = signal(false);
+  protected readonly featureSelection = signal<FeatureChoiceSelection[]>([]);
+  protected readonly loadFeatures = signal<FeatureChoiceLoader>(() => throwError(() => new Error('Aperçu indisponible.')));
+  protected featureChanged(value: { selections: FeatureChoiceSelection[]; complete: boolean }): void {
+    this.featureSelection.set(value.selections); this.featuresComplete.set(value.complete);
+  }
 
   @ViewChild('creationResult')
   private creationResult?: ElementRef<HTMLElement>;
@@ -285,6 +294,7 @@ export class CharacterBuilder {
   }
 
   public refreshOptions(reset = false): void {
+    this.featuresComplete.set(false);
     if (reset) {
       this.training.set(this.emptyTraining());
       this.options.set(null);
@@ -296,6 +306,7 @@ export class CharacterBuilder {
       .subscribe({
         next: (options) => {
           this.options.set(options);
+          this.loadFeatures.set(() => options.featureChoices ? of(options.featureChoices) : throwError(() => new Error('Aperçu des capacités indisponible.')));
           this.trainingStale.set(false);
         },
         error: (err: HttpErrorResponse) => {
@@ -369,6 +380,7 @@ export class CharacterBuilder {
   }
 
   protected submit(): void {
+    if (!this.featuresComplete()) { this.error.set('Complète les choix de capacités avant de créer le personnage.'); return; }
     this.error.set(null);
     this.createdCharacter.set(null);
     if (!this.trainingComplete()) {
@@ -417,6 +429,7 @@ export class CharacterBuilder {
     this.submitting.set(true);
 
     this.builderApi.create(this.campaignId, {
+      featureChoices: this.featureSelection(),
       slug: rawValue.slug,
       name: rawValue.name,
       playerName: rawValue.playerName || null,
