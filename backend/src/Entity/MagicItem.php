@@ -71,6 +71,18 @@ class MagicItem
     #[ORM\Column(nullable: true)]
     private ?bool $armorStealthDisadvantage = null;
 
+    // null = not reviewed; [] = explicitly no additional AC effect. No automatic enrichment.
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $armorClassEffects = null;
+
+    public function getArmorClassEffects(): ?array { return $this->armorClassEffects; }
+
+    public function configureArmorClassEffects(?array $effects): void
+    {
+        $this->armorClassEffects = $effects === null ? null : \App\Service\ArmorClassEffectSchema::validate($effects);
+        $this->touch();
+    }
+
     public function getArmorType(): ?string { return $this->armorType; }
     public function getBaseArmorClass(): ?int { return $this->baseArmorClass; }
     public function getArmorStrengthRequirement(): ?int { return $this->armorStrengthRequirement; }

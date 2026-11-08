@@ -64,6 +64,7 @@ final readonly class ItemCatalogue
             'quantityMode'=>$item->getQuantityMode(), 'equipmentSlot'=>$item->getEquipmentSlot(), 'handUsage'=>$item->getHandUsage(),
             'armorType'=>$item->getArmorType(), 'baseArmorClass'=>$item->getBaseArmorClass(),
             'armorProfile'=>$item->getArmorProfile(),
+            'armorClassEffects'=>$item->getArmorClassEffects(),
             'requiresAttunement'=>$item->requiresAttunement(), 'maximumCharges'=>$item->getMaximumCharges(),
             'rechargeType'=>$item->getRechargeType()->value, 'rechargeFormula'=>$item->getRechargeFormula(),
             'edition'=>$item->getEdition(), 'sourceReference'=>$item->getSourceReference(),

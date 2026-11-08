@@ -1,4 +1,13 @@
 :host { display: block; min-width: 0; }
+.statistics-derived-card.statistics-armor { display: block; overflow-wrap: anywhere; }
+.statistics-armor summary { display: flex; flex-direction: column; align-items: center; gap: inherit; cursor: pointer; list-style: none; }
+.statistics-armor summary::-webkit-details-marker { display: none; }
+.statistics-armor summary:focus-visible { outline: 2px solid #c9a85f; outline-offset: 2px; }
+.statistics-armor-detail { margin-top: .6rem; padding: .4rem; border-top: 1px solid #55452f; text-align: left; font-size: .78rem; }
+.statistics-armor-part { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .5rem; margin: .4rem 0; }
+.statistics-armor-part b { text-align: right; white-space: nowrap; }
+.statistics-armor-detail h3 { margin: 0 0 .5rem; font-size: inherit; }
+.statistics-shield { display: block; width: 1em; height: 1em; }
 .character-statistics { color: #e8dfcd; min-width: 0; }
 .statistics-abilities { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: .5rem; }
 .statistics-ability { min-width: 0; display: flex; flex-direction: column; align-items: center; gap: .2rem; padding: .8rem .2rem; background: rgba(25,25,36,.85); border: 1px solid rgba(201,168,95,.28); text-align: center; }
@@ -19,8 +28,8 @@
 .statistics-switch button.selected { color: #17151a; background: #c9a85f; }
 
 .statistics-derived { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: .7rem; margin-bottom: 1.35rem; }
-.statistics-derived-card { display: flex; min-width: 0; flex-direction: column; align-items: center; gap: .35rem; padding: .8rem .3rem; background: #1b1a22; border: 1px solid #55452f; text-align: center; }
-.statistics-derived-card > span { color: #c9a85f; font-size: 1.05rem; }
+.statistics-derived-card { display: flex; min-width: 0; flex-direction: column; align-items: center; gap: .35rem; padding: .8rem .3rem 1.05rem; background: #1b1a22; border: 1px solid #55452f; text-align: center; }
+.statistics-derived-card > span, .statistics-armor summary > span { color: #c9a85f; font-size: 1.05rem; }
 .statistics-derived-card strong { font: normal 1.65rem Georgia,serif; color: #f0e1c6; }
 .statistics-derived-card small { color: #b5a995; font-size: .72rem; }
 
@@ -98,9 +107,9 @@
 .character-statistics--summary .statistics-abilities { grid-template-columns:repeat(3,minmax(0,1fr)); }
 
 /* V5: secondary statistics in the dashboard summary. */
-.statistics-derived--summary { margin: .85rem 0 0; gap: .5rem; }
-.statistics-derived--summary .statistics-derived-card { padding: .55rem .2rem; gap: .2rem; }
-.statistics-derived--summary .statistics-derived-card > span { font-size: .85rem; }
+.statistics-derived--summary { margin: 0.85rem 0; gap: 0.5rem; }
+.statistics-derived--summary .statistics-derived-card { padding: .55rem .2rem .8rem; gap: .2rem; }
+.statistics-derived--summary .statistics-derived-card > span, .statistics-derived--summary .statistics-armor summary > span { font-size: .85rem; }
 .statistics-derived--summary .statistics-derived-card strong { font-size: 1.25rem; }
 .statistics-derived--summary .statistics-derived-card small { font-size: .67rem; }
 @media (max-width: 450px) { .statistics-derived--summary { grid-template-columns: repeat(2, minmax(0,1fr)); } }

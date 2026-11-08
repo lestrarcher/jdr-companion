@@ -53,6 +53,12 @@ function initialOrdering(): Ordering {
   styleUrl: './character-statistics.scss',
 })
 export class CharacterStatistics {
+  armorContributionLabel(part: NonNullable<CharacterArmorClass['contributions']>[number]): string {
+    if (part.kind === 'ability') return 'Bonus ' + part.label.replace(' retenue', '');
+    if (part.kind === 'base' && part.source === 'Sans armure') return 'Base';
+    return part.source || part.label;
+  }
+
   readonly armorClass = input<CharacterArmorClass | null>(null);
   readonly abilities = input.required<CharacterAbilityScore[]>();
   readonly training = input<CharacterTraining | null>(null);

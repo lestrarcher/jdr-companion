@@ -1,5 +1,9 @@
 # Équipement actif et profils physiques D&D 2014
 
+Document du lot 1. Pour le moteur de bonus et les limites actuelles, voir
+[CA : contrat des effets](armor-class-effects.md). Aucun enrichissement n'est
+nécessaire pour installer sa structure ; la configuration des effets reste manuelle.
+
 Le calculateur utilise `CharacterMagicItem` et `CharacterAbilityCalculator`.
 Les formules de Défense sans armure sont acquises selon la première position
 globale de niveau de barbare ou de moine (règle de multiclassage 2014).

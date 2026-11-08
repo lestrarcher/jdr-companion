@@ -189,6 +189,7 @@
 
 <section class="profile-section" aria-label="Caractéristiques et compétences">
   <app-character-statistics
+    [armorClass]="currentCharacter.armorClass ?? null"
     [abilities]="currentCharacter.abilities"
     [training]="currentCharacter.training ?? null"
     [proficiencyBonus]="currentCharacter.proficiencyBonus"

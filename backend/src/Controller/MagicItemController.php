@@ -73,6 +73,7 @@ final class MagicItemController
             'id' => $item->getId(),
             'name' => $item->getName(),
             'englishName' => $item->getEnglishName(),
+            'armorClassEffects' => $item->getArmorClassEffects(),
             'armorProfile' => $item->getArmorProfile(),
             'description' => $item->getDescription(),
             'category' => $item->getCategory(),
@@ -624,6 +625,7 @@ final class MagicItemController
             'category' => $item->getCategory(),
             'armorType' => $item->getArmorType(),
             'baseArmorClass' => $item->getBaseArmorClass(),
+            'armorClassEffects' => $item->getArmorClassEffects(),
             'armorProfile' => $item->getArmorProfile(),
             'quantityMode' => $item->getQuantityMode(),
             'description' =>

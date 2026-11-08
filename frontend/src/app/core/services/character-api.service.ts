@@ -60,6 +60,8 @@ export interface CharacterHitPoints {
 }
 
 export interface CharacterArmorClass {
+  contributions?: Array<{kind: 'base' | 'ability' | 'shield' | 'bonus'; source: string; label: string; value: number}>;
+  excluded?: Array<{source: string; label: string; reason: string}>;
   warnings?: string[];
   value: number | null;
   complete: boolean;
