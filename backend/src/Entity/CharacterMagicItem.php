@@ -11,6 +11,8 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: CharacterMagicItemRepository::class)]
 #[ORM\Table(name: 'character_magic_item')]
+#[ORM\UniqueConstraint(name: 'uniq_pact_tome_owner', columns: ['pact_owner_id'])]
+#[ORM\UniqueConstraint(name: 'uniq_pact_tome_choice', columns: ['pact_choice_key'])]
 class CharacterMagicItem
 {
     #[ORM\Id]
@@ -46,6 +48,28 @@ class CharacterMagicItem
 
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $customDescription = null;
+
+    /** Original pact owner, independent of the current inventory holder. */
+    #[ORM\ManyToOne(targetEntity: Character::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'RESTRICT')]
+    private ?Character $pactOwner = null;
+
+    #[ORM\Column(length: 32, nullable: true)]
+    private ?string $pactChoiceKey = null;
+
+    public function getPactOwner(): ?Character { return $this->pactOwner; }
+    public function getPactChoiceKey(): ?string { return $this->pactChoiceKey; }
+
+    public function bindPact(Character $owner, string $choiceKey): void
+    {
+        if ($this->character !== $owner || $this->quantity !== 1 || $this->magicItem?->getCategory() !== 'spellbook'
+            || !preg_match('/^[a-f0-9]{32}$/D', $choiceKey)) throw new \DomainException('Livre de pacte incompatible.');
+        if ($this->pactOwner !== null && ($this->pactOwner !== $owner || $this->pactChoiceKey !== $choiceKey)) {
+            throw new \DomainException('Ce livre est déjà lié à un pacte.');
+        }
+        $this->pactOwner = $owner;
+        $this->pactChoiceKey = $choiceKey;
+    }
 
     #[ORM\ManyToOne(targetEntity: SpellDefinition::class)]
     #[ORM\JoinColumn(nullable: true, onDelete: 'RESTRICT')]
@@ -215,6 +239,7 @@ class CharacterMagicItem
 
     public function setQuantity(int $quantity): static
     {
+        if ($this->pactOwner !== null && $quantity !== 1) throw new \DomainException('Le Livre des ombres est individuel.');
         if ($this->magicItem === null && $quantity > 9999) {
             throw new \InvalidArgumentException('La quantité maximale est 9999.');
         }

@@ -263,6 +263,36 @@ devenues inéligibles à cause de ce sort. Ces remplacements obligatoires sont
 tracés séparément ; ils n'ouvrent pas de remplacements libres supplémentaires.
 Le changement de pacte reste hors périmètre.
 
+## Livre des ombres — liaison physique
+
+La migration additive `Version20261109010000` ajoute à `CharacterMagicItem`
+`pact_owner_id` (titulaire initial) et `pact_choice_key` (acquisition historique).
+Les deux identifiants sont uniques ; une FK conserve la référence au choix.
+Aucun inventaire existant n'est modifié par la migration.
+
+Après validation du Pacte du grimoire, la transaction de niveau ou de
+régularisation crée un livre individuel vide et sa liaison. Les opérations
+répétées retrouvent le même livre, même si son détenteur a changé. Les inscriptions
+restent dans `PactTomeEntry` ; aucun sort n'est attribué par cette liaison.
+
+Le POST MJ `/campaigns/{campaignId}/characters/{characterId}/feature-choices`
+accepte le champ facultatif `pactTomeBookId`, en plus de `fingerprint`, `reason`
+et `selections`. Il permet de rattacher un livre historique lors de l'acquisition,
+ou avec `selections: []` si le pacte est déjà acquis. Le GET/POST expose
+`pactTome: {ownedItemId, choiceKey, holderCharacterId}` ou `null`.
+
+Le livre doit appartenir au personnage, contenir des inscriptions de pacte et
+aucune inscription de magicien. Un grimoire vide non identifié ne sera pas
+converti sur la seule foi de son nom. La présence d'un ancien Livre des ombres
+non lié exige ce rattachement explicite au lieu de créer un doublon. Une autre
+liaison déjà établie est refusée ; le remplacement d'un livre est hors périmètre.
+Le motif et l'empreinte utilisent le contrôle MJ existant ; les inscriptions
+historiques sont conservées. Pas d'écran Angular supplémentaire dans ce lot.
+
+Les écritures de magicien excluent aussi les livres liés encore vides. Les
+autorisations de lancement, octrois et copie de rituels restent à raccorder dans
+les lots suivants ; cette liaison ne prétend pas achever leurs règles.
+
 Le catalogue distingue Maléfice des capacités de malédiction : connaître
 Malédiction ne remplace pas la capacité Signe de mauvais présage. Les tests
 utilisent les politiques réelles et des tables temporaires, et comparent les

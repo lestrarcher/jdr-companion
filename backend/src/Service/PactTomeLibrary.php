@@ -22,7 +22,7 @@ final readonly class PactTomeLibrary
 
     public function isPactTome(CharacterMagicItem $book): bool
     {
-        return $this->em->getRepository(PactTomeEntry::class)->count(['book' => $book]) > 0;
+        return $book->getPactOwner() !== null || $this->em->getRepository(PactTomeEntry::class)->count(['book' => $book]) > 0;
     }
 
     public function inscribe(CharacterMagicItem $book, SpellDefinition $spell, string $kind): void

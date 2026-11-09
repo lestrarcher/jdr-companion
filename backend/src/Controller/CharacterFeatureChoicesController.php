@@ -28,11 +28,12 @@ final class CharacterFeatureChoicesController extends AbstractController
         $character = $this->character($campaignId,$characterId);
         if ($request->getContentTypeFormat() !== 'json' || !str_starts_with(ltrim($request->getContent()), '{')) throw new BadRequestHttpException('Objet JSON requis.');
         $data = $request->toArray();
-        if (array_diff(array_keys($data), ['fingerprint','selections','reason'])
+        if (array_diff(array_keys($data), ['fingerprint','selections','reason','pactTomeBookId'])
             || !is_string($data['fingerprint'] ?? null) || !is_string($data['reason'] ?? null)) throw new BadRequestHttpException('Commande invalide.');
+        if (array_key_exists('pactTomeBookId',$data) && (!is_int($data['pactTomeBookId']) || $data['pactTomeBookId'] < 1)) throw new BadRequestHttpException('Identifiant du livre invalide.');
         try {
             $rows = CharacterFeatureChoices::selections($data['selections'] ?? null);
-            return $this->json($this->choices->regularize($character, $this->getUser(), $data['fingerprint'], $rows, $data['reason']));
+            return $this->json($this->choices->regularize($character, $this->getUser(), $data['fingerprint'], $rows, $data['reason'], $data['pactTomeBookId'] ?? null));
         } catch (\InvalidArgumentException|\DomainException $error) {
             throw new UnprocessableEntityHttpException($error->getMessage(), $error);
         }

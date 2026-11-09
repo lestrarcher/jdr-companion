@@ -49,6 +49,7 @@ final readonly class SpellbookLibrary
     public function inscribe(CharacterMagicItem $book, SpellDefinition $spell): bool
     {
         $this->assertSpellbook($book);
+        if ($book->getPactOwner() !== null) throw new \InvalidArgumentException('Le Livre des ombres est distinct du grimoire de magicien.');
         if ($spell->getLevel() < 1) {
             throw new \InvalidArgumentException('Un sort mineur ne peut pas être inscrit dans un grimoire.');
         }

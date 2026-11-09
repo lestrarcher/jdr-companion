@@ -14,7 +14,7 @@ final readonly class CharacterFeatureChoices
 {
     public function __construct(private EntityManagerInterface $em, private FeatureChoiceReader $reader,
         private CharacterFeatureResolver $features, private CharacterFeatureSpellService $spells,
-        private CharacterSessionStateSynchronizer $states, private CharacterLevelUpOptionsService $levelOptions) {}
+        private CharacterSessionStateSynchronizer $states, private CharacterLevelUpOptionsService $levelOptions, private PactTomeBinding $pactTomes) {}
 
     /** Read-only projected rights using the same class/subclass eligibility as level-up. */
     public function previewLevel(Character $character, string $classKey, ?string $subclassKey): array
@@ -63,6 +63,7 @@ final readonly class CharacterFeatureChoices
         unset($grant);
         return ['fingerprint'=>hash('sha256', json_encode([$grants,$history,$character->getTotalLevel()], JSON_THROW_ON_ERROR)),
             'grants'=>$grants, 'history'=>$history, 'legacyAttributions'=>$this->reader->legacyAttributions($character),
+            'pactTome'=>$this->pactTomes->view($character),
             'missing'=>array_values(array_map(static fn ($g) => $g['key'], array_filter($grants, static fn ($g) => $g['remaining'] > 0))),
             'issues'=>array_values(array_filter($result['selections'], static fn ($row, $index) => !isset($result['valid'][$index]), ARRAY_FILTER_USE_BOTH))];
     }
@@ -81,15 +82,16 @@ final readonly class CharacterFeatureChoices
     }
 
     /** Explicit GM regularization. Nothing is inferred from existing manual assignments. */
-    public function regularize(Character $character, User $actor, string $fingerprint, array $selections, string $reason): array
+    public function regularize(Character $character, User $actor, string $fingerprint, array $selections, string $reason, ?int $pactTomeBookId = null): array
     {
         if ($actor->getId() !== $character->getCampaign()->getOwner()->getId()) throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException();
         if (trim($reason) === '') throw new \InvalidArgumentException('Motif de régularisation requis.');
-        return $this->em->wrapInTransaction(function () use ($character,$actor,$fingerprint,$selections,$reason) {
+        return $this->em->wrapInTransaction(function () use ($character,$actor,$fingerprint,$selections,$reason,$pactTomeBookId) {
             $this->em->lock($character, LockMode::PESSIMISTIC_WRITE);
             $this->em->refresh($character);
             if (!hash_equals($this->preview($character)['fingerprint'], $fingerprint)) throw new ConflictHttpException('Les choix ont changé.');
             $this->write($character, $selections, $actor, $reason, null, null);
+            $this->pactTomes->ensure($character,$this->preview($character),$pactTomeBookId);
             $this->spells->synchronize($character);
             foreach ($this->em->getRepository(\App\Entity\CharacterSessionState::class)->findBy(['character'=>$character]) as $state) {
                 $this->em->lock($state, LockMode::PESSIMISTIC_WRITE);
@@ -122,6 +124,7 @@ final readonly class CharacterFeatureChoices
                 throw new \DomainException('Choix de capacité obligatoire incomplet : '.$grant['key']);
             }
         }
+        $this->pactTomes->ensure($character,$after);
     }
 
     private function write(Character $character, array $selections, ?User $actor, ?string $reason, ?CharacterClassLevel $level, ?array $newKeys, array $previouslyValid = []): void

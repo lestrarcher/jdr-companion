@@ -380,6 +380,155 @@ final class CharacterFeatureChoicesTest extends TestCase
         }
     }
 
+    private function pactBookFixture(bool $inscribed = false): \App\Entity\CharacterMagicItem
+    {
+        $definition = new \App\Entity\MagicItem($this->character->getCampaign(),'Fixture book',null);
+        $definition->classify('spellbook',false,false);
+        $book = new \App\Entity\CharacterMagicItem($this->character,$definition);
+        $this->character->addMagicItem($book);
+        $this->em->persist($definition); $this->em->persist($book);
+        if ($inscribed) {
+            $spell = new \App\Entity\SpellDefinition('fixture-book-cantrip','Fixture',0,\App\Enum\SpellSchool::Evocation,'1 action','18 m','Instant','Fixture');
+            $this->em->persist($spell);
+            $this->em->persist(new \App\Entity\PactTomeEntry($book,$spell,'cantrip'));
+        }
+        $this->em->flush();
+        return $book;
+    }
+
+    public function testPactBookCreatedOnceAndWizardBookPreserved(): void
+    {
+        $this->catalogue(); $this->levels('warlock',3);
+        $wizard = $this->pactBookFixture();
+        $before = $this->db->fetchAssociative('SELECT * FROM character_magic_item WHERE id=?',[$wizard->getId()]);
+        $this->save([$this->pick('pact-boon',3,'pact-of-the-tome')]);
+        $book = $this->em->getRepository(\App\Entity\CharacterMagicItem::class)->findOneBy(['pactOwner'=>$this->character]);
+        self::assertNotNull($book); self::assertNotSame($wizard,$book);
+        self::assertSame($this->character,$book->getCharacter());
+        self::assertSame(1,$book->getQuantity());
+        self::assertSame('Livre des ombres',$book->getMagicItem()->getName());
+        self::assertSame(['ownedItemId'=>$book->getId(),'choiceKey'=>$book->getPactChoiceKey(),'holderCharacterId'=>$this->character->getId()],$this->service->preview($this->character)['pactTome']);
+        self::assertSame(1,(int)$this->db->fetchOne('SELECT count(*) FROM character_feature_choice WHERE key=? AND character_id=? AND active',[$book->getPactChoiceKey(),$this->character->getId()]));
+        $this->save([]); $this->save([]);
+        self::assertSame(2,(int)$this->db->fetchOne('SELECT count(*) FROM character_magic_item'));
+        self::assertSame(0,(int)$this->db->fetchOne('SELECT count(*) FROM pact_tome_entry'));
+        self::assertSame($before,$this->db->fetchAssociative('SELECT * FROM character_magic_item WHERE id=?',[$wizard->getId()]));
+    }
+
+    public function testPactBookCreatedDuringActualLevelUp(): void
+    {
+        $this->catalogue(); $this->levels('warlock',2);
+        $class = $this->character->getClassLevels()->last()->getCharacterClass();
+        $subclass = new \App\Entity\CharacterSubclass($class,'fixture-book-patron','Patron');
+        $this->em->persist($subclass); $this->em->flush();
+        $this->kernel->getContainer()->get('test.service_container')->get(\App\Service\CharacterLevelUpService::class)
+            ->levelUp($this->character,$class,subclass:$subclass,featureChoices:[$this->pick('pact-boon',3,'pact-of-the-tome')]);
+        self::assertSame(1,(int)$this->db->fetchOne('SELECT count(*) FROM character_magic_item WHERE pact_owner_id=?',[$this->character->getId()]));
+    }
+
+    public function testPactBookTransferDoesNotChangeOriginalBindingOrRecreateBook(): void
+    {
+        $this->catalogue(); $this->levels('warlock',3);
+        $this->save([$this->pick('pact-boon',3,'pact-of-the-tome')]);
+        $book = $this->em->getRepository(\App\Entity\CharacterMagicItem::class)->findOneBy(['pactOwner'=>$this->character]);
+        $key = $book->getPactChoiceKey();
+        $other = new Character($this->character->getCampaign(),'pact-book-holder','Holder',Character::TYPE_PLAYER);
+        $this->em->persist($other); $book->transferTo($other); $this->em->flush();
+        $this->save([]);
+        self::assertSame($key,$book->getPactChoiceKey());
+        self::assertSame($this->character,$book->getPactOwner());
+        self::assertSame($other,$book->getCharacter());
+        self::assertSame(1,(int)$this->db->fetchOne('SELECT count(*) FROM character_magic_item'));
+    }
+
+    public function testPactBookAttachmentRequiresCampaignOwner(): void
+    {
+        $this->catalogue(); $this->levels('warlock',3); $book = $this->pactBookFixture(true);
+        $other = (new User())->setEmail('pact-other@example.invalid')->setPassword('unused');
+        $this->em->persist($other); $this->em->flush();
+        $before = $this->invocationSnapshot();
+        try {
+            $this->service->regularize($this->character,$other,$this->service->preview($this->character)['fingerprint'],
+                [$this->pick('pact-boon',3,'pact-of-the-tome')],'Unauthorized',$book->getId());
+            self::fail('Foreign MJ attached book');
+        } catch (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException) { self::assertSame($before,$this->invocationSnapshot()); }
+    }
+
+    public function testExistingPactBookCanBeAttachedWithoutChangingInscriptions(): void
+    {
+        $this->catalogue(); $this->levels('warlock',3);
+        $book = $this->pactBookFixture(true);
+        $entries = $this->db->fetchAllAssociative('SELECT * FROM pact_tome_entry');
+        $this->service->regularize($this->character,$this->owner,$this->service->preview($this->character)['fingerprint'],
+            [$this->pick('pact-boon',3,'pact-of-the-tome')],'Historical book',$book->getId());
+        $this->service->regularize($this->character,$this->owner,$this->service->preview($this->character)['fingerprint'],[],'Repeat',$book->getId());
+        self::assertSame($this->character,$book->getPactOwner());
+        self::assertSame($entries,$this->db->fetchAllAssociative('SELECT * FROM pact_tome_entry'));
+        self::assertSame(1,(int)$this->db->fetchOne('SELECT count(*) FROM character_magic_item'));
+    }
+
+    public function testUnboundExistingPactBookRequiresExplicitAttachment(): void
+    {
+        $this->catalogue(); $this->levels('warlock',3); $this->pactBookFixture(true);
+        $before = $this->invocationSnapshot();
+        try { $this->save([$this->pick('pact-boon',3,'pact-of-the-tome')]); self::fail('Duplicate book created'); }
+        catch (\DomainException $e) {
+            self::assertStringContainsString('rattachement',$e->getMessage());
+            self::assertSame($before,$this->invocationSnapshot());
+        }
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidPactBookAttachments')]
+    public function testInvalidPactBookAttachmentRollsBack(string $case): void
+    {
+        $this->catalogue(); $this->levels('warlock',3);
+        $book = $this->pactBookFixture($case !== 'wizard');
+        if ($case === 'foreign') {
+            $other = new Character($this->character->getCampaign(),'other-book-owner','Other',Character::TYPE_PLAYER);
+            $this->em->persist($other); $book->transferTo($other); $this->em->flush();
+        }
+        $before = $this->invocationSnapshot();
+        try {
+            $this->service->regularize($this->character,$this->owner,$this->service->preview($this->character)['fingerprint'],
+                $case === 'no-pact' ? [] : [$this->pick('pact-boon',3,'pact-of-the-tome')],'Invalid attachment',$book->getId());
+            self::fail('Invalid book attached');
+        } catch (\DomainException) { self::assertSame($before,$this->invocationSnapshot()); }
+    }
+    public static function invalidPactBookAttachments(): array { return [['wizard'],['foreign'],['no-pact']]; }
+
+    public function testEmptyPactBookIsNeverUsedByWizardWriter(): void
+    {
+        $this->catalogue(); $this->levels('warlock',3);
+        $this->save([$this->pick('pact-boon',3,'pact-of-the-tome')]);
+        $book = $this->em->getRepository(\App\Entity\CharacterMagicItem::class)->findOneBy(['pactOwner'=>$this->character]);
+        $spell = new \App\Entity\SpellDefinition('fixture-wizard-spell','Fixture',1,\App\Enum\SpellSchool::Evocation,'1 action','18 m','Instant','Fixture');
+        $this->em->persist($spell); $this->em->flush();
+        (new \App\Service\WizardSpellbookWriter($this->em))->record($this->character,$spell->getId());
+        self::assertSame(0,(int)$this->db->fetchOne('SELECT count(*) FROM spellbook_entry WHERE owned_item_id=?',[$book->getId()]));
+        self::assertSame(1,(int)$this->db->fetchOne('SELECT count(*) FROM spellbook_entry'));
+    }
+
+    public function testPactBindingMigrationIsAdditiveAndPreservesInventory(): void
+    {
+        $book = $this->pactBookFixture(true);
+        // Reconstruct the previous shape only in verified temporary tables.
+        self::assertSame('t',$this->db->fetchOne("SELECT relpersistence FROM pg_class WHERE oid=to_regclass('character_magic_item')"));
+        $this->db->executeStatement('ALTER TABLE character_magic_item DROP COLUMN pact_owner_id, DROP COLUMN pact_choice_key');
+        $before = $this->db->fetchAllAssociative('SELECT * FROM character_magic_item');
+        $entries = $this->db->fetchAllAssociative('SELECT * FROM pact_tome_entry');
+        require_once dirname(__DIR__,2).'/migrations/Version20261109010000.php';
+        $migration = new \DoctrineMigrations\Version20261109010000($this->db,new \Psr\Log\NullLogger());
+        $migration->up(new \Doctrine\DBAL\Schema\Schema());
+        foreach ($migration->getSql() as $query) $this->db->executeStatement($query->getStatement());
+        $after = $this->db->fetchAllAssociative('SELECT * FROM character_magic_item');
+        foreach ($after as &$row) { self::assertNull($row['pact_owner_id']); self::assertNull($row['pact_choice_key']); unset($row['pact_owner_id'],$row['pact_choice_key']); }
+        self::assertSame($before,$after); self::assertSame($entries,$this->db->fetchAllAssociative('SELECT * FROM pact_tome_entry'));
+        $this->catalogue(); $this->levels('warlock',3);
+        $this->service->regularize($this->character,$this->owner,$this->service->preview($this->character)['fingerprint'],
+            [$this->pick('pact-boon',3,'pact-of-the-tome')],'Migration validation',$book->getId());
+        self::assertNotNull($book->getPactChoiceKey());
+    }
+
     public function testConcreteCatalogueIsReadOnlyInPreviewAndIdempotentAfterInstallation(): void
     {
         $catalogue = $this->catalogue(false);

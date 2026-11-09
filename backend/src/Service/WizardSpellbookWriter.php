@@ -21,7 +21,7 @@ final readonly class WizardSpellbookWriter
         $db = $this->em->getConnection();
         $characterId = (int) $character->getId();
         $bookId = $db->fetchOne(
-            "SELECT cmi.id FROM character_magic_item cmi JOIN magic_item mi ON mi.id = cmi.magic_item_id WHERE cmi.character_id = ? AND mi.category = 'spellbook' AND cmi.quantity = 1 AND NOT EXISTS (SELECT 1 FROM pact_tome_entry p WHERE p.owned_item_id = cmi.id) ORDER BY cmi.id ASC LIMIT 1",
+            "SELECT cmi.id FROM character_magic_item cmi JOIN magic_item mi ON mi.id = cmi.magic_item_id WHERE cmi.character_id = ? AND mi.category = 'spellbook' AND cmi.quantity = 1 AND cmi.pact_owner_id IS NULL AND NOT EXISTS (SELECT 1 FROM pact_tome_entry p WHERE p.owned_item_id = cmi.id) ORDER BY cmi.id ASC LIMIT 1",
             [$characterId],
         );
 
