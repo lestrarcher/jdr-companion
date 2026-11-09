@@ -247,3 +247,23 @@ Validation Angular : 48 tests ciblés (éditeur partagé, création, montée de 
 et fiche), build réussi. Les budgets SCSS de `player-portal` et
 `character-magic-items` restent dépassés, sans changement de ces styles.
 Aucune migration, configuration de catalogue ou nouvelle mécanique dans ce lot.
+
+## Prérequis de sorts pendant la montée de niveau
+
+La validation conserve les choix valides avant toute modification des sorts.
+Une perte de prérequis annule toute la transaction de niveau, sauf si les choix
+dépendants sont remplacés légalement dans la même soumission. Les anciennes
+incohérences déjà présentes restent régularisables sans bloquer arbitrairement
+les personnages historiques.
+
+Un remplacement de sort connu conserve le budget ordinaire d'une manifestation.
+Un remplacement de sort mineur validé par la politique Tasha portant le budget
+`eldritch-versatility` impose aussi le remplacement de toutes les manifestations
+devenues inéligibles à cause de ce sort. Ces remplacements obligatoires sont
+tracés séparément ; ils n'ouvrent pas de remplacements libres supplémentaires.
+Le changement de pacte reste hors périmètre.
+
+Le catalogue distingue Maléfice des capacités de malédiction : connaître
+Malédiction ne remplace pas la capacité Signe de mauvais présage. Les tests
+utilisent les politiques réelles et des tables temporaires, et comparent les
+données persistées avant/après les transactions refusées.

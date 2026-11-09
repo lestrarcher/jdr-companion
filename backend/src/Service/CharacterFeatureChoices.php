@@ -109,7 +109,13 @@ final readonly class CharacterFeatureChoices
         $now = $this->preview($character);
         $newKeys = [];
         foreach ($now['grants'] as $grant) if (!isset($old[$grant['key']])) $newKeys[] = $grant['key'];
-        $this->write($character, $selections, null, null, $level, $newKeys);
+        // Spell choices have already been applied. Preserve the validity snapshot from
+        // before the level so a lost spell prerequisite cannot disappear from validation.
+        $previouslyValid = [];
+        foreach ($before['grants'] as $grant) foreach ($grant['selected'] as $choice) {
+            if ($choice['valid']) $previouslyValid[$choice['key']] = true;
+        }
+        $this->write($character, $selections, null, null, $level, $newKeys, $previouslyValid);
         $after = $this->preview($character);
         foreach ($after['grants'] as $grant) {
             if (in_array($grant['key'], $newKeys, true) && ($grant['remaining'] !== 0 || array_filter($grant['selected'], static fn ($c) => !$c['valid']))) {
@@ -118,7 +124,7 @@ final readonly class CharacterFeatureChoices
         }
     }
 
-    private function write(Character $character, array $selections, ?User $actor, ?string $reason, ?CharacterClassLevel $level, ?array $newKeys): void
+    private function write(Character $character, array $selections, ?User $actor, ?string $reason, ?CharacterClassLevel $level, ?array $newKeys, array $previouslyValid = []): void
     {
         if (!$this->em->getConnection()->isTransactionActive()) throw new \LogicException('Transaction requise.');
         $selections = self::selections($selections);
@@ -127,8 +133,10 @@ final readonly class CharacterFeatureChoices
         $rows = $current['selections'];
         $oldRows = array_column($rows, null, 'key');
         $changed = $retired = $events = [];
-        $previouslyValid = [];
+        $lostBeforeChoices = $previouslyValid;
         foreach ($current['valid'] as $index => $_) $previouslyValid[$current['selections'][$index]['key']] = true;
+        foreach ($current['valid'] as $index => $_) unset($lostBeforeChoices[$current['selections'][$index]['key']]);
+        $replacedCantrips = $level !== null && $lostBeforeChoices !== [] ? $this->eldritchReplacedCantrips($level) : [];
         foreach ($selections as $selection) {
             $grant = $current['grants'][$selection['grantKey']] ?? null;
             if ($grant === null || !isset($grant['options'][$selection['optionKey']]) || $selection['slot'] > $grant['choice_count']) throw new \DomainException('Droit ou option indisponible.');
@@ -141,6 +149,12 @@ final readonly class CharacterFeatureChoices
                     $allowed = $this->reader->replacementAllowed($character, $grant, $level->getCharacterClass()->getSlug(), $newKeys, $current['grants']);
                     if (!$allowed) throw new \DomainException('Remplacement non autorisé à ce niveau.');
                     $event = 'replace:'.($grant['replacement_event_key'] ?? $grant['group_key']).':'.$level->getPosition();
+                    // Tasha requires replacing every invocation made ineligible by its
+                    // cantrip change. These repairs do not grant extra free replacements.
+                    if ($grant['group_key'] === 'eldritch-invocations' && isset($lostBeforeChoices[$replaces])
+                        && array_intersect($replacedCantrips, $grant['options'][$old['option_key']]['prerequisites']['spellsKnown'] ?? [])) {
+                        $event = 'dependent:'.$replaces.':'.$level->getPosition();
+                    }
                     if (isset($events[$event]) || $this->em->getConnection()->fetchOne('SELECT 1 FROM character_feature_choice WHERE character_id=? AND event_key=?', [$character->getId(),$event])) throw new \DomainException('Droit de remplacement déjà utilisé.');
                     $events[$event] = true;
                 }
@@ -179,5 +193,20 @@ final readonly class CharacterFeatureChoices
                 'provenance'=>json_encode(['grantKey'=>$grant['key'],'groupKey'=>$grant['group_key'],'sourceFeature'=>$grant['sourceFeature'],
                     'classKey'=>$grant['classKey'],'unlockLevel'=>$grant['unlockLevel']], JSON_THROW_ON_ERROR)]);
         }
+    }
+
+    /** @return list<string> */
+    private function eldritchReplacedCantrips(CharacterClassLevel $level): array
+    {
+        // Only an actual replacement accepted by the existing spell engine opens this
+        // exception; a feature name or a requested payload alone is insufficient.
+        $slugs = [];
+        foreach ($this->em->getConnection()->fetchAllAssociative(
+            'SELECT r.parameters,s.slug FROM character_spell_acquisition a JOIN character_spell_choice c ON c.acquisition_id=a.id JOIN spell_policy_choice_rule r ON r.id=c.rule_id JOIN character_spell_acquisition old ON old.id=a.replaces_id JOIN spell_definition s ON s.id=old.spell_id WHERE a.character_id=? AND a.class_level_id=? AND a.quota_bucket=? AND a.retirement_id IS NULL',
+            [$level->getCharacter()->getId(),$level->getId(),'cantrips']) as $row) {
+            $parameters = json_decode($row['parameters'], true, 512, JSON_THROW_ON_ERROR);
+            if (($parameters['replacementBudget'] ?? null) === 'eldritch-versatility' && ($parameters['optionalReplacement'] ?? false) === true) $slugs[] = $row['slug'];
+        }
+        return $slugs;
     }
 }

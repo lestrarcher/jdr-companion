@@ -134,6 +134,252 @@ final class CharacterFeatureChoicesTest extends TestCase
         return ['grantKey'=>$group.'-'.$level, 'optionKey'=>$group.'-'.$feature, 'slot'=>$slot];
     }
 
+    /** Real 2014 spell policy and catalogue, isolated in the temporary database. */
+    private function invocationSpellFixture(string $required, array $invocations, bool $tasha = false): array
+    {
+        $this->catalogue();
+        foreach ($this->character->getClassLevels()->toArray() as $level) {
+            $this->character->getClassLevels()->removeElement($level); $this->em->remove($level);
+        }
+        $this->em->flush();
+        $this->levels('warlock', 7);
+        $class = $this->character->getClassLevels()->last()->getCharacterClass();
+        $subclass = new \App\Entity\CharacterSubclass($class,'fixture-patron','Fixture patron');
+        $this->em->persist($subclass);
+        $this->character->getClassLevels()->first()->setSubclass($subclass);
+        $this->owner->setRoles(['ROLE_REFERENCE_ADMIN']);
+        $acquisitions = $this->kernel->getContainer()->get('test.service_container')->get(\App\Service\CharacterSpellAcquisitions::class);
+        $preset = \App\Service\Dnd2014AdvancedSpellPolicies::warlock($class, $tasha);
+        $policy = $acquisitions->defineAdvancedPolicy($class, $preset['policy'], $this->owner, $preset['rules']);
+        $rules = [];
+        foreach ($this->em->getRepository(\App\Entity\SpellPolicyChoiceRule::class)->findBy(['policy'=>$policy]) as $rule) $rules[$rule->getKey()] = $rule->getId();
+        $catalogue = new \App\Service\SpellCatalogue($this->db);
+        $spells = [];
+        foreach ([0=>5, 1=>12] as $spellLevel=>$count) for ($i=0;$i<$count;++$i) {
+            $slug = $i === 0 ? ($spellLevel === 0 ? 'eldritch-blast' : 'hex') : 'fixture-spell-'.$spellLevel.'-'.$i;
+            $spells[$spellLevel][] = $catalogue->create(['slug'=>$slug,'name'=>$slug,'level'=>$spellLevel,'school'=>'enchantment',
+                'castingTime'=>'1 action','range'=>'18 m','duration'=>'1 minute','description'=>'Fixture','classIds'=>[$class->getId()]], $this->owner, true);
+        }
+        $used = [0=>0,1=>0]; $old = [];
+        foreach (array_values($this->character->getClassLevels()->toArray()) as $index=>$level) {
+            $choices = [];
+            foreach ([0=>'cantrips',1=>'known'] as $spellLevel=>$bucket) {
+                $target = $preset['policy']->levels[$index][$bucket];
+                while ($used[$spellLevel] < $target) $choices[] = ['spellId'=>$spells[$spellLevel][$used[$spellLevel]++]['id'],
+                    'classLevelId'=>$level->getId(),'ruleId'=>$rules[$spellLevel === 0 ? 'cantrips' : 'ordinary']];
+            }
+            if ($choices) {
+                $ids = $acquisitions->acquire($this->character,$policy->getId(),$choices,'level-history','Fixture',$this->owner);
+                foreach ($choices as $i=>$choice) $old[$choice['spellId']] = $ids[$i];
+            }
+        }
+        $rows = [];
+        foreach ($invocations as $i=>$slug) $rows[] = $this->pick('eldritch-invocations',2,'eldritch-invocation-'.$slug,$i+1);
+        $view = $this->save($rows);
+        usort($view['history'], static fn ($a,$b) => $a['slot'] <=> $b['slot']);
+        $spellLevel = $required === 'eldritch-blast' ? 0 : 1;
+        $replacement = ['policyId'=>$policy->getId(),'ruleId'=>$rules[$spellLevel === 0 ? 'cantrips' : 'ordinary'],
+            'spellId'=>$spells[$spellLevel][$used[$spellLevel]+($spellLevel === 1 ? 1 : 0)]['id'],
+            'replacesAcquisitionId'=>$old[$spells[$spellLevel][0]['id']], 'replacementConfirmed'=>true];
+        // Warlock 8 learns one additional known spell, independently of replacement.
+        $learning = ['policyId'=>$policy->getId(),'ruleId'=>$rules['ordinary'],'spellId'=>$spells[1][$used[1]]['id']];
+        $session = new \App\Entity\GameSession($this->character->getCampaign(),'invocation-test','Fixture');
+        $session->setStatus(\App\Entity\GameSession::STATUS_LIVE);
+        $state = new \App\Entity\CharacterSessionState($session,$this->character,['resources'=>[['id'=>'fixture','currentValue'=>1]],'progressions'=>[['id'=>'fixture','currentValue'=>5]]]);
+        $state->setLevelUpAllowed(true);
+        $this->em->persist($session); $this->em->persist($state); $this->em->flush();
+        return ['class'=>$class,'spells'=>[$learning,$replacement],'selected'=>$view['history'],'state'=>$state];
+    }
+
+    private function invocationSnapshot(): array
+    {
+        $result = [];
+        $tables = array_map(fn ($m) => $m->getTableName(), $this->em->getMetadataFactory()->getAllMetadata());
+        $tables = array_unique([...$tables,'character_feature_choice','feature_spell_grant','character_feature_spell']);
+        foreach ($tables as $table) {
+            self::assertSame('t',$this->db->fetchOne('SELECT relpersistence FROM pg_class WHERE oid=to_regclass(?)',[$table]));
+            $result[$table] = $this->db->fetchAllAssociative('SELECT * FROM '.$this->db->quoteIdentifier($table).' ORDER BY row_to_json('.$this->db->quoteIdentifier($table).')::text');
+        }
+        return $result;
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidInvocationSpellChanges')]
+    public function testInvocationSpellLossRollsBackEntireLevel(string $spell, array $invocations, bool $tasha, bool $replaceOne): void
+    {
+        $f = $this->invocationSpellFixture($spell,$invocations,$tasha);
+        $choices = $replaceOne ? [$this->pick('eldritch-invocations',2,'eldritch-invocation-devils-sight') + ['replacesKey'=>$f['selected'][0]['key']]] : [];
+        $before = $this->invocationSnapshot();
+        try {
+            $this->kernel->getContainer()->get('test.service_container')->get(\App\Service\CharacterLevelUpService::class)
+                ->levelUp($this->character,$f['class'],authorization:$f['state'],spellChoices:$f['spells'],featureChoices:$choices);
+            self::fail('Dependent invocation was silently invalidated');
+        } catch (\DomainException $e) {
+            self::assertStringContainsString('dépendante',$e->getMessage());
+            self::assertSame($before,$this->invocationSnapshot());
+        }
+    }
+
+    public static function invalidInvocationSpellChanges(): array
+    {
+        return [
+            'known spell'=>['hex',['maddening-hex'],false,false],
+            'two known dependencies'=>['hex',['maddening-hex','relentless-hex'],false,true],
+            'Tasha cantrip'=>['eldritch-blast',['agonizing-blast'],true,false],
+            'two cantrip dependencies'=>['eldritch-blast',['agonizing-blast','repelling-blast'],true,true],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('legalInvocationSpellChanges')]
+    public function testInvocationAndKnownSpellCanBeReplacedTogether(string $spell, array $invocations, bool $tasha): void
+    {
+        $f = $this->invocationSpellFixture($spell,$invocations,$tasha);
+        $choices = [];
+        foreach ($f['selected'] as $row) $choices[] = $this->pick('eldritch-invocations',2,
+            'eldritch-invocation-'.($row['slot'] === 1 ? 'devils-sight' : 'armor-of-shadows'),$row['slot']) + ['replacesKey'=>$row['key']];
+        $this->kernel->getContainer()->get('test.service_container')->get(\App\Service\CharacterLevelUpService::class)
+            ->levelUp($this->character,$f['class'],authorization:$f['state'],spellChoices:$f['spells'],featureChoices:$choices);
+        self::assertSame(8,$this->character->getTotalLevel());
+        self::assertSame([],$this->service->preview($this->character)['issues']);
+        self::assertArrayNotHasKey('eldritch-invocation-maddening-hex',$this->resolver->resolve($this->character));
+        self::assertArrayHasKey('eldritch-invocation-devils-sight',$this->resolver->resolve($this->character));
+    }
+
+    public static function legalInvocationSpellChanges(): array
+    {
+        return [
+            'known spell'=>['hex',['maddening-hex'],false],
+            'Tasha cantrip'=>['eldritch-blast',['agonizing-blast'],true],
+            'Tasha mandatory dependent replacements'=>['eldritch-blast',['agonizing-blast','repelling-blast'],true],
+        ];
+    }
+
+    public function testCantripReplacementWithoutTashaIsRejectedAndRolledBack(): void
+    {
+        $f = $this->invocationSpellFixture('eldritch-blast',['agonizing-blast']);
+        $before = $this->invocationSnapshot();
+        try {
+            $this->kernel->getContainer()->get('test.service_container')->get(\App\Service\CharacterLevelUpService::class)
+                ->levelUp($this->character,$f['class'],spellChoices:$f['spells'],featureChoices:[
+                    $this->pick('eldritch-invocations',2,'eldritch-invocation-devils-sight') + ['replacesKey'=>$f['selected'][0]['key']]]);
+            self::fail('PHB cantrip replacement accepted');
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {
+            self::assertStringContainsString('remplacement',$e->getMessage());
+            self::assertSame($before,$this->invocationSnapshot());
+        }
+    }
+
+    public function testHexLossKeepsInvocationWhenSignOfIllOmenStillQualifies(): void
+    {
+        $f = $this->invocationSpellFixture('hex',['maddening-hex','sign-of-ill-omen']);
+        $this->kernel->getContainer()->get('test.service_container')->get(\App\Service\CharacterLevelUpService::class)
+            ->levelUp($this->character,$f['class'],spellChoices:$f['spells']);
+        self::assertSame([],$this->service->preview($this->character)['issues']);
+        self::assertArrayHasKey('eldritch-invocation-maddening-hex',$this->resolver->resolve($this->character));
+    }
+
+    public function testCatalogueSpellPrerequisitesDistinguishHexFromBestowCurse(): void
+    {
+        $catalogue = $this->catalogue(false)->load();
+        $options = array_column(array_column($catalogue['groups'],null,'key')['eldritch-invocations']['options'],null,'feature');
+        foreach (['agonizing-blast','eldritch-spear','repelling-blast','grasp-of-hadar','lance-of-lethargy'] as $slug) {
+            self::assertSame(['spellsKnown'=>['eldritch-blast']],$options['eldritch-invocation-'.$slug]['prerequisites']);
+        }
+        foreach (['maddening-hex'=>5,'relentless-hex'=>7] as $slug=>$level) {
+            self::assertSame(['classLevels'=>['warlock'=>$level],'anyOf'=>[
+                ['spellsKnown'=>['hex']],['features'=>['hexblades-curse']],['features'=>['eldritch-invocation-sign-of-ill-omen']],
+            ]],$options['eldritch-invocation-'.$slug]['prerequisites']);
+        }
+        self::assertSame(['classLevels'=>['warlock'=>5]],$options['eldritch-invocation-sign-of-ill-omen']['prerequisites']);
+    }
+
+    public function testKnownSpellChangeDoesNotOpenMultipleInvocationReplacements(): void
+    {
+        $f = $this->invocationSpellFixture('hex',['maddening-hex','relentless-hex'],true);
+        $before = $this->invocationSnapshot();
+        $choices = [];
+        foreach ($f['selected'] as $row) $choices[] = $this->pick('eldritch-invocations',2,
+            'eldritch-invocation-'.($row['slot'] === 1 ? 'devils-sight' : 'armor-of-shadows'),$row['slot']) + ['replacesKey'=>$row['key']];
+        try {
+            $this->kernel->getContainer()->get('test.service_container')->get(\App\Service\CharacterLevelUpService::class)
+                ->levelUp($this->character,$f['class'],spellChoices:$f['spells'],featureChoices:$choices);
+            self::fail('Known spell change opened the Tasha cantrip exception');
+        } catch (\DomainException $e) {
+            self::assertStringContainsString('déjà utilisé',$e->getMessage());
+            self::assertSame($before,$this->invocationSnapshot());
+        }
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('ordinaryReplacementCounts')]
+    public function testTashaDependentRepairsPreserveOnlyOneOrdinaryReplacement(int $count): void
+    {
+        $f = $this->invocationSpellFixture('eldritch-blast',['agonizing-blast','repelling-blast'],true);
+        $rows = [$this->pick('eldritch-invocations',5,'eldritch-invocation-beast-speech')];
+        if ($count === 2) $rows[] = $this->pick('eldritch-invocations',7,'eldritch-invocation-eyes-of-the-rune-keeper');
+        $history = $this->save($rows)['history'];
+        $choices = [];
+        $targets = ['devils-sight','armor-of-shadows','mask-of-many-faces','misty-visions'];
+        foreach ($history as $i=>$row) $choices[] = ['grantKey'=>$row['grant_key'],'slot'=>$row['slot'],
+            'optionKey'=>'eldritch-invocations-eldritch-invocation-'.$targets[$i], 'replacesKey'=>$row['key']];
+        $snapshot = $this->invocationSnapshot();
+        try {
+            $this->kernel->getContainer()->get('test.service_container')->get(\App\Service\CharacterLevelUpService::class)
+                ->levelUp($this->character,$f['class'],spellChoices:$f['spells'],featureChoices:$choices);
+            self::assertSame(1,$count,'Two unrelated replacements were accepted');
+            self::assertSame([],$this->service->preview($this->character)['issues']);
+        } catch (\DomainException $e) {
+            self::assertSame(2,$count,$e->getMessage());
+            self::assertStringContainsString('déjà utilisé',$e->getMessage());
+            self::assertSame($snapshot,$this->invocationSnapshot());
+        }
+    }
+
+    public static function ordinaryReplacementCounts(): array { return [[1],[2]]; }
+
+    public function testLossOfGrantedSpellRejectsDependentInvocationAndRollsBack(): void
+    {
+        $this->catalogue(); $this->levels('warlock',2);
+        $spell = new \App\Entity\SpellDefinition('eldritch-blast','Fixture blast',0,\App\Enum\SpellSchool::Evocation,'1 action','36 m','Instant','Fixture');
+        $this->em->persist($spell); $this->em->flush();
+        $this->db->insert('feature_spell_grant',['feature_id'=>$this->features['source']->getId(),'spell_id'=>$spell->getId(),'mode'=>'fixed','casting_ability'=>'CHA']);
+        $this->kernel->getContainer()->get('test.service_container')->get(\App\Service\CharacterFeatureSpellService::class)->synchronize($this->character);
+        $this->save([$this->pick('eldritch-invocations',2,'eldritch-invocation-agonizing-blast')]);
+        $before = $this->service->preview($this->character);
+        $snapshot = $this->invocationSnapshot();
+        try {
+            $this->db->transactional(function () use ($before): void {
+                $this->db->executeStatement('UPDATE feature_spell_grant SET enabled=false');
+                $this->kernel->getContainer()->get('test.service_container')->get(\App\Service\CharacterFeatureSpellService::class)->synchronize($this->character);
+                $level = $this->addLevel();
+                $this->service->applyLevel($this->character,$level,$before,[]);
+            });
+            self::fail('Loss of granted spell accepted');
+        } catch (\DomainException $e) {
+            self::assertStringContainsString('dépendante',$e->getMessage());
+            self::assertSame($snapshot,$this->invocationSnapshot());
+        }
+    }
+
+    public function testKnowingBestowCurseAloneDoesNotReplaceTheHexPrerequisite(): void
+    {
+        $f = $this->invocationSpellFixture('hex',['maddening-hex']);
+        // A spell learned from another source is not the warlock feature Sign of Ill Omen.
+        $spell = new \App\Entity\SpellDefinition('bestow-curse','Fixture curse',3,\App\Enum\SpellSchool::Necromancy,'1 action','Touch','1 minute','Fixture');
+        $this->em->persist($spell); $this->em->flush();
+        $this->db->insert('feature_spell_grant',['feature_id'=>$this->features['source']->getId(),'spell_id'=>$spell->getId(),'mode'=>'fixed','casting_ability'=>'CHA']);
+        // Explicit source acquired by the fixture; no character-specific inference.
+        $this->em->persist(new CharacterFeatureAssignment($this->character,$this->features['source'])); $this->em->flush();
+        $this->kernel->getContainer()->get('test.service_container')->get(\App\Service\CharacterFeatureSpellService::class)->synchronize($this->character);
+        $snapshot = $this->invocationSnapshot();
+        try {
+            $this->kernel->getContainer()->get('test.service_container')->get(\App\Service\CharacterLevelUpService::class)
+                ->levelUp($this->character,$f['class'],spellChoices:$f['spells']);
+            self::fail('Bestow Curse accepted as a warlock feature');
+        } catch (\DomainException $e) {
+            self::assertStringContainsString('dépendante',$e->getMessage());
+            self::assertSame($snapshot,$this->invocationSnapshot());
+        }
+    }
+
     public function testConcreteCatalogueIsReadOnlyInPreviewAndIdempotentAfterInstallation(): void
     {
         $catalogue = $this->catalogue(false);
