@@ -69,6 +69,8 @@ export interface CharacterMagicItemResponse {
   custom: boolean;
   quantityAdjustable?: boolean;
   spellbookSpells?: SpellbookInscriptionResponse[] | null;
+  pactTome?: boolean;
+  pactTomeOwnerId?: number | null;
   id: number;
   quantity: number;
   currentCharges: number;
@@ -117,6 +119,13 @@ export interface CharacterMagicItemUpdatePayload {
 export class PublicCharacterMagicItemApiService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = '/api';
+
+  saveInitialPactSpells(accessToken: string, bookId: number, cantripIds: number[], ritualIds: number[]): Observable<{success: boolean}> {
+    return this.http.post<{success: boolean}>(
+      `${this.apiUrl}/public/characters/${accessToken}/pact-tomes/${bookId}/initial-spells`,
+      {cantripIds, ritualIds},
+    );
+  }
 
   list(
     accessToken: string,

@@ -1,0 +1,81 @@
+        <article class="magic-item" [class]="'magic-item rarity--' + rarityClass(item().magicItem.rarity)" [class.magic-item--active]="item().effectActive" [class.magic-item--updating]="updating()">
+          <div class="magic-item__summary">
+          <button type="button" class="magic-item__summary-main" [attr.aria-expanded]="expanded()"
+            [attr.aria-controls]="'item-details-' + item().id" (click)="toggle.emit()">
+              <strong [title]="item().inscribedSpellName ? 'Parchemin de ' + item().inscribedSpellName : item().magicItem.name">{{ item().inscribedSpellName ? 'Parchemin de ' + item().inscribedSpellName : item().magicItem.name }}</strong>
+                @if (item().custom) { <span class="item-status">Personnel</span> }
+          </button>
+            <div class="magic-item__quantity" role="group" [attr.aria-label]="'Quantité de ' + item().magicItem.name">
+              @if (!readonly() && item().quantityAdjustable) {
+              <button type="button" class="item-action" [disabled]="anyUpdating()" [attr.aria-label]="'Diminuer la quantité de ' + item().magicItem.name" (click)="quantityChange.emit(-1)">−</button>
+              }
+              <span aria-live="polite">{{ item().quantity }}</span>
+              @if (!readonly() && item().quantityAdjustable) {
+              <button type="button" class="item-action" [disabled]="anyUpdating() || item().quantity >= 9999" [attr.aria-label]="'Augmenter la quantité de ' + item().magicItem.name" (click)="quantityChange.emit(1)">+</button>
+              }
+            </div>
+            <button type="button" class="magic-item__chevron" [attr.aria-label]="'Détails de ' + item().magicItem.name" [attr.aria-expanded]="expanded()" [attr.aria-controls]="'item-details-' + item().id" (click)="toggle.emit()">
+              <span aria-hidden="true">{{ expanded() ? '⌃' : '⌄' }}</span>
+            </button>
+          </div>
+          @if (expanded()) {
+            <div class="magic-item__details" [id]="'item-details-' + item().id">
+              <strong class="magic-item__description">{{ item().inscribedSpellName ? 'Parchemin de ' + item().inscribedSpellName : item().magicItem.name }}</strong>
+              <div class="magic-item__metadata">
+                <span>{{ rarityLabel(item().magicItem.rarity) }}</span>
+                <span>Poids : {{ item().magicItem.weightGrams == null ? 'Non renseigné' : formatWeight(item().magicItem.weightGrams!) }}</span>
+                <span>Prix : {{ formatPrice(item().magicItem.priceCopper) }}</span>
+                @if (item().equipped) { <span class="item-status">Équipé</span> }
+                @if (item().attuned) { <span class="item-status">Harmonisé</span> }
+              </div>
+              @if (item().magicItem.requiresAttunement) { <p class="magic-item__rarity">Harmonisation requise</p> }
+              @if (item().magicItem.description) { <p class="magic-item__description">{{ item().magicItem.description }}</p> }
+              @if (item().notes) { <p class="magic-item__notes">{{ item().notes }}</p> }
+              @if (item().magicItem.category === 'spellbook') {
+                <section class="spellbook-contents" [attr.aria-label]="'Sorts inscrits dans ' + item().magicItem.name">
+                  <h4>Sorts inscrits ({{ item().spellbookSpells?.length ?? 0 }})</h4>
+                  @for (spell of item().spellbookSpells ?? []; track spell.spellId) {
+                    <div class="spellbook-contents__entry">
+                      <span>{{ spell.name }}</span>
+                      <small>{{ spell.kind === 'cantrip' ? 'Sort mineur du pacte' : spell.kind === 'ritual' ? 'Secret ancien · rituel' : 'Niveau ' + spell.level }}</small>
+                    </div>
+                  } @empty {
+                    <p>Aucun sort inscrit dans ce grimoire.</p>
+                  }
+                  @if (!readonly() && item().pactTome && item().pactTomeOwnerId === characterId() && (item().spellbookSpells?.length ?? 0) === 0) {
+                    @if (initialOpen()) {
+                      <app-pact-tome-initial [bookId]="item().id" [accessToken]="accessToken()" (saved)="initialOpen.set(false); saved.emit()" (cancelled)="initialOpen.set(false)" />
+                    } @else {
+                      <button class="tome-action" type="button" (click)="initialOpen.set(true)">Choisir mes sorts du pacte</button>
+                    }
+                  }
+                </section>
+              }
+              @if (hasCharges()) {
+                <div class="charges">
+                  <div class="charges__label"><span>Charges</span>
+                    @if (item().magicItem.rechargeFormula) { <small>Recharge : {{ item().magicItem.rechargeFormula }}</small> }
+                  </div>
+                  <div class="charges__controls">
+                    @if (!readonly()) { <button type="button" class="charges__button" aria-label="Dépenser une charge" [disabled]="item().currentCharges <= 0 || updating()" (click)="spendCharge.emit()">−</button> }
+                    <strong>{{ item().currentCharges }} / {{ item().magicItem.maximumCharges }}</strong>
+                    @if (!readonly() && canRestoreManually()) { <button type="button" class="charges__button" aria-label="Récupérer une charge" [disabled]="item().currentCharges >= item().magicItem.maximumCharges! || updating()" (click)="restoreCharge.emit()">+</button> }
+                  </div>
+                </div>
+              }
+              <footer class="magic-item__actions">
+                @if (!readonly() && canEquip()) {
+                  <button type="button" class="item-action" [class.item-action--active]="item().equipped" [disabled]="updating()" (click)="toggleEquipped.emit()">{{ item().equipped ? 'Déséquiper' : 'Équiper' }}</button>
+                }
+                @if (!readonly() && canConsume()) {
+                  <button type="button" class="item-action" [disabled]="updating()" (click)="askConsume.emit()">Consommer (−1)</button>
+                }
+                @if (!readonly() && item().magicItem.requiresAttunement) {
+                  <button type="button" class="item-action" [class.item-action--active]="item().attuned" [disabled]="updating() || isAttunementDisabled()" (click)="toggleAttuned.emit()">{{ item().attuned ? 'Se désharmoniser' : 'S’harmoniser' }}</button>
+                }
+                @if (!readonly()) { <button type="button" class="item-action item-action--danger" [disabled]="updating()" (click)="askDiscard.emit()">Jeter / retirer</button> }
+                @if (item().effectActive) { <span class="magic-item__active-label">Effets actifs</span> }
+              </footer>
+            </div>
+          }
+        </article>

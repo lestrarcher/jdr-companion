@@ -1,0 +1,17 @@
+ :host { display: block; }
+.catalogue-toggle { display: flex; justify-content: center; align-items: center; gap: .55rem; width: 100%; min-height: 2.8rem; padding: .65rem 1rem; border: 1px solid rgb(216 180 95 / 55%); background: rgb(216 180 95 / 12%); color: #ead39a; font: inherit; font-size: .85rem; font-weight: 700; cursor: pointer; }
+.catalogue-toggle:hover { background: rgb(216 180 95 / 20%); }
+.catalogue-backdrop { position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center; justify-content: center; padding: 1rem; background: rgb(0 0 0 / 78%); }
+.catalogue-dialog { display: flex; flex-direction: column; width: min(100%, 31rem); max-height: min(90dvh, 52rem); min-height: 0; overflow-y: auto; border: 1px solid rgb(216 180 95 / 50%); background: #15121e; box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 55%); color: #f7f1e3; }
+.catalogue-dialog__header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1rem 1.15rem; border-bottom: 1px solid rgb(216 180 95 / 20%); }
+.catalogue-dialog__header h3 { margin: 0; font: 700 1.35rem Georgia, serif; }
+.catalogue-close { width: 2.5rem; height: 2.5rem; flex: 0 0 auto; border: 1px solid rgb(255 255 255 / 18%); background: transparent; color: #f7f1e3; cursor: pointer; }
+.spell-copy-fields { display: grid; gap: 1rem; padding: 1.2rem; }
+.spell-copy-fields label { display: grid; gap: .4rem; color: #d5c6dd; font-size: .85rem; }
+.spell-copy-fields select, .spell-copy-fields input { width: 100%; min-height: 2.6rem; padding: .5rem; border: 1px solid #65576c; background: #100d17; color: #f7f1e3; font: inherit; }
+.spell-copy-quote { display: grid; gap: .5rem; border: 1px solid #80683f; padding: .85rem; color: #e5cf9d; font-size: .85rem; }
+.spell-copy-quote small { color: #e9a8a8; }
+.magic-items__error { color: #f0b0b0; font-size: .8rem; }
+.catalogue-submit { width: 100%; min-height: 2.8rem; padding: .6rem; border: 1px solid #d8b45f; background: #d8b45f; color: #16111c; font: inherit; font-weight: 700; cursor: pointer; }
+.catalogue-submit:disabled { opacity: .4; cursor: default; }
+@media (max-width: 600px) { .catalogue-backdrop { padding: 0; align-items: stretch; } .catalogue-dialog { width: 100%; max-height: 100dvh; height: 100dvh; border: 0; } }

@@ -1,0 +1,25 @@
+                    <div class="spellbook-contents__initial">
+                      <div class="tome-initial__heading">
+                        <strong>Inscription des secrets</strong>
+                        <small>Choisissez trois sorts mineurs et, si vous possédez la manifestation, deux rituels de niveau 1.</small>
+                      </div>
+                      <p class="tome-initial__counter">Mineurs <strong>{{ initialCantrips().length }}/3</strong> <span aria-hidden="true">·</span> Rituels <strong>{{ initialRituals().length }}/2</strong></p>
+                      <label class="tome-initial__search-label" for="tome-spell-search">Rechercher un sort</label>
+                      <input id="tome-spell-search" class="tome-initial__search" type="search" placeholder="Nom du sort…" (input)="searchInitialSpells($any($event.target).value)" />
+                      <div class="tome-initial__options">
+                        @for (spell of initialOptions(); track spell.id) {
+                          <label class="tome-initial__option" [class.tome-initial__option--checked]="initialCantrips().includes(spell.id) || initialRituals().includes(spell.id)">
+                            <input type="checkbox" [checked]="initialCantrips().includes(spell.id) || initialRituals().includes(spell.id)" (change)="toggleInitialSpell(spell)" />
+                            <span>{{ spell.name }}</span>
+                            <small>{{ spell.level === 0 ? 'Mineur' : 'Rituel' }}</small>
+                          </label>
+                        } @empty {
+                          <p class="tome-initial__empty">Aucun sort trouvé.</p>
+                        }
+                      </div>
+                      @if (initialError()) { <p class="tome-initial__error" role="alert">{{ initialError() }}</p> }
+                      <div class="tome-initial__actions">
+                        <button class="tome-action tome-action--primary" type="button" [disabled]="initialBusy() || initialCantrips().length !== 3 || ![0, 2].includes(initialRituals().length)" (click)="saveInitialSpells()">{{ initialBusy() ? 'Inscription…' : 'Inscrire dans mon livre' }}</button>
+                        <button class="tome-action tome-action--secondary" type="button" [disabled]="initialBusy()" (click)="cancelled.emit()">Annuler</button>
+                      </div>
+                    </div>

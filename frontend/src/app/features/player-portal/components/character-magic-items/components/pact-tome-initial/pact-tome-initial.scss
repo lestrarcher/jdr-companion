@@ -1,0 +1,27 @@
+:host { display: block; }
+/* Pact of the Tome: initial inscriptions, consistent with the Ravenloft inventory. */
+.spellbook-contents__initial { display: grid; gap: .8rem; margin-top: .85rem; padding: .85rem; border: 1px solid rgb(216 180 95 / 25%); background: rgb(8 7 15 / 65%); }
+.tome-initial__heading { display: grid; gap: .3rem; }
+.tome-initial__heading strong { color: #ead39a; font: 700 1rem Georgia, serif; }
+.tome-initial__heading small, .tome-initial__search-label, .tome-initial__empty { color: #bcb0c6; font-size: .78rem; }
+.tome-initial__counter { margin: 0; color: #c9bdd0; font-size: .8rem; }
+.tome-initial__counter strong { color: #ead39a; }
+.tome-initial__search { box-sizing: border-box; width: 100%; min-height: 2.65rem; padding: .6rem .75rem; border: 1px solid #65576c; border-radius: 0; background: #100d17; color: #f7f1e3; font: inherit; }
+.tome-initial__search:focus-visible, .tome-action:focus-visible, .tome-initial__option:focus-within { outline: 2px solid #d8b45f; outline-offset: 2px; }
+.tome-initial__options { display: grid; max-height: 15rem; overflow-y: auto; border: 1px solid rgb(216 180 95 / 18%); }
+.tome-initial__option { display: flex; align-items: center; gap: .65rem; min-height: 2.7rem; padding: .45rem .65rem; border-bottom: 1px solid rgb(255 255 255 / 7%); color: #f7f1e3; cursor: pointer; font-size: .84rem; }
+.tome-initial__option:last-child { border-bottom: 0; }
+.tome-initial__option:hover, .tome-initial__option--checked { background: rgb(216 180 95 / 10%); }
+.tome-initial__option input { width: 1rem; height: 1rem; flex: 0 0 auto; accent-color: #d8b45f; }
+.tome-initial__option span { flex: 1; min-width: 0; }
+.tome-initial__option small { color: #bcb0c6; font-size: .7rem; }
+.tome-initial__empty { margin: 0; padding: .8rem; }
+.tome-initial__error { margin: 0; color: #f0b0b0; font-size: .8rem; }
+.tome-initial__actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.tome-action { min-height: 2.65rem; padding: .55rem .8rem; border: 1px solid rgb(216 180 95 / 55%); border-radius: 0; background: rgb(216 180 95 / 10%); color: #ead39a; font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; }
+.tome-action:hover:not(:disabled) { background: rgb(216 180 95 / 20%); }
+.tome-action--primary { background: #d8b45f; color: #16111c; }
+.tome-action--primary:hover:not(:disabled) { background: #ead39a; }
+.tome-action--secondary { border-color: rgb(255 255 255 / 25%); background: transparent; color: #d8d1df; }
+.tome-action:disabled { opacity: .4; cursor: not-allowed; }
+@media (max-width: 480px) { .tome-initial__actions .tome-action { flex: 1 1 100%; } }

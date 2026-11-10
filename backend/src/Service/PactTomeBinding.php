@@ -50,6 +50,7 @@ final readonly class PactTomeBinding
             $definition->classify('spellbook',false,false);
             $this->em->persist($definition);
             $book = new CharacterMagicItem($character,$definition);
+            $book->setDisplayName('Livre des ombres de '.$character->getName());
             $character->addMagicItem($book);
             $this->em->persist($book);
         }

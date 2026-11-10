@@ -11,16 +11,16 @@ use Symfony\Component\HttpKernel\Exception\{BadRequestHttpException, ConflictHtt
 /** Livre des secrets anciens (2014): physical sources, no wallet mutations. */
 final readonly class PactRitualCopy
 {
-    public function __construct(private EntityManagerInterface $em, private PactTomeLibrary $tomes) {}
+    public function __construct(private EntityManagerInterface $em, private PactTomeLibrary $tomes, private PactInvocationAccess $invocations) {}
 
     public function quote(Character $character, int $sourceId, int $destinationId, int $spellId): array
     {
         $level = $this->tomes->warlockLevel($character);
         if ($level < 3) throw new BadRequestHttpException('Pacte du Grimoire requis.');
-        // Temporary feature flag: Book of Ancient Secrets considered enabled.
+        if (!$this->invocations->hasAncientSecrets($character)) throw new BadRequestHttpException('Livre des secrets anciens requis.');
         $source = $this->owned($character, $sourceId);
         $destination = $this->owned($character, $destinationId);
-        if ($sourceId === $destinationId || !$this->tomes->isPactTome($destination)) {
+        if ($sourceId === $destinationId || !$this->tomes->isPactTome($destination) || $destination->getPactOwner()?->getId() !== $character->getId()) {
             throw new BadRequestHttpException('Destination : Grimoire des Ombres requis.');
         }
         $spell = $this->em->find(SpellDefinition::class, $spellId);

@@ -21,158 +21,10 @@
   </header>
 
   @if (!readonly()) {
-    <div class="inventory-add-actions">
-    <button type="button" class="catalogue-toggle" (click)="openCatalogue()">
-      <span aria-hidden="true">＋</span> Ajouter un objet
-    </button>
-    <button type="button" class="catalogue-toggle" (click)="openCustom()">＋ Créer un objet personnel</button>
-    </div>
-    @if (successMessage()) { <p class="inventory-feedback" role="status">{{ successMessage() }}</p> }
+    <app-inventory-item-creator [accessToken]="accessToken()" [readonly]="readonly()" (inventoryChanged)="onInventoryCreated($event)" />
+    <app-spellbook-copy [accessToken]="accessToken()" [inventory]="inventory()" (copied)="onSpellCopied($event)" />
   }
-
-  @if (!readonly() && canCopyWizardSpells() && copyBooks().length && copySources().length > 1) {
-    <button type="button" class="catalogue-toggle" (click)="openSpellCopy()">✧ Recopier un sort</button>
-  }
-  @if (!readonly() && pactBooks().length && copySources().length > 1) {
-    <button type="button" class="catalogue-toggle" (click)="openRitualCopy()">✧ Recopier un rituel (Livre des secrets anciens)</button>
-  }
-  @if (copyOpen()) {
-    <div class="catalogue-backdrop">
-      <section class="catalogue-dialog spell-copy-dialog" role="dialog" aria-modal="true" aria-labelledby="spell-copy-title">
-        <header class="catalogue-dialog__header"><h3 id="spell-copy-title">{{ ritualCopyMode() ? "Recopier un rituel" : "Recopier un sort" }}</h3><button type="button" class="catalogue-close" [disabled]="copyBusy()" (click)="copyOpen.set(false)">✕</button></header>
-        <div class="spell-copy-fields">
-          <label>Source
-            <select [value]="copySourceId() ?? ''" (change)="copySourceId.set(+$any($event.target).value || null); copySpellId.set(null); resetCopyQuote()">
-              <option value="">Choisir un grimoire ou parchemin</option>
-              @for (item of copySources(); track item.id) { <option [value]="item.id">{{ item.inscribedSpellName ? 'Parchemin de ' + item.inscribedSpellName : item.magicItem.name }} (#{{ item.id }})</option> }
-            </select>
-          </label>
-          <label>Sort à recopier
-            <select [value]="copySpellId() ?? ''" (change)="copySpellId.set(+$any($event.target).value || null); resetCopyQuote()">
-              <option value="">Choisir un sort</option>
-              @for (spell of copySpells(); track spell.id) { <option [value]="spell.id">{{ spell.name }}</option> }
-            </select>
-          </label>
-          <label>Grimoire de destination
-            <select [value]="copyDestinationId() ?? ''" (change)="copyDestinationId.set(+$any($event.target).value || null); resetCopyQuote()">
-              <option value="">Choisir le grimoire</option>
-              @for (book of copyBooks(); track book.id) { <option [value]="book.id">{{ book.magicItem.name }} (#{{ book.id }})</option> }
-            </select>
-          </label>
-          @if (copyQuote(); as quote) {
-            <div class="spell-copy-quote">
-              <strong>Coût indicatif : {{ formatPrice(quote.baseCostCp) }}</strong>
-              <span>Durée : {{ quote.baseMinutes }} minutes · Aucun débit automatique</span>
-              @if (quote.sourceType === 'scroll') {
-                <label>Résultat total du test d'Arcanes (DD {{ quote.arcanaDC }})
-                  <input type="number" [value]="copyArcana() ?? ''" (input)="copyArcana.set($any($event.target).value === '' ? null : +$any($event.target).value)" />
-                </label>
-                <small>Le parchemin sera consommé, même si le jet échoue.</small>
-              }
-            </div>
-          }
-          @if (copyError()) { <p class="magic-items__error" role="alert">{{ copyError() }}</p> }
-          @if (!copyQuote()) {
-            <button type="button" class="catalogue-submit" [disabled]="copyBusy() || (!ritualCopyMode() && !copyPolicyId()) || !copySourceId() || !copyDestinationId() || !copySpellId()" (click)="requestCopyQuote()">Voir le coût et les conditions</button>
-          } @else {
-            <button type="button" class="catalogue-submit" [disabled]="copyBusy() || (copyQuote()?.sourceType === 'scroll' && copyArcana() === null)" (click)="confirmSpellCopy()">Confirmer la copie</button>
-          }
-        </div>
-      </section>
-    </div>
-  }
-
-  @if (customOpen()) {
-    <div class="catalogue-backdrop">
-      <section class="catalogue-dialog" role="dialog" aria-modal="true" aria-labelledby="custom-item-title" (keydown.escape)="!customBusy() && customOpen.set(false)">
-        <header class="catalogue-dialog__header">
-          <h3 id="custom-item-title">Créer un objet personnel</h3>
-          <button type="button" class="catalogue-close" aria-label="Fermer" [disabled]="customBusy()" (click)="customOpen.set(false)">✕</button>
-        </header>
-        <form class="spell-copy-fields" (submit)="$event.preventDefault(); createCustom()">
-          <label for="custom-item-name">Nom obligatoire</label>
-          <input id="custom-item-name" type="text" required maxlength="200" [disabled]="customBusy()" [value]="customName()" (input)="customName.set($any($event.target).value)" />
-          <label for="custom-item-description">Description (facultative)</label>
-          <textarea id="custom-item-description" rows="4" maxlength="10000" [disabled]="customBusy()" [value]="customDescription()" (input)="customDescription.set($any($event.target).value)"></textarea>
-          <label for="custom-item-quantity">Quantité</label>
-          <input id="custom-item-quantity" type="number" required min="1" max="9999" step="1" [disabled]="customBusy()" [value]="customQuantity()" (input)="customQuantity.set(+$any($event.target).value)" />
-          @if (customError()) { <p class="magic-items__error" role="alert">{{ customError() }}</p> }
-          <button type="submit" class="catalogue-submit" [disabled]="customBusy() || !validCustomItem()">{{ customBusy() ? 'Création en cours…' : 'Ajouter à l’inventaire' }}</button>
-        </form>
-      </section>
-    </div>
-  }
-
-  @if (catalogueOpen()) {
-    <div class="catalogue-backdrop" (click)="closeCatalogue()">
-      <section class="catalogue-dialog" role="dialog" aria-modal="true" aria-labelledby="catalogue-title" (click)="$event.stopPropagation()">
-        <header class="catalogue-dialog__header">
-          <div><p class="magic-items__eyebrow">Catalogue</p><h3 id="catalogue-title">Ajouter un objet</h3></div>
-          <button type="button" class="catalogue-close" aria-label="Fermer le catalogue" [disabled]="acquiring()" (click)="closeCatalogue()">✕</button>
-        </header>
-        <div class="catalogue-dialog__search">
-          <label for="item-search">Rechercher un équipement disponible</label>
-          <input id="item-search" type="search" autocomplete="off" [value]="catalogueQuery()"
-            (input)="searchCatalogue($any($event.target).value)" placeholder="Nom de l’objet…" />
-        </div>
-        <div class="catalogue-dialog__results" aria-label="Résultats de recherche">
-          @if (catalogueLoading()) { <p class="catalogue-empty">Recherche…</p> }
-          @for (item of catalogueItems(); track item.id) {
-            @if (!item.isSpellScroll) {
-            <button type="button" class="catalogue-result" [class.catalogue-result--selected]="selectedCatalogueItem()?.id === item.id"
-              [class]="'catalogue-result rarity--' + rarityClass(item.rarity)"
-              [disabled]="acquiring()" (click)="selectCatalogueItem(item)">
-              <span class="catalogue-result__main"><strong>{{ item.name }}</strong><small>{{ rarityLabel(item.rarity) }} @if (item.weightGrams != null) { · {{ formatWeight(item.weightGrams) }} }</small></span>
-              <span class="catalogue-result__indicator" aria-hidden="true">{{ selectedCatalogueItem()?.id === item.id ? '●' : '○' }}</span>
-            </button>
-            }
-          } @empty {
-            @if (!catalogueLoading()) { <p class="catalogue-empty">Aucun objet disponible.</p> }
-          }
-          @if (catalogueTotal() > 50) {
-            <nav class="item-catalogue__pages" aria-label="Pagination du catalogue">
-              <button type="button" [disabled]="cataloguePage() <= 1 || catalogueLoading()" (click)="loadCatalogue(cataloguePage() - 1)">Précédent</button>
-              <span>Page {{ cataloguePage() }}</span>
-              <button type="button" [disabled]="cataloguePage() * 50 >= catalogueTotal() || catalogueLoading()" (click)="loadCatalogue(cataloguePage() + 1)">Suivant</button>
-            </nav>
-          }
-        </div>
-        <footer class="catalogue-dialog__footer">
-          @if (selectedCatalogueItem(); as selected) {
-            <div class="catalogue-selected"><span>Objet sélectionné</span><strong>{{ selected.name }}</strong></div>
-            <div class="catalogue-quantity">
-              <span>Quantité</span>
-              <div class="catalogue-quantity__controls">
-                <button type="button" aria-label="Diminuer la quantité" [disabled]="quantity() <= 1 || acquiring()" (click)="adjustQuantity(-1)">−</button>
-                <input aria-label="Quantité à ajouter" type="number" min="1" max="9999" [value]="quantity()" (input)="quantity.set(+$any($event.target).value)" />
-                <button type="button" aria-label="Augmenter la quantité" [disabled]="quantity() >= 9999 || acquiring()" (click)="adjustQuantity(1)">+</button>
-              </div>
-            </div>
-            @if (selected.isSpellScroll) {
-              <div class="catalogue-dialog__search">
-                <label for="scroll-spell-search">Sort inscrit sur le parchemin</label>
-                <input id="scroll-spell-search" type="search" autocomplete="off" [value]="scrollSpellQuery()"
-                  (input)="searchScrollSpells($any($event.target).value)" placeholder="Rechercher un sort…" />
-                <select aria-label="Sort inscrit" [value]="selectedScrollSpellId() ?? ''"
-                  (change)="selectedScrollSpellId.set(+$any($event.target).value || null)">
-                  <option value="">Choisir un sort</option>
-                  @for (spell of scrollSpells(); track spell.id) {
-                    <option [value]="spell.id">{{ spell.name }} (niveau {{ spell.level }})</option>
-                  }
-                </select>
-                @if (scrollSpellsLoading()) { <small>Recherche des sorts…</small> }
-              </div>
-            }
-            <button type="button" class="catalogue-submit" [disabled]="acquiring() || !validQuantity() || (selected.isSpellScroll && selectedScrollSpellId() == null)" (click)="acquireItem(selected)">
-              {{ acquiring() ? 'Ajout en cours…' : 'Ajouter à l’inventaire' }}
-            </button>
-          } @else {
-            <p class="catalogue-hint">Sélectionne un objet pour choisir la quantité à ajouter.</p>
-          }
-        </footer>
-      </section>
-    </div>
-  }
+  @if (successMessage()) { <p class="inventory-feedback" role="status">{{ successMessage() }}</p> }
 
   @if (errorMessage()) {
     <p class="magic-items__error" role="alert">
@@ -197,80 +49,16 @@
     </div>
     <div class="magic-items__list">
       @for (ownedItem of sortedItems(); track ownedItem.id) {
-        <article class="magic-item" [class]="'magic-item rarity--' + rarityClass(ownedItem.magicItem.rarity)" [class.magic-item--active]="ownedItem.effectActive" [class.magic-item--updating]="isUpdating(ownedItem)">
-          <div class="magic-item__summary">
-          <button type="button" class="magic-item__summary-main" [attr.aria-expanded]="expandedItemId() === ownedItem.id"
-            [attr.aria-controls]="'item-details-' + ownedItem.id" (click)="toggleDetails(ownedItem.id)">
-              <strong [title]="ownedItem.inscribedSpellName ? 'Parchemin de ' + ownedItem.inscribedSpellName : ownedItem.magicItem.name">{{ ownedItem.inscribedSpellName ? 'Parchemin de ' + ownedItem.inscribedSpellName : ownedItem.magicItem.name }}</strong>
-                @if (ownedItem.custom) { <span class="item-status">Personnel</span> }
-          </button>
-            <div class="magic-item__quantity" role="group" [attr.aria-label]="'Quantité de ' + ownedItem.magicItem.name">
-              @if (!readonly() && ownedItem.quantityAdjustable) {
-              <button type="button" class="item-action" [disabled]="updatingItemId() !== null" [attr.aria-label]="'Diminuer la quantité de ' + ownedItem.magicItem.name" (click)="changeItemQuantity(ownedItem, -1)">−</button>
-              }
-              <span aria-live="polite">{{ ownedItem.quantity }}</span>
-              @if (!readonly() && ownedItem.quantityAdjustable) {
-              <button type="button" class="item-action" [disabled]="updatingItemId() !== null || ownedItem.quantity >= 9999" [attr.aria-label]="'Augmenter la quantité de ' + ownedItem.magicItem.name" (click)="changeItemQuantity(ownedItem, 1)">+</button>
-              }
-            </div>
-            <button type="button" class="magic-item__chevron" [attr.aria-label]="'Détails de ' + ownedItem.magicItem.name" [attr.aria-expanded]="expandedItemId() === ownedItem.id" [attr.aria-controls]="'item-details-' + ownedItem.id" (click)="toggleDetails(ownedItem.id)">
-              <span aria-hidden="true">{{ expandedItemId() === ownedItem.id ? '⌃' : '⌄' }}</span>
-            </button>
-          </div>
-          @if (expandedItemId() === ownedItem.id) {
-            <div class="magic-item__details" [id]="'item-details-' + ownedItem.id">
-              <strong class="magic-item__description">{{ ownedItem.inscribedSpellName ? 'Parchemin de ' + ownedItem.inscribedSpellName : ownedItem.magicItem.name }}</strong>
-              <div class="magic-item__metadata">
-                <span>{{ rarityLabel(ownedItem.magicItem.rarity) }}</span>
-                <span>Poids : {{ ownedItem.magicItem.weightGrams == null ? 'Non renseigné' : formatWeight(ownedItem.magicItem.weightGrams) }}</span>
-                <span>Prix : {{ formatPrice(ownedItem.magicItem.priceCopper) }}</span>
-                @if (ownedItem.equipped) { <span class="item-status">Équipé</span> }
-                @if (ownedItem.attuned) { <span class="item-status">Harmonisé</span> }
-              </div>
-              @if (ownedItem.magicItem.requiresAttunement) { <p class="magic-item__rarity">Harmonisation requise</p> }
-              @if (ownedItem.magicItem.description) { <p class="magic-item__description">{{ ownedItem.magicItem.description }}</p> }
-              @if (ownedItem.notes) { <p class="magic-item__notes">{{ ownedItem.notes }}</p> }
-              @if (ownedItem.magicItem.category === 'spellbook') {
-                <section class="spellbook-contents" [attr.aria-label]="'Sorts inscrits dans ' + ownedItem.magicItem.name">
-                  <h4>Sorts inscrits ({{ ownedItem.spellbookSpells?.length ?? 0 }})</h4>
-                  @for (spell of ownedItem.spellbookSpells ?? []; track spell.spellId) {
-                    <div class="spellbook-contents__entry">
-                      <span>{{ spell.name }}</span>
-                      <small>{{ spell.kind === 'cantrip' ? 'Sort mineur du pacte' : spell.kind === 'ritual' ? 'Secret ancien · rituel' : 'Niveau ' + spell.level }}</small>
-                    </div>
-                  } @empty {
-                    <p>Aucun sort inscrit dans ce grimoire.</p>
-                  }
-                </section>
-              }
-              @if (hasCharges(ownedItem)) {
-                <div class="charges">
-                  <div class="charges__label"><span>Charges</span>
-                    @if (ownedItem.magicItem.rechargeFormula) { <small>Recharge : {{ ownedItem.magicItem.rechargeFormula }}</small> }
-                  </div>
-                  <div class="charges__controls">
-                    @if (!readonly()) { <button type="button" class="charges__button" aria-label="Dépenser une charge" [disabled]="ownedItem.currentCharges <= 0 || isUpdating(ownedItem)" (click)="spendCharge(ownedItem)">−</button> }
-                    <strong>{{ ownedItem.currentCharges }} / {{ ownedItem.magicItem.maximumCharges }}</strong>
-                    @if (!readonly() && canRestoreManually(ownedItem)) { <button type="button" class="charges__button" aria-label="Récupérer une charge" [disabled]="ownedItem.currentCharges >= ownedItem.magicItem.maximumCharges! || isUpdating(ownedItem)" (click)="restoreCharge(ownedItem)">+</button> }
-                  </div>
-                </div>
-              }
-              <footer class="magic-item__actions">
-                @if (!readonly() && canEquip(ownedItem)) {
-                  <button type="button" class="item-action" [class.item-action--active]="ownedItem.equipped" [disabled]="isUpdating(ownedItem)" (click)="toggleEquipped(ownedItem)">{{ ownedItem.equipped ? 'Déséquiper' : 'Équiper' }}</button>
-                }
-                @if (!readonly() && canConsume(ownedItem)) {
-                  <button type="button" class="item-action" [disabled]="isUpdating(ownedItem)" (click)="askConsume(ownedItem)">Consommer (−1)</button>
-                }
-                @if (!readonly() && ownedItem.magicItem.requiresAttunement) {
-                  <button type="button" class="item-action" [class.item-action--active]="ownedItem.attuned" [disabled]="isUpdating(ownedItem) || isAttunementDisabled(ownedItem)" (click)="toggleAttuned(ownedItem)">{{ ownedItem.attuned ? 'Se désharmoniser' : 'S’harmoniser' }}</button>
-                }
-                @if (!readonly()) { <button type="button" class="item-action item-action--danger" [disabled]="isUpdating(ownedItem)" (click)="askDiscard(ownedItem)">Jeter / retirer</button> }
-                @if (ownedItem.effectActive) { <span class="magic-item__active-label">Effets actifs</span> }
-              </footer>
-            </div>
-          }
-        </article>
+        <app-inventory-item-card
+          [item]="ownedItem" [accessToken]="accessToken()" [characterId]="inventory()?.characterId ?? null"
+          [readonly]="readonly()" [expanded]="expandedItemId() === ownedItem.id"
+          [updating]="isUpdating(ownedItem)" [anyUpdating]="updatingItemId() !== null"
+          [attunedCount]="attunedCount()" [attunementLimit]="attunementLimit()"
+          (toggle)="toggleDetails(ownedItem.id)" (quantityChange)="changeItemQuantity(ownedItem, $event)"
+          (spendCharge)="spendCharge(ownedItem)" (restoreCharge)="restoreCharge(ownedItem)"
+          (toggleEquipped)="toggleEquipped(ownedItem)" (toggleAttuned)="toggleAttuned(ownedItem)"
+          (askConsume)="askConsume(ownedItem)" (askDiscard)="askDiscard(ownedItem)"
+          (saved)="onInitialSpellsSaved()" />
       }
     </div>
   }
