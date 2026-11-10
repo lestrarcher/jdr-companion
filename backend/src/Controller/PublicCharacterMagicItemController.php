@@ -453,12 +453,14 @@ final class PublicCharacterMagicItemController extends AbstractController
             'notes' => $ownedItem->getNotes(),
             'inscribedSpellId' => $ownedItem->getInscribedSpell()?->getId(),
             'inscribedSpellName' => $ownedItem->getInscribedSpell()?->getName(),
+            'pactTome' => $ownedItem->getPactOwner() !== null,
+            'pactTomeOwnerId' => $ownedItem->getPactOwner()?->getId(),
             'spellbookSpells' => $magicItem?->getCategory() === 'spellbook'
                 ? array_merge($this->spellbookLibrary->contents($ownedItem), $this->pactTomes->entries($ownedItem)) : null,
             // Keep the existing inventory view shape; a null ID is not a catalogue entry.
             'magicItem' => [
                 'id' => $magicItem?->getId(),
-                'name' => $magicItem?->getName() ?? $ownedItem->getDisplayName(),
+                'name' => $ownedItem->getPactOwner() !== null ? $ownedItem->getDisplayName() : ($magicItem?->getName() ?? $ownedItem->getDisplayName()),
                 'description' => $magicItem?->getDescription() ?? $ownedItem->getCustomDescription(),
                 'rarity' => $magicItem?->getRarity()?->value,
                 'category' => $magicItem?->getCategory() ?? 'other',

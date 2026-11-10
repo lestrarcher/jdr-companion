@@ -20,7 +20,7 @@ final readonly class PhysicalSpellCopy
         $this->authorize($character, $actor);
         $source = $this->owned($character, $sourceId);
         $destination = $this->owned($character, $destinationId);
-        if ($destination->getMagicItem()?->getCategory() !== 'spellbook' || $destination->getQuantity() !== 1 || $sourceId === $destinationId || $this->em->getConnection()->fetchOne('SELECT 1 FROM pact_tome_entry WHERE owned_item_id = ?', [$destinationId])) {
+        if ($destination->getPactOwner() !== null || $destination->getMagicItem()?->getCategory() !== 'spellbook' || $destination->getQuantity() !== 1 || $sourceId === $destinationId || $this->em->getConnection()->fetchOne('SELECT 1 FROM pact_tome_entry WHERE owned_item_id = ?', [$destinationId])) {
             throw new BadRequestHttpException('Le grimoire de destination est invalide.');
         }
         $sourceType = $source->getMagicItem()?->getCategory();
@@ -71,7 +71,7 @@ final readonly class PhysicalSpellCopy
             if ($successful) {
                 // The legacy acquisition path auto-inscribes into the first book.
                 // Preserve existing inscriptions, and relocate only the newly written one.
-                $firstId = $db->fetchOne("SELECT cmi.id FROM character_magic_item cmi JOIN magic_item mi ON mi.id = cmi.magic_item_id WHERE cmi.character_id = ? AND mi.category = 'spellbook' AND cmi.quantity = 1 AND NOT EXISTS (SELECT 1 FROM pact_tome_entry p WHERE p.owned_item_id = cmi.id) ORDER BY cmi.id LIMIT 1", [$character->getId()]);
+                $firstId = $db->fetchOne("SELECT cmi.id FROM character_magic_item cmi JOIN magic_item mi ON mi.id = cmi.magic_item_id WHERE cmi.character_id = ? AND mi.category = 'spellbook' AND cmi.quantity = 1 AND cmi.pact_owner_id IS NULL AND NOT EXISTS (SELECT 1 FROM pact_tome_entry p WHERE p.owned_item_id = cmi.id) ORDER BY cmi.id LIMIT 1", [$character->getId()]);
                 $firstHadSpell = $firstId !== false && (bool) $db->fetchOne('SELECT 1 FROM spellbook_entry WHERE owned_item_id = ? AND spell_id = ?', [$firstId, $data['spellId']]);
                 $decision = [...SpellbookCopyDecision::quote($quote['spellLevel']),
                     'costCp' => $data['costCp'] ?? $quote['baseCostCp'],

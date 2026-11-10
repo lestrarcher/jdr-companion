@@ -1,0 +1,2106 @@
+{
+    "version":  1,
+    "ruleset":  "2014",
+    "sources":  {
+                    "PHB":  "https://www.dndbeyond.com/sources/dnd/basic-rules-2014/classes",
+                    "XGE":  "https://www.dndbeyond.com/sources/dnd/xgte",
+                    "TCE":  "https://www.dndbeyond.com/sources/dnd/tcoe",
+                    "SCAG":  "https://www.dndbeyond.com/sources/dnd/scag"
+                },
+    "features":  [
+                     {
+                         "slug":  "martial-versatility-fighter",
+                         "name":  "Polyvalence martiale — fighter",
+                         "description":  "Option Tasha : remplacement d’un style aux niveaux d’amélioration de caractéristiques. Activation MJ explicite."
+                     },
+                     {
+                         "slug":  "fighting-style-archery",
+                         "name":  "Archerie",
+                         "description":  "+2 aux attaques avec une arme à distance."
+                     },
+                     {
+                         "slug":  "fighting-style-defense",
+                         "name":  "Défense",
+                         "description":  "+1 CA tant qu’une armure est portée.",
+                         "armorClassEffects":  [
+                                                   {
+                                                       "key":  "defense",
+                                                       "label":  "Défense",
+                                                       "type":  "bonus",
+                                                       "value":  1,
+                                                       "conditions":  [
+                                                                          "armor"
+                                                                      ],
+                                                       "stackingKey":  "fighting-style-defense"
+                                                   }
+                                               ]
+                     },
+                     {
+                         "slug":  "fighting-style-dueling",
+                         "name":  "Duel",
+                         "description":  "+2 dégâts avec une arme de mêlée tenue seule à une main."
+                     },
+                     {
+                         "slug":  "fighting-style-great-weapon-fighting",
+                         "name":  "Combat à deux mains",
+                         "description":  "Relance des dés de dégâts d’arme affichant 1 ou 2, avec une arme de mêlée tenue à deux mains."
+                     },
+                     {
+                         "slug":  "fighting-style-protection",
+                         "name":  "Protection",
+                         "description":  "Réaction avec bouclier pour gêner une attaque contre un allié adjacent."
+                     },
+                     {
+                         "slug":  "fighting-style-two-weapon-fighting",
+                         "name":  "Combat à deux armes",
+                         "description":  "Modificateur de caractéristique aux dégâts de la seconde arme."
+                     },
+                     {
+                         "slug":  "fighting-style-blind-fighting",
+                         "name":  "Combat à l’aveugle",
+                         "description":  "Vision aveugle à 3 m."
+                     },
+                     {
+                         "slug":  "fighting-style-interception",
+                         "name":  "Interception",
+                         "description":  "Réaction avec arme ou bouclier : réduction de dégâts sur un allié adjacent."
+                     },
+                     {
+                         "slug":  "fighting-style-superior-technique",
+                         "name":  "Technique supérieure",
+                         "description":  "Une manœuvre et un dé de supériorité d6, récupéré au repos court ou long."
+                     },
+                     {
+                         "slug":  "fighting-style-thrown-weapon-fighting",
+                         "name":  "Combat à l’arme de jet",
+                         "description":  "Dégainer lors de l’attaque et +2 dégâts pour une attaque à distance avec une arme de jet."
+                     },
+                     {
+                         "slug":  "fighting-style-unarmed-fighting",
+                         "name":  "Combat à mains nues",
+                         "description":  "Dégâts améliorés à mains nues et dégâts à une cible agrippée."
+                     },
+                     {
+                         "slug":  "martial-versatility-paladin",
+                         "name":  "Polyvalence martiale — paladin",
+                         "description":  "Option Tasha : remplacement d’un style aux niveaux d’amélioration de caractéristiques. Activation MJ explicite."
+                     },
+                     {
+                         "slug":  "fighting-style-blessed-warrior",
+                         "name":  "Guerrier béni",
+                         "description":  "Deux tours de magie de clerc, Charisme ; un échange possible par niveau de paladin."
+                     },
+                     {
+                         "slug":  "martial-versatility-ranger",
+                         "name":  "Polyvalence martiale — ranger",
+                         "description":  "Option Tasha : remplacement d’un style aux niveaux d’amélioration de caractéristiques. Activation MJ explicite."
+                     },
+                     {
+                         "slug":  "fighting-style-druidic-warrior",
+                         "name":  "Guerrier druidique",
+                         "description":  "Deux tours de magie de druide, Sagesse ; un échange possible par niveau de rôdeur."
+                     },
+                     {
+                         "slug":  "sorcerous-versatility",
+                         "name":  "Polyvalence ensorceleuse",
+                         "description":  "Option Tasha : remplacement d’une métamagie aux niveaux 4, 8, 12, 16 et 19. Activation MJ explicite."
+                     },
+                     {
+                         "slug":  "metamagic-careful-spell",
+                         "name":  "Sort prudent",
+                         "description":  "Sauvegarde réussie pour certaines cibles ; 1 point.",
+                         "resource":  "sorcery-points"
+                     },
+                     {
+                         "slug":  "metamagic-distant-spell",
+                         "name":  "Sort distant",
+                         "description":  "Portée étendue ; 1 point.",
+                         "resource":  "sorcery-points"
+                     },
+                     {
+                         "slug":  "metamagic-empowered-spell",
+                         "name":  "Sort puissant",
+                         "description":  "Relance de dégâts ; 1 point. Compatible avec une autre métamagie.",
+                         "resource":  "sorcery-points"
+                     },
+                     {
+                         "slug":  "metamagic-extended-spell",
+                         "name":  "Sort étendu",
+                         "description":  "Durée doublée, maximum 24 h ; 1 point.",
+                         "resource":  "sorcery-points"
+                     },
+                     {
+                         "slug":  "metamagic-heightened-spell",
+                         "name":  "Sort intensifié",
+                         "description":  "Désavantage à la première sauvegarde d’une cible ; 3 points.",
+                         "resource":  "sorcery-points"
+                     },
+                     {
+                         "slug":  "metamagic-quickened-spell",
+                         "name":  "Sort accéléré",
+                         "description":  "Incantation d’une action transformée en action bonus ; 2 points.",
+                         "resource":  "sorcery-points"
+                     },
+                     {
+                         "slug":  "metamagic-subtle-spell",
+                         "name":  "Sort subtil",
+                         "description":  "Sans composantes verbales ni somatiques ; 1 point.",
+                         "resource":  "sorcery-points"
+                     },
+                     {
+                         "slug":  "metamagic-twinned-spell",
+                         "name":  "Sort jumelé",
+                         "description":  "Deuxième cible pour un sort éligible ; coût égal au niveau du sort, minimum 1.",
+                         "resource":  "sorcery-points"
+                     },
+                     {
+                         "slug":  "metamagic-seeking-spell",
+                         "name":  "Sort chercheur",
+                         "description":  "Relance d’une attaque de sort manquée ; 2 points. Compatible avec une autre métamagie.",
+                         "resource":  "sorcery-points"
+                     },
+                     {
+                         "slug":  "metamagic-transmuted-spell",
+                         "name":  "Sort transmuté",
+                         "description":  "Substitution entre dégâts élémentaires autorisés ; 1 point.",
+                         "resource":  "sorcery-points"
+                     },
+                     {
+                         "slug":  "pact-of-the-blade",
+                         "name":  "Pacte de la Lame",
+                         "description":  "Faveur de pacte : Lame. Les sous-choix éventuels restent gérés séparément."
+                     },
+                     {
+                         "slug":  "pact-of-the-chain",
+                         "name":  "Pacte de la Chaîne",
+                         "description":  "Faveur de pacte : Chaîne. Les sous-choix éventuels restent gérés séparément."
+                     },
+                     {
+                         "slug":  "pact-of-the-tome",
+                         "name":  "Pacte de la Grimoire",
+                         "description":  "Faveur de pacte : Grimoire. Les sous-choix éventuels restent gérés séparément."
+                     },
+                     {
+                         "slug":  "pact-of-the-talisman",
+                         "name":  "Pacte de la Talisman",
+                         "description":  "Faveur de pacte : Talisman. Les sous-choix éventuels restent gérés séparément."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-agonizing-blast",
+                         "name":  "Décharge déchirante",
+                         "description":  "Ajoute le modificateur de Charisme aux dégâts de décharge occulte."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-armor-of-shadows",
+                         "name":  "Armure d’ombres",
+                         "description":  "Armure de mage sur soi à volonté, sans emplacement ni composante matérielle. Ne constitue pas une CA permanente."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-ascendant-step",
+                         "name":  "Ascension",
+                         "description":  "Lévitation sur soi à volonté, sans emplacement ni composante matérielle."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-beast-speech",
+                         "name":  "Langage animal",
+                         "description":  "Communication avec les animaux à volonté, sans emplacement."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-beguiling-influence",
+                         "name":  "Influence trompeuse",
+                         "description":  "Maîtrise de Tromperie et Persuasion."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-bewitching-whispers",
+                         "name":  "Murmures ensorcelants",
+                         "description":  "Compulsion une fois par repos long, en dépensant un emplacement d’occultiste."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-book-of-ancient-secrets",
+                         "name":  "Livre des secrets anciens",
+                         "description":  "Deux rituels de niveau 1 à choisir, puis transcription de rituels dans le grimoire selon le niveau d’occultiste."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-chains-of-carceri",
+                         "name":  "Chaînes de Carcères",
+                         "description":  "Immobilisation de monstre à volonté contre célestes, fiélons ou élémentaires ; repos long avant de viser de nouveau la même créature."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-devils-sight",
+                         "name":  "Vision du diable",
+                         "description":  "Vision normale dans les ténèbres magiques et ordinaires à 36 m."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-dreadful-word",
+                         "name":  "Parole d’effroi",
+                         "description":  "Confusion une fois par repos long, en dépensant un emplacement d’occultiste."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-eldritch-sight",
+                         "name":  "Vision occulte",
+                         "description":  "Détection de la magie à volonté, sans emplacement."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-eldritch-spear",
+                         "name":  "Lance occulte",
+                         "description":  "Portée de décharge occulte : 90 m."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-eyes-of-the-rune-keeper",
+                         "name":  "Yeux du gardien des runes",
+                         "description":  "Lecture de toute écriture."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-fiendish-vigor",
+                         "name":  "Vigueur fiélonne",
+                         "description":  "Simulacre de vie sur soi au niveau 1 à volonté, sans emplacement ni composante matérielle."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-gaze-of-two-minds",
+                         "name":  "Regard de deux esprits",
+                         "description":  "Perception par les sens d’un humanoïde consentant touché, avec maintien par une action."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-lifedrinker",
+                         "name":  "Buveuse de vie",
+                         "description":  "Dégâts nécrotiques supplémentaires de l’arme de pacte égaux au modificateur de Charisme, minimum 1."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-mask-of-many-faces",
+                         "name":  "Masque des nombreux visages",
+                         "description":  "Déguisement à volonté, sans emplacement."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-master-of-myriad-forms",
+                         "name":  "Maître des formes multiples",
+                         "description":  "Modification d’apparence à volonté, sans emplacement."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-minions-of-chaos",
+                         "name":  "Serviteurs du chaos",
+                         "description":  "Invocation d’élémentaire une fois par repos long avec un emplacement d’occultiste."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-mire-the-mind",
+                         "name":  "Enlisement de l’esprit",
+                         "description":  "Lenteur une fois par repos long avec un emplacement d’occultiste."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-misty-visions",
+                         "name":  "Visions brumeuses",
+                         "description":  "Image silencieuse à volonté, sans emplacement ni composante matérielle."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-one-with-shadows",
+                         "name":  "Union avec les ombres",
+                         "description":  "Invisibilité immobile en lumière faible ou dans les ténèbres ; prend fin en bougeant ou en agissant."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-otherworldly-leap",
+                         "name":  "Saut d’outre-monde",
+                         "description":  "Saut sur soi à volonté, sans emplacement ni composante matérielle."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-repelling-blast",
+                         "name":  "Décharge répulsive",
+                         "description":  "Une touche de décharge occulte peut repousser la cible de 3 m."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-sculptor-of-flesh",
+                         "name":  "Sculpteur de chair",
+                         "description":  "Métamorphose une fois par repos long avec un emplacement d’occultiste."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-sign-of-ill-omen",
+                         "name":  "Signe de mauvais présage",
+                         "description":  "Malédiction une fois par repos long avec un emplacement d’occultiste."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-thief-of-five-fates",
+                         "name":  "Voleur des cinq destinées",
+                         "description":  "Fléau une fois par repos long avec un emplacement d’occultiste."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-thirsting-blade",
+                         "name":  "Lame assoiffée",
+                         "description":  "Deux attaques avec l’arme de pacte lors de l’action Attaquer ; ne cumule pas les attaques supplémentaires."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-visions-of-distant-realms",
+                         "name":  "Visions de royaumes lointains",
+                         "description":  "Œil magique à volonté, sans emplacement."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-voice-of-the-chain-master",
+                         "name":  "Voix du maître des chaînes",
+                         "description":  "Communication et perception par le familier sur le même plan ; parole par sa bouche."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-whispers-of-the-grave",
+                         "name":  "Murmures de la tombe",
+                         "description":  "Communication avec les morts à volonté, sans emplacement."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-witch-sight",
+                         "name":  "Vision de sorcière",
+                         "description":  "Perception des formes véritables de certaines créatures à 9 m."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-aspect-of-the-moon",
+                         "name":  "Aspect de la lune",
+                         "description":  "Le grimoire dispense de sommeil ; le repos long exige toujours son temps de repos."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-cloak-of-flies",
+                         "name":  "Nuée de mouches",
+                         "description":  "Aura de mouches activée par action bonus ; effets sociaux et dégâts de poison. Recharge au repos court ou long."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-eldritch-smite",
+                         "name":  "Châtiment occulte",
+                         "description":  "Une fois par tour, dépense d’un emplacement d’occultiste lors d’une touche avec l’arme de pacte pour des dégâts de force."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-ghostly-gaze",
+                         "name":  "Regard fantomatique",
+                         "description":  "Vision à travers les objets sur 9 m, concentration jusqu’à 1 minute ; repos court ou long."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-gift-of-the-depths",
+                         "name":  "Don des profondeurs",
+                         "description":  "Respiration aquatique et nage ; respiration aquatique de groupe une fois par repos long sans emplacement."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-gift-of-the-ever-living-ones",
+                         "name":  "Don des éternels",
+                         "description":  "Dés de soins reçus maximisés lorsque le familier est à 30 m ou moins."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-grasp-of-hadar",
+                         "name":  "Étreinte de Hadar",
+                         "description":  "Une fois par tour, une touche de décharge occulte peut attirer la cible de 3 m."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-improved-pact-weapon",
+                         "name":  "Arme de pacte améliorée",
+                         "description":  "Arme de pacte utilisable comme focaliseur ; +1 aux attaques et dégâts sauf bonus magique existant ; nouvelles formes à distance."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-lance-of-lethargy",
+                         "name":  "Lance de léthargie",
+                         "description":  "Une fois par tour, une touche de décharge occulte peut réduire la vitesse de 3 m jusqu’à la fin du prochain tour."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-maddening-hex",
+                         "name":  "Maléfice affolant",
+                         "description":  "Action bonus : dégâts psychiques autour d’une cible maudite visible à 9 m."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-relentless-hex",
+                         "name":  "Maléfice implacable",
+                         "description":  "Action bonus : téléportation auprès d’une cible maudite visible à 9 m."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-shroud-of-shadow",
+                         "name":  "Linceul d’ombre",
+                         "description":  "Invisibilité à volonté, sans emplacement."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-tomb-of-levistus",
+                         "name":  "Tombe de Levistus",
+                         "description":  "Réaction à des dégâts : points de vie temporaires et emprisonnement glacé avec incapacitation et vulnérabilité au feu ; repos court ou long."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-tricksters-escape",
+                         "name":  "Échappatoire du filou",
+                         "description":  "Liberté de mouvement sur soi une fois par repos long, sans emplacement."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-bond-of-the-talisman",
+                         "name":  "Lien du talisman",
+                         "description":  "Téléportation entre l’occultiste et le porteur du talisman ; utilisations liées au bonus de maîtrise par repos long."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-eldritch-mind",
+                         "name":  "Esprit occulte",
+                         "description":  "Avantage aux sauvegardes de Constitution pour maintenir la concentration."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-far-scribe",
+                         "name":  "Scribe lointain",
+                         "description":  "Le grimoire permet communication à distance avec les personnes qui y inscrivent leur nom."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-gift-of-the-protectors",
+                         "name":  "Don des protecteurs",
+                         "description":  "Protection d’une personne inscrite au grimoire contre une chute à 0 PV ; recharge au repos long."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-investment-of-the-chain-master",
+                         "name":  "Investissement du maître des chaînes",
+                         "description":  "Améliore le familier de chaîne, ses déplacements, attaques et défenses."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-protection-of-the-talisman",
+                         "name":  "Protection du talisman",
+                         "description":  "Ajout d’un d4 à une sauvegarde ratée du porteur ; utilisations liées au bonus de maîtrise par repos long."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-rebuke-of-the-talisman",
+                         "name":  "Représailles du talisman",
+                         "description":  "Réaction contre un attaquant du porteur du talisman : dégâts psychiques et recul."
+                     },
+                     {
+                         "slug":  "eldritch-invocation-undying-servitude",
+                         "name":  "Servitude immortelle",
+                         "description":  "Animation des morts une fois par repos long, sans emplacement."
+                     },
+                     {
+                         "slug":  "totem-warrior-bear",
+                         "name":  "Ours — niveau 3",
+                         "description":  "Choix totémique de niveau 3 : Ours. Indépendant de l’animal choisi aux autres paliers."
+                     },
+                     {
+                         "slug":  "totem-warrior-eagle",
+                         "name":  "Aigle — niveau 3",
+                         "description":  "Choix totémique de niveau 3 : Aigle. Indépendant de l’animal choisi aux autres paliers."
+                     },
+                     {
+                         "slug":  "totem-warrior-wolf",
+                         "name":  "Loup — niveau 3",
+                         "description":  "Choix totémique de niveau 3 : Loup. Indépendant de l’animal choisi aux autres paliers."
+                     },
+                     {
+                         "slug":  "totem-warrior-elk",
+                         "name":  "Élan — niveau 3",
+                         "description":  "Choix totémique de niveau 3 : Élan. Indépendant de l’animal choisi aux autres paliers."
+                     },
+                     {
+                         "slug":  "totem-warrior-tiger",
+                         "name":  "Tigre — niveau 3",
+                         "description":  "Choix totémique de niveau 3 : Tigre. Indépendant de l’animal choisi aux autres paliers."
+                     },
+                     {
+                         "slug":  "totem-warrior-bear-6",
+                         "name":  "Ours — niveau 6",
+                         "description":  "Capacité de charge doublée ; avantage aux tests de Force pour pousser, tirer, soulever ou briser."
+                     },
+                     {
+                         "slug":  "totem-warrior-eagle-6",
+                         "name":  "Aigle — niveau 6",
+                         "description":  "Vision lointaine accrue ; la lumière faible ne gêne plus la Perception visuelle."
+                     },
+                     {
+                         "slug":  "totem-warrior-wolf-6",
+                         "name":  "Loup — niveau 6",
+                         "description":  "Pistage à allure rapide et déplacement furtif à allure normale en voyage."
+                     },
+                     {
+                         "slug":  "totem-warrior-elk-6",
+                         "name":  "Élan — niveau 6",
+                         "description":  "Allure de voyage doublée pour soi et jusqu’à dix compagnons proches, à pied ou montés."
+                     },
+                     {
+                         "slug":  "totem-warrior-tiger-6",
+                         "name":  "Tigre — niveau 6",
+                         "description":  "Deux maîtrises à choisir parmi Athlétisme, Acrobaties, Discrétion et Survie."
+                     },
+                     {
+                         "slug":  "totem-warrior-bear-14",
+                         "name":  "Ours — niveau 14",
+                         "description":  "Pendant la rage, gêne les attaques des ennemis proches contre les autres cibles, avec les exceptions de la capacité."
+                     },
+                     {
+                         "slug":  "totem-warrior-eagle-14",
+                         "name":  "Aigle — niveau 14",
+                         "description":  "Pendant la rage, vol limité au tour courant ; chute si rien ne soutient le personnage à la fin du tour."
+                     },
+                     {
+                         "slug":  "totem-warrior-wolf-14",
+                         "name":  "Loup — niveau 14",
+                         "description":  "Pendant la rage, après une touche de mêlée, une action bonus peut mettre à terre une cible de taille G ou inférieure."
+                     },
+                     {
+                         "slug":  "totem-warrior-elk-14",
+                         "name":  "Élan — niveau 14",
+                         "description":  "Pendant la rage, une action bonus permet de traverser l’espace d’une cible de taille G ou inférieure, avec sauvegarde de Force contre dégâts et chute."
+                     },
+                     {
+                         "slug":  "totem-warrior-tiger-14",
+                         "name":  "Tigre — niveau 14",
+                         "description":  "Pendant la rage, après une course de 6 m en ligne droite et une attaque de mêlée contre la cible, une action bonus permet une attaque supplémentaire."
+                     }
+                 ],
+    "groups":  [
+                   {
+                       "key":  "fighting-style-fighter",
+                       "name":  "Styles de combat — fighter",
+                       "uniqueness":  "character",
+                       "replacement":  "none",
+                       "replacementWindows":  [
+                                                  {
+                                                      "levels":  [
+                                                                     4,
+                                                                     6,
+                                                                     8,
+                                                                     12,
+                                                                     14,
+                                                                     16,
+                                                                     19
+                                                                 ],
+                                                      "prerequisites":  {
+                                                                            "features":  [
+                                                                                             "martial-versatility-fighter"
+                                                                                         ]
+                                                                        }
+                                                  }
+                                              ],
+                       "options":  [
+                                       {
+                                           "key":  "fighting-style-fighter-fighting-style-archery",
+                                           "feature":  "fighting-style-archery",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "fighting-style-fighter-fighting-style-defense",
+                                           "feature":  "fighting-style-defense",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "fighting-style-fighter-fighting-style-dueling",
+                                           "feature":  "fighting-style-dueling",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "fighting-style-fighter-fighting-style-great-weapon-fighting",
+                                           "feature":  "fighting-style-great-weapon-fighting",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "fighting-style-fighter-fighting-style-protection",
+                                           "feature":  "fighting-style-protection",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "fighting-style-fighter-fighting-style-two-weapon-fighting",
+                                           "feature":  "fighting-style-two-weapon-fighting",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "fighting-style-fighter-fighting-style-blind-fighting",
+                                           "feature":  "fighting-style-blind-fighting",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "TCE"
+                                       },
+                                       {
+                                           "key":  "fighting-style-fighter-fighting-style-interception",
+                                           "feature":  "fighting-style-interception",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "TCE"
+                                       },
+                                       {
+                                           "key":  "fighting-style-fighter-fighting-style-superior-technique",
+                                           "feature":  "fighting-style-superior-technique",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "TCE"
+                                       },
+                                       {
+                                           "key":  "fighting-style-fighter-fighting-style-thrown-weapon-fighting",
+                                           "feature":  "fighting-style-thrown-weapon-fighting",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "TCE"
+                                       },
+                                       {
+                                           "key":  "fighting-style-fighter-fighting-style-unarmed-fighting",
+                                           "feature":  "fighting-style-unarmed-fighting",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "TCE"
+                                       }
+                                   ],
+                       "replacementEventKey":  "fighting-style-fighter"
+                   },
+                   {
+                       "key":  "fighting-style-champion",
+                       "name":  "Styles de combat — champion",
+                       "uniqueness":  "character",
+                       "replacement":  "none",
+                       "replacementWindows":  [
+                                                  {
+                                                      "levels":  [
+                                                                     4,
+                                                                     6,
+                                                                     8,
+                                                                     12,
+                                                                     14,
+                                                                     16,
+                                                                     19
+                                                                 ],
+                                                      "prerequisites":  {
+                                                                            "features":  [
+                                                                                             "martial-versatility-fighter"
+                                                                                         ]
+                                                                        }
+                                                  }
+                                              ],
+                       "options":  [
+                                       {
+                                           "key":  "fighting-style-champion-fighting-style-archery",
+                                           "feature":  "fighting-style-archery",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "fighting-style-champion-fighting-style-defense",
+                                           "feature":  "fighting-style-defense",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "fighting-style-champion-fighting-style-dueling",
+                                           "feature":  "fighting-style-dueling",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "fighting-style-champion-fighting-style-great-weapon-fighting",
+                                           "feature":  "fighting-style-great-weapon-fighting",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "fighting-style-champion-fighting-style-protection",
+                                           "feature":  "fighting-style-protection",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "fighting-style-champion-fighting-style-two-weapon-fighting",
+                                           "feature":  "fighting-style-two-weapon-fighting",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "fighting-style-champion-fighting-style-blind-fighting",
+                                           "feature":  "fighting-style-blind-fighting",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "TCE"
+                                       },
+                                       {
+                                           "key":  "fighting-style-champion-fighting-style-interception",
+                                           "feature":  "fighting-style-interception",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "TCE"
+                                       },
+                                       {
+                                           "key":  "fighting-style-champion-fighting-style-superior-technique",
+                                           "feature":  "fighting-style-superior-technique",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "TCE"
+                                       },
+                                       {
+                                           "key":  "fighting-style-champion-fighting-style-thrown-weapon-fighting",
+                                           "feature":  "fighting-style-thrown-weapon-fighting",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "TCE"
+                                       },
+                                       {
+                                           "key":  "fighting-style-champion-fighting-style-unarmed-fighting",
+                                           "feature":  "fighting-style-unarmed-fighting",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "TCE"
+                                       }
+                                   ],
+                       "replacementEventKey":  "fighting-style-fighter"
+                   },
+                   {
+                       "key":  "fighting-style-paladin",
+                       "name":  "Styles de combat — paladin",
+                       "uniqueness":  "character",
+                       "replacement":  "none",
+                       "replacementWindows":  [
+                                                  {
+                                                      "levels":  [
+                                                                     4,
+                                                                     8,
+                                                                     12,
+                                                                     16,
+                                                                     19
+                                                                 ],
+                                                      "prerequisites":  {
+                                                                            "features":  [
+                                                                                             "martial-versatility-paladin"
+                                                                                         ]
+                                                                        }
+                                                  }
+                                              ],
+                       "options":  [
+                                       {
+                                           "key":  "fighting-style-paladin-fighting-style-defense",
+                                           "feature":  "fighting-style-defense",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "fighting-style-paladin-fighting-style-dueling",
+                                           "feature":  "fighting-style-dueling",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "fighting-style-paladin-fighting-style-great-weapon-fighting",
+                                           "feature":  "fighting-style-great-weapon-fighting",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "fighting-style-paladin-fighting-style-protection",
+                                           "feature":  "fighting-style-protection",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "fighting-style-paladin-fighting-style-blind-fighting",
+                                           "feature":  "fighting-style-blind-fighting",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "TCE"
+                                       },
+                                       {
+                                           "key":  "fighting-style-paladin-fighting-style-interception",
+                                           "feature":  "fighting-style-interception",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "TCE"
+                                       },
+                                       {
+                                           "key":  "fighting-style-paladin-fighting-style-blessed-warrior",
+                                           "feature":  "fighting-style-blessed-warrior",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "TCE"
+                                       }
+                                   ]
+                   },
+                   {
+                       "key":  "fighting-style-ranger",
+                       "name":  "Styles de combat — ranger",
+                       "uniqueness":  "character",
+                       "replacement":  "none",
+                       "replacementWindows":  [
+                                                  {
+                                                      "levels":  [
+                                                                     4,
+                                                                     8,
+                                                                     12,
+                                                                     16,
+                                                                     19
+                                                                 ],
+                                                      "prerequisites":  {
+                                                                            "features":  [
+                                                                                             "martial-versatility-ranger"
+                                                                                         ]
+                                                                        }
+                                                  }
+                                              ],
+                       "options":  [
+                                       {
+                                           "key":  "fighting-style-ranger-fighting-style-archery",
+                                           "feature":  "fighting-style-archery",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "fighting-style-ranger-fighting-style-defense",
+                                           "feature":  "fighting-style-defense",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "fighting-style-ranger-fighting-style-dueling",
+                                           "feature":  "fighting-style-dueling",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "fighting-style-ranger-fighting-style-two-weapon-fighting",
+                                           "feature":  "fighting-style-two-weapon-fighting",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "fighting-style-ranger-fighting-style-blind-fighting",
+                                           "feature":  "fighting-style-blind-fighting",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "TCE"
+                                       },
+                                       {
+                                           "key":  "fighting-style-ranger-fighting-style-thrown-weapon-fighting",
+                                           "feature":  "fighting-style-thrown-weapon-fighting",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "TCE"
+                                       },
+                                       {
+                                           "key":  "fighting-style-ranger-fighting-style-druidic-warrior",
+                                           "feature":  "fighting-style-druidic-warrior",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "TCE"
+                                       }
+                                   ]
+                   },
+                   {
+                       "key":  "fighting-style-college-of-swords",
+                       "name":  "Styles de combat — college-of-swords",
+                       "uniqueness":  "character",
+                       "replacement":  "none",
+                       "replacementWindows":  [
+
+                                              ],
+                       "options":  [
+                                       {
+                                           "key":  "fighting-style-college-of-swords-fighting-style-dueling",
+                                           "feature":  "fighting-style-dueling",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "fighting-style-college-of-swords-fighting-style-two-weapon-fighting",
+                                           "feature":  "fighting-style-two-weapon-fighting",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       }
+                                   ]
+                   },
+                   {
+                       "key":  "metamagic",
+                       "name":  "Métamagies",
+                       "uniqueness":  "character",
+                       "replacement":  "none",
+                       "replacementWindows":  [
+                                                  {
+                                                      "levels":  [
+                                                                     4,
+                                                                     8,
+                                                                     12,
+                                                                     16,
+                                                                     19
+                                                                 ],
+                                                      "prerequisites":  {
+                                                                            "features":  [
+                                                                                             "sorcerous-versatility"
+                                                                                         ]
+                                                                        },
+                                                      "excludesSpellReplacementBuckets":  [
+                                                                                              "cantrips"
+                                                                                          ]
+                                                  }
+                                              ],
+                       "options":  [
+                                       {
+                                           "key":  "metamagic-metamagic-careful-spell",
+                                           "feature":  "metamagic-careful-spell",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "metamagic-metamagic-distant-spell",
+                                           "feature":  "metamagic-distant-spell",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "metamagic-metamagic-empowered-spell",
+                                           "feature":  "metamagic-empowered-spell",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "metamagic-metamagic-extended-spell",
+                                           "feature":  "metamagic-extended-spell",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "metamagic-metamagic-heightened-spell",
+                                           "feature":  "metamagic-heightened-spell",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "metamagic-metamagic-quickened-spell",
+                                           "feature":  "metamagic-quickened-spell",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "metamagic-metamagic-subtle-spell",
+                                           "feature":  "metamagic-subtle-spell",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "metamagic-metamagic-twinned-spell",
+                                           "feature":  "metamagic-twinned-spell",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "metamagic-metamagic-seeking-spell",
+                                           "feature":  "metamagic-seeking-spell",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "TCE"
+                                       },
+                                       {
+                                           "key":  "metamagic-metamagic-transmuted-spell",
+                                           "feature":  "metamagic-transmuted-spell",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "TCE"
+                                       }
+                                   ]
+                   },
+                   {
+                       "key":  "pact-boon",
+                       "name":  "Faveur de pacte",
+                       "uniqueness":  "character",
+                       "replacement":  "none",
+                       "replacementWindows":  [
+
+                                              ],
+                       "options":  [
+                                       {
+                                           "key":  "pact-boon-pact-of-the-blade",
+                                           "feature":  "pact-of-the-blade",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "pact-boon-pact-of-the-chain",
+                                           "feature":  "pact-of-the-chain",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "pact-boon-pact-of-the-tome",
+                                           "feature":  "pact-of-the-tome",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "pact-boon-pact-of-the-talisman",
+                                           "feature":  "pact-of-the-talisman",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "TCE"
+                                       }
+                                   ]
+                   },
+                   {
+                       "key":  "eldritch-invocations",
+                       "name":  "Manifestations occultes",
+                       "uniqueness":  "character",
+                       "replacement":  "class-level",
+                       "replacementWindows":  [
+
+                                              ],
+                       "options":  [
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-agonizing-blast",
+                                           "feature":  "eldritch-invocation-agonizing-blast",
+                                           "prerequisites":  {
+                                                                 "spellsKnown":  [
+                                                                                     "eldritch-blast"
+                                                                                 ]
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-armor-of-shadows",
+                                           "feature":  "eldritch-invocation-armor-of-shadows",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-ascendant-step",
+                                           "feature":  "eldritch-invocation-ascendant-step",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  9
+                                                                                 }
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-beast-speech",
+                                           "feature":  "eldritch-invocation-beast-speech",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-beguiling-influence",
+                                           "feature":  "eldritch-invocation-beguiling-influence",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-bewitching-whispers",
+                                           "feature":  "eldritch-invocation-bewitching-whispers",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  7
+                                                                                 }
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-book-of-ancient-secrets",
+                                           "feature":  "eldritch-invocation-book-of-ancient-secrets",
+                                           "prerequisites":  {
+                                                                 "features":  [
+                                                                                  "pact-of-the-tome"
+                                                                              ]
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-chains-of-carceri",
+                                           "feature":  "eldritch-invocation-chains-of-carceri",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  15
+                                                                                 },
+                                                                 "features":  [
+                                                                                  "pact-of-the-chain"
+                                                                              ]
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-devils-sight",
+                                           "feature":  "eldritch-invocation-devils-sight",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-dreadful-word",
+                                           "feature":  "eldritch-invocation-dreadful-word",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  7
+                                                                                 }
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-eldritch-sight",
+                                           "feature":  "eldritch-invocation-eldritch-sight",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-eldritch-spear",
+                                           "feature":  "eldritch-invocation-eldritch-spear",
+                                           "prerequisites":  {
+                                                                 "spellsKnown":  [
+                                                                                     "eldritch-blast"
+                                                                                 ]
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-eyes-of-the-rune-keeper",
+                                           "feature":  "eldritch-invocation-eyes-of-the-rune-keeper",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-fiendish-vigor",
+                                           "feature":  "eldritch-invocation-fiendish-vigor",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-gaze-of-two-minds",
+                                           "feature":  "eldritch-invocation-gaze-of-two-minds",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-lifedrinker",
+                                           "feature":  "eldritch-invocation-lifedrinker",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  12
+                                                                                 },
+                                                                 "features":  [
+                                                                                  "pact-of-the-blade"
+                                                                              ]
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-mask-of-many-faces",
+                                           "feature":  "eldritch-invocation-mask-of-many-faces",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-master-of-myriad-forms",
+                                           "feature":  "eldritch-invocation-master-of-myriad-forms",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  15
+                                                                                 }
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-minions-of-chaos",
+                                           "feature":  "eldritch-invocation-minions-of-chaos",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  9
+                                                                                 }
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-mire-the-mind",
+                                           "feature":  "eldritch-invocation-mire-the-mind",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  5
+                                                                                 }
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-misty-visions",
+                                           "feature":  "eldritch-invocation-misty-visions",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-one-with-shadows",
+                                           "feature":  "eldritch-invocation-one-with-shadows",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  5
+                                                                                 }
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-otherworldly-leap",
+                                           "feature":  "eldritch-invocation-otherworldly-leap",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  9
+                                                                                 }
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-repelling-blast",
+                                           "feature":  "eldritch-invocation-repelling-blast",
+                                           "prerequisites":  {
+                                                                 "spellsKnown":  [
+                                                                                     "eldritch-blast"
+                                                                                 ]
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-sculptor-of-flesh",
+                                           "feature":  "eldritch-invocation-sculptor-of-flesh",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  7
+                                                                                 }
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-sign-of-ill-omen",
+                                           "feature":  "eldritch-invocation-sign-of-ill-omen",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  5
+                                                                                 }
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-thief-of-five-fates",
+                                           "feature":  "eldritch-invocation-thief-of-five-fates",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-thirsting-blade",
+                                           "feature":  "eldritch-invocation-thirsting-blade",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  5
+                                                                                 },
+                                                                 "features":  [
+                                                                                  "pact-of-the-blade"
+                                                                              ]
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-visions-of-distant-realms",
+                                           "feature":  "eldritch-invocation-visions-of-distant-realms",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  15
+                                                                                 }
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-voice-of-the-chain-master",
+                                           "feature":  "eldritch-invocation-voice-of-the-chain-master",
+                                           "prerequisites":  {
+                                                                 "features":  [
+                                                                                  "pact-of-the-chain"
+                                                                              ]
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-whispers-of-the-grave",
+                                           "feature":  "eldritch-invocation-whispers-of-the-grave",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  9
+                                                                                 }
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-witch-sight",
+                                           "feature":  "eldritch-invocation-witch-sight",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  15
+                                                                                 }
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-aspect-of-the-moon",
+                                           "feature":  "eldritch-invocation-aspect-of-the-moon",
+                                           "prerequisites":  {
+                                                                 "features":  [
+                                                                                  "pact-of-the-tome"
+                                                                              ]
+                                                             },
+                                           "source":  "XGE"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-cloak-of-flies",
+                                           "feature":  "eldritch-invocation-cloak-of-flies",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  5
+                                                                                 }
+                                                             },
+                                           "source":  "XGE"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-eldritch-smite",
+                                           "feature":  "eldritch-invocation-eldritch-smite",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  5
+                                                                                 },
+                                                                 "features":  [
+                                                                                  "pact-of-the-blade"
+                                                                              ]
+                                                             },
+                                           "source":  "XGE"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-ghostly-gaze",
+                                           "feature":  "eldritch-invocation-ghostly-gaze",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  7
+                                                                                 }
+                                                             },
+                                           "source":  "XGE"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-gift-of-the-depths",
+                                           "feature":  "eldritch-invocation-gift-of-the-depths",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  5
+                                                                                 }
+                                                             },
+                                           "source":  "XGE"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-gift-of-the-ever-living-ones",
+                                           "feature":  "eldritch-invocation-gift-of-the-ever-living-ones",
+                                           "prerequisites":  {
+                                                                 "features":  [
+                                                                                  "pact-of-the-chain"
+                                                                              ]
+                                                             },
+                                           "source":  "XGE"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-grasp-of-hadar",
+                                           "feature":  "eldritch-invocation-grasp-of-hadar",
+                                           "prerequisites":  {
+                                                                 "spellsKnown":  [
+                                                                                     "eldritch-blast"
+                                                                                 ]
+                                                             },
+                                           "source":  "XGE"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-improved-pact-weapon",
+                                           "feature":  "eldritch-invocation-improved-pact-weapon",
+                                           "prerequisites":  {
+                                                                 "features":  [
+                                                                                  "pact-of-the-blade"
+                                                                              ]
+                                                             },
+                                           "source":  "XGE"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-lance-of-lethargy",
+                                           "feature":  "eldritch-invocation-lance-of-lethargy",
+                                           "prerequisites":  {
+                                                                 "spellsKnown":  [
+                                                                                     "eldritch-blast"
+                                                                                 ]
+                                                             },
+                                           "source":  "XGE"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-maddening-hex",
+                                           "feature":  "eldritch-invocation-maddening-hex",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  5
+                                                                                 },
+                                                                 "anyOf":  [
+                                                                               {
+                                                                                   "spellsKnown":  [
+                                                                                                       "hex"
+                                                                                                   ]
+                                                                               },
+                                                                               {
+                                                                                   "features":  [
+                                                                                                    "hexblades-curse"
+                                                                                                ]
+                                                                               },
+                                                                               {
+                                                                                   "features":  [
+                                                                                                    "eldritch-invocation-sign-of-ill-omen"
+                                                                                                ]
+                                                                               }
+                                                                           ]
+                                                             },
+                                           "source":  "XGE"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-relentless-hex",
+                                           "feature":  "eldritch-invocation-relentless-hex",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  7
+                                                                                 },
+                                                                 "anyOf":  [
+                                                                               {
+                                                                                   "spellsKnown":  [
+                                                                                                       "hex"
+                                                                                                   ]
+                                                                               },
+                                                                               {
+                                                                                   "features":  [
+                                                                                                    "hexblades-curse"
+                                                                                                ]
+                                                                               },
+                                                                               {
+                                                                                   "features":  [
+                                                                                                    "eldritch-invocation-sign-of-ill-omen"
+                                                                                                ]
+                                                                               }
+                                                                           ]
+                                                             },
+                                           "source":  "XGE"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-shroud-of-shadow",
+                                           "feature":  "eldritch-invocation-shroud-of-shadow",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  15
+                                                                                 }
+                                                             },
+                                           "source":  "XGE"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-tomb-of-levistus",
+                                           "feature":  "eldritch-invocation-tomb-of-levistus",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  5
+                                                                                 }
+                                                             },
+                                           "source":  "XGE"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-tricksters-escape",
+                                           "feature":  "eldritch-invocation-tricksters-escape",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  7
+                                                                                 }
+                                                             },
+                                           "source":  "XGE"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-bond-of-the-talisman",
+                                           "feature":  "eldritch-invocation-bond-of-the-talisman",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  12
+                                                                                 },
+                                                                 "features":  [
+                                                                                  "pact-of-the-talisman"
+                                                                              ]
+                                                             },
+                                           "source":  "TCE"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-eldritch-mind",
+                                           "feature":  "eldritch-invocation-eldritch-mind",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "TCE"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-far-scribe",
+                                           "feature":  "eldritch-invocation-far-scribe",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  5
+                                                                                 },
+                                                                 "features":  [
+                                                                                  "pact-of-the-tome"
+                                                                              ]
+                                                             },
+                                           "source":  "TCE"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-gift-of-the-protectors",
+                                           "feature":  "eldritch-invocation-gift-of-the-protectors",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  9
+                                                                                 },
+                                                                 "features":  [
+                                                                                  "pact-of-the-tome"
+                                                                              ]
+                                                             },
+                                           "source":  "TCE"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-investment-of-the-chain-master",
+                                           "feature":  "eldritch-invocation-investment-of-the-chain-master",
+                                           "prerequisites":  {
+                                                                 "features":  [
+                                                                                  "pact-of-the-chain"
+                                                                              ]
+                                                             },
+                                           "source":  "TCE"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-protection-of-the-talisman",
+                                           "feature":  "eldritch-invocation-protection-of-the-talisman",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  7
+                                                                                 },
+                                                                 "features":  [
+                                                                                  "pact-of-the-talisman"
+                                                                              ]
+                                                             },
+                                           "source":  "TCE"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-rebuke-of-the-talisman",
+                                           "feature":  "eldritch-invocation-rebuke-of-the-talisman",
+                                           "prerequisites":  {
+                                                                 "features":  [
+                                                                                  "pact-of-the-talisman"
+                                                                              ]
+                                                             },
+                                           "source":  "TCE"
+                                       },
+                                       {
+                                           "key":  "eldritch-invocations-eldritch-invocation-undying-servitude",
+                                           "feature":  "eldritch-invocation-undying-servitude",
+                                           "prerequisites":  {
+                                                                 "classLevels":  {
+                                                                                     "warlock":  5
+                                                                                 }
+                                                             },
+                                           "source":  "TCE"
+                                       }
+                                   ]
+                   },
+                   {
+                       "key":  "totem-3",
+                       "name":  "Totem — niveau 3",
+                       "uniqueness":  "group",
+                       "replacement":  "none",
+                       "replacementWindows":  [
+
+                                              ],
+                       "options":  [
+                                       {
+                                           "key":  "totem-3-totem-warrior-bear",
+                                           "feature":  "totem-warrior-bear",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "totem-3-totem-warrior-eagle",
+                                           "feature":  "totem-warrior-eagle",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "totem-3-totem-warrior-wolf",
+                                           "feature":  "totem-warrior-wolf",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "totem-3-totem-warrior-elk",
+                                           "feature":  "totem-warrior-elk",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "SCAG"
+                                       },
+                                       {
+                                           "key":  "totem-3-totem-warrior-tiger",
+                                           "feature":  "totem-warrior-tiger",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "SCAG"
+                                       }
+                                   ]
+                   },
+                   {
+                       "key":  "totem-6",
+                       "name":  "Totem — niveau 6",
+                       "uniqueness":  "group",
+                       "replacement":  "none",
+                       "replacementWindows":  [
+
+                                              ],
+                       "options":  [
+                                       {
+                                           "key":  "totem-6-totem-warrior-bear-6",
+                                           "feature":  "totem-warrior-bear-6",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "totem-6-totem-warrior-eagle-6",
+                                           "feature":  "totem-warrior-eagle-6",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "totem-6-totem-warrior-wolf-6",
+                                           "feature":  "totem-warrior-wolf-6",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "totem-6-totem-warrior-elk-6",
+                                           "feature":  "totem-warrior-elk-6",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "SCAG"
+                                       },
+                                       {
+                                           "key":  "totem-6-totem-warrior-tiger-6",
+                                           "feature":  "totem-warrior-tiger-6",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "SCAG"
+                                       }
+                                   ]
+                   },
+                   {
+                       "key":  "totem-14",
+                       "name":  "Totem — niveau 14",
+                       "uniqueness":  "group",
+                       "replacement":  "none",
+                       "replacementWindows":  [
+
+                                              ],
+                       "options":  [
+                                       {
+                                           "key":  "totem-14-totem-warrior-bear-14",
+                                           "feature":  "totem-warrior-bear-14",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "totem-14-totem-warrior-eagle-14",
+                                           "feature":  "totem-warrior-eagle-14",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "totem-14-totem-warrior-wolf-14",
+                                           "feature":  "totem-warrior-wolf-14",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "PHB"
+                                       },
+                                       {
+                                           "key":  "totem-14-totem-warrior-elk-14",
+                                           "feature":  "totem-warrior-elk-14",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "SCAG"
+                                       },
+                                       {
+                                           "key":  "totem-14-totem-warrior-tiger-14",
+                                           "feature":  "totem-warrior-tiger-14",
+                                           "prerequisites":  {
+
+                                                             },
+                                           "source":  "SCAG"
+                                       }
+                                   ]
+                   }
+               ],
+    "grants":  [
+                   {
+                       "key":  "fighting-style-fighter-1",
+                       "group":  "fighting-style-fighter",
+                       "class":  "fighter",
+                       "subclass":  null,
+                       "feature":  "style-de-combat",
+                       "level":  1,
+                       "count":  1
+                   },
+                   {
+                       "key":  "fighting-style-champion-10",
+                       "group":  "fighting-style-champion",
+                       "class":  "fighter",
+                       "subclass":  "champion",
+                       "feature":  "additional-fighting-style",
+                       "level":  10,
+                       "count":  1
+                   },
+                   {
+                       "key":  "fighting-style-paladin-2",
+                       "group":  "fighting-style-paladin",
+                       "class":  "paladin",
+                       "subclass":  null,
+                       "feature":  "paladin-fighting-style",
+                       "level":  2,
+                       "count":  1
+                   },
+                   {
+                       "key":  "fighting-style-ranger-2",
+                       "group":  "fighting-style-ranger",
+                       "class":  "ranger",
+                       "subclass":  null,
+                       "feature":  "ranger-fighting-style",
+                       "level":  2,
+                       "count":  1
+                   },
+                   {
+                       "key":  "fighting-style-college-of-swords-3",
+                       "group":  "fighting-style-college-of-swords",
+                       "class":  "bard",
+                       "subclass":  "college-of-swords",
+                       "feature":  "college-of-swords-fighting-style",
+                       "level":  3,
+                       "count":  1
+                   },
+                   {
+                       "key":  "metamagic-3",
+                       "group":  "metamagic",
+                       "class":  "sorcerer",
+                       "subclass":  null,
+                       "feature":  "metamagic",
+                       "level":  3,
+                       "count":  2
+                   },
+                   {
+                       "key":  "metamagic-10",
+                       "group":  "metamagic",
+                       "class":  "sorcerer",
+                       "subclass":  null,
+                       "feature":  "metamagic",
+                       "level":  10,
+                       "count":  1
+                   },
+                   {
+                       "key":  "metamagic-17",
+                       "group":  "metamagic",
+                       "class":  "sorcerer",
+                       "subclass":  null,
+                       "feature":  "metamagic",
+                       "level":  17,
+                       "count":  1
+                   },
+                   {
+                       "key":  "pact-boon-3",
+                       "group":  "pact-boon",
+                       "class":  "warlock",
+                       "subclass":  null,
+                       "feature":  "pact-boon",
+                       "level":  3,
+                       "count":  1
+                   },
+                   {
+                       "key":  "eldritch-invocations-2",
+                       "group":  "eldritch-invocations",
+                       "class":  "warlock",
+                       "subclass":  null,
+                       "feature":  "eldritch-invocations",
+                       "level":  2,
+                       "count":  2
+                   },
+                   {
+                       "key":  "eldritch-invocations-5",
+                       "group":  "eldritch-invocations",
+                       "class":  "warlock",
+                       "subclass":  null,
+                       "feature":  "eldritch-invocations",
+                       "level":  5,
+                       "count":  1
+                   },
+                   {
+                       "key":  "eldritch-invocations-7",
+                       "group":  "eldritch-invocations",
+                       "class":  "warlock",
+                       "subclass":  null,
+                       "feature":  "eldritch-invocations",
+                       "level":  7,
+                       "count":  1
+                   },
+                   {
+                       "key":  "eldritch-invocations-9",
+                       "group":  "eldritch-invocations",
+                       "class":  "warlock",
+                       "subclass":  null,
+                       "feature":  "eldritch-invocations",
+                       "level":  9,
+                       "count":  1
+                   },
+                   {
+                       "key":  "eldritch-invocations-12",
+                       "group":  "eldritch-invocations",
+                       "class":  "warlock",
+                       "subclass":  null,
+                       "feature":  "eldritch-invocations",
+                       "level":  12,
+                       "count":  1
+                   },
+                   {
+                       "key":  "eldritch-invocations-15",
+                       "group":  "eldritch-invocations",
+                       "class":  "warlock",
+                       "subclass":  null,
+                       "feature":  "eldritch-invocations",
+                       "level":  15,
+                       "count":  1
+                   },
+                   {
+                       "key":  "eldritch-invocations-18",
+                       "group":  "eldritch-invocations",
+                       "class":  "warlock",
+                       "subclass":  null,
+                       "feature":  "eldritch-invocations",
+                       "level":  18,
+                       "count":  1
+                   },
+                   {
+                       "key":  "totem-3-3",
+                       "group":  "totem-3",
+                       "class":  "barbarian",
+                       "subclass":  "totem-warrior",
+                       "feature":  "totem-warrior-totem-spirit",
+                       "level":  3,
+                       "count":  1
+                   },
+                   {
+                       "key":  "totem-6-6",
+                       "group":  "totem-6",
+                       "class":  "barbarian",
+                       "subclass":  "totem-warrior",
+                       "feature":  "totem-warrior-aspect-of-the-beast",
+                       "level":  6,
+                       "count":  1
+                   },
+                   {
+                       "key":  "totem-14-14",
+                       "group":  "totem-14",
+                       "class":  "barbarian",
+                       "subclass":  "totem-warrior",
+                       "feature":  "totem-warrior-totemic-attunement",
+                       "level":  14,
+                       "count":  1
+                   }
+               ],
+    "gates":  [
+                  {
+                      "feature":  "totem-warrior-bear",
+                      "subclass":  "totem-warrior",
+                      "level":  3,
+                      "group":  "totem-3"
+                  },
+                  {
+                      "feature":  "totem-warrior-eagle",
+                      "subclass":  "totem-warrior",
+                      "level":  3,
+                      "group":  "totem-3"
+                  },
+                  {
+                      "feature":  "totem-warrior-wolf",
+                      "subclass":  "totem-warrior",
+                      "level":  3,
+                      "group":  "totem-3"
+                  },
+                  {
+                      "feature":  "totem-warrior-elk",
+                      "subclass":  "totem-warrior",
+                      "level":  3,
+                      "group":  "totem-3"
+                  },
+                  {
+                      "feature":  "totem-warrior-tiger",
+                      "subclass":  "totem-warrior",
+                      "level":  3,
+                      "group":  "totem-3"
+                  },
+                  {
+                      "feature":  "totem-warrior-bear",
+                      "subclass":  "totem-warrior",
+                      "level":  6,
+                      "group":  "totem-6"
+                  },
+                  {
+                      "feature":  "totem-warrior-eagle",
+                      "subclass":  "totem-warrior",
+                      "level":  6,
+                      "group":  "totem-6"
+                  },
+                  {
+                      "feature":  "totem-warrior-wolf",
+                      "subclass":  "totem-warrior",
+                      "level":  6,
+                      "group":  "totem-6"
+                  },
+                  {
+                      "feature":  "totem-warrior-elk",
+                      "subclass":  "totem-warrior",
+                      "level":  6,
+                      "group":  "totem-6"
+                  },
+                  {
+                      "feature":  "totem-warrior-tiger",
+                      "subclass":  "totem-warrior",
+                      "level":  6,
+                      "group":  "totem-6"
+                  },
+                  {
+                      "feature":  "totem-warrior-bear",
+                      "subclass":  "totem-warrior",
+                      "level":  14,
+                      "group":  "totem-14"
+                  },
+                  {
+                      "feature":  "totem-warrior-eagle",
+                      "subclass":  "totem-warrior",
+                      "level":  14,
+                      "group":  "totem-14"
+                  },
+                  {
+                      "feature":  "totem-warrior-wolf",
+                      "subclass":  "totem-warrior",
+                      "level":  14,
+                      "group":  "totem-14"
+                  },
+                  {
+                      "feature":  "totem-warrior-elk",
+                      "subclass":  "totem-warrior",
+                      "level":  14,
+                      "group":  "totem-14"
+                  },
+                  {
+                      "feature":  "totem-warrior-tiger",
+                      "subclass":  "totem-warrior",
+                      "level":  14,
+                      "group":  "totem-14"
+                  }
+              ]
+}

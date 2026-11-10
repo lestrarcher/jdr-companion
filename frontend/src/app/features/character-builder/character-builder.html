@@ -70,6 +70,9 @@
         <app-character-builder-identity [vm]="this" />
       } @else {
         <app-character-builder-training [vm]="this" />
+        @if (options() && !optionsLoading()) {
+          <app-character-feature-choices [load]="loadFeatures()" [disabled]="submitting()" (changed)="featureChanged($event)" />
+        }
       }
 
       <footer class="form-actions">
@@ -78,7 +81,7 @@
           <button type="button" (click)="nextStep()">Suivant : maîtrises et langues</button>
         } @else {
           <button type="button" class="secondary-button" (click)="previousStep()">Retour</button>
-          <button type="button" [disabled]="submitting() || !trainingComplete()" (click)="submit()">
+          <button type="button" [disabled]="submitting() || !trainingComplete() || !featuresComplete()" (click)="submit()">
             {{ submitting() ? 'Création en cours…' : 'Créer le personnage niveau 1' }}
           </button>
         }

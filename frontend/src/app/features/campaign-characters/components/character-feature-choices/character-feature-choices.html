@@ -1,0 +1,61 @@
+<section class="level-up-panel" aria-label="Choix de capacités" [attr.aria-busy]="loading() || saving()">
+  <header class="panel-header"><h3>Choix de capacités</h3></header>
+  @if (!activated()) { <p>Sélectionnez d’abord la classe et, si nécessaire, la sous-classe.</p> }
+  @if (loading()) { <p role="status">Chargement des choix…</p> }
+  @if (error()) {
+    <p class="choice-error" role="alert">{{ error() }}</p>
+    <button type="button" class="secondary-button" [disabled]="saving() || disabled()" (click)="retry()">Recharger les choix (efface la sélection en cours)</button>
+  }
+  @if (view(); as data) {
+    @if (!data.grants.length) { <p>Aucun choix de capacité disponible.</p> }
+    @if (data.issues.length) { <p role="status">Certains choix enregistrés ne sont plus valides. Une régularisation MJ est nécessaire.</p> }
+    @if (data.legacyAttributions?.length) { <p>Des attributions historiques sont conservées jusqu’à leur régularisation par le MJ.</p> }
+    @for (g of data.grants; track g.key) {
+      <fieldset [disabled]="disabled() || saving() || stale()">
+        <legend>{{ g.name }} — niveau {{ g.unlockLevel }}</legend>
+        @for (slot of slots(g); track slot) {
+          <div class="choice-slot">
+            @if (current(g, slot); as existing) {
+              <p>{{ label(g.key, existing.optionKey) }} @if (!existing.valid) { <strong>— à régulariser</strong> }</p>
+            }
+            @if (editable(g, slot)) {
+              <label class="field"><span>{{ current(g, slot) ? 'Remplacer (facultatif)' : 'Choix ' + slot }}</span>
+                <select [ngModel]="value(g, slot)" [ngModelOptions]="{standalone: true}" (ngModelChange)="select(g, slot, $event)">
+                  <option value="">{{ current(g, slot) ? 'Conserver le choix actuel' : 'Sélectionner une option' }}</option>
+                  @for (o of g.options; track o.key) {
+                    <option [value]="o.key" [disabled]="unavailable(o)">{{ o.name }}{{ o.reasons.length ? ' — prérequis à vérifier' : '' }}</option>
+                  }
+                </select>
+              </label>
+            } @else if (!current(g, slot)) { <p>Choix historique manquant : à régulariser par le MJ.</p> }
+            @if (option(g, slot); as o) {
+              @if (o.description) { <p>{{ o.description }}</p> }
+              @if (requirement(o.prerequisites)) { <p>Prérequis : {{ requirement(o.prerequisites) }}</p> }
+              @for (r of o.reasons; track $index) { <p class="choice-warning">{{ reasonLabel(r) }}</p> }
+              @if (o.alreadyAcquired) { <p>Capacité déjà acquise par une autre attribution ; celle-ci sera conservée.</p> }
+            }
+          </div>
+        }
+        <details><summary>Consulter les options et leurs prérequis</summary>
+          @for (o of g.options; track o.key) {
+            <article><strong>{{ o.name }}</strong> @if (o.source_code) { <small>{{ o.source_code }}</small> }
+              <p>{{ o.description }}</p>
+              @if (requirement(o.prerequisites)) { <p>Prérequis : {{ requirement(o.prerequisites) }}</p> }
+              @for (r of o.reasons; track $index) { <p class="choice-warning">{{ reasonLabel(r) }}</p> }
+            </article>
+          }
+        </details>
+      </fieldset>
+    }
+    @if (data.grants.length) { <p class="choice-note">Les prérequis affichés décrivent l’aperçu actuel. Les choix combinés et les remplacements seront vérifiés ensemble à l’enregistrement.</p> }
+    @if (save()) {
+      <label class="field"><span>Motif de régularisation MJ</span><textarea [ngModel]="reason()" (ngModelChange)="reason.set($event)" [disabled]="saving()" [ngModelOptions]="{standalone: true}"></textarea></label>
+      <button type="button" class="primary-button" [disabled]="saving() || !complete() || !reason().trim() || !selections().length" (click)="confirm()">{{ saving() ? 'Enregistrement…' : 'Enregistrer la régularisation' }}</button>
+    }
+    @if (data.history.length) {
+      <details><summary>Historique des choix</summary>
+        @for (h of data.history; track h.key) { <p>{{ label(h.grant_key, h.option_key) }} — niveau global {{ h.acquired_position }} — {{ h.active ? 'actif' : 'remplacé' }} @if (h.reason) { · {{ h.reason }} }</p> }
+      </details>
+    }
+  }
+</section>

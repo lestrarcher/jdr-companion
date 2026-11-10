@@ -1,6 +1,8 @@
 import { Component, input, OnInit, output, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Observable } from 'rxjs';
+import { FeatureChoiceLoader, FeatureChoiceSelection } from '@core/services/feature-choices-api.service';
+import { CharacterFeatureChoices } from '../character-feature-choices/character-feature-choices';
 import {
   AbilityAdvancementPayload,
   CharacterProfile,
@@ -44,11 +46,21 @@ interface LevelUpForm {
 @Component({
   selector: 'app-character-level-up',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, CharacterFeatureChoices],
   templateUrl: './character-level-up.html',
   styleUrls: ['./character-level-up.scss', './spell-cards.scss'],
 })
 export class CharacterLevelUp implements OnInit {
+  readonly featurePreview = input<FeatureChoiceLoader | null>(null);
+  protected readonly featureSelection = signal<FeatureChoiceSelection[]>([]);
+  protected readonly featuresComplete = signal(false);
+  protected featureChanged(value: { selections: FeatureChoiceSelection[]; complete: boolean }): void {
+    this.featureSelection.set(value.selections); this.featuresComplete.set(value.complete);
+  }
+  protected featureSubclassKey(): string | null {
+    const cls = this.selectedClassOption();
+    return cls?.subclasses.find(s => s.id === this.form.subclassId)?.slug ?? cls?.currentSubclass?.slug ?? null;
+  }
   readonly character = input.required<CharacterProfile>();
   readonly options = input.required<LevelUpOptions>();
   readonly abilities = input.required<AbilityReference[]>();
@@ -348,6 +360,7 @@ protected spellLabel(spellId: number): string {
   }
 
   protected classChanged(): void {
+    this.featuresComplete.set(false); this.featureSelection.set([]);
     this.form.subclassId = null;
     this.form.advancementMode = 'ability';
     this.form.abilityIncreaseMode = 'single';
@@ -363,6 +376,7 @@ protected spellLabel(spellId: number): string {
   }
 
   protected subclassChanged(): void {
+    this.featuresComplete.set(false); this.featureSelection.set([]);
     this.reloadTraining();
     this.reloadSpells();
   }
@@ -580,6 +594,10 @@ protected spellLabel(spellId: number): string {
 
   protected submit(): void {
     if (this.submitting()) return;
+    if (this.featurePreview() && !this.featuresComplete()) {
+      this.error.set('Complète les choix de capacités obligatoires avant de confirmer.');
+      return;
+    }
     if (!this.spellChoicesComplete()) {
       this.error.set('Complète les choix de sorts enregistrables avant de confirmer. Tu peux désactiver le remplacement facultatif.');
       return;
@@ -620,6 +638,7 @@ protected spellLabel(spellId: number): string {
     }
 
     const payload: LevelUpPayload = {
+      ...(this.featurePreview() ? { featureChoices: this.featureSelection() } : {}),
       ...(this.spellPreview() ? { spellChoices: this.selectedSpellChoices() } : {}),
       classId: classOption.id,
       ...(this.training() ? { training: this.buildTrainingPayload() } : {}),

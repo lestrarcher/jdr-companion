@@ -468,6 +468,12 @@
     }
   </div>
 
+    @if (featurePreview(); as preview) {
+      <app-character-feature-choices
+        [load]="preview" [classKey]="selectedClassOption()?.slug ?? ''" [subclassKey]="featureSubclassKey()"
+        [activated]="!!selectedClassOption() && (!selectedClassOption()?.subclassRequired || !!form.subclassId)"
+        [disabled]="submitting()" (changed)="featureChanged($event)" />
+    }
   <footer class="level-up-actions">
     <button type="button" class="secondary-button" (click)="cancel()">
       Annuler
@@ -476,7 +482,7 @@
     <button
       type="button"
       class="primary-button"
-      [disabled]="submitting() || !spellChoicesComplete() || !form.classId || (trainingPreview() && (trainingLoading() || !!trainingError() || !training() || !trainingComplete()))"
+      [disabled]="submitting() || (featurePreview() && !featuresComplete()) || !spellChoicesComplete() || !form.classId || (trainingPreview() && (trainingLoading() || !!trainingError() || !training() || !trainingComplete()))"
       (click)="submit()"
     >
       {{ submitting() ? 'Progression en cours…' : 'Confirmer le niveau' }}

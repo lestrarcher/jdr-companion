@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { AbilityKey } from './dnd-reference-api.service';
+import { FeatureChoiceSelection, FeatureChoiceView } from './feature-choices-api.service';
 
 export interface RacialAbilityChoicePayload {
   modifierId: number;
@@ -33,6 +34,7 @@ export interface BuilderSelection {
 }
 
 export interface BuilderOptions {
+  featureChoices?: FeatureChoiceView;
   proficiencyRules: {
     ruleId: number; key: string; label: string; sourceType: string;
     choiceCount: number; optionIds: number[];
@@ -58,6 +60,7 @@ export interface BuilderOptions {
 }
 
 export interface CreateStructuredCharacterPayload {
+  featureChoices?: FeatureChoiceSelection[];
   slug: string;
   name: string;
   playerName: string | null;

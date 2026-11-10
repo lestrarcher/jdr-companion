@@ -11,6 +11,7 @@ import {
   RouterLink,
 } from '@angular/router';
 import { finalize, forkJoin, Observable, map } from 'rxjs';
+import { FeatureChoicesApi } from '@core/services/feature-choices-api.service';
 
 import {
   CharacterProfile,
@@ -36,6 +37,9 @@ import {
   styleUrl: './player-level-up.scss',
 })
 export class PlayerLevelUp implements OnInit {
+  private readonly choicesApi = inject(FeatureChoicesApi);
+  protected readonly loadFeatures = (classKey: string, subclassKey: string | null) =>
+    this.choicesApi.playerPreview(this.accessToken, classKey, subclassKey);
   private readonly route =
     inject(ActivatedRoute);
 

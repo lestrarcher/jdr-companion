@@ -16,6 +16,7 @@ final readonly class CharacterFeatureResolver
     public function __construct(
         private CharacterFeatureRuleRepository $ruleRepository,
         private EntityManagerInterface $entityManager,
+        private ?FeatureChoiceReader $choices = null,
     ) {
     }
 
@@ -77,24 +78,25 @@ final readonly class CharacterFeatureResolver
      * @param array<string,int> $progressionValues
      * @return list<CharacterFeatureRule>
      */
-    public function applicableRules(Character $character, array $progressionValues = []): array
+    public function applicableRules(Character $character, array $progressionValues = [], bool $includeChoices = true): array
     {
         $owner = $character->getCampaign()->getOwner();
         $rules = array_values(array_filter($this->ruleRepository->findVisibleForOwner($owner),
             fn(CharacterFeatureRule $rule): bool => ReferenceVisibility::allows($rule, $owner)
                 && $this->isRuleApplicable($character, $rule, $progressionValues)));
-        foreach ($this->entityManager->getRepository(CharacterFeatureAssignment::class)->findBy(['character' => $character]) as $assignment) {
+        $rules = $this->choices?->filterBaseRules($character, $rules) ?? $rules;
+        foreach ($character->getId() === null ? [] : $this->entityManager->getRepository(CharacterFeatureAssignment::class)->findBy(['character' => $character]) as $assignment) {
             $definition = $assignment->getFeatureDefinition();
             if (ReferenceVisibility::allows($definition, $owner)
                 && !array_filter($rules, static fn (CharacterFeatureRule $rule): bool => $rule->getFeatureDefinition()->getId() === $definition->getId())) {
                 $rules[] = CharacterFeatureRule::forCharacter($definition, $character);
             }
         }
-        return $rules;
+        return $includeChoices && $this->choices !== null ? $this->choices->selectedRules($character, $rules) : $rules;
     }
 
     /** Source ownership for persisted acquisitions, never runtime permission. */
-    public function acquisitionRules(Character $character): array
+    public function acquisitionRules(Character $character, bool $includeChoices = true): array
     {
         $owner = $character->getCampaign()->getOwner();
         $rules = array_values(array_filter($this->ruleRepository->findVisibleForOwner($owner),
@@ -104,13 +106,14 @@ final readonly class CharacterFeatureResolver
                         ? $this->isRuleApplicable($character, $rule, [])
                         : $character->hasProgression($rule->getProgressionDefinition()))
                     : $this->isRuleApplicable($character, $rule, []))));
-        foreach ($this->entityManager->getRepository(CharacterFeatureAssignment::class)->findBy(['character' => $character]) as $assignment) {
+        $rules = $this->choices?->filterBaseRules($character, $rules) ?? $rules;
+        foreach ($character->getId() === null ? [] : $this->entityManager->getRepository(CharacterFeatureAssignment::class)->findBy(['character' => $character]) as $assignment) {
             if (ReferenceVisibility::allows($assignment->getFeatureDefinition(), $owner)
                 && !array_filter($rules, static fn (CharacterFeatureRule $rule): bool => $rule->getFeatureDefinition()->getId() === $assignment->getFeatureDefinition()->getId())) {
                 $rules[] = CharacterFeatureRule::forCharacter($assignment->getFeatureDefinition(), $character);
             }
         }
-        return $rules;
+        return $includeChoices && $this->choices !== null ? $this->choices->selectedRules($character, $rules) : $rules;
     }
 
     private function shouldReplaceRule(

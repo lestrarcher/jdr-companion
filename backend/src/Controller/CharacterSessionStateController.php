@@ -581,6 +581,7 @@ public function terminateActiveEffect(
                 authorization: $state,
                 training: $selection['training'],
                 spellChoices: $selection['spellChoices'],
+                featureChoices: $selection['featureChoices'],
             );
         } catch (
             \InvalidArgumentException

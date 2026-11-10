@@ -22,6 +22,7 @@ final readonly class PlayerSpellDirectory
         private CharacterSpellPreparation $preparation,
         private SpellbookLibrary $spellbooks,
         private PactTomeLibrary $pactTomes,
+        private PactInvocationAccess $pactInvocations,
         private SpellCatalogue $catalogue,
         private CharacterSpellAvailabilityContext $availabilityContext,
         private CharacterSpellCastEligibility $eligibility = new CharacterSpellCastEligibility(),
@@ -149,12 +150,13 @@ final readonly class PlayerSpellDirectory
                 ];
             }
             // Book of Shadows: physical source, never a known warlock spell or slot grant.
-            // Invocation is temporarily treated as active; actual invocation tracking comes later.
-            if ($item->getCategory() === 'spellbook' && $warlockLevel >= 3) {
+            // Rituals require an active Book of Ancient Secrets invocation.
+            if ($item->getCategory() === 'spellbook' && $warlockLevel >= 3 && $ownedItem->getPactOwner()?->getId() === $character->getId()) {
                 foreach ($this->pactTomes->entries($ownedItem) as $pactSpell) {
                     $spell = $this->em->find(\App\Entity\SpellDefinition::class, $pactSpell['spellId']);
                     if ($spell === null) continue;
                     $kind = $pactSpell['kind'];
+                    if ($kind === 'ritual' && !$this->pactInvocations->hasAncientSecrets($character)) continue;
                     $result[] = [
                         'key'=>'pact-tome:'.$ownedItem->getId().':'.$spell->getId(),
                         'policyId'=>null, 'alwaysPrepared'=>false,

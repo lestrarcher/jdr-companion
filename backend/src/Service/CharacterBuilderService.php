@@ -48,6 +48,7 @@ final readonly class CharacterBuilderService
         ?CharacterSubclass $startingSubclass = null,
         ?CharacterBackground $background = null,
         array $training = [],
+        array $featureChoices = [],
     ): Character {
         if (!$race->isSelectable()) throw new \DomainException('Cette race ne peut pas être sélectionnée.');
         if ($background !== null) ReferenceVisibility::requireVisible($background, $campaign->getOwner());
@@ -68,6 +69,7 @@ final readonly class CharacterBuilderService
             $startingSubclass,
             $background,
             $training,
+            $featureChoices,
         ): Character {
             $slug = strtolower(trim($slug));
             $name = trim($name);
@@ -116,6 +118,7 @@ final readonly class CharacterBuilderService
                 character: $character,
                 characterClass: $startingClass,
                 subclass: $startingSubclass,
+                featureChoices: $featureChoices,
             );
 
             $this->trainingService->apply($character, $training, $campaign->getOwner());

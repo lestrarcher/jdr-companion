@@ -2,6 +2,8 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize, forkJoin } from 'rxjs';
+import { FeatureChoicesApi, FeatureChoiceRepair } from '@core/services/feature-choices-api.service';
+import { CharacterFeatureChoices } from '../campaign-characters/components/character-feature-choices/character-feature-choices';
 import {
   CharacterApiService,
   CharacterProfile as CharacterProfileModel,
@@ -40,11 +42,15 @@ type CharacterEditor =
     CharacterEquipment,
     CharacterHistory,
     CharacterSpells,
+    CharacterFeatureChoices,
   ],
   templateUrl: './character-detail.html',
   styleUrl: './character-detail.scss',
 })
 export class CharacterDetail {
+  private readonly choicesApi = inject(FeatureChoicesApi);
+  protected readonly loadFeatures = () => this.choicesApi.get(this.campaignId, this.characterId);
+  protected readonly saveFeatures = (payload: FeatureChoiceRepair) => this.choicesApi.repair(this.campaignId, this.characterId, payload);
   protected readonly tabs = [
     { id: 'sheet', label: 'Fiche' },
     { id: 'equipment', label: 'Équipement' },

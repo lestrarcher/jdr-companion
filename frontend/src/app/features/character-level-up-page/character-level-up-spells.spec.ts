@@ -10,6 +10,7 @@ import { CharacterSessionStateApiService } from '@core/services/character-sessio
 import { CharacterLevelUp } from '../campaign-characters/components/character-level-up/character-level-up';
 import { CharacterLevelUpPage } from './character-level-up-page';
 import { PlayerLevelUp } from '../player-level-up/player-level-up';
+import { FeatureChoicesApi } from '@core/services/feature-choices-api.service';
 
 const spell = (id: number) => ({ id, name: `Sort ${id}`, school: 'abjuration', level: 1 });
 const opportunity = (ruleId: number | null = 10, remaining = 1): any => ({
@@ -186,6 +187,7 @@ describe.each([['MJ', CharacterLevelUpPage], ['joueur', PlayerLevelUp]] as const
       qualifySpell: vi.fn(() => of({qualification:{originKnown:true}})),
       levelUp: vi.fn(() => pending) };
     TestBed.configureTestingModule({providers: [provideRouter([]),
+      {provide: FeatureChoicesApi, useValue: {preview: () => of({grants:[],history:[],issues:[]}), playerPreview: () => of({grants:[],history:[],issues:[]})}},
       {provide: ActivatedRoute, useValue: {snapshot: {paramMap: convertToParamMap({campaignId:'1',characterId:'7',sessionId:'3',accessToken:'token'})}}},
       {provide: CharacterApiService, useValue: api}, {provide: CharacterSessionStateApiService, useValue: api}]});
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
