@@ -67,7 +67,10 @@ final readonly class CharacterTrainingPresenter
         $expertises = [];
         foreach ($refs['expertiseRules'] as $rule) {
             if (!$this->resolver->applicable($character, $rule)) continue;
+            $sourceType = $rule->getCharacterClass() ? 'class' : ($rule->getCharacterSubclass() ? 'subclass' : null);
+            $sourceId = $rule->getCharacterClass()?->getId() ?? $rule->getCharacterSubclass()?->getId();
             $expertises[] = ['ruleId' => $rule->getId(), 'key' => $rule->getImportKey(), 'label' => $rule->getLabel(),
+                'sourceType' => $sourceType, 'sourceId' => $sourceId,
                 'unlockLevel' => $rule->getUnlockLevel(), 'choiceCount' => $rule->getChoiceCount(),
                 'optionIds' => array_values(array_map(static fn ($d) => $d->getId(), array_filter($rule->getOptions()->toArray(),
                     static fn ($d) => isset($effective['proficiencies'][$d->getSlug()]) && (!isset($effective['expertises'][$d->getSlug()])
