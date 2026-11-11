@@ -335,6 +335,7 @@ export class CharacterBuilder {
       backgroundId: v.backgroundId || null,
       subclassId: v.subclassId || null,
       level: 1,
+      featureChoices: this.featureSelection(),
       racialFeatChoices: this.racialFeatChoices().filter(c => c.featId !== null)
         .map(c => ({ featId: c.featId as number, ability: c.ability })),
       training: {

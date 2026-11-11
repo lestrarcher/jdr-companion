@@ -24,7 +24,7 @@ final readonly class CharacterTrainingService
         return $this->apply($character, $payload, $character->getCampaign()->getOwner(), false);
     }
     /** Called on an ephemeral preview or inside the final builder transaction. */
-    public function apply(Character $character, array $payload, User $actor, bool $complete = true): array
+    public function apply(Character $character, array $payload, User $actor, bool $complete = true, array $previewFeatureIds = []): array
     {
         if ($character->getCampaign()->getOwner() !== $actor
             && ($actor->getId() === null || $character->getCampaign()->getOwner()->getId() !== $actor->getId())) throw new \DomainException('Seul le MJ peut attribuer ces choix.');
@@ -40,7 +40,7 @@ final readonly class CharacterTrainingService
         foreach ($refs['languages'] as $language) $languages[$language->getSlug()] = $language;
         foreach ($refs['proficiencyRules'] as $rule) {
             $rule->validateRule();
-            if ($this->proficiencies->isApplicable($character, $rule)) $rules[$rule->getId()] = $rule;
+            if ($this->proficiencies->isApplicable($character, $rule, $previewFeatureIds)) $rules[$rule->getId()] = $rule;
         }
         $seen = [];
         foreach ($this->list($payload, 'proficiencyChoices') as $selection) {

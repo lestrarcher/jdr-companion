@@ -163,11 +163,26 @@ final class CharacterBuilderController extends AbstractController
                 ReferenceVisibility::requireVisible($choice['feat'], $campaign->getOwner());
                 $character->addFeat((new CharacterFeat($character, $choice['feat']))->setChosenAbility($choice['ability'])->setAcquiredAtLevel(1));
             }
-            $trainingService->apply($character, $this->parseTraining($payload), $campaign->getOwner(), false);
             $choices = $featureChoices->preview($character);
+            // The character does not exist yet: resolve only options actually offered
+            // by an applicable feature grant, never arbitrary client-supplied IDs.
+            $selected = \App\Service\CharacterFeatureChoices::selections($payload['featureChoices'] ?? []);
+            $previewFeatureIds = [];
+            foreach ($selected as $selection) {
+                foreach ($choices['grants'] as $grant) {
+                    if ($grant['key'] !== $selection['grantKey']) continue;
+                    foreach ($grant['options'] as $option) {
+                        if ($option['key'] === $selection['optionKey']) {
+                            $previewFeatureIds[] = (int) $option['feature_id'];
+                        }
+                    }
+                }
+            }
+            $previewFeatureIds = array_values(array_unique($previewFeatureIds));
+            $trainingService->apply($character, $this->parseTraining($payload), $campaign->getOwner(), false, $previewFeatureIds);
             foreach ($choices['grants'] as &$grant) $grant['newAtLevel'] = true;
             unset($grant);
-            return $this->json([...$presenter->options($character), 'featureChoices'=>$choices]);
+            return $this->json([...$presenter->options($character, true, $previewFeatureIds), 'featureChoices'=>$choices]);
         } catch (\DomainException|\InvalidArgumentException|\JsonException $exception) {
             return $this->json(['message' => $exception->getMessage()], 422);
         }

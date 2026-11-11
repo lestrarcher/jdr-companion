@@ -9,10 +9,14 @@ use App\Entity\ProficiencyDefinition;
 use App\Entity\ProficiencyGrantRule;
 use App\Enum\ProficiencyAcquisitionMode;
 use App\Repository\ProficiencyGrantRuleRepository;
+use Doctrine\ORM\EntityManagerInterface;
 
 final readonly class CharacterProficiencyResolver
 {
-    public function __construct(private ProficiencyGrantRuleRepository $ruleRepository)
+    public function __construct(
+        private ProficiencyGrantRuleRepository $ruleRepository,
+        private EntityManagerInterface $em,
+    )
     {
     }
 
@@ -92,8 +96,22 @@ final readonly class CharacterProficiencyResolver
         return $result;
     }
 
-    public function isApplicable(Character $character, ProficiencyGrantRule $rule): bool
+    public function isApplicable(Character $character, ProficiencyGrantRule $rule, array $previewFeatureIds = []): bool
     {
+        if (($feature = $rule->getCharacterFeatureDefinition()) !== null) {
+            // Only active, explicitly selected options may grant proficiency.
+            // Never infer a choice from the parent race/class alone.
+            if ($character->getId() === null) {
+                return in_array($feature->getId(), $previewFeatureIds, true);
+            }
+            return (bool) $this->em->getConnection()->fetchOne(
+                'SELECT 1 FROM character_feature_choice c '
+                .'JOIN feature_choice_option o ON o.key = c.option_key '
+                .'JOIN feature_choice_grant g ON g.key = c.grant_key AND g.group_key = o.group_key '
+                .'WHERE c.character_id = ? AND c.active AND o.enabled AND g.enabled AND o.feature_id = ? LIMIT 1',
+                [$character->getId(), $feature->getId()],
+            );
+        }
         if (($class = $rule->getCharacterClass()) !== null) {
             if ($character->getLevelInClass($class) < $rule->getUnlockLevel()) {
                 return false;

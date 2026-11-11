@@ -157,19 +157,26 @@ export function characterProfileToCharacter(
     })
     .join(' / ');
 
-  const hitDice = profile.classSummary.map((entry) => {
+  // Un seul pool par type de dé, même en cas de multiclassage
+  // (par exemple Artificier 4 / Roublard 1 => d8 : 5).
+  const hitDiceMaximums = new Map<string, number>();
+  for (const entry of profile.classSummary) {
     const id = `d${entry.hitDie}`;
-    const storedPool = state.hitDice.find(
-      (candidate) => candidate.id === id,
-    );
+    hitDiceMaximums.set(id, (hitDiceMaximums.get(id) ?? 0) + entry.level);
+  }
 
-    return {
-      id,
-      die: id as Character['hitDice'][number]['die'],
-      current: storedPool?.current ?? entry.level,
-      maximum: entry.level,
-    };
-  });
+  const hitDice: Character['hitDice'] = Array.from(
+    hitDiceMaximums,
+    ([id, maximum]) => {
+      const storedPool = state.hitDice.find((candidate) => candidate.id === id);
+      return {
+        id,
+        die: id as Character['hitDice'][number]['die'],
+        current: storedPool?.current ?? maximum,
+        maximum,
+      };
+    },
+  );
 
   const progressions = profile.progressions.map(
     (progression) => {

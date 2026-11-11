@@ -31,6 +31,7 @@ export interface BuilderSelection {
   level: 1;
   racialFeatChoices: RacialFeatChoicePayload[];
   training: TrainingPayload;
+  featureChoices?: FeatureChoiceSelection[];
 }
 
 export interface BuilderOptions {
