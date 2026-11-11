@@ -36,12 +36,12 @@ final readonly class CharacterTrainingPresenter
         ], $character->getManualGrants()->toArray());
         return $output;
     }
-    public function options(Character $character, bool $includeManualGrantDetails = true): array
+    public function options(Character $character, bool $includeManualGrantDetails = true, array $previewFeatureIds = []): array
     {
         $refs = $this->references->load($character);
         $effective = $this->resolver->resolve($character, $refs);
         $rules = [];
-        foreach ($refs['proficiencyRules'] as $rule) if ($this->proficiencies->isApplicable($character, $rule)) $rules[] = $this->proficiencyRule($rule);
+        foreach ($refs['proficiencyRules'] as $rule) if ($this->proficiencies->isApplicable($character, $rule, $previewFeatureIds)) $rules[] = $this->proficiencyRule($rule);
         $languages = [];
         foreach ($this->resolver->languageRequirements($character, $refs) as $requirement) {
             $languages[] = [
@@ -131,7 +131,7 @@ final readonly class CharacterTrainingPresenter
     private function proficiencyRule(ProficiencyGrantRule $rule): array
     {
         $type = 'feat'; $source = $rule->getFeat();
-        foreach (['race' => $rule->getCharacterRace(), 'class' => $rule->getCharacterClass(), 'subclass' => $rule->getCharacterSubclass(), 'background' => $rule->getCharacterBackground()] as $key => $value) {
+        foreach (['feature' => $rule->getCharacterFeatureDefinition(), 'race' => $rule->getCharacterRace(), 'class' => $rule->getCharacterClass(), 'subclass' => $rule->getCharacterSubclass(), 'background' => $rule->getCharacterBackground()] as $key => $value) {
             if ($value) { $type = $key; $source = $value; break; }
         }
         return ['ruleId' => $rule->getId(), 'key' => $rule->getImportKey(), 'label' => $rule->getLabel(),

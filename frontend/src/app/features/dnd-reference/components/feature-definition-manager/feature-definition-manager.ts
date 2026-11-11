@@ -1,3 +1,4 @@
+import { FeatureProficiencyEditorApiService, ProficiencyDefinition, FeatureProficiencyRule } from '@core/services/feature-proficiency-editor-api.service';
 import { CampaignApiService, CampaignApiResponse } from '@core/services/campaign-api.service';
 import { CharacterApiService, CharacterApiResponse } from '@core/services/character-api.service';
 import { CharacterFeatureAssignmentApiService, FeatureAssignment } from '@core/services/character-feature-assignment-api.service';
@@ -8,6 +9,7 @@ import { ReferenceCatalogueEditorApiService } from '@core/services/reference-cat
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
+import { FeatureChoiceEditorApiService, CustomChoiceRow } from '@core/services/feature-choice-editor-api.service';
 import {
   CharacterFeatureApiService,
   CharacterFeatureDefinition,
@@ -40,6 +42,176 @@ export class FeatureDefinitionManager {
   protected readonly viewOrigin = inject(REFERENCE_VIEW_ORIGIN);
 
   private readonly api = inject(ReferenceFeatureEditorApiService);
+  private readonly choicesApi = inject(FeatureChoiceEditorApiService);
+  private readonly proficiencyApi = inject(FeatureProficiencyEditorApiService);
+  protected readonly proficiencyDefinitions = signal<ProficiencyDefinition[]>([]);
+  protected readonly proficiencyRules = signal<FeatureProficiencyRule[]>([]);
+  protected readonly proficiencyBusy = signal(false);
+  protected readonly proficiencyMessage = signal('');
+  protected proficiencyFeatureId: number | null = null;
+  protected proficiencyRuleId: number | null = null;
+  protected proficiencyLabel = '';
+  protected proficiencyCount = 1;
+  protected proficiencyOptionIds: number[] = [];
+  protected readonly proficiencyType = signal('skill');
+  protected readonly proficiencyTypes = computed(() => [...new Set(this.proficiencyDefinitions().map(d => d.type))]);
+  protected readonly filteredProficiencies = computed(() => this.proficiencyDefinitions().filter(d => d.type === this.proficiencyType()));
+
+  protected editProficiencies(featureId: number): void {
+    this.proficiencyFeatureId = featureId;
+    this.proficiencyRuleId = null;
+    this.proficiencyLabel = '';
+    this.proficiencyCount = 1;
+    this.proficiencyOptionIds = [];
+    this.proficiencyMessage.set('');
+    this.proficiencyBusy.set(true);
+    forkJoin({definitions: this.proficiencyApi.definitions(), rules: this.proficiencyApi.rules(featureId)}).subscribe({
+      next: ({definitions, rules}) => {
+        if (this.proficiencyFeatureId !== featureId) return;
+        this.proficiencyDefinitions.set(definitions);
+        this.proficiencyRules.set(rules);
+        this.proficiencyType.set(definitions.find(d => d.type === 'skill')?.type ?? definitions[0]?.type ?? 'skill');
+        this.proficiencyBusy.set(false);
+      },
+      error: e => { this.proficiencyBusy.set(false); this.proficiencyMessage.set(e.error?.detail ?? 'Impossible de charger les maîtrises.'); },
+    });
+  }
+
+  protected loadProficiencyRule(id: number | null): void {
+    const rule = this.proficiencyRules().find(r => r.id === id);
+    this.proficiencyRuleId = rule?.id ?? null;
+    this.proficiencyLabel = rule?.label ?? '';
+    this.proficiencyCount = rule?.choiceCount ?? 1;
+    this.proficiencyOptionIds = rule?.options.map(o => Number(o.id)) ?? [];
+    this.proficiencyMessage.set('');
+  }
+
+  protected setProficiencyType(type: string): void { this.proficiencyType.set(type); }
+
+  protected toggleProficiency(id: number, checked: boolean): void {
+    this.proficiencyOptionIds = checked
+      ? [...new Set([...this.proficiencyOptionIds, id])]
+      : this.proficiencyOptionIds.filter(value => value !== id);
+  }
+
+  protected saveProficiency(): void {
+    const featureId = this.proficiencyFeatureId;
+    if (featureId === null || !this.proficiencyLabel.trim() || !this.proficiencyOptionIds.length || this.proficiencyCount > this.proficiencyOptionIds.length || this.proficiencyBusy()) return;
+    this.proficiencyBusy.set(true);
+    this.proficiencyApi.save(featureId, {
+      ...(this.proficiencyRuleId === null ? {} : {id: this.proficiencyRuleId}),
+      label: this.proficiencyLabel.trim(), choiceCount: Number(this.proficiencyCount), optionIds: this.proficiencyOptionIds,
+    }).subscribe({
+      next: () => {
+        this.proficiencyBusy.set(false);
+        this.editProficiencies(featureId);
+        this.proficiencyMessage.set('Règle de maîtrise enregistrée.');
+      },
+      error: e => { this.proficiencyBusy.set(false); this.proficiencyMessage.set(e.error?.detail ?? e.error?.message ?? 'Enregistrement impossible.'); },
+    });
+  }
+
+  protected readonly activeEditorTab = signal<'general' | 'choices'>('general');
+  protected readonly choiceRows = signal<CustomChoiceRow[]>([]);
+  protected readonly choiceRules = signal<{ id: number; sourceName: string; unlockLevel: number }[]>([]);
+  protected readonly choiceBusy = signal(false);
+  protected readonly choiceError = signal<string | null>(null);
+  protected readonly choiceSuccess = signal<string | null>(null);
+  protected choiceRuleId: number | null = null;
+  protected choiceName = '';
+  protected choiceCount = 1;
+  protected choiceUniqueness: 'group' | 'character' | 'none' = 'group';
+  protected choiceReplacement: 'none' | 'class-level' | 'grant-level' = 'none';
+  protected choiceOptionIds: number[] = [];
+  protected choiceAddId: number | null = null;
+  protected newChoiceName = '';
+  protected newChoiceDescription = '';
+  protected newChoiceActivation: FeatureActivationType = 'passive';
+  protected readonly creatingChoiceOption = signal(false);
+
+  protected createChoiceOption(): void {
+    const name = this.newChoiceName.trim();
+    if (!name || this.selectedFeatureId() === null || this.contextReadOnly || this.creatingChoiceOption()) return;
+    const slug = `choice-${this.selectedFeatureId()}-${name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${Date.now().toString(36)}`;
+    this.creatingChoiceOption.set(true);
+    this.choiceError.set(null);
+    this.api.createFeature({
+      slug, name, description: this.newChoiceDescription.trim() || null,
+      activationType: this.newChoiceActivation, resourceDefinitionId: null,
+      visible: true, custom: true,
+    }).subscribe({
+      next: ({ feature }) => {
+        this.replaceFeature(feature);
+        this.choiceOptionIds = [...this.choiceOptionIds, feature.id];
+        this.newChoiceName = '';
+        this.newChoiceDescription = '';
+        this.newChoiceActivation = 'passive';
+        this.creatingChoiceOption.set(false);
+        this.choiceSuccess.set('Option créée et ajoutée à la sélection. Enregistre les choix pour confirmer son rattachement.');
+      },
+      error: error => {
+        this.creatingChoiceOption.set(false);
+        this.choiceError.set(error.error?.detail ?? error.error?.message ?? 'Création de la sous-capacité impossible.');
+      },
+    });
+  }
+
+
+  protected openChoices(): void {
+    const id = this.selectedFeatureId();
+    if (id === null || this.contextReadOnly) return;
+    this.activeEditorTab.set('choices');
+    this.choiceBusy.set(true);
+    this.choiceError.set(null);
+    forkJoin({ choices: this.choicesApi.get(id), rules: this.api.getRules() }).subscribe({
+      next: ({ choices, rules }) => {
+        if (this.selectedFeatureId() !== id) return;
+        this.choiceRows.set(choices.choices);
+        this.choiceRules.set(rules.rules.filter(r => r.feature.id === id && (r.origin === 'CUSTOM' || r.origin === 'OFFICIAL') && (r.sourceType === 'class' || r.sourceType === 'subclass' || r.sourceType === 'race')).map(r => ({ id: r.id, sourceName: r.sourceName, unlockLevel: r.unlockLevel })));
+        this.choiceBusy.set(false);
+        this.loadChoiceRow(this.choiceRows()[0] ?? null);
+      },
+      error: e => { this.choiceBusy.set(false); this.choiceError.set(e.error?.detail ?? 'Impossible de charger les choix.'); },
+    });
+  }
+
+  protected choiceRowForRule(ruleId: number): CustomChoiceRow | null { return this.choiceRows().find(row => row.rule_id === ruleId) ?? null; }
+
+  protected changeChoiceRule(ruleId: number): void { this.loadChoiceRow(this.choiceRowForRule(ruleId)); this.choiceRuleId = ruleId; }
+
+  protected loadChoiceRow(row: CustomChoiceRow | null): void {
+    this.choiceRuleId = row?.rule_id ?? this.choiceRules()[0]?.id ?? null;
+    this.choiceName = row?.name ?? this.selectedFeature()?.name ?? '';
+    this.choiceCount = row?.choice_count ?? 1;
+    this.choiceUniqueness = row?.uniqueness ?? 'group';
+    this.choiceReplacement = row?.replacement ?? 'none';
+    this.choiceOptionIds = row?.options.map(o => o.featureId) ?? [];
+    this.choiceAddId = null;
+  }
+
+  protected choiceOptionName(id: number): string { return this.features().find(f => f.id === id)?.name ?? `Capacité #${id}`; }
+
+  protected removeChoiceOption(id: number): void { this.choiceOptionIds = this.choiceOptionIds.filter(value => value !== id); }
+
+  protected addChoiceOption(): void {
+    if (this.choiceAddId === null || this.choiceAddId === this.selectedFeatureId() || this.choiceOptionIds.includes(this.choiceAddId)) return;
+    this.choiceOptionIds = [...this.choiceOptionIds, this.choiceAddId];
+    this.choiceAddId = null;
+  }
+
+  protected saveChoices(): void {
+    const id = this.selectedFeatureId();
+    if (id === null || this.choiceRuleId === null || this.choiceBusy() || this.contextReadOnly) return;
+    this.choiceBusy.set(true); this.choiceError.set(null); this.choiceSuccess.set(null);
+    this.choicesApi.save(id, {
+      ruleId: this.choiceRuleId, name: this.choiceName, choiceCount: Number(this.choiceCount),
+      uniqueness: this.choiceUniqueness, replacement: this.choiceReplacement, options: this.choiceOptionIds,
+    }).subscribe({
+      next: () => { this.choiceBusy.set(false); this.choiceSuccess.set('Choix enregistrés.'); this.openChoices(); },
+      error: e => { this.choiceBusy.set(false); this.choiceError.set(e.error?.detail ?? e.error?.message ?? 'Enregistrement impossible.'); },
+    });
+  }
+
   private readonly campaignApi = inject(CampaignApiService);
   private readonly characterApi = inject(CharacterApiService);
   private readonly assignmentApi = inject(CharacterFeatureAssignmentApiService);
@@ -263,7 +435,10 @@ export class FeatureDefinitionManager {
   }
 
   protected selectFeature(feature: CharacterFeatureDefinition): void {
+    this.activeEditorTab.set('general');
+    this.proficiencyFeatureId = null;
     this.selectedFeatureId.set(feature.id);
+    this.editProficiencies(feature.id);
     this.loadFeatureAssignments(feature.id);
     this.spellGrants.set([]); this.spellGrantEditing.set(false); this.loadSpellGrants(feature.id);
     this.form = {
@@ -288,6 +463,7 @@ export class FeatureDefinitionManager {
     });
   }
   protected startCreation(): void {
+    this.activeEditorTab.set('general');
     this.selectedFeatureId.set(null);
     this.featureAssignments.set([]);
     this.spellGrants.set([]); this.spellGrantEditing.set(false);

@@ -148,6 +148,11 @@
       </section>
     }
 
+    <nav class="feature-editor-tabs" aria-label="Édition de la capacité">
+      <button type="button" [class.active]="activeEditorTab() === 'general'" (click)="activeEditorTab.set('general')">Général</button>
+      <button type="button" [class.active]="activeEditorTab() === 'choices'" [disabled]="selectedFeatureId() === null || contextReadOnly" (click)="openChoices()">Choix disponibles</button>
+    </nav>
+    @if (activeEditorTab() === 'general') {
     <form class="feature-form" (ngSubmit)="save()">
       @if (readOnly()) { <p>Référence officielle en consultation.</p> }
       <fieldset [disabled]="readOnly() || submitting()" style="border:0;padding:0;margin:0;min-width:0">
@@ -400,5 +405,98 @@
         </button>
       </footer>
     </fieldset></form>
+      @if (selectedFeatureId() !== null) {
+          <section class="feature-proficiency-panel">
+            <header class="feature-proficiency-panel__header">
+              <h4>Maîtrises octroyées par cette capacité</h4>
+              <p>Attribue des maîtrises automatiquement ou laisse le personnage choisir parmi les options autorisées.</p>
+            </header>
+            @if (proficiencyFeatureId !== null) {
+              <fieldset class="feature-proficiency-panel__fieldset" [disabled]="contextReadOnly || proficiencyBusy()">
+                @if (proficiencyBusy()) { <p class="feature-proficiency-panel__status">Chargement…</p> }
+                @if (proficiencyMessage()) { <p class="feature-proficiency-panel__status" role="status">{{ proficiencyMessage() }}</p> }
+                <label class="field"><span>Règle existante / nouvelle règle</span>
+                  <select [ngModel]="proficiencyRuleId" (ngModelChange)="loadProficiencyRule($event)">
+                    <option [ngValue]="null">Nouvelle règle</option>
+                    @for (rule of proficiencyRules(); track rule.id) { <option [ngValue]="rule.id">{{ rule.label }}</option> }
+                  </select>
+                </label>
+                <div class="feature-proficiency-panel__fields">
+                  <label class="field"><span>Libellé</span><input [(ngModel)]="proficiencyLabel" placeholder="Ex. Habileté kobold" /></label>
+                  <label class="field"><span>Nombre de choix (0 = automatique)</span><input type="number" min="0" [(ngModel)]="proficiencyCount" /></label>
+                </div>
+                <div class="feature-proficiency-panel__options-header">
+                  <label class="field"><span>Catégorie</span>
+                    <select [ngModel]="proficiencyType()" (ngModelChange)="setProficiencyType($event)">
+                      @for (type of proficiencyTypes(); track type) { <option [ngValue]="type">{{ type }}</option> }
+                    </select>
+                  </label>
+                  <span class="feature-proficiency-panel__count">{{ proficiencyOptionIds.length }} sélectionnée(s)</span>
+                </div>
+                <div class="feature-proficiency-panel__options">
+                  @for (definition of filteredProficiencies(); track definition.id) {
+                    <label class="feature-proficiency-panel__option" [class.feature-proficiency-panel__option--checked]="proficiencyOptionIds.includes(definition.id)">
+                      <input type="checkbox" [ngModel]="proficiencyOptionIds.includes(definition.id)" (ngModelChange)="toggleProficiency(definition.id, $event)" />
+                      <span>{{ definition.name }}</span>
+                    </label>
+                  } @empty { <p>Aucune maîtrise disponible pour cette catégorie.</p> }
+                </div>
+                <div class="feature-proficiency-panel__actions">
+                  <button type="button" class="primary-button" [disabled]="!proficiencyLabel.trim() || !proficiencyOptionIds.length || proficiencyCount < 0 || proficiencyCount > proficiencyOptionIds.length" (click)="saveProficiency()">Enregistrer les maîtrises</button>
+                </div>
+              </fieldset>
+            }
+          </section>
+      }
+    } @else {
+      <section class="feature-choice-editor" aria-label="Configuration des choix">
+        <h3>Capacités proposées</h3>
+        <p>La capacité mère doit être attribuée à une classe ou sous-classe dans l'onglet « Attributions » avant de configurer ses choix.</p>
+        @if (choiceError()) { <p class="message message--error" role="alert">{{ choiceError() }}</p> }
+        @if (choiceSuccess()) { <p class="message message--success">{{ choiceSuccess() }}</p> }
+        @if (choiceBusy()) { <p>Chargement…</p> }
+        @if (!choiceRules().length && !choiceBusy()) {
+          <p>Aucune attribution de classe, sous-classe ou race trouvée pour cette capacité.</p>
+        } @else {
+          <div class="form-grid">
+            <label class="field field--wide"><span>Attribution de la capacité mère</span>
+              <select [ngModel]="choiceRuleId" (ngModelChange)="changeChoiceRule($event)">
+                @for (rule of choiceRules(); track rule.id) { <option [ngValue]="rule.id">{{ rule.sourceName }} — niveau {{ rule.unlockLevel }}</option> }
+              </select>
+            </label>
+            <label class="field"><span>Nom du groupe</span><input [(ngModel)]="choiceName" [disabled]="contextReadOnly" /></label>
+            <label class="field"><span>Nombre de choix</span><input type="number" min="1" max="20" [(ngModel)]="choiceCount" [disabled]="contextReadOnly" /></label>
+            <label class="field"><span>Unicité</span><select [(ngModel)]="choiceUniqueness" [disabled]="contextReadOnly"><option value="group">Dans le groupe</option><option value="character">Par personnage</option><option value="none">Aucune</option></select></label>
+            <label class="field"><span>Remplacement</span><select [(ngModel)]="choiceReplacement" [disabled]="contextReadOnly"><option value="none">Aucun</option><option value="class-level">Niveau de classe</option><option value="grant-level">Niveau d'octroi</option></select></label>
+          </div>
+          <h4>Options rattachées</h4>
+          @for (id of choiceOptionIds; track id) {
+            <div class="feature-choice-editor__option"><span>{{ choiceOptionName(id) }}</span><button type="button" [disabled]="contextReadOnly" (click)="removeChoiceOption(id)">Retirer</button></div>
+          }
+          <div class="feature-choice-editor__add">
+            <select [(ngModel)]="choiceAddId" [disabled]="contextReadOnly">
+              <option [ngValue]="null">Sélectionner une capacité existante…</option>
+              @for (feature of features(); track feature.id) {
+                @if (feature.id !== selectedFeatureId() && !choiceOptionIds.includes(feature.id)) { <option [ngValue]="feature.id">{{ feature.name }}</option> }
+              }
+            </select>
+            <button type="button" [disabled]="contextReadOnly || choiceAddId === null" (click)="addChoiceOption()">Rattacher</button>
+          </div>
+          <fieldset [disabled]="contextReadOnly || creatingChoiceOption()" class="feature-choice-editor__create">
+            <legend>Créer une sous-capacité</legend>
+            <div class="form-grid">
+              <label class="field"><span>Nom</span><input [(ngModel)]="newChoiceName" placeholder="Ex. Défense" /></label>
+              <label class="field"><span>Activation</span><select [(ngModel)]="newChoiceActivation">
+                @for (activation of activationTypes(); track activation.value) { <option [ngValue]="activation.value">{{ activation.label }}</option> }
+              </select></label>
+              <label class="field field--wide"><span>Description</span><textarea rows="3" [(ngModel)]="newChoiceDescription"></textarea></label>
+            </div>
+            <button type="button" [disabled]="!newChoiceName.trim() || creatingChoiceOption()" (click)="createChoiceOption()">Créer et ajouter cette option</button>
+            <p>Après création, sélectionne cette sous-capacité dans la bibliothèque pour configurer ses sorts, ressources et autres effets disponibles.</p>
+          </fieldset>
+          <button type="button" class="primary-button" [disabled]="contextReadOnly || choiceBusy() || !choiceRuleId || choiceOptionIds.length < choiceCount" (click)="saveChoices()">Enregistrer les choix</button>
+        }
+      </section>
+    }
   </div>
 </section>

@@ -58,6 +58,22 @@ class ProficiencyGrantRule
     #[ORM\JoinColumn(onDelete: 'CASCADE')]
     private ?CharacterSubclass $characterSubclass = null;
 
+    #[ORM\ManyToOne(targetEntity: CharacterFeatureDefinition::class)]
+    #[ORM\JoinColumn(onDelete: 'CASCADE')]
+    private ?CharacterFeatureDefinition $characterFeatureDefinition = null;
+
+    public function getCharacterFeatureDefinition(): ?CharacterFeatureDefinition
+    {
+        return $this->characterFeatureDefinition;
+    }
+
+    public function setCharacterFeatureDefinition(?CharacterFeatureDefinition $feature): static
+    {
+        $this->clearSources();
+        $this->characterFeatureDefinition = $feature;
+        return $this;
+    }
+
     #[ORM\ManyToOne(targetEntity: Feat::class)]
     #[ORM\JoinColumn(onDelete: 'CASCADE')]
     private ?Feat $feat = null;
@@ -217,6 +233,7 @@ class ProficiencyGrantRule
         $this->characterSubclass = null;
         $this->feat = null;
         $this->characterBackground = null;
+        $this->characterFeatureDefinition = null;
     }
 
     public function getUnlockLevel(): int
@@ -310,6 +327,7 @@ class ProficiencyGrantRule
             $this->characterSubclass,
             $this->feat,
             $this->characterBackground,
+            $this->characterFeatureDefinition,
         ];
 
         $sourceCount = count(
