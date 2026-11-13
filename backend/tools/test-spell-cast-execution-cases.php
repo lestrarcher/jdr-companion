@@ -60,10 +60,10 @@ $secondResult=$executor->execute($executionSession,$secondCommand);
 $check($secondResult['replayed']===false && count($secondResult['state']['spellCastReceipts'])===2,'A second accepted command preserves the first receipt');
 $assertReplay($originalCommand,$historicalCast);
 $assertReplay($secondCommand,$secondResult['cast']);
-foreach ([null,[$originalCommand['requestId']=>['version'=>1]],[$originalCommand['requestId']=>array_replace($changed['spellCastReceipts'][$originalCommand['requestId']],['version'=>3])]] as $receipts) {
+foreach ([null,[$originalCommand['requestId']=>['version'=>1]],[$originalCommand['requestId']=>array_replace($changed['spellCastReceipts'][$originalCommand['requestId']],['version'=>4])]] as $receipts) {
     $malformed=$executionState; $malformed['spellCastReceipts']=$receipts; $reset($malformed);
     $reject(array_replace($command,['revision'=>$executionSession->getRevision()]),409,
-        is_array($receipts) && ($receipts[$originalCommand['requestId']]['version']??null)===3
+        is_array($receipts) && ($receipts[$originalCommand['requestId']]['version']??null)===4
             ? 'unsupported_spell_cast_receipt_version' : 'malformed_spell_cast_receipts');
 }
 $reset($executionState);

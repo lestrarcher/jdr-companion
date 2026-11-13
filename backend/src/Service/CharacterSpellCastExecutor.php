@@ -70,6 +70,19 @@ final readonly class CharacterSpellCastExecutor
                     throw new UnprocessableEntityHttpException($validation['reason'] ?? 'cast_not_allowed');
                 }
                 $effect = $this->effects->prepare($session, $command, $validation);
+                // Debit locally first; no state is persisted unless the entire cast succeeds.
+                if (isset($validation['metamagic'])) {
+                    $cost = $validation['metamagic']['cost'];
+                    $indices = [];
+                    foreach ($state['resources'] ?? [] as $index=>$resource) {
+                        if (($resource['id'] ?? null) === 'sorcery-points') $indices[] = $index;
+                    }
+                    if (count($indices) !== 1 || !is_int($cost) || $cost < 1) throw new UnprocessableEntityHttpException('invalid_counter');
+                    $index = $indices[0];
+                    $remaining = $state['resources'][$index]['currentValue'] ?? null;
+                    if (!is_int($remaining) || $remaining < $cost) throw new UnprocessableEntityHttpException('insufficient_sorcery_points');
+                    $state['resources'][$index]['currentValue'] -= $cost;
+                }
                 $method = $validation['method'];
                 if (in_array($method, ['standard-slot', 'pact-slot', 'resource', 'arcanum'], true)) {
                     $slug = $validation['poolSlug'];
@@ -178,7 +191,7 @@ final readonly class CharacterSpellCastExecutor
                     || $validation['poolSlug'] !== null || $validation['cost'] !== 0) {
                     throw new UnprocessableEntityHttpException('invalid_cast_cost');
                 }
-                $cast = array_intersect_key($validation, array_flip(['source','method','castingLevel','poolSlug','cost']));
+                $cast = array_intersect_key($validation, array_flip(['source','method','castingLevel','poolSlug','cost','metamagic']));
                 $state[SpellCastReceipts::STATE_KEY][$command['requestId']] = SpellCastReceipts::create($command, $cast);
                 $mutated = true;
                 // The receipt makes zero-cost acceptance a durable state change too.

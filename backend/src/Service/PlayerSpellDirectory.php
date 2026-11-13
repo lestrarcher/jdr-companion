@@ -25,6 +25,7 @@ final readonly class PlayerSpellDirectory
         private PactInvocationAccess $pactInvocations,
         private SpellCatalogue $catalogue,
         private CharacterSpellAvailabilityContext $availabilityContext,
+        private CharacterSpellMetamagic $metamagic,
         private CharacterSpellCastEligibility $eligibility = new CharacterSpellCastEligibility(),
         private CharacterSpellCastAvailability $availability = new CharacterSpellCastAvailability(),
     ) {}
@@ -302,6 +303,15 @@ final readonly class PlayerSpellDirectory
                 $entry, $policy?->policy()->learningStyle, $policy?->getCharacterClass()->getSlug(),
             );
             $entry['castingAvailability'] = $this->availability->evaluate($entry, $castingContext);
+        }
+        unset($entry);
+        $acquiredMetamagic = $this->metamagic->acquired($character, $state);
+        foreach ($result as &$entry) {
+            if ($entry['details'] === null) continue;
+            foreach ($entry['castingAvailability']['methods'] as &$method) {
+                $method['metamagics'] = $this->metamagic->options($acquiredMetamagic, $entry['details'], $method, $castingContext);
+            }
+            unset($method);
         }
         unset($entry);
         return array_values(array_filter($result, static fn(array $entry): bool => $entry['details'] !== null));

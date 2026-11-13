@@ -12,7 +12,7 @@ final readonly class CharacterSpellCastCommandValidator
     public function __construct(private PlayerSpellDirectory $directory) {}
 
     /**
-     * @return array{valid:bool,status:string,reason:?string,source:?array,method:?string,castingLevel:?int,poolSlug:?string,cost:?int}
+     * @return array{valid:bool,status:string,reason:?string,source:?array,method:?string,castingLevel:?int,poolSlug:?string,cost:?int,metamagic?:array{key:string,poolSlug:string,cost:int}}
      * Revision and requestId are checked for syntax only: no session lookup, reservation or receipt.
      * Pool and cost are returned only for a validated method, exclusively from server resolution.
      */
@@ -51,6 +51,13 @@ final readonly class CharacterSpellCastCommandValidator
         $method = $matches[0];
         if ($method['status'] !== 'available') {
             return array_replace($result, ['status'=>$method['status'], 'reason'=>$method['reason'] ?? 'method_not_available']);
+        }
+        if (isset($command['metamagic'])) {
+            $options = array_values(array_filter($method['metamagics'] ?? [],
+                static fn(array $option): bool => $option['key'] === $command['metamagic']));
+            if (count($options) !== 1) return array_replace($result, ['reason'=>'metamagic_not_acquired']);
+            if ($options[0]['status'] !== 'available') return array_replace($result, ['reason'=>$options[0]['reason']]);
+            $result['metamagic'] = array_intersect_key($options[0], array_flip(['key','poolSlug','cost']));
         }
         return array_replace($result, ['valid'=>true, 'status'=>'available',
             'poolSlug'=>$method['poolSlug'], 'cost'=>$method['cost']]);
