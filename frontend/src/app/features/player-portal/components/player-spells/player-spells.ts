@@ -12,7 +12,7 @@ import { SpellCastDialog, SpellCastSelection } from '../spell-cast-dialog/spell-
 import { PlayerSpell } from '@core/services/character-session-state-api.service';
 import { CharacterResource } from '@core/models/character.model';
 import { PlayerSpellApiService, PlayerSpellChoice, PlayerSpellView } from '@core/services/player-spell-api.service';
-import { availableSpellCastMethods, createSpellCastCommand, spellHitPointEffect, SpellCastCommand, SpellCastResponse } from '@core/models/spell-cast.model';
+import { availableSpellCastMethods, createSpellCastCommand, metamagicReasonLabel, spellHitPointEffect, SpellCastCommand, SpellCastResponse } from '@core/models/spell-cast.model';
 
 @Component({
   selector: 'app-player-spells',
@@ -85,6 +85,7 @@ export class PlayerSpells implements OnInit, OnChanges {
     const method = this.chosenCastMethod(); const spell = this.castingSpell();
     if (!this.canCast() || !spell?.key || !method) return;
     const effect = spellHitPointEffect(spell);
+    if (selection?.metamagic && !method.metamagics?.some(option => option.key === selection.metamagic && option.status === 'available')) return;
     const targets = selection?.targetCharacterIds;
     const roll = selection?.hitPointRoll;
     if (effect && (!targets || targets.length < 1 || targets.length > (effect === 'aid' ? 3 : 12)
@@ -95,6 +96,7 @@ export class PlayerSpells implements OnInit, OnChanges {
       sourceKey: spell.key, method: method.kind, castingLevel: method.castingLevel,
       ...(effect ? { targetCharacterIds: targets } : {}),
       ...(effect === 'feast' ? { hitPointRoll: roll } : {}),
+      ...(selection?.metamagic ? { metamagic: selection.metamagic } : {}),
     }), name: spell.name, source: spell.source });
     this.sendCast();
   }
@@ -122,10 +124,14 @@ export class PlayerSpells implements OnInit, OnChanges {
       },
       error: (error: HttpErrorResponse) => {
         const refused = [400, 404, 409, 422].includes(error.status);
+        const reason = error.error?.message;
         this.castUncertain.set(!refused);
         this.castError.set(refused
           ? ({ 400: 'Commande invalide.', 404: 'Accès au personnage indisponible.', 409: 'Conflit : actualisez la fiche avant une nouvelle tentative.', 422: 'Ce moyen de lancement n’est plus disponible.' }[error.status] ?? 'Lancement refusé.')
           : 'Résultat incertain. Réessayez la même commande pour vérifier le lancement sans le payer deux fois.');
+        if (error.status === 422 && typeof reason === 'string' && (reason.startsWith('metamagic_') || reason.startsWith('sorcery_points_') || reason === 'insufficient_sorcery_points')) {
+          this.castError.set(metamagicReasonLabel(reason));
+        }
         this.castSaving.set(false); this.casting.emit(false);
       },
     });

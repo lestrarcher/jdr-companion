@@ -66,6 +66,26 @@
     }
     @if (visibleOptions().length) { <p class="availability-note">Grisé : indisponible · ? : quantité inconnue</p> }
     @if (!options().length) { <p>Aucun moyen de lancement disponible pour ce sort.</p> }
+    @if (hasMetamagics()) {
+      <fieldset class="metamagic" [disabled]="locked()">
+        <legend>Métamagie <span>· facultative</span></legend>
+        @if (!selected()) { <p class="availability-note">Choisissez d’abord un moyen de lancement.</p> }
+        <div class="methods">
+          @for (option of metamagics(); track option.key) {
+            <button type="button" class="cast-option method-option metamagic-option"
+              [class.selected]="selectedMetamagic()?.key === option.key"
+              [attr.aria-pressed]="selectedMetamagic()?.key === option.key"
+              [disabled]="option.status !== 'available'" (click)="selectMetamagic(option.key)">
+              <span><span aria-hidden="true">✦</span> {{ option.name }} · {{ option.cost }} PS</span>
+              @if (option.status !== 'available') { <small>{{ metamagicReason(option.reason) }}</small> }
+            </button>
+          }
+        </div>
+        @if (selectedMetamagic(); as option) {
+          <p class="cast-cost" role="status">{{ option.name }} : +{{ option.cost }} point{{ option.cost > 1 ? 's' : '' }} de sorcellerie.</p>
+        }
+      </fieldset>
+    }
     @if (selected(); as option) {
       <p class="cast-cost">{{ option.method.kind === 'arcanum' ? 'Consommer ' + costLabel(option) + '.' : isItemOption(option) ? 'Consommer ' + costLabel(option) + ', sans emplacement de sort.' : option.method.kind === 'resource' ? 'Consommer ' + costLabel(option) + ', sans emplacement.' : option.method.cost === 0 ? 'Aucun emplacement consommé.' : 'Consommer ' + option.method.cost + ' emplacement de ' + (option.method.kind === 'pact-slot' ? 'pacte de ' : '') + 'niveau ' + option.method.castingLevel + '.' }}</p>
       @if (upcasting()) {

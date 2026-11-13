@@ -25,6 +25,49 @@ function setup(sources = [spell()]) {
 }
 afterEach(() => TestBed.resetTestingModule());
 describe('Shared casting dialog', () => {
+  it('hides metamagic without acquired options and never preselects one', () => {
+    const { fixture, c } = setup();
+    expect(fixture.nativeElement.querySelector('.metamagic')).toBeNull();
+    const entry = spell();
+    entry.castingAvailability!.methods[0].metamagics = [
+      { key:'metamagic-subtle-spell', name:'Sort subtil', cost:7, poolSlug:'sorcery-points', status:'available', reason:null, playerChecks:[] },
+      { key:'metamagic-twinned-spell', name:'Sort jumelé', cost:3, poolSlug:'sorcery-points', status:'unavailable', reason:'metamagic_self_range', playerChecks:[] },
+    ];
+    fixture.componentRef.setInput('sources', [entry]); fixture.detectChanges();
+    expect(c.selectedMetamagic()).toBeUndefined();
+    const buttons = fixture.nativeElement.querySelectorAll('.metamagic-option');
+    expect(buttons[0].textContent).toContain('7 PS'); // Deliberately not the rules cost: server authority.
+    expect(buttons[1].disabled).toBe(true);
+    expect(buttons[1].textContent).toContain('portée personnelle');
+    c.selectMetamagic('metamagic-twinned-spell'); expect(c.selectedMetamagic()).toBeUndefined();
+    buttons[0].click(); fixture.detectChanges();
+    expect(c.selectedMetamagic()?.cost).toBe(7);
+    expect(fixture.nativeElement.textContent).toContain('+7 points de sorcellerie');
+    const done = vi.fn(); c.confirmed.subscribe(done); c.confirm();
+    expect(done).toHaveBeenLastCalledWith(expect.objectContaining({metamagic:'metamagic-subtle-spell'}));
+    buttons[0].click(); fixture.detectChanges(); c.confirm();
+    expect(done).toHaveBeenLastCalledWith({sourceKey:'acquisition:1', method:'standard-slot', castingLevel:1});
+  });
+  it('selects only one option, clears it on method/source refresh, and locks pending casts', () => {
+    const options = ['subtle','twinned'].map(name => ({key:`metamagic-${name}-spell`, name, cost:2, poolSlug:'sorcery-points', status:'available' as const, reason:null, playerChecks:[]}));
+    const entry = spell('first', [ {...method('standard-slot',1), metamagics:options}, {...method('pact-slot',2), metamagics:options} ]);
+    const {fixture,c} = setup([entry]);
+    expect(c.selectedMetamagic()).toBeUndefined();
+    expect(fixture.nativeElement.textContent).toContain('Choisissez d’abord');
+    c.select(c.options()[0].key); c.selectMetamagic(options[0].key); c.selectMetamagic(options[1].key);
+    expect(c.selectedMetamagic()?.key).toBe(options[1].key);
+    c.select(c.options()[1].key); expect(c.selectedMetamagic()).toBeUndefined();
+    c.selectMetamagic(options[0].key);
+    fixture.componentRef.setInput('saving',true); fixture.detectChanges();
+    c.selectMetamagic(options[1].key); expect(c.selectedMetamagic()?.key).toBe(options[0].key);
+    fixture.componentRef.setInput('saving',false);
+    fixture.componentRef.setInput('sources',[structuredClone(entry)]); fixture.detectChanges();
+    expect(c.selectedMetamagic()).toBeUndefined();
+    c.selectMetamagic(options[0].key);
+    const other = {...structuredClone(entry), key:'other', castingAvailability:{...entry.castingAvailability!, sourceKey:'other'}};
+    fixture.componentRef.setInput('sources',[entry,other]); fixture.detectChanges();
+    c.selectSource('other'); expect(c.selectedMetamagic()).toBeUndefined();
+  });
   it.each([
     { key: 'feature:13', spellId: 219, name: 'Foulée brumeuse', level: 2, pool: 'fey-touched-grant-13' },
     { key: 'feature:14', spellId: 430, name: 'Soins', level: 1, pool: 'fey-touched-grant-14' },

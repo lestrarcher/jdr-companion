@@ -14,7 +14,36 @@ export interface SpellCastingAvailability {
     cost: number;
     status: 'available' | 'unavailable' | 'unknown';
     reason: string | null;
+    metamagics?: SpellMetamagic[];
   }>;
+}
+
+export interface SpellMetamagic {
+  key: string;
+  name: string;
+  poolSlug: string;
+  cost: number;
+  status: 'available' | 'unavailable' | 'unknown';
+  reason: string | null;
+  playerChecks: string[];
+}
+
+export function metamagicReasonLabel(reason: string | null): string {
+  const labels: Record<string, string> = {
+    metamagic_not_acquired: 'Métamagie non acquise.',
+    metamagic_self_range: 'Incompatible avec une portée personnelle.',
+    metamagic_range_too_short: 'Portée trop courte ou personnelle.',
+    metamagic_duration_too_short: 'Durée du sort trop courte.',
+    metamagic_requires_one_action: 'Nécessite une incantation d’une action, hors rituel.',
+    metamagic_no_verbal_or_somatic_components: 'Aucune composante verbale ou somatique.',
+    insufficient_sorcery_points: 'Points de sorcellerie insuffisants.',
+    sorcery_points_exhausted: 'Points de sorcellerie épuisés.',
+    sorcery_points_inactive_pool: 'Réserve de sorcellerie inactive.',
+    sorcery_points_unavailable: 'Réserve de sorcellerie indisponible.',
+    method_not_available: 'Moyen de lancement indisponible.',
+  };
+  return labels[reason ?? ''] ?? (reason?.startsWith('sorcery_points_')
+    ? 'État des points de sorcellerie à actualiser.' : 'Indisponible pour ce lancement.');
 }
 
 export interface SpellCastCommand {
@@ -25,6 +54,7 @@ export interface SpellCastCommand {
   readonly castingLevel: number;
   readonly targetCharacterIds?: readonly number[];
   readonly hitPointRoll?: number;
+  readonly metamagic?: string;
 }
 
 export function spellHitPointEffect(spell: PlayerSpell | undefined): 'aid' | 'feast' | null {
@@ -48,6 +78,7 @@ export function availableSpellCastMethods(spell: PlayerSpell | undefined): Avail
 }
 
 export interface SpellCastResult {
+  metamagic?: Pick<SpellMetamagic, 'key' | 'poolSlug' | 'cost'>;
   source: {
     key: NonNullable<PlayerSpell['key']>;
     spellId: PlayerSpell['spellId'];
@@ -88,5 +119,6 @@ export function createSpellCastCommand(intent: Omit<SpellCastCommand, 'requestId
     castingLevel: intent.castingLevel,
     ...(intent.targetCharacterIds !== undefined ? { targetCharacterIds: Object.freeze([...intent.targetCharacterIds]) } : {}),
     ...(intent.hitPointRoll !== undefined ? { hitPointRoll: intent.hitPointRoll } : {}),
+    ...(intent.metamagic !== undefined ? { metamagic: intent.metamagic } : {}),
   });
 }

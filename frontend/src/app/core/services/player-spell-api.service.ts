@@ -29,6 +29,7 @@ export class PlayerSpellApiService {
       revision, requestId, sourceKey, method, castingLevel,
       ...(command.targetCharacterIds !== undefined ? { targetCharacterIds: [...command.targetCharacterIds] } : {}),
       ...(command.hitPointRoll !== undefined ? { hitPointRoll: command.hitPointRoll } : {}),
+      ...(command.metamagic !== undefined ? { metamagic: command.metamagic } : {}),
     });
   }
   choose(token: string, revision: number, choice: PlayerSpellChoice, spellId: number) {

@@ -296,6 +296,35 @@ describe('Spell casting controls',()=>{
 });
 
 describe('Portal adoption of cast responses',()=>{
+  it('casts metamagic through the dialog and adopts both server counters without a PATCH',async()=>{
+    vi.stubGlobal('matchMedia',vi.fn(()=>({matches:false,addEventListener:vi.fn(),removeEventListener:vi.fn()})));
+    TestBed.configureTestingModule({providers:[provideHttpClient(),provideHttpClientTesting(),provideRouter([]),
+      {provide:ActivatedRoute,useValue:{snapshot:{paramMap:convertToParamMap({campaignId:'2',sessionId:'3',accessToken:'test'}),queryParamMap:convertToParamMap({tab:'status'})}}},
+      {provide:CampaignConfigurationRegistryService,useValue:{getConfiguration:()=>({id:'2',name:'Test'})}},
+      {provide:RestRequestApiService,useValue:{getLatest:()=>of(null)}}]});
+    const entry=spell();
+    entry.castingAvailability!.methods[0].metamagics=[{key:'metamagic-subtle-spell',name:'Sort subtil',cost:1,poolSlug:'sorcery-points',status:'available',reason:null,playerChecks:[]}];
+    const fixture=TestBed.createComponent(PlayerPortal);
+    const http=TestBed.inject(HttpTestingController); const state=TestBed.inject(CharacterStateService);
+    const initial=session([entry]);
+    initial.character.resources.push({slug:'sorcery-points',name:'Points de sorcellerie',maximum:4,rechargeType:'long-rest'});
+    initial.state.resources.push({id:'sorcery-points',currentValue:4});
+    http.expectOne('/api/public/characters/test').flush(initial); fixture.detectChanges();
+    for(const req of http.match(base)) req.flush(view([entry])); await fixture.whenStable();
+    fixture.nativeElement.querySelector('.quick-spell').click(); fixture.detectChanges();
+    for(const req of http.match(base)) req.flush(view([entry])); await fixture.whenStable();
+    fixture.nativeElement.querySelector('.metamagic-option').click(); fixture.detectChanges();
+    fixture.nativeElement.querySelector('.cast-confirm').click();
+    const req=http.expectOne(base+'/cast');
+    expect(req.request.body.metamagic).toBe('metamagic-subtle-spell');
+    expect(state.character()!.resources.find(r=>r.id==='sorcery-points')!.currentValue).toBe(4);
+    const result={...initial,revision:43,state:{...initial.state,resources:[{id:'spell-slot-1',currentValue:1},{id:'sorcery-points',currentValue:3}]},
+      cast:{...castResponse([entry],'standard-slot',1).cast,metamagic:{key:'metamagic-subtle-spell',poolSlug:'sorcery-points',cost:1}},replayed:false};
+    req.flush(result); await fixture.whenStable();
+    expect(state.character()!.resources.find(r=>r.id==='sorcery-points')!.currentValue).toBe(3);
+    expect(state.character()!.resources.find(r=>r.id==='spell-slot-1')!.currentValue).toBe(1);
+    http.expectNone(r=>r.method==='PATCH'); fixture.destroy();
+  });
   it('hides only exact arcanum counters while preserving casting data and spell cards',async()=>{
     vi.stubGlobal('matchMedia',vi.fn(()=>({matches:false,addEventListener:vi.fn(),removeEventListener:vi.fn()})));
     TestBed.configureTestingModule({providers:[provideHttpClient(),provideHttpClientTesting(),provideRouter([]),
@@ -464,6 +493,7 @@ describe('Portal adoption of cast responses',()=>{
     first.error(new ProgressEvent('error')); fixture.detectChanges();
     fixture.nativeElement.querySelector('app-spell-cast-dialog .cancel').click(); fixture.detectChanges();
     p.selectTab('features'); fixture.detectChanges();
+    http.expectOne(base+'/ability-choices').flush({choices:[]});
     p.selectTab('status'); fixture.detectChanges();
     (fixture.nativeElement.querySelector('.spell-resource-column .quick-spell') as HTMLButtonElement).click(); fixture.detectChanges();
     expect(fixture.debugElement.query(By.directive(PlayerSpells)).componentInstance).toBe(c);

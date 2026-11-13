@@ -107,6 +107,19 @@ describe('Player spell casting API', () => {
     expect(uuid).toHaveBeenCalledTimes(2);
   });
 
+  it('snapshots and retries the same metamagic without sending a client cost', () => {
+    const mutable = {...intent, metamagic:'metamagic-subtle-spell'};
+    const pending = createSpellCastCommand(mutable);
+    mutable.metamagic = 'metamagic-twinned-spell';
+    api.cast('token', {...pending, cost:99} as SpellCastCommand).subscribe({error:()=>{}});
+    const first = http.expectOne('/api/public/characters/token/spells/cast');
+    expect(first.request.body).toEqual({...pending, metamagic:'metamagic-subtle-spell'});
+    first.error(new ProgressEvent('error'));
+    api.cast('token',pending).subscribe();
+    const retry = http.expectOne('/api/public/characters/token/spells/cast');
+    expect(retry.request.body).toEqual(first.request.body); retry.flush(response);
+  });
+
   it('snapshots and freezes target parameters and sends exactly the same body on retry', () => {
     const targets = [1, 2];
     const pending = createSpellCastCommand({ ...intent, targetCharacterIds: targets, hitPointRoll: 14 });

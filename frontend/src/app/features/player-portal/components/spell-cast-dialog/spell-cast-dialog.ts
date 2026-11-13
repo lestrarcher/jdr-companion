@@ -1,10 +1,10 @@
-import { AfterViewInit, Component, ElementRef, OnDestroy, computed, input, output, signal, viewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, computed, input, linkedSignal, output, signal, viewChild } from '@angular/core';
 import { PlayerSpell } from '@core/services/character-session-state-api.service';
-import { SpellCastCommand, SpellCastingAvailability, availableSpellCastMethods, spellHitPointEffect } from '@core/models/spell-cast.model';
+import { SpellCastCommand, SpellCastingAvailability, availableSpellCastMethods, metamagicReasonLabel, spellHitPointEffect } from '@core/models/spell-cast.model';
 import { CharacterResource } from '@core/models/character.model';
 import { SpellTargetPicker } from '../spell-target-picker/spell-target-picker';
 
-export type SpellCastSelection = Pick<SpellCastCommand, 'sourceKey' | 'method' | 'castingLevel' | 'targetCharacterIds' | 'hitPointRoll'>;
+export type SpellCastSelection = Pick<SpellCastCommand, 'sourceKey' | 'method' | 'castingLevel' | 'targetCharacterIds' | 'hitPointRoll' | 'metamagic'>;
 type CastOption = { source: PlayerSpell; method: SpellCastingAvailability['methods'][number]; key: string };
 
 @Component({
@@ -82,6 +82,15 @@ export class SpellCastDialog implements AfterViewInit, OnDestroy {
     ? (this.options().length === 1 ? this.options()[0] : undefined)
     : this.options().find(option => option.key === this.choice()));
   readonly locked = computed(() => this.saving() || this.blocked() || !!this.pending() || !!this.success());
+  readonly hasMetamagics = computed(() => this.sources().some(source => source.castingAvailability?.methods.some(method => method.metamagics?.length)));
+  readonly metamagics = computed(() => this.selected()?.method.metamagics ?? []);
+  private readonly metamagicChoice = linkedSignal(() => { this.selected(); return null as string | null; });
+  readonly selectedMetamagic = computed(() => this.metamagics().find(option => option.key === this.metamagicChoice() && option.status === 'available'));
+  readonly metamagicReason = metamagicReasonLabel;
+  selectMetamagic(key: string): void {
+    if (this.locked() || !this.metamagics().some(option => option.key === key && option.status === 'available')) return;
+    this.metamagicChoice.set(this.metamagicChoice() === key ? null : key);
+  }
   readonly upcasting = computed(() => {
     const option = this.selected();
     return option && option.source.level !== null && option.method.castingLevel !== null && option.method.castingLevel > option.source.level;
@@ -109,6 +118,7 @@ export class SpellCastDialog implements AfterViewInit, OnDestroy {
       method: option.method.kind, castingLevel: option.method.castingLevel,
       ...(this.hitPointEffect() ? { targetCharacterIds: [...this.targetIds()] } : {}),
       ...(this.hitPointEffect() === 'feast' ? { hitPointRoll: this.hitPointRoll()! } : {}),
+      ...(this.selectedMetamagic() ? { metamagic: this.selectedMetamagic()!.key } : {}),
     });
   }
   levelLabel(level: number | null): string { return ['0', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'][level ?? -1] ?? '?'; }

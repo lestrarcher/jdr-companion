@@ -30,6 +30,8 @@ select { min-width: 0; max-width: 100%; min-height: 44px; flex: 1; padding: .4re
 .cast-option.selected { border-color: #dfbf80; background: #3d3540; box-shadow: inset 0 0 0 1px #dfbf8055; }
 .cast-option:disabled, fieldset:disabled .cast-option { cursor: default; opacity: .55; filter: grayscale(1); }
 .method-option { max-width: 100%; font-size: .8rem; }
+.metamagic-option { align-items: flex-start; text-align: left; }
+.metamagic-option small { max-width: 17rem; }
 [data-method=pact-slot] { border-color: #bba9e280; color: #d1c3ed; }
 [data-method=ritual], [data-method=cantrip] { border-color: #91cbe080; color: #b9dfec; }
 .cast-cost { color: #dfbf80; }
