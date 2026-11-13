@@ -309,7 +309,7 @@ final readonly class PlayerSpellDirectory
         foreach ($result as &$entry) {
             if ($entry['details'] === null) continue;
             foreach ($entry['castingAvailability']['methods'] as &$method) {
-                $method['metamagics'] = $this->metamagic->options($acquiredMetamagic, $entry['details'], $method, $castingContext);
+                $method['metamagics'] = $this->metamagic->options($acquiredMetamagic, $entry['details'], $method, $castingContext, $character->getTotalLevel());
             }
             unset($method);
         }

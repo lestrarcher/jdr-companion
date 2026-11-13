@@ -25,6 +25,15 @@ function setup(sources = [spell()]) {
 }
 afterEach(() => TestBed.resetTestingModule());
 describe('Shared casting dialog', () => {
+  it('disables Twinned Spell using the server targeting reason without inferring targets locally', () => {
+    const entry = spell();
+    entry.castingAvailability!.methods[0].metamagics = [{key:'metamagic-twinned-spell', name:'Sort jumelé', cost:6,
+      poolSlug:'sorcery-points', status:'unavailable', reason:'metamagic_multiple_possible_targets', playerChecks:[]}];
+    const {fixture,c} = setup([entry]);
+    expect(fixture.nativeElement.querySelector('.metamagic-option').disabled).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain('Ce sort peut cibler plusieurs créatures à ce niveau.');
+    c.selectMetamagic('metamagic-twinned-spell'); expect(c.selectedMetamagic()).toBeUndefined();
+  });
   it('hides metamagic without acquired options and never preselects one', () => {
     const { fixture, c } = setup();
     expect(fixture.nativeElement.querySelector('.metamagic')).toBeNull();

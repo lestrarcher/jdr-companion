@@ -277,4 +277,60 @@ final class SpellMetamagicTest extends TestCase
         $this->db->executeStatement("DELETE FROM trackable_resource_rule WHERE resource_definition_id=(SELECT id FROM trackable_resource_definition WHERE slug='sorcery-points')");
         $this->reject($this->command('subtle'), 'sorcery_points_inactive_pool');
     }
+
+    public function testTwinnedCantripUsesGlobalLevelAndCanonicalIdentity(): void
+    {
+        $service = $this->kernel->getContainer()->get('test.service_container')->get(\App\Service\CharacterSpellMetamagic::class);
+        $context = ['resources'=>[['slug'=>'sorcery-points', 'status'=>'available', 'remaining'=>20]]];
+        $method = ['kind'=>'cantrip', 'castingLevel'=>0, 'poolSlug'=>null, 'cost'=>0, 'status'=>'available'];
+        foreach ([4, 5, 11, 13, 17] as $level) {
+            $options = $service->options(['metamagic-twinned-spell'=>'Twin'], ['importKey'=>'aidedd-2014:decharge-occulte'], $method, $context, $level);
+            self::assertSame($level < 5 ? null : 'metamagic_multiple_possible_targets', $options[0]['reason']);
+            self::assertSame(1, $options[0]['cost']);
+        }
+        $character = $this->session->getCharacter();
+        // 13 total levels, but only 3 warlock levels: use total, not casting-class level.
+        $class = $character->getClassLevels()->first()->getCharacterClass();
+        while ($character->getTotalLevel() < 13) {
+            $level = new CharacterClassLevel($character, $class, $character->getNextLevelPosition());
+            $character->addClassLevel($level); $this->em->persist($level);
+        }
+        $cantrip = $this->em->getRepository(SpellDefinition::class)->findOneBy(['slug'=>'fixture-cantrip']);
+        $cantrip->setImportKey('aidedd-2014:decharge-occulte'); $this->em->flush();
+        $this->reject($this->command('twinned', ['sourceKey'=>$this->cantripSource, 'method'=>'cantrip', 'castingLevel'=>0]), 'metamagic_multiple_possible_targets');
+        $result = $this->executor->execute($this->session, $this->command('subtle', ['sourceKey'=>$this->cantripSource, 'method'=>'cantrip', 'castingLevel'=>0]));
+        self::assertSame(19, $result['state']['resources'][3]['currentValue']);
+    }
+
+    public function testHoldMonsterCostsFivePersistentlyAndRejectsUpcastTwinned(): void
+    {
+        $character = $this->session->getCharacter();
+        $class = $character->getClassLevels()->first()->getCharacterClass();
+        while ($character->getTotalLevel() < 14) {
+            $level = new CharacterClassLevel($character, $class, $character->getNextLevelPosition());
+            $character->addClassLevel($level); $this->em->persist($level);
+        }
+        $this->spell->setImportKey('aidedd-2014:immobilisation-de-monstre')->setLevel(5);
+        $this->em->flush();
+        $state = $this->initialState();
+        $state['resources'][] = ['id'=>'spell-slot-5', 'currentValue'=>2];
+        $state['resources'][] = ['id'=>'spell-slot-6', 'currentValue'=>1];
+        $this->reset($state);
+        $this->reject($this->command('twinned', ['castingLevel'=>6]), 'metamagic_multiple_possible_targets');
+        $command = $this->command('twinned', ['castingLevel'=>5]);
+        $result = $this->executor->execute($this->session, $command);
+        self::assertSame(5, $result['cast']['metamagic']['cost']);
+        self::assertSame(15, $result['state']['resources'][3]['currentValue']);
+        self::assertSame(1, $result['state']['resources'][4]['currentValue']);
+        $stored = json_decode($this->stored()['state'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame($result['state']['resources'], $stored['resources']);
+        self::assertSame($result['state'][SpellCastReceipts::STATE_KEY], $stored[SpellCastReceipts::STATE_KEY]);
+        $this->em->refresh($this->session);
+        self::assertSame(15, $this->session->getState()['resources'][3]['currentValue']);
+        $before = $this->stored();
+        self::assertTrue($this->executor->execute($this->session, $command)['replayed']);
+        self::assertSame($before, $this->stored());
+        $state['resources'][3]['currentValue'] = 4; $this->reset($state);
+        $this->reject($this->command('twinned', ['castingLevel'=>5]), 'insufficient_sorcery_points');
+    }
 }

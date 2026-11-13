@@ -61,6 +61,10 @@ sur les cibles possibles, sauvegardes, jets d'attaque ou types de dégâts. Les 
 
 - Sort jumelé : une seule créature ciblable au niveau effectif du sort (y compris
   les augmentations du nombre de cibles/rayons avec le niveau du sort/personnage).
+  Deux cas canoniques sont contrôlés automatiquement par leur `importKey` 2014 :
+  Décharge occulte est refusée dès le niveau **global** 5 ; Immobilisation de monstre
+  est refusée dès le niveau de **lancement** 6. Au niveau de lancement 5, cette
+  dernière coûte 5 points. Aucun nom affiché ni donnée de personnage n'est codé en dur.
 - Prudent/intensifié : sauvegardes et créatures concernées.
 - Puissant/chercheur : jet de dégâts ou attaque effectivement manquée ; limites de relance.
 - Transmuté : dégâts acide, froid, feu, foudre, poison ou tonnerre.

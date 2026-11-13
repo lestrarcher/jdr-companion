@@ -29,7 +29,7 @@ final readonly class CharacterSpellMetamagic
     }
 
     /** Uses the same trusted resource snapshot and casting method as ordinary casting. */
-    public function options(array $acquired, array $spell, array $method, array $context): array
+    public function options(array $acquired, array $spell, array $method, array $context, int $characterLevel): array
     {
         $pools = array_values(array_filter($context['resources'], static fn(array $pool): bool => $pool['slug'] === 'sorcery-points'));
         $pool = count($pools) === 1 ? $pools[0] : null;
@@ -38,6 +38,12 @@ final readonly class CharacterSpellMetamagic
             if (!isset(self::COSTS[$key])) continue;
             $cost = $key === 'metamagic-twinned-spell' ? max(1, $method['castingLevel']) : self::COSTS[$key];
             [$reason, $checks] = self::compatibility($key, $spell, $method);
+            // Canonical 2014 identities only; never infer targeting from a translated name.
+            if ($key === 'metamagic-twinned-spell' && match ($spell['importKey'] ?? null) {
+                'aidedd-2014:decharge-occulte' => $characterLevel >= 5,
+                'aidedd-2014:immobilisation-de-monstre' => $method['castingLevel'] >= 6,
+                default => false,
+            }) $reason = 'metamagic_multiple_possible_targets';
             $reason ??= $method['status'] === 'available' ? null : ($method['reason'] ?? 'method_not_available');
             $reason ??= $pool === null ? 'sorcery_points_unavailable'
                 : ($pool['status'] !== 'available' ? 'sorcery_points_'.($pool['reason'] ?? 'unavailable') : null);

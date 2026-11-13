@@ -32,6 +32,7 @@ export function metamagicReasonLabel(reason: string | null): string {
   const labels: Record<string, string> = {
     metamagic_not_acquired: 'Métamagie non acquise.',
     metamagic_self_range: 'Incompatible avec une portée personnelle.',
+    metamagic_multiple_possible_targets: 'Ce sort peut cibler plusieurs créatures à ce niveau.',
     metamagic_range_too_short: 'Portée trop courte ou personnelle.',
     metamagic_duration_too_short: 'Durée du sort trop courte.',
     metamagic_requires_one_action: 'Nécessite une incantation d’une action, hors rituel.',
