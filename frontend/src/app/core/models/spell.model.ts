@@ -7,6 +7,10 @@ export interface SpellPayload {
   castingTime: string;
   range: string;
   duration: string;
+  targetType: 'self' | 'creature' | 'object' | 'area' | 'special' | null;
+  multipleTargets: boolean;
+  multipleTargetsProgression: 'slot' | 'character' | null;
+  multipleTargetsThreshold: number | null;
   description: string;
   higherLevels: string | null;
   materialDescription: string | null;

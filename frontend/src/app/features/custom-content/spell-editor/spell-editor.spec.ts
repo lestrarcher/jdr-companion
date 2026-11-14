@@ -12,6 +12,7 @@ describe('Spell editor in personal content', () => {
   let http: HttpTestingController;
   const base = '/api/reference/custom/spells';
   const item: Spell = { id: 5, slug: 'fixture', name: 'Sort fictif', originalName: null, level: 1, school: 'illusion', castingTime: 'Test', range: 'Test', duration: 'Test', description: 'Fiction', higherLevels: null,
+    targetType: null, multipleTargets: false, multipleTargetsProgression: null, multipleTargetsThreshold: null,
     materialDescription: null, materialCostCp: null, rulesVariant: null, sourceCode: null, sourceReference: null, sourceUrl: null, verbal: true, somatic: false, material: false, materialConsumed: false, concentration: false, ritual: false,
     classIds: [], classes: [], origin: 'CUSTOM', edition: '2014', importKey: null, editable: true, deletable: true };
   const root = (): HTMLElement => fixture.nativeElement;
@@ -28,6 +29,11 @@ describe('Spell editor in personal content', () => {
   async function set(name: string, value: string) {
     const field = root().querySelector<HTMLInputElement>(`.spell-form [name="${name}"]`)!;
     field.value = value; field.dispatchEvent(new Event('input', { bubbles: true })); await settle();
+  }
+  async function selectTargeting(name: string, label: string) {
+    const field = root().querySelector<HTMLSelectElement>(`.spell-form select[name="${name}"]`)!;
+    field.selectedIndex = Array.from(field.options).findIndex(option => option.textContent?.trim() === label);
+    field.dispatchEvent(new Event('change', { bubbles: true })); await settle();
   }
   const grant: SpellGrant = { id: 12, spellId: 5, subclassId: 4, subclassName: 'Sous-classe personnelle', activationClassId: 8, activationClassName: 'Classe officielle', castingClassId: 8, castingClassName: 'Classe officielle', mode: 'add-to-list', unlockLevel: 1, slotUsage: null, restrictions: null, resourceId: null, resourceName: null, resourceCost: null, origin: 'CUSTOM', editable: true };
   const grantOptions: SpellGrantOptions = { subclasses: [{ id: 4, name: 'Sous-classe personnelle', classId: 8, className: 'Classe officielle' }], classes: [{ id: 8, name: 'Classe officielle' }], resources: [{ id: 3, name: 'Ressource personnelle' }], modes: [{ value: 'add-to-list', label: 'Ajout à la liste' }, { value: 'grant-known', label: 'Automatiquement connu' }, { value: 'grant-always-prepared', label: 'Toujours préparé' }, { value: 'grant-cast', label: 'Accès particulier' }] };
@@ -101,6 +107,59 @@ describe('Spell editor in personal content', () => {
     req.flush({ message: 'Classe indisponible.' }, { status: 400, statusText: 'Bad Request' }); await settle();
     expect(root().textContent).toContain('Classe indisponible.');
     expect((root().querySelector('.spell-form [name="name"]') as HTMLInputElement).value).toBe('Création');
+  });
+
+  it('loads and saves targeting unchanged and retains rejected edits', async () => {
+    await load([{ ...item, targetType: 'creature', multipleTargetsProgression: 'slot', multipleTargetsThreshold: 3 }]);
+    await click('Modifier');
+    expect(root().querySelector<HTMLInputElement>('[name="multipleTargetsThreshold"]')!.value).toBe('3');
+    await click('Enregistrer');
+    const req = http.expectOne(base + '/5');
+    expect(req.request.body).toMatchObject({ targetType: 'creature', multipleTargets: false, multipleTargetsProgression: 'slot', multipleTargetsThreshold: 3 });
+    req.flush({ message: 'Les mécaniques de ce sort acquis sont verrouillées.' }, { status: 409, statusText: 'Conflict' }); await settle();
+    expect(root().textContent).toContain('Les mécaniques de ce sort acquis sont verrouillées.');
+    expect(root().querySelector<HTMLInputElement>('[name="multipleTargetsThreshold"]')!.value).toBe('3');
+  });
+
+  it('creates targeting with a global-level threshold and validates its bounds', async () => {
+    await load([]); await click('Créer un sort personnalisé');
+    for (const [name, value] of Object.entries({ name: 'Création', slug: 'creation', castingTime: 'Test', range: 'Test', duration: 'Test', description: 'Fiction' })) await set(name, value);
+    expect(root().querySelector('[name="multipleTargetsProgression"]')).toBeNull();
+    await selectTargeting('targetType', 'Créature uniquement');
+    expect(root().querySelector('[name="multipleTargetsThreshold"]')).toBeNull();
+    await selectTargeting('multipleTargetsProgression', 'Selon le niveau global du personnage');
+    const submit = () => root().querySelector<HTMLButtonElement>('.spell-form button[type="submit"]')!;
+    expect(submit().disabled).toBe(true);
+    await set('multipleTargetsThreshold', '21'); expect(submit().disabled).toBe(true);
+    await set('multipleTargetsThreshold', '5'); expect(submit().disabled).toBe(false);
+    await selectTargeting('multipleTargetsProgression', 'Selon le niveau de lancement');
+    await set('multipleTargetsThreshold', '10'); expect(submit().disabled).toBe(true);
+    await selectTargeting('multipleTargetsProgression', 'Selon le niveau global du personnage');
+    await set('multipleTargetsThreshold', '5'); await click('Enregistrer');
+    const req = http.expectOne(base);
+    expect(req.request.body).toMatchObject({ targetType: 'creature', multipleTargets: false, multipleTargetsProgression: 'character', multipleTargetsThreshold: 5 });
+    req.flush({ spell: item }); flush(); await settle();
+  });
+
+  it.each(['Spécial / ciblage mixte', 'Inconnu / non renseigné'])('clears progression when switching to %s without inventing compatibility', async label => {
+    await load([{ ...item, targetType: 'creature', multipleTargetsProgression: 'slot', multipleTargetsThreshold: 3 }]); await click('Modifier');
+    await selectTargeting('targetType', label);
+    expect(root().querySelector('[name="multipleTargetsProgression"]')).toBeNull();
+    expect(root().querySelector('[name="multipleTargetsThreshold"]')).toBeNull();
+    await click('Enregistrer');
+    const req = http.expectOne(base + '/5');
+    expect(req.request.body).toMatchObject({ targetType: label.startsWith('Spécial') ? 'special' : null, multipleTargetsProgression: null, multipleTargetsThreshold: null });
+    req.flush({ spell: item }); flush(); await settle();
+  });
+
+  it('clears a threshold when multiple targets are already possible at base level', async () => {
+    await load([{ ...item, targetType: 'creature', multipleTargetsProgression: 'slot', multipleTargetsThreshold: 3 }]); await click('Modifier');
+    root().querySelector<HTMLInputElement>('[name="multipleTargets"]')!.click(); await settle();
+    expect(root().querySelector('[name="multipleTargetsProgression"]')).toBeNull();
+    await click('Enregistrer');
+    const req = http.expectOne(base + '/5');
+    expect(req.request.body).toMatchObject({ multipleTargets: true, multipleTargetsProgression: null, multipleTargetsThreshold: null });
+    req.flush({ spell: item }); flush(); await settle();
   });
 
   it('submits class and level filters to the backend before pagination', async () => {

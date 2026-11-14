@@ -60,6 +60,7 @@ export class SpellEditor {
 
   private blank(): SpellPayload {
     return { slug: '', name: '', originalName: null, level: 0, school: 'abjuration', castingTime: '', range: '', duration: '', description: '', higherLevels: null,
+      targetType: null, multipleTargets: false, multipleTargetsProgression: null, multipleTargetsThreshold: null,
       materialDescription: null, materialCostCp: null, rulesVariant: null, sourceCode: null, sourceReference: null, sourceUrl: null,
       verbal: false, somatic: false, material: false, materialConsumed: false, concentration: false, ritual: false, classIds: [] };
   }
@@ -101,6 +102,17 @@ export class SpellEditor {
   }
   toggleClass(id: number, checked: boolean): void {
     this.draft.classIds = checked ? [...new Set([...this.draft.classIds, id])] : this.draft.classIds.filter(value => value !== id);
+  }
+
+  targetingChanged(): void {
+    if (this.draft.targetType !== 'creature' || this.draft.multipleTargets) {
+      this.draft.multipleTargetsProgression = null;
+      this.draft.multipleTargetsThreshold = null;
+    }
+  }
+
+  progressionChanged(): void {
+    this.draft.multipleTargetsThreshold = null;
   }
 
   save(): void {
