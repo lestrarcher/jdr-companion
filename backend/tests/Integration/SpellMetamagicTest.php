@@ -144,6 +144,43 @@ final class SpellMetamagicTest extends TestCase
         self::assertSame($before, $this->stored(), 'No partial cost, receipt or revision');
     }
 
+    public function testEmpoweredPairsAreAtomicAndOrderIndependent(): void
+    {
+        foreach ([['empowered','quickened'], ['quickened','empowered'], ['empowered','subtle']] as $pair) {
+            $this->reset();
+            $keys = array_map(static fn(string $key): string => 'metamagic-'.$key.'-spell', $pair);
+            $command = $this->command(null, ['metamagics'=>$keys]);
+            $result = $this->executor->execute($this->session, $command);
+            $cost = array_sum(array_map(static fn(string $key): int => self::COSTS[$key], $pair));
+            self::assertSame(20-$cost, $result['state']['resources'][3]['currentValue']);
+            self::assertSame(3, $result['state']['resources'][0]['currentValue']);
+            self::assertCount(2, $result['cast']['metamagics']);
+            $before = $this->stored();
+            $command['metamagics'] = array_reverse($keys);
+            self::assertTrue($this->executor->execute($this->session, $command)['replayed']);
+            self::assertSame($before, $this->stored());
+        }
+        foreach ([['quickened','twinned'], ['empowered','quickened','subtle'], ['empowered','empowered']] as $pair) {
+            $this->reject($this->command(null, ['metamagics'=>array_map(static fn(string $key): string => 'metamagic-'.$key.'-spell', $pair)]), 'invalid_command');
+        }
+        $state = $this->initialState(); $state['resources'][3]['currentValue'] = 2; $this->reset($state);
+        $this->reject($this->command(null, ['metamagics'=>['metamagic-empowered-spell','metamagic-quickened-spell']]), 'insufficient_sorcery_points');
+    }
+
+    public function testEmpoweredTwinnedUsesEligibilityAndEffectiveLevel(): void
+    {
+        $keys = ['metamagic-empowered-spell','metamagic-twinned-spell'];
+        foreach ([['cantrip', 0, $this->cantripSource, 2], ['standard-slot', 2, $this->source, 3], ['pact-slot', 2, $this->source, 3]] as [$method,$level,$source,$cost]) {
+            $this->reset();
+            $result = $this->executor->execute($this->session, $this->command(null, ['metamagics'=>$keys, 'method'=>$method,'castingLevel'=>$level,'sourceKey'=>$source]));
+            self::assertSame(20-$cost, $result['state']['resources'][3]['currentValue']);
+        }
+        $this->spell->setTargeting('creature', false, 'slot', 2); $this->em->flush();
+        $this->reject($this->command(null, ['metamagics'=>$keys, 'castingLevel'=>2]), 'metamagic_multiple_possible_targets');
+        $this->db->executeStatement("UPDATE character_feature_choice SET active=FALSE WHERE option_key='metamagic-empowered-spell'");
+        $this->reject($this->command(null, ['metamagics'=>$keys]), 'metamagic_not_acquired');
+    }
+
     public function testAllTenCostsAndDirectoryUseAcquiredChoices(): void
     {
         $entries = $this->directory->forCharacter($this->session->getCharacter(), $this->session->getState());
@@ -267,6 +304,12 @@ final class SpellMetamagicTest extends TestCase
         $result = $this->executor->execute($this->session, $this->command('subtle', ['sourceKey'=>'feature:500', 'method'=>'resource']));
         self::assertSame(0, $result['state']['resources'][3]['currentValue']);
         self::assertSame(4, $result['state']['resources'][0]['currentValue']);
+        $pair = ['sourceKey'=>'feature:500', 'method'=>'resource', 'metamagics'=>['metamagic-empowered-spell','metamagic-quickened-spell']];
+        $state['resources'][3]['currentValue'] = 4; $this->reset($state);
+        $this->reject($this->command(null, $pair), 'insufficient_sorcery_points');
+        $state['resources'][3]['currentValue'] = 5; $this->reset($state);
+        $result = $this->executor->execute($this->session, $this->command(null, $pair));
+        self::assertSame(0, $result['state']['resources'][3]['currentValue']);
     }
 
     public function testMissingAcquisitionOrInactivePoolCannotBeUsed(): void

@@ -12,7 +12,7 @@ final readonly class CharacterSpellCastCommandValidator
     public function __construct(private PlayerSpellDirectory $directory) {}
 
     /**
-     * @return array{valid:bool,status:string,reason:?string,source:?array,method:?string,castingLevel:?int,poolSlug:?string,cost:?int,metamagic?:array{key:string,poolSlug:string,cost:int}}
+     * @return array{valid:bool,status:string,reason:?string,source:?array,method:?string,castingLevel:?int,poolSlug:?string,cost:?int,metamagic?:array{key:string,poolSlug:string,cost:int},metamagics?:list<array{key:string,poolSlug:string,cost:int}>}
      * Revision and requestId are checked for syntax only: no session lookup, reservation or receipt.
      * Pool and cost are returned only for a validated method, exclusively from server resolution.
      */
@@ -52,12 +52,21 @@ final readonly class CharacterSpellCastCommandValidator
         if ($method['status'] !== 'available') {
             return array_replace($result, ['status'=>$method['status'], 'reason'=>$method['reason'] ?? 'method_not_available']);
         }
-        if (isset($command['metamagic'])) {
+        $selected = $command['metamagics'] ?? (isset($command['metamagic']) ? [$command['metamagic']] : []);
+        $metamagics = [];
+        foreach ($selected as $key) {
             $options = array_values(array_filter($method['metamagics'] ?? [],
-                static fn(array $option): bool => $option['key'] === $command['metamagic']));
+                static fn(array $option): bool => $option['key'] === $key));
             if (count($options) !== 1) return array_replace($result, ['reason'=>'metamagic_not_acquired']);
             if ($options[0]['status'] !== 'available') return array_replace($result, ['reason'=>$options[0]['reason']]);
-            $result['metamagic'] = array_intersect_key($options[0], array_flip(['key','poolSlug','cost']));
+            $metamagics[] = array_intersect_key($options[0], array_flip(['key','poolSlug','cost']));
+        }
+        if ($metamagics !== []) {
+            $pools = array_values(array_filter($state['resources'] ?? [], static fn(array $pool): bool => ($pool['id'] ?? null) === 'sorcery-points'));
+            $total = array_sum(array_column($metamagics, 'cost')) + ($method['poolSlug'] === 'sorcery-points' ? $method['cost'] : 0);
+            if (count($pools) !== 1 || !is_int($pools[0]['currentValue'] ?? null) || $pools[0]['currentValue'] < $total) return array_replace($result, ['reason'=>'insufficient_sorcery_points']);
+            if (isset($command['metamagic'])) $result['metamagic'] = $metamagics[0];
+            else $result['metamagics'] = $metamagics;
         }
         return array_replace($result, ['valid'=>true, 'status'=>'available',
             'poolSlug'=>$method['poolSlug'], 'cost'=>$method['cost']]);

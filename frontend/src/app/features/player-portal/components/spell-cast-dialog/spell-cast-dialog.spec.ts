@@ -25,6 +25,27 @@ function setup(sources = [spell()]) {
 }
 afterEach(() => TestBed.resetTestingModule());
 describe('Shared casting dialog', () => {
+  it.each([['empowered','quickened'], ['quickened','empowered'], ['empowered','twinned']])('combines %s and %s and retains refreshes', (first, second) => {
+    const entry = spell();
+    entry.castingAvailability!.methods[0].metamagics = ['empowered','quickened','twinned','subtle'].map(key => ({
+      key:`metamagic-${key}-spell`, name:key, cost:key === 'quickened' ? 2 : 1, poolSlug:'sorcery-points', status:'available', reason:null, playerChecks:[],
+    }));
+    const {fixture,c} = setup([entry]); const done = vi.fn(); c.confirmed.subscribe(done);
+    fixture.componentRef.setInput('resources',[{id:'sorcery-points',currentValue:10}]);
+    const keys = [first,second].map(key => `metamagic-${key}-spell`);
+    keys.forEach(key => c.selectMetamagic(key)); fixture.detectChanges();
+    expect(c.selectedMetamagics().map(option => option.key)).toEqual(keys);
+    c.selectMetamagic('metamagic-subtle-spell'); expect(c.selectedMetamagics()).toHaveLength(2);
+    const loading = structuredClone(entry); delete loading.castingAvailability!.methods[0].metamagics;
+    fixture.componentRef.setInput('sources',[loading]); fixture.detectChanges();
+    expect(c.selectedMetamagics()).toHaveLength(2); expect(c.canConfirm()).toBe(false);
+    fixture.componentRef.setInput('sources',[structuredClone(entry)]); fixture.detectChanges();
+    c.confirm(); expect(done).toHaveBeenLastCalledWith({sourceKey:entry.key,method:'standard-slot',castingLevel:1,metamagics:keys});
+    fixture.componentRef.setInput('resources',[{id:'sorcery-points',currentValue:1}]); fixture.detectChanges();
+    expect(c.canConfirm()).toBe(false); expect(c.selectedMetamagics()).toHaveLength(2);
+    c.selectMetamagic(keys[0]); expect(c.selectedMetamagics().map(option => option.key)).toEqual([keys[1]]);
+    c.selectMetamagic(keys[1]); expect(c.selectedMetamagics()).toEqual([]);
+  });
   it('keeps selected metamagic across profile/resource refresh and incomplete availability, then submits it', () => {
     const entry = spell();
     entry.castingAvailability!.methods[0].metamagics = [{key:'metamagic-twinned-spell',name:'Sort jumelé',cost:1,
@@ -94,7 +115,7 @@ describe('Shared casting dialog', () => {
     expect(c.selectedMetamagic()).toBeUndefined();
     expect(fixture.nativeElement.textContent).toContain('Choisissez d’abord');
     c.select(c.options()[0].key); c.selectMetamagic(options[0].key); c.selectMetamagic(options[1].key);
-    expect(c.selectedMetamagic()?.key).toBe(options[1].key);
+    expect(c.selectedMetamagic()?.key).toBe(options[0].key);
     c.select(c.options()[1].key); expect(c.selectedMetamagic()).toBeUndefined();
     c.selectMetamagic(options[0].key);
     fixture.componentRef.setInput('saving',true); fixture.detectChanges();

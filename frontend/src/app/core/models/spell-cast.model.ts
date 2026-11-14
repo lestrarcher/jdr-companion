@@ -56,6 +56,7 @@ export interface SpellCastCommand {
   readonly targetCharacterIds?: readonly number[];
   readonly hitPointRoll?: number;
   readonly metamagic?: string;
+  readonly metamagics?: readonly string[];
 }
 
 export function spellHitPointEffect(spell: PlayerSpell | undefined): 'aid' | 'feast' | null {
@@ -79,6 +80,7 @@ export function availableSpellCastMethods(spell: PlayerSpell | undefined): Avail
 }
 
 export interface SpellCastResult {
+  metamagics?: Pick<SpellMetamagic, 'key' | 'poolSlug' | 'cost'>[];
   metamagic?: Pick<SpellMetamagic, 'key' | 'poolSlug' | 'cost'>;
   source: {
     key: NonNullable<PlayerSpell['key']>;
@@ -121,5 +123,6 @@ export function createSpellCastCommand(intent: Omit<SpellCastCommand, 'requestId
     ...(intent.targetCharacterIds !== undefined ? { targetCharacterIds: Object.freeze([...intent.targetCharacterIds]) } : {}),
     ...(intent.hitPointRoll !== undefined ? { hitPointRoll: intent.hitPointRoll } : {}),
     ...(intent.metamagic !== undefined ? { metamagic: intent.metamagic } : {}),
+    ...(intent.metamagics !== undefined ? { metamagics: Object.freeze([...intent.metamagics]) } : {}),
   });
 }

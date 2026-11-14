@@ -86,6 +86,7 @@ export class PlayerSpells implements OnInit, OnChanges {
     if (!this.canCast() || !spell?.key || !method) return;
     const effect = spellHitPointEffect(spell);
     if (selection?.metamagic && !method.metamagics?.some(option => option.key === selection.metamagic && option.status === 'available')) return;
+    if (selection?.metamagics?.some(key => !method.metamagics?.some(option => option.key === key && option.status === 'available'))) return;
     const targets = selection?.targetCharacterIds;
     const roll = selection?.hitPointRoll;
     if (effect && (!targets || targets.length < 1 || targets.length > (effect === 'aid' ? 3 : 12)
@@ -97,6 +98,7 @@ export class PlayerSpells implements OnInit, OnChanges {
       ...(effect ? { targetCharacterIds: targets } : {}),
       ...(effect === 'feast' ? { hitPointRoll: roll } : {}),
       ...(selection?.metamagic ? { metamagic: selection.metamagic } : {}),
+      ...(selection?.metamagics ? { metamagics: selection.metamagics } : {}),
     }), name: spell.name, source: spell.source });
     this.sendCast();
   }

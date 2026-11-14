@@ -41,6 +41,27 @@ final class MetamagicReceiptTest extends TestCase
         }
     }
 
+    public function testPairsAreCanonicalAndOldSingleCommandsRemainEquivalent(): void
+    {
+        $keys = ['metamagic-empowered-spell','metamagic-quickened-spell'];
+        $command = $this->command() + ['metamagics'=>array_reverse($keys)];
+        $cast = $this->cast() + ['metamagics'=>[
+            ['key'=>$keys[0], 'poolSlug'=>'sorcery-points', 'cost'=>1],
+            ['key'=>$keys[1], 'poolSlug'=>'sorcery-points', 'cost'=>2],
+        ]];
+        $receipt = SpellCastReceipts::create($command, $cast);
+        self::assertSame(4, $receipt['version']);
+        $state = [SpellCastReceipts::STATE_KEY=>[$command['requestId']=>$receipt]];
+        self::assertSame('identical', SpellCastReceipts::compare($state, array_replace($command, ['metamagics'=>$keys])));
+        self::assertSame('conflict', SpellCastReceipts::compare($state, array_replace($command, ['metamagics'=>[$keys[0]]])));
+        self::assertSame(SpellCastReceipts::normalizeCommand($this->command()+['metamagic'=>$keys[0]]),
+            SpellCastReceipts::normalizeCommand($this->command()+['metamagics'=>[$keys[0]]]));
+        self::assertSame($this->command(), SpellCastReceipts::normalizeCommand($this->command()+['metamagics'=>[]]));
+        $receipt['cast']['metamagics'][1]['cost'] = 0;
+        $this->expectException(\UnexpectedValueException::class);
+        SpellCastReceipts::validateState([SpellCastReceipts::STATE_KEY=>[$command['requestId']=>$receipt]]);
+    }
+
     public function testReceiptRequiresMatchingMetamagicAndHistoricalCost(): void
     {
         $command = $this->command() + ['metamagic'=>'metamagic-subtle-spell'];

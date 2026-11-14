@@ -71,8 +71,8 @@ final readonly class CharacterSpellCastExecutor
                 }
                 $effect = $this->effects->prepare($session, $command, $validation);
                 // Debit locally first; no state is persisted unless the entire cast succeeds.
-                if (isset($validation['metamagic'])) {
-                    $cost = $validation['metamagic']['cost'];
+                if (isset($validation['metamagic']) || isset($validation['metamagics'])) {
+                    $cost = array_sum(array_column($validation['metamagics'] ?? [$validation['metamagic']], 'cost'));
                     $indices = [];
                     foreach ($state['resources'] ?? [] as $index=>$resource) {
                         if (($resource['id'] ?? null) === 'sorcery-points') $indices[] = $index;
@@ -191,7 +191,7 @@ final readonly class CharacterSpellCastExecutor
                     || $validation['poolSlug'] !== null || $validation['cost'] !== 0) {
                     throw new UnprocessableEntityHttpException('invalid_cast_cost');
                 }
-                $cast = array_intersect_key($validation, array_flip(['source','method','castingLevel','poolSlug','cost','metamagic']));
+                $cast = array_intersect_key($validation, array_flip(['source','method','castingLevel','poolSlug','cost','metamagic','metamagics']));
                 $state[SpellCastReceipts::STATE_KEY][$command['requestId']] = SpellCastReceipts::create($command, $cast);
                 $mutated = true;
                 // The receipt makes zero-cost acceptance a durable state change too.

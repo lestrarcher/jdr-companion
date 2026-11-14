@@ -35,6 +35,19 @@ describe('Player spell casting API', () => {
   });
   afterEach(() => { http.verify(); vi.restoreAllMocks(); TestBed.resetTestingModule(); });
 
+  it('snapshots both metamagics and sends them unchanged on retry', () => {
+    const keys = ['metamagic-quickened-spell','metamagic-empowered-spell'];
+    const pending = createSpellCastCommand({...intent, metamagics:keys});
+    keys.pop();
+    for (let i=0; i<2; i++) {
+      api.cast('token',pending).subscribe();
+      const req = http.expectOne('/api/public/characters/token/spells/cast');
+      expect(req.request.body.metamagics).toEqual(['metamagic-quickened-spell','metamagic-empowered-spell']);
+      expect(req.request.body.requestId).toBe(pending.requestId);
+      req.flush(response);
+    }
+  });
+
   it('POSTs exactly five fields, preserving the supplied UUID and encoding the token', () => {
     const uuid = vi.spyOn(crypto, 'randomUUID');
     const input = { ...command, requestId: id.toUpperCase(), cost: 99, resources: ['untrusted'] };

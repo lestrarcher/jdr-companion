@@ -73,17 +73,21 @@
         <div class="methods">
           @for (option of metamagics(); track option.key) {
             <button type="button" class="cast-option method-option metamagic-option"
-              [class.selected]="selectedMetamagic()?.key === option.key"
-              [attr.aria-pressed]="selectedMetamagic()?.key === option.key"
-              [disabled]="option.status !== 'available'" (click)="selectMetamagic(option.key)">
+              [class.selected]="isMetamagicSelected(option.key)"
+              [attr.aria-pressed]="isMetamagicSelected(option.key)"
+              [disabled]="!canSelectMetamagic(option.key)" (click)="selectMetamagic(option.key)">
               <span><span aria-hidden="true">✦</span> {{ option.name }} · {{ option.cost }} PS</span>
               @if (option.status !== 'available') { <small>{{ metamagicReason(option.reason) }}</small> }
             </button>
           }
         </div>
-        @if (selectedMetamagic(); as option) {
+        @for (option of selectedMetamagics(); track option.key) {
           <p class="cast-cost" role="status">{{ option.name }} : +{{ option.cost }} point{{ option.cost > 1 ? 's' : '' }} de sorcellerie.</p>
           @if (!metamagics().length || option.status === 'unknown') { <p role="status">Sélection conservée, en attente des disponibilités.</p> }
+        }
+        @if (selectedMetamagics().length === 2) {
+          <p class="cast-cost" role="status">Total : {{ metamagicCost() }} points de sorcellerie.</p>
+          @if (!combinedAffordable()) { <p role="alert">Points de sorcellerie insuffisants ou à actualiser.</p> }
         }
       </fieldset>
     }
