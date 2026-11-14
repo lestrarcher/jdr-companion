@@ -38,12 +38,22 @@ final readonly class CharacterSpellMetamagic
             if (!isset(self::COSTS[$key])) continue;
             $cost = $key === 'metamagic-twinned-spell' ? max(1, $method['castingLevel']) : self::COSTS[$key];
             [$reason, $checks] = self::compatibility($key, $spell, $method);
-            // Canonical 2014 identities only; never infer targeting from a translated name.
-            if ($key === 'metamagic-twinned-spell' && match ($spell['importKey'] ?? null) {
-                'aidedd-2014:decharge-occulte' => $characterLevel >= 5,
-                'aidedd-2014:immobilisation-de-monstre' => $method['castingLevel'] >= 6,
-                default => false,
-            }) $reason = 'metamagic_multiple_possible_targets';
+            if ($key === 'metamagic-twinned-spell' && $reason === null) {
+                $type = $spell['targetType'] ?? null;
+                $progression = $spell['multipleTargetsProgression'] ?? null;
+                $threshold = $spell['multipleTargetsThreshold'] ?? null;
+                if ($type === 'self') $reason = 'metamagic_self_range';
+                elseif ($type === 'area' || $type === 'object') $reason = 'metamagic_requires_single_creature';
+                elseif ($type !== 'creature' || !is_bool($spell['multipleTargets'] ?? null)
+                    || (($progression === null) !== ($threshold === null))
+                    || ($progression !== null && (!in_array($progression, ['slot', 'character'], true)
+                        || !is_int($threshold) || $threshold < 1 || $threshold > ($progression === 'slot' ? 9 : 20)))) {
+                    $reason = 'metamagic_targeting_unknown';
+                } elseif ($spell['multipleTargets'] || ($threshold !== null
+                    && ($progression === 'slot' ? $method['castingLevel'] : $characterLevel) >= $threshold)) {
+                    $reason = 'metamagic_multiple_possible_targets';
+                }
+            }
             $reason ??= $method['status'] === 'available' ? null : ($method['reason'] ?? 'method_not_available');
             $reason ??= $pool === null ? 'sorcery_points_unavailable'
                 : ($pool['status'] !== 'available' ? 'sorcery_points_'.($pool['reason'] ?? 'unavailable') : null);

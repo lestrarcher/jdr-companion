@@ -69,9 +69,9 @@ final class SpellMetamagicTest extends TestCase
         $policy = new SpellcastingPolicyDefinition($bard, new \App\Dto\SpellcastingPolicy('fixture-bard', 1, Ability::Charisma, 'known',
             array_fill(0, 20, ['maxSpellLevel'=>1, 'cantrips'=>2, 'known'=>2, 'bookAdditions'=>0, 'replacements'=>0, 'preparationBase'=>null]), 'Fixture'));
         $this->spell = new SpellDefinition('fixture-spell', 'Fixture spell', 1, SpellSchool::Evocation, '1 action', '18 mètres', '1 minute', 'Synthetic spell');
-        $this->spell->setComponents(true, true, false);
+        $this->spell->setComponents(true, true, false)->setTargeting('creature');
         $cantrip = new SpellDefinition('fixture-cantrip', 'Fixture cantrip', 0, SpellSchool::Evocation, '1 action', '60 feet', '1 minute', 'Synthetic cantrip');
-        $cantrip->setComponents(true, true, false);
+        $cantrip->setComponents(true, true, false)->setTargeting('creature');
         $acquisition = new CharacterSpellAcquisition($character, $this->spell, $policy, $level, $owner, 'manual-reconciliation', 'known', 'Fixture');
         $cantripAcquisition = new CharacterSpellAcquisition($character, $cantrip, $policy, $level, $owner, 'manual-reconciliation', 'cantrips', 'Fixture');
         $points = (new TrackableResourceDefinition('sorcery-points', 'Points', ResourceRechargeType::LongRest))->setBaseMaximum(20);
@@ -278,13 +278,13 @@ final class SpellMetamagicTest extends TestCase
         $this->reject($this->command('subtle'), 'sorcery_points_inactive_pool');
     }
 
-    public function testTwinnedCantripUsesGlobalLevelAndCanonicalIdentity(): void
+    public function testTwinnedCantripUsesGlobalLevelAndConfiguredTargeting(): void
     {
         $service = $this->kernel->getContainer()->get('test.service_container')->get(\App\Service\CharacterSpellMetamagic::class);
         $context = ['resources'=>[['slug'=>'sorcery-points', 'status'=>'available', 'remaining'=>20]]];
         $method = ['kind'=>'cantrip', 'castingLevel'=>0, 'poolSlug'=>null, 'cost'=>0, 'status'=>'available'];
         foreach ([4, 5, 11, 13, 17] as $level) {
-            $options = $service->options(['metamagic-twinned-spell'=>'Twin'], ['importKey'=>'aidedd-2014:decharge-occulte'], $method, $context, $level);
+            $options = $service->options(['metamagic-twinned-spell'=>'Twin'], ['targetType'=>'creature', 'multipleTargets'=>false, 'multipleTargetsProgression'=>'character', 'multipleTargetsThreshold'=>5], $method, $context, $level);
             self::assertSame($level < 5 ? null : 'metamagic_multiple_possible_targets', $options[0]['reason']);
             self::assertSame(1, $options[0]['cost']);
         }
@@ -296,9 +296,77 @@ final class SpellMetamagicTest extends TestCase
             $character->addClassLevel($level); $this->em->persist($level);
         }
         $cantrip = $this->em->getRepository(SpellDefinition::class)->findOneBy(['slug'=>'fixture-cantrip']);
-        $cantrip->setImportKey('aidedd-2014:decharge-occulte'); $this->em->flush();
+        $cantrip->setTargeting('creature', false, 'character', 5); $this->em->flush();
         $this->reject($this->command('twinned', ['sourceKey'=>$this->cantripSource, 'method'=>'cantrip', 'castingLevel'=>0]), 'metamagic_multiple_possible_targets');
         $result = $this->executor->execute($this->session, $this->command('subtle', ['sourceKey'=>$this->cantripSource, 'method'=>'cantrip', 'castingLevel'=>0]));
+        self::assertSame(19, $result['state']['resources'][3]['currentValue']);
+    }
+
+    public function testMigrationProfilesAndGenericTargeting(): void
+    {
+        $cases = [
+            ['orbe-chromatique', 1, 1, 13, null],
+            ['immobilisation-de-personne', 2, 2, 13, null],
+            ['immobilisation-de-personne', 2, 3, 13, 'metamagic_multiple_possible_targets'],
+            ['immobilisation-de-monstre', 5, 5, 13, null],
+            ['immobilisation-de-monstre', 5, 6, 13, 'metamagic_multiple_possible_targets'],
+            ['decharge-occulte', 0, 0, 4, null],
+            ['decharge-occulte', 0, 0, 5, 'metamagic_multiple_possible_targets'],
+            ['boule-de-feu', 3, 3, 13, 'metamagic_requires_single_creature'],
+            ['projectile-magique', 1, 1, 13, 'metamagic_multiple_possible_targets'],
+        ];
+        $spells = [];
+        foreach ($cases as [$key, $base]) {
+            if (isset($spells[$key])) continue;
+            $spell = new SpellDefinition($key, 'Unrelated display name', $base, SpellSchool::Evocation, '1 action', '60 feet', 'Instant', 'Fixture');
+            $spell->setImportKey('aidedd-2014:'.$key);
+            $this->em->persist($spell); $spells[$key] = $spell;
+        }
+        $this->em->flush();
+        require_once dirname(__DIR__, 2).'/migrations/Version20261114010000.php';
+        $migration = new \DoctrineMigrations\Version20261114010000($this->db, new \Psr\Log\NullLogger());
+        // SchemaTool already created the columns; reproduce the pre-migration schema in TEMP only.
+        $this->db->executeStatement('ALTER TABLE pg_temp.spell_definition DROP target_type, DROP multiple_targets, DROP multiple_targets_progression, DROP multiple_targets_threshold');
+        $migration->up(new \Doctrine\DBAL\Schema\Schema());
+        foreach ($migration->getSql() as $query) $this->db->executeStatement($query->getStatement());
+        $container = $this->kernel->getContainer()->get('test.service_container');
+        $catalogue = $container->get(\App\Service\SpellCatalogue::class);
+        $service = $container->get(\App\Service\CharacterSpellMetamagic::class);
+        $owner = $this->session->getCharacter()->getCampaign()->getOwner();
+        $context = ['resources'=>[['slug'=>'sorcery-points', 'status'=>'available', 'remaining'=>20]]];
+        $method = ['kind'=>'standard-slot', 'castingLevel'=>1, 'poolSlug'=>null, 'cost'=>1, 'status'=>'available'];
+        foreach ($cases as [$key, $base, $castingLevel, $level, $reason]) {
+            $data = $catalogue->get($spells[$key]->getId(), $owner);
+            $options = $service->options(['metamagic-twinned-spell'=>'Twin'], $data, array_replace($method, ['castingLevel'=>$castingLevel]), $context, $level);
+            self::assertSame($reason, $options[0]['reason'], $key.' at '.$castingLevel.'/'.$level);
+            self::assertSame(max(1, $castingLevel), $options[0]['cost']);
+        }
+        self::assertNull($catalogue->get($this->spell->getId(), $owner)['targetType'], 'Unrelated spell is not configured by migration');
+        foreach ([null, 'special', 'object', 'self', 'area'] as $type) {
+            $data = ['targetType'=>$type, 'multipleTargets'=>false];
+            $option = $service->options(['metamagic-twinned-spell'=>'Twin'], $data, $method, $context, 4)[0];
+            self::assertSame('unavailable', $option['status']);
+        }
+        // The existing catalogue API can configure and preserve targeting, without name inference.
+        $payload = ['slug'=>'custom-targeting', 'name'=>'Custom', 'level'=>1, 'school'=>'evocation', 'castingTime'=>'1 action',
+            'range'=>'60 feet', 'duration'=>'Instant', 'description'=>'Fixture', 'targetType'=>'creature', 'multipleTargets'=>false,
+            'multipleTargetsProgression'=>'slot', 'multipleTargetsThreshold'=>3];
+        $custom = $catalogue->create($payload, $owner);
+        self::assertSame(3, $custom['multipleTargetsThreshold']);
+        $custom = $catalogue->patch($custom['id'], ['name'=>'Renamed'], $owner);
+        self::assertSame('creature', $custom['targetType']);
+        self::assertSame(3, $custom['multipleTargetsThreshold']);
+        foreach ([['multipleTargetsThreshold'=>0], ['multipleTargetsThreshold'=>'3'], ['targetType'=>'invented'], ['multipleTargetsProgression'=>null]] as $invalid) {
+            try { $catalogue->patch($custom['id'], $invalid, $owner); self::fail('Invalid targeting accepted'); }
+            catch (\Symfony\Component\HttpKernel\Exception\BadRequestHttpException) { self::assertTrue(true); }
+        }
+    }
+
+    public function testUnknownTargetingRefusesWithoutDebitsButOtherMetamagicStillWorks(): void
+    {
+        $this->spell->setTargeting(null); $this->em->flush();
+        $this->reject($this->command('twinned'), 'metamagic_targeting_unknown');
+        $result = $this->executor->execute($this->session, $this->command('subtle'));
         self::assertSame(19, $result['state']['resources'][3]['currentValue']);
     }
 
@@ -310,7 +378,7 @@ final class SpellMetamagicTest extends TestCase
             $level = new CharacterClassLevel($character, $class, $character->getNextLevelPosition());
             $character->addClassLevel($level); $this->em->persist($level);
         }
-        $this->spell->setImportKey('aidedd-2014:immobilisation-de-monstre')->setLevel(5);
+        $this->spell->setTargeting('creature', false, 'slot', 6)->setLevel(5);
         $this->em->flush();
         $state = $this->initialState();
         $state['resources'][] = ['id'=>'spell-slot-5', 'currentValue'=>2];
