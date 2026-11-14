@@ -24,6 +24,7 @@ final class ImportSpellTargeting2014Command extends Command
     {
         $this->addOption('apply', null, InputOption::VALUE_NONE, 'Appliquer après validation complète, dans une transaction.');
         $this->addOption('json', null, InputOption::VALUE_NONE, 'Rapport JSON complet, sans formatage console.');
+        $this->addOption('force', null, InputOption::VALUE_NONE, 'Autoriser la mise à jour des ciblages déjà configurés.');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -33,7 +34,7 @@ final class ImportSpellTargeting2014Command extends Command
             if (!is_file($path)) throw new \RuntimeException('Référence de ciblage introuvable.');
             $document = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
             if (!is_array($document)) throw new \InvalidArgumentException('Document de ciblage invalide.');
-            $report = $this->importer->run($document, (bool) $input->getOption('apply'));
+            $report = $this->importer->run($document, (bool) $input->getOption('apply'), (bool) $input->getOption('force'));
         } catch (\Throwable $error) {
             $report = ['changes'=>[], 'unchanged'=>[], 'review'=>[], 'errors'=>[$error->getMessage()], 'applied'=>0];
         }

@@ -57,14 +57,14 @@ final readonly class Spell2014TargetingImport
         return $document['spells'];
     }
 
-    public function run(array $document, bool $apply = false): array
+    public function run(array $document, bool $apply = false, bool $force = false): array
     {
         $entries = $this->validate($document); // Entire file validated before touching the database.
-        if (!$apply) return $this->plan($entries);
-        return $this->db->transactional(function () use ($entries): array {
+        if (!$apply) return $this->plan($entries, $force);
+        return $this->db->transactional(function () use ($entries, $force): array {
             // Serializes with catalogue edits/imports, including edits of the reviewed descriptions.
             $this->db->executeStatement('LOCK TABLE spell_definition IN SHARE ROW EXCLUSIVE MODE');
-            $report = $this->plan($entries);
+            $report = $this->plan($entries, $force);
             if ($report['errors'] !== []) return $report;
             foreach ($report['changes'] as $change) {
                 $this->db->update('spell_definition', $change['after'], ['edition'=>'2014', 'import_key'=>$change['import_key'], 'origin'=>'OFFICIAL', 'owner_id'=>null],
@@ -75,7 +75,7 @@ final readonly class Spell2014TargetingImport
         });
     }
 
-    private function plan(array $entries): array
+    private function plan(array $entries, bool $force = false): array
     {
         $report = ['officialTotal'=>0, 'customIgnored'=>0, 'changes'=>[], 'unchanged'=>[], 'review'=>[], 'errors'=>[], 'applied'=>0];
         $rows = $this->db->fetchAllAssociative("SELECT * FROM spell_definition WHERE edition='2014'");
@@ -113,7 +113,7 @@ final readonly class Spell2014TargetingImport
             }
             $after = array_combine(self::FIELDS, array_map(static fn(string $field) => $entry[$field], self::FIELDS));
             if ($before === $after) { $report['unchanged'][] = $identity; continue; }
-            if ($configured) {
+            if ($configured && !$force) {
                 $report['errors'][] = $entry['import_key'].' : configuration existante différente, conservée ; arbitrage manuel requis.';
                 continue;
             }
