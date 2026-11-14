@@ -25,6 +25,36 @@ function setup(sources = [spell()]) {
 }
 afterEach(() => TestBed.resetTestingModule());
 describe('Shared casting dialog', () => {
+  it('keeps selected metamagic across profile/resource refresh and incomplete availability, then submits it', () => {
+    const entry = spell();
+    entry.castingAvailability!.methods[0].metamagics = [{key:'metamagic-twinned-spell',name:'Sort jumelé',cost:1,
+      poolSlug:'sorcery-points',status:'available',reason:null,playerChecks:[]}];
+    const {fixture,c} = setup([entry]); const done = vi.fn(); c.confirmed.subscribe(done);
+    c.selectMetamagic('metamagic-twinned-spell');
+    fixture.componentRef.setInput('spell',structuredClone(entry));
+    fixture.componentRef.setInput('sources',[structuredClone(entry)]);
+    fixture.componentRef.setInput('resources',[{id:'sorcery-points',currentValue:9}]); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.metamagic-option').getAttribute('aria-pressed')).toBe('true');
+    const loading = structuredClone(entry); delete loading.castingAvailability!.methods[0].metamagics;
+    fixture.componentRef.setInput('sources',[loading]); fixture.detectChanges();
+    expect(c.selectedMetamagic()?.key).toBe('metamagic-twinned-spell');
+    expect(fixture.nativeElement.textContent).toContain('Sélection conservée');
+    c.confirm(); expect(done).not.toHaveBeenCalled();
+    fixture.componentRef.setInput('sources',[]); fixture.detectChanges();
+    expect(c.selectedMetamagic()?.key).toBe('metamagic-twinned-spell');
+    fixture.componentRef.setInput('sources',[structuredClone(entry)]); fixture.detectChanges();
+    c.confirm(); expect(done).toHaveBeenLastCalledWith({sourceKey:entry.key,method:'standard-slot',castingLevel:1,metamagic:'metamagic-twinned-spell'});
+    const refused = structuredClone(entry);
+    refused.castingAvailability!.methods[0].metamagics![0].status='unavailable';
+    fixture.componentRef.setInput('sources',[refused]); fixture.detectChanges();
+    expect(c.selectedMetamagic()).toBeUndefined();
+    fixture.componentRef.setInput('sources',[entry]); fixture.detectChanges();
+    expect(c.selectedMetamagic()).toBeUndefined();
+    c.selectMetamagic('metamagic-twinned-spell'); c.close(); expect(c.selectedMetamagic()).toBeUndefined();
+    c.selectMetamagic('metamagic-twinned-spell');
+    fixture.componentRef.setInput('spell',{...entry,spellId:2}); fixture.detectChanges();
+    expect(c.selectedMetamagic()).toBeUndefined();
+  });
   it('disables Twinned Spell using the server targeting reason without inferring targets locally', () => {
     const entry = spell();
     entry.castingAvailability!.methods[0].metamagics = [{key:'metamagic-twinned-spell', name:'Sort jumelé', cost:6,
@@ -57,7 +87,7 @@ describe('Shared casting dialog', () => {
     buttons[0].click(); fixture.detectChanges(); c.confirm();
     expect(done).toHaveBeenLastCalledWith({sourceKey:'acquisition:1', method:'standard-slot', castingLevel:1});
   });
-  it('selects only one option, clears it on method/source refresh, and locks pending casts', () => {
+  it('selects only one option, clears it on level changes, preserves refreshes, and locks pending casts', () => {
     const options = ['subtle','twinned'].map(name => ({key:`metamagic-${name}-spell`, name, cost:2, poolSlug:'sorcery-points', status:'available' as const, reason:null, playerChecks:[]}));
     const entry = spell('first', [ {...method('standard-slot',1), metamagics:options}, {...method('pact-slot',2), metamagics:options} ]);
     const {fixture,c} = setup([entry]);
@@ -71,11 +101,10 @@ describe('Shared casting dialog', () => {
     c.selectMetamagic(options[1].key); expect(c.selectedMetamagic()?.key).toBe(options[0].key);
     fixture.componentRef.setInput('saving',false);
     fixture.componentRef.setInput('sources',[structuredClone(entry)]); fixture.detectChanges();
-    expect(c.selectedMetamagic()).toBeUndefined();
-    c.selectMetamagic(options[0].key);
+    expect(c.selectedMetamagic()?.key).toBe(options[0].key);
     const other = {...structuredClone(entry), key:'other', castingAvailability:{...entry.castingAvailability!, sourceKey:'other'}};
     fixture.componentRef.setInput('sources',[entry,other]); fixture.detectChanges();
-    c.selectSource('other'); expect(c.selectedMetamagic()).toBeUndefined();
+    c.selectSource('other'); expect(c.selectedMetamagic()?.key).toBe(options[0].key);
   });
   it.each([
     { key: 'feature:13', spellId: 219, name: 'Foulée brumeuse', level: 2, pool: 'fey-touched-grant-13' },

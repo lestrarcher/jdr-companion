@@ -83,6 +83,7 @@
         </div>
         @if (selectedMetamagic(); as option) {
           <p class="cast-cost" role="status">{{ option.name }} : +{{ option.cost }} point{{ option.cost > 1 ? 's' : '' }} de sorcellerie.</p>
+          @if (!metamagics().length || option.status === 'unknown') { <p role="status">Sélection conservée, en attente des disponibilités.</p> }
         }
       </fieldset>
     }
