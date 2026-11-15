@@ -30,6 +30,7 @@ final readonly class CharacterRestService
         private CharacterActiveEffectService $activeEffectService,
         private EntityManagerInterface $entityManager,
         private MagicItemRechargeService $itemRechargeService,
+        private ItemInfusions $infusions,
     ) {
     }
 
@@ -50,6 +51,7 @@ final readonly class CharacterRestService
             $sessionState->setState($state);
             $this->endLongRestEffects($sessionState);
             $state = $this->applyLongRest($character, $sessionState->getState());
+            $state = $this->infusions->afterLongRest($character, $state);
         } else {
             throw new \InvalidArgumentException(sprintf('Type de repos invalide : "%s".', $restType));
         }

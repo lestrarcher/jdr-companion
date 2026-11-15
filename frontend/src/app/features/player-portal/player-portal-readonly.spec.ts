@@ -14,6 +14,7 @@ import { CharacterResources } from './components/character-resources/character-r
 import { CharacterMagicItems } from './components/character-magic-items/character-magic-items';
 import { CharacterProgressions } from './components/character-progressions/character-progressions';
 import { CharacterStoredValues } from './components/character-stored-values/character-stored-values';
+import { CharacterInfusions } from './components/character-infusions/character-infusions';
 
 function snapshot(status: string, artificer: boolean): any {
   return { revision: 4, campaign:{id:2,configurationKey:'strahd'}, session:{id:3,status}, levelUpAllowed:false,
@@ -30,7 +31,7 @@ function snapshot(status: string, artificer: boolean): any {
   };
 }
 
-async function setup(status: string, artificer: boolean, desktop = false) {
+async function setup(status: string, artificer: boolean, desktop = false, infusionClasses: string[] = []) {
   vi.stubGlobal('matchMedia', vi.fn(() => ({matches:desktop,addEventListener:vi.fn(),removeEventListener:vi.fn()})));
   TestBed.configureTestingModule({providers:[provideHttpClient(),provideHttpClientTesting(),provideRouter([]),
     {provide:ActivatedRoute,useValue:{snapshot:{paramMap:convertToParamMap({campaignId:'2',sessionId:'3',accessToken:'test'})}}},
@@ -39,7 +40,13 @@ async function setup(status: string, artificer: boolean, desktop = false) {
   ]});
   const fixture=TestBed.createComponent(PlayerPortal);
   const http=TestBed.inject(HttpTestingController);
-  http.expectOne('/api/public/characters/test').flush(snapshot(status,artificer));
+  const response = snapshot(status,artificer);
+  if (infusionClasses.length) {
+    response.character.features.push({slug:'infusions-known',name:'Imprégnations connues',visible:true,sourceType:'class',sourceName:'Artificier'});
+    response.character.classLevels = infusionClasses.map((slug, index) => ({position:index+1,characterClass:{slug,name:slug}}));
+    response.character.totalLevel = infusionClasses.length;
+  }
+  http.expectOne('/api/public/characters/test').flush(response);
   await fixture.whenStable();
   return {fixture,http,component:fixture.componentInstance as any};
 }
@@ -47,6 +54,58 @@ async function setup(status: string, artificer: boolean, desktop = false) {
 afterEach(()=> { TestBed.resetTestingModule(); vi.unstubAllGlobals(); });
 
 describe('One player sheet, read-only outside LIVE',()=> {
+  it.each([false, true])('offers infusion preparation after approved long rest only when eligible (%s)', async eligible => {
+    const {fixture,http,component} = await setup('live', true, false, eligible ? ['fighter','artificer','artificer'] : []);
+    const url = '/api/public/characters/test/infusions';
+    if (eligible) {
+      http.expectOne(url).flush({known:[],active:[],quota:2,preparation:{id:null,open:false}});
+      http.expectOne(`${url}/recipients`).flush({recipients:[]});
+    }
+    component.activeTab.set('statistics'); await fixture.whenStable();
+    component.handleRestRequestUpdate({id:99,status:'approved',type:'long-rest'});
+    const response = snapshot('live',true);
+    if (eligible) response.character.features.push({slug:'infusions-known',name:'Imprégnations connues',visible:true,sourceType:'class',sourceName:'Artificier'});
+    for (const request of http.match('/api/public/characters/test')) request.flush(response);
+    await fixture.whenStable();
+    if (eligible) {
+      expect(component.activeTab()).toBe('status');
+      http.expectOne(url).flush({known:[],active:[],quota:2,preparation:{id:'rest-phase',open:true}});
+      http.expectOne(`${url}/recipients`).flush({recipients:[]});
+      await fixture.whenStable();
+      expect(fixture.nativeElement.textContent).toContain('Après le repos long');
+    } else {
+      expect(component.activeTab()).toBe('statistics'); http.expectNone(url);
+    }
+    fixture.destroy(); http.verify({ignoreCancelled:true});
+  });
+  it.each([['artificer','artificer'], ['fighter','artificer','artificer']])('shows infusion management in State with acquired capability (%j)', async (...classes) => {
+    const {fixture,http,component} = await setup('live', true, false, classes);
+    const url = '/api/public/characters/test/infusions';
+    http.expectOne(url).flush({known:[],active:[],quota:2});
+    http.expectOne(`${url}/recipients`).flush({recipients:[]});
+    await fixture.whenStable();
+    const panel = fixture.nativeElement.querySelector('[aria-labelledby="infusions-section-title"]');
+    expect(panel.classList.contains('magic-section')).toBe(true);
+    expect(panel.parentElement.classList.contains('spell-resource-column')).toBe(true);
+    expect(panel.querySelector('.counter').textContent).toContain('0 / 2');
+    // The existing profile refresh is still connected to successful mutations.
+    for (const request of http.match('/api/public/characters/test')) request.flush(snapshot('live',true));
+    // Keep the capability while testing the output independently of the initial refresh.
+    component.features.set([{slug:'infusions-known',name:'Imprégnations connues',visible:true,sourceType:'class',sourceName:'Artificier'}]);
+    fixture.debugElement.query(By.directive(CharacterInfusions)).componentInstance.changed.emit();
+    const refresh = snapshot('live',true);
+    refresh.character.features.push({slug:'infusions-known',name:'Imprégnations connues',visible:true,sourceType:'class',sourceName:'Artificier'});
+    http.expectOne('/api/public/characters/test').flush(refresh);
+    await fixture.whenStable();
+    component.selectTab('features'); await fixture.whenStable();
+    http.expectOne('/api/public/characters/test/spells/ability-choices').flush({choices:[]});
+    expect(fixture.nativeElement.querySelector('app-character-infusions')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Imprégnations connues');
+    http.expectNone(url);
+    for (const request of http.match('/api/public/characters/test/spells')) request.flush({spells:[],preparations:[]});
+    fixture.destroy(); http.verify({ignoreCancelled:true});
+  });
+
   it.each([true, false])('refreshes armor class and its source immediately after equipped=%s', async equipped => {
     const {fixture, http, component} = await setup('live', false);
     component.selectTab('possessions'); await fixture.whenStable();
@@ -85,6 +144,7 @@ describe('One player sheet, read-only outside LIVE',()=> {
     const closed=status==='closed';
     expect(fixture.nativeElement.querySelector('.character-dashboard')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.portal-message')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-character-infusions')).toBeNull();
     expect(fixture.nativeElement.textContent).toContain('Emplacements & sorts');
     expect(fixture.nativeElement.textContent).toContain('I');
     const vitals=fixture.debugElement.query(By.directive(CharacterVitals)).componentInstance as any;

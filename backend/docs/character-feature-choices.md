@@ -1,5 +1,52 @@
 # Choix de capacités — socle backend
 
+## Lot A — Imprégnations connues de l’artificier (Tasha, règles 2014)
+
+Le catalogue `data/reference/dnd-2014-feature-choices.json` ajoute le groupe
+`artificer-infusions`, rattaché à la capacité existante `infusions-known`.
+Quatre choix au niveau **d’artificier** 2, puis deux aux niveaux 6, 10, 14 et 18.
+La politique existante `class-level` autorise un remplacement facultatif par
+nouveau niveau d’artificier, partagé entre tous les paliers du groupe.
+L’unicité `group` empêche de reprendre une imprégnation déjà connue.
+
+Les 15 options hors reproduction sont présentes ; leurs prérequis de classe
+sont explicites. Homoncule : niveau 2 (Tasha), et non l’ancien prérequis de niveau 6.
+Les descriptions sont des résumés d’identification, pas une automatisation des effets.
+Référence : Tasha’s Cauldron of Everything, artificier et imprégnations, pages 12 et 20–23 ;
+[liste de vérification](https://dnd5e.wikidot.com/artificer:infusions).
+
+Installation additive par la commande existante `app:features:initialize-choices-2014` :
+aperçu sans option, application avec `--apply`, puis nouvel aperçu pour vérifier
+l’idempotence. Aucune migration ni modification du moteur ou des autres familles.
+Les personnages existants conservent leurs choix ; les droits historiques manquants
+restent régularisables par le MJ et ne bloquent pas une montée de niveau ordinaire.
+
+### Objet magique reproduit
+
+Les 49 objets des tables Tasha sont des options distinctes du **même groupe** :
+8 au niveau 2, 8 au niveau 6, 21 au niveau 10 et 12 au niveau 14.
+Chaque définition `artificer-infusion-replicate-<objet>` possède une seule option
+`artificer-infusions-replicate-<objet>` et un prérequis `classLevels.artificer`.
+Deux objets différents consomment deux choix du quota existant ; un même objet
+ne peut être repris dans un autre palier. Aucun droit de choix supplémentaire
+ni option générique répétable n’est ajouté. Le remplacement `class-level` est inchangé.
+Le catalogue utilise les tables Tasha, sans les ajouts Eberron (bras de propulsion
+arcanique et poumons ventilateurs) parfois présents dans les listes combinées.
+[Tables de référence Tasha](https://ems.glyphforged.com/catalog/tasha-ability-replicate-magic-item).
+
+Les objets magiques communs hors potions et parchemins sont également autorisés
+par les règles, mais le catalogue DEV ne contient actuellement aucun objet commun
+éligible. Leurs options explicites pourront être ajoutées au niveau 2 dans ce même
+groupe après revue ; aucun choix anonyme ou import automatique n’est proposé.
+Ce lot ne crée ni ne modifie de ligne `magic_item` ou `CharacterMagicItem` et ne
+configure aucun effet, charge ou harmonisation. Les noms identifient les choix ;
+ils ne servent pas à déduire leurs mécaniques. Aucune migration.
+
+Le lecteur, la transaction de montée de niveau, le resolver et l’éditeur Angular
+partagés assurent déjà persistance, historique, affichage et erreurs. Les tests
+couvrent les acquisitions, remplacements, prérequis, doublons, multiclassage,
+profil et formulaire. L’application aux objets et les effets restent hors périmètre.
+
 Branche : feature/character-feature-choices. Aucun catalogue de famille n'est livré.
 
 ## Persistance

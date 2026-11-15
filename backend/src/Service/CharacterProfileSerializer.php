@@ -22,6 +22,7 @@ final readonly class CharacterProfileSerializer
         private CharacterActionResolver $actionResolver,
         private CharacterTrainingPresenter $trainingPresenter,
         private CharacterArmorClassCalculator $armorClassCalculator,
+        private ItemInfusionArmorEffects $infusionArmorEffects,
     ) {
     }
 
@@ -36,7 +37,7 @@ final readonly class CharacterProfileSerializer
     ): array {
         $resources = $this->serializeResources($character, $progressionValues);
         $features = $this->featureResolver->resolve($character, $progressionValues);
-        $armorEffects = [];
+        $armorEffects = $this->infusionArmorEffects->resolve($character);
         foreach ($features as $rule) {
             $feature = $rule->getFeatureDefinition();
             if ($feature->getActivationType() !== \App\Enum\FeatureActivationType::Passive || $feature->getArmorClassEffects() === null) continue;

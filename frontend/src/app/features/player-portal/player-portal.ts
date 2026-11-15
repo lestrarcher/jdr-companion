@@ -31,6 +31,7 @@ import { PlayerSpells } from './components/player-spells/player-spells';
 import { SpellQuickList } from './components/spell-quick-list/spell-quick-list';
 import { SpellSlotBar, spellSlotGroups } from './components/spell-slot-bar/spell-slot-bar';
 import { CharacterFeatures } from './components/character-features/character-features';
+import { CharacterInfusions } from './components/character-infusions/character-infusions';
 import { ArcaneRecoveryActionModal, ArcaneRecoveryPayload } from './components/arcane-recovery-action-modal/arcane-recovery-action-modal';
 
 type SessionStatus =
@@ -67,6 +68,7 @@ type PlayerPortalTab =
     RouterLink,
     FlexibleCastingActionModal,
     CharacterFeatures,
+    CharacterInfusions,
     CharacterStatistics,
     PlayerSpells,
     SpellQuickList,
@@ -134,6 +136,8 @@ export class PlayerPortal {
   protected readonly features = signal<CharacterFeatureSummary[]>([]);
   protected readonly feats = signal<CharacterFeatSummary[]>([]);
   protected readonly visibleFeatures = computed(() => this.features().filter(feature => feature.visible));
+  protected readonly hasInfusions = computed(() => this.features().some(feature => feature.slug === 'infusions-known'));
+  protected readonly infusionRefresh = signal(0);
 
   protected readonly actions = signal<CharacterActionSummary[]>([]);
   protected readonly characterActions = signal<CharacterActionsState | null>(null);
@@ -767,6 +771,10 @@ export class PlayerPortal {
     );
 
     if (request.status === 'approved') {
+      if (request.type === 'long-rest' && this.hasInfusions()) {
+        this.activeTab.set('status');
+        this.infusionRefresh.update(value => value + 1);
+      }
       this.showRestFeedback(
         request.type === 'short-rest'
           ? 'Repos court accordé par le MJ.'

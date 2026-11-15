@@ -167,6 +167,11 @@
                           [editable]="sessionStatus() === 'live'" [busy]="saveStatus() === 'saving'" (refreshed)="refreshTinkering()" />
                       }
                     </app-character-resources>
+                    @if (hasInfusions()) {
+                      <section class="magic-section" aria-labelledby="infusions-section-title">
+                        <app-character-infusions [accessToken]="accessToken" [refresh]="infusionRefresh()" [readonly]="!canEdit()" (changed)="refreshSpells()" />
+                      </section>
+                    }
                   </div>
                 </div>
 

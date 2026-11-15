@@ -29,6 +29,44 @@ function editor(data = view(), load = vi.fn(() => of(data)), save?: any) {
   return {f,c:f.componentInstance as any,changed,load};
 }
 describe('Feature choice editor', () => {
+  function infusions(): FeatureChoiceView {
+    const data = view();
+    Object.assign(data.grants[0], {key:'artificer-infusions-2',name:'Imprégnations connues',classKey:'artificer',classLevel:2,unlockLevel:2,choice_count:4,remaining:4,
+      options:['Défense améliorée','Arme améliorée','Focaliseur arcanique amélioré','Arme de retour','Tir à répétition','Bottes du chemin sinueux','Arme radiante'].map((name,index)=>({
+        key:`infusion-${index}`,featureKey:`infusion-${index}`,name,description:'Imprégnation connue',prerequisites:{classLevels:{artificer:2}},reasons:[],
+      }))});
+    data.grants[0].options.push({key:'helm',featureKey:'helm',name:'Heaume de vigilance',description:null,prerequisites:{classLevels:{artificer:10}},reasons:['classLevels:artificer']});
+    return data;
+  }
+  it('requires four artificer infusions at level two and shows server level restrictions', () => {
+    const data=infusions(); const {f,c,changed}=editor(data);
+    f.componentRef.setInput('classKey','artificer'); f.detectChanges();
+    expect(f.nativeElement.querySelectorAll('select')).toHaveLength(4);
+    expect(f.nativeElement.querySelector('option[value="helm"]').disabled).toBe(true);
+    for (let slot=1; slot<=3; slot++) c.select(data.grants[0],slot,`infusion-${slot-1}`);
+    expect(c.complete()).toBe(false);
+    c.select(data.grants[0],4,'infusion-3'); f.detectChanges();
+    expect(c.complete()).toBe(true);
+    expect(changed.mock.calls.at(-1)?.[0].selections).toHaveLength(4);
+    expect(f.nativeElement.textContent).toContain('Défense améliorée');
+  });
+  it('keeps level-three replacement optional and combines it with two new choices at level six', () => {
+    const data=infusions(); const grant=data.grants[0];
+    Object.assign(grant,{newAtLevel:false,classLevel:3,remaining:0,replacementAvailable:true,
+      selected:Array.from({length:4},(_,i)=>({key:`known-${i}`,slot:i+1,optionKey:`infusion-${i}`,valid:true}))});
+    const {f,c}=editor(data);
+    expect(c.complete()).toBe(true); expect(c.selections()).toEqual([]);
+    expect(f.nativeElement.textContent).toContain('Défense améliorée');
+    c.select(grant,1,'infusion-4');
+    expect(c.selections()).toEqual([{grantKey:grant.key,optionKey:'infusion-4',slot:1,replacesKey:'known-0'}]);
+    c.select(grant,1,''); expect(c.complete()).toBe(true);
+    const next={...grant,key:'artificer-infusions-6',classLevel:6,unlockLevel:6,choice_count:2,remaining:2,newAtLevel:true,selected:[]};
+    c.view.set({...data,grants:[grant,next]});
+    c.select(grant,1,'infusion-4'); c.select(next,1,'infusion-5');
+    expect(c.complete()).toBe(false); c.select(next,2,'infusion-6');
+    expect(c.complete()).toBe(true); expect(c.selections()).toHaveLength(3);
+    expect(c.selections().filter((row:any)=>row.replacesKey)).toHaveLength(1);
+  });
   it('loads the class, requires new slots and emits stable keys', () => {
     const {f,c,changed,load} = editor();
     expect(load).toHaveBeenCalledWith('fighter',null); expect(c.complete()).toBe(false);

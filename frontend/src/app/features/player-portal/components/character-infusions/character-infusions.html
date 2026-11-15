@@ -1,0 +1,57 @@
+<section aria-label="Gestion des imprégnations" [attr.aria-busy]="loading() || busy()">
+  <header class="section-heading">
+    <h2 id="infusions-section-title">Imprégnations</h2>
+    @if (view(); as state) { <div class="counter"><strong>{{ phaseOpen() ? planned().length : state.active.length }} <span>/ {{ state.quota }}</span></strong></div> }
+    <button class="icon-button" type="button" aria-label="Actualiser les imprégnations" (click)="load()" [disabled]="loading() || busy() || opened()">↻</button>
+  </header>
+  @if (loading()) { <p role="status">Chargement des imprégnations…</p> }
+  @if (error()) { <p role="alert">{{ error() }}</p> }
+  @if (success()) { <p role="status">{{ success() }}</p> }
+  @if (view(); as state) {
+    @if (phaseOpen()) { <p role="status">Après le repos long, préparez vos imprégnations puis confirmez l’ensemble. Aucun changement n’est appliqué avant confirmation.</p> }
+    @else { <p>Les imprégnations pourront être préparées après le prochain repos long validé.</p> }
+    @if (!state.known.length) { <p>Aucune imprégnation connue. Les choix doivent d’abord être renseignés.</p> }
+    <div class="quickbar" role="group" aria-label="Imprégnations connues">
+      @for (choice of state.known; track choice.choiceKey) {
+        <button type="button" class="quick-spell" [class.is-selected]="applied(choice.choiceKey)" [disabled]="busy() || loading()" (click)="selectChoice(choice.choiceKey)">
+          <span class="spell-icon" aria-hidden="true">{{ glyph(choice) }}</span><span class="quick-name">{{ choice.name }}</span>
+          @if (applied(choice.choiceKey)) { <small>Appliquée</small> }
+        </button>
+      }
+    </div>
+    @if (phaseOpen()) {
+      <h3>Applications prévues</h3>
+      @if (!draft().length) { <p>Aucune application prévue. Confirmer retirera toutes les imprégnations actives.</p> }
+      @for (entry of ordered(); track entry.choiceKey) {
+        <article class="resource-row"><div class="resource-information"><strong>{{ name(entry.choiceKey) }}</strong><small>{{ owner(entry.recipientId) }} — {{ entry.itemName }}</small>
+          <small [class.warning]="evicted().includes(entry)">{{ evicted().includes(entry) ? 'Éviction FIFO à la confirmation' : retained(entry) ? 'Conservée' : 'Nouvelle application' }}</small></div>
+          <button type="button" class="button-secondary" [disabled]="!editable()" (click)="remove(entry.choiceKey)" [attr.aria-label]="'Retirer du brouillon : ' + name(entry.choiceKey)">Retirer</button>
+        </article>
+      }
+      @if (evicted().length) { <p class="warning" role="status">Quota dépassé : {{ evicted().length }} application(s) ci-dessus seront écartées selon le FIFO.</p> }
+      @for (entry of ending(); track entry.id) { <p class="warning">Prendra fin : {{ name(entry.choiceKey) }} — {{ owner(entry.recipientId) }}, {{ entry.itemName }}.</p> }
+      <div class="form-actions"><button type="button" class="button-primary" (click)="confirm()" [disabled]="!editable() || opened()">{{ busy() ? 'Confirmation…' : 'Confirmer la préparation' }}</button></div>
+    } @else {
+      @if (!state.active.length) { <p>Aucune imprégnation active.</p> }
+      @for (entry of state.active; track entry.id) { <article class="resource-row"><div class="resource-information"><strong>{{ name(entry.choiceKey) }}</strong><small>{{ owner(entry.recipientId) }} — {{ entry.itemName }}</small></div></article> }
+    }
+  }
+</section>
+<dialog #dialog aria-labelledby="infusion-dialog-title" (cancel)="$event.preventDefault(); cancel()">
+  <header class="section-heading"><h2 id="infusion-dialog-title">{{ name(choiceKey()) }}</h2><button type="button" class="icon-button" aria-label="Fermer" (click)="cancel()">×</button></header>
+  @if (selectedChoice()?.mode === 'create-object') { <p>La création d’objets magiques reproduits n’est pas encore disponible. Cette formule reste connue et distincte des autres objets reproductibles.</p> }
+  @else if (!editable()) { <p>La préparation nécessite un repos long validé et une session active.</p> }
+  @else {
+    <label>Personnage<select [value]="recipientId()" (change)="selectRecipient(+$any($event.target).value)"><option value="0">Choisir un personnage</option>@for (recipient of recipients(); track recipient.id) { <option [value]="recipient.id">{{ recipient.name }}</option> }</select></label>
+    @if (!recipients().length) { <p>Aucun personnage éligible.</p> }
+    @if (itemsLoading()) { <p role="status">Chargement des objets…</p> }
+    @if (itemError()) { <p role="alert">{{ itemError() }}</p><button type="button" (click)="selectRecipient(recipientId())">Réessayer</button> }
+    @if (recipientId() && !itemsLoading() && !itemError()) {
+      <label>Objet<select [value]="itemId()" (change)="itemId.set(+$any($event.target).value)"><option value="0">Choisir un objet</option>@for (item of eligibleItems(); track item.id) { <option [value]="item.id">{{ item.name }}</option> }</select></label>
+      @if (!eligibleItems().length) { <p>Aucun objet éligible pour cette imprégnation.</p> }
+      @for (item of items(); track item.id) { @if (!item.eligible) { <p>{{ item.name }} : {{ item.reason }}</p> } }
+    }
+    <p>Choisir un objet déjà présent dans le brouillon remplacera son application prévue.</p>
+    <div class="form-actions"><button type="button" class="button-primary" (click)="apply()" [disabled]="!canApply()">Ajouter au brouillon</button><button type="button" class="button-secondary" (click)="remove(choiceKey())">Retirer du brouillon</button><button type="button" class="button-secondary" (click)="cancel()">Annuler</button></div>
+  }
+</dialog>
