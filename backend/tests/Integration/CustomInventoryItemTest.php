@@ -74,7 +74,7 @@ final class CustomInventoryItemTest extends TestCase
 
     private function controller(): PublicCharacterMagicItemController
     {
-        $controller = new PublicCharacterMagicItemController(new SpellbookLibrary($this->em), new PactTomeLibrary($this->em), new \App\Service\CharacterEquipmentService());
+        $controller = new PublicCharacterMagicItemController(new SpellbookLibrary($this->em), new PactTomeLibrary($this->em), new \App\Service\CharacterEquipmentService(), new \App\Service\ItemInfusionArmorEffects($this->db));
         $controller->setContainer(new Container());
         return $controller;
     }

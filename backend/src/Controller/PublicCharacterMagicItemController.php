@@ -27,7 +27,7 @@ final class PublicCharacterMagicItemController extends AbstractController
 {
     private const ATTUNEMENT_LIMIT = 3;
 
-    public function __construct(private readonly SpellbookLibrary $spellbookLibrary, private readonly PactTomeLibrary $pactTomes, private readonly \App\Service\CharacterEquipmentService $equipment) {}
+    public function __construct(private readonly SpellbookLibrary $spellbookLibrary, private readonly PactTomeLibrary $pactTomes, private readonly \App\Service\CharacterEquipmentService $equipment, private readonly \App\Service\ItemInfusionArmorEffects $infusionEffects) {}
 
     #[Route(
         '/public/characters/{accessToken}/magic-items',
@@ -417,13 +417,14 @@ final class PublicCharacterMagicItemController extends AbstractController
         Character $character,
         CharacterAbilityCalculator $abilityCalculator,
     ): array {
+        $infusions = $this->infusionEffects->itemProperties($character);
         return [
             'characterId' => $character->getId(),
             'attunedCount' => $character->getAttunedMagicItemCount(),
             'attunementLimit' => self::ATTUNEMENT_LIMIT,
             'ownedItems' => array_map(
                 fn (CharacterMagicItem $ownedItem): array =>
-                    $this->serializeOwnedItem($ownedItem),
+                    $this->serializeOwnedItem($ownedItem) + ['infusion'=>$infusions[$ownedItem->getId()] ?? null],
                 $character->getMagicItems()->toArray(),
             ),
             'effectiveAbilities' => array_map(

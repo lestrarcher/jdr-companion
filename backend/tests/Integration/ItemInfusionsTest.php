@@ -201,6 +201,99 @@ final class ItemInfusionsTest extends TestCase
         return ['choiceKey'=>$this->keys[$name], 'recipientId'=>$item->getCharacter()->getId(), 'itemId'=>$item->getId()];
     }
 
+    public function testWeaponPropertiesFollowCreatorEquipmentAndLifecycle(): void
+    {
+        $feature = new CharacterFeatureDefinition('artificer-infusion-enhanced-weapon', 'Arme améliorée');
+        $this->em->persist($feature); $this->em->flush();
+        $this->db->update('feature_choice_option', ['feature_id'=>$feature->getId()], ['key'=>'mind-sharpener']);
+        $item = $this->item('weapon', $this->recipient);
+        $this->apply('mind-sharpener', $item);
+        $resolver = new \App\Service\ItemInfusionArmorEffects($this->db);
+        $properties = fn () => $resolver->itemProperties($this->recipient);
+        self::assertSame([], $resolver->itemProperties($this->creator));
+        self::assertSame(0, $properties()[$item->getId()]['weaponBonuses']['attack']);
+        $item->setEquipped(true); $this->em->flush();
+        $bonus = $properties()[$item->getId()]['weaponBonuses'];
+        self::assertSame(['attack'=>1, 'damage'=>1, 'itemId'=>$item->getId(), 'requiresUse'=>true], $bonus);
+        $this->recipient->addMagicItem($item);
+        $recipientSession = new CharacterSessionState($this->actor->getGameSession(), $this->recipient);
+        $this->em->persist($recipientSession); $this->em->flush();
+        $container = $this->kernel->getContainer()->get('test.service_container');
+        $response = $container->get(\App\Controller\PublicCharacterMagicItemController::class)->list(
+            $recipientSession->getAccessToken(), $container->get(PlayerCharacterAccess::class),
+            $container->get(\App\Service\CharacterAbilityCalculator::class),
+        );
+        $inventory = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame($bonus, $inventory['ownedItems'][0]['infusion']['weaponBonuses']);
+        self::assertSame($this->creator->getName(), $inventory['ownedItems'][0]['infusion']['creatorName']);
+        self::assertSame([], $resolver->resolve($this->recipient));
+        $this->levels($this->artificer, 8);
+        self::assertSame(2, $properties()[$item->getId()]['weaponBonuses']['damage']);
+        $item->setEquipped(false); $this->em->flush();
+        self::assertSame(0, $properties()[$item->getId()]['weaponBonuses']['damage']);
+        $second = $this->item('weapon', $this->recipient);
+        $this->apply('mind-sharpener', $second);
+        self::assertArrayNotHasKey($item->getId(), $properties());
+        self::assertArrayHasKey($second->getId(), $properties());
+        $this->db->executeStatement('UPDATE character_feature_choice SET active=FALSE WHERE key=?', [$this->keys['mind-sharpener']]);
+        self::assertSame([], $properties());
+    }
+
+    public function testWeaponPropertiesDisappearWithFifoAndRejectMagicalSupports(): void
+    {
+        $feature = new CharacterFeatureDefinition('artificer-infusion-enhanced-weapon', 'Arme améliorée');
+        $this->em->persist($feature); $this->em->flush();
+        $this->db->update('feature_choice_option', ['feature_id'=>$feature->getId()], ['key'=>'mind-sharpener']);
+        $this->rejects(fn () => $this->apply('mind-sharpener', $this->item('weapon', null, true)));
+        $this->rejects(fn () => $this->apply('mind-sharpener', $this->item('shield')));
+        $item = $this->item('weapon', $this->recipient);
+        $this->apply('mind-sharpener', $item);
+        $resolver = new \App\Service\ItemInfusionArmorEffects($this->db);
+        self::assertArrayHasKey($item->getId(), $resolver->itemProperties($this->recipient));
+        $this->apply('enhanced-defense', $this->item());
+        $this->apply('armor-of-magical-strength', $this->item());
+        self::assertSame([], $resolver->itemProperties($this->recipient));
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('arcaneFocusSupports')]
+    public function testEnhancedArcaneFocusSupports(string $reference, bool $magical, bool $official, bool $eligible): void
+    {
+        $feature = new CharacterFeatureDefinition('artificer-infusion-enhanced-arcane-focus', 'Focaliseur arcanique amélioré');
+        $this->em->persist($feature); $this->em->flush();
+        $this->db->update('feature_choice_option', ['feature_id'=>$feature->getId()], ['key'=>'mind-sharpener']);
+        $definition = new MagicItem($official ? null : $this->creator->getCampaign(), 'Baguette personnalisée ou renommée', null,
+            origin:$official ? \App\Enum\ReferenceOrigin::Official : \App\Enum\ReferenceOrigin::Custom);
+        $definition->classify('gear', $magical, false);
+        $definition->setReferenceDetails($reference, null, null);
+        $item = new CharacterMagicItem($this->recipient, $definition);
+        $this->em->persist($definition); $this->em->persist($item); $this->em->flush();
+        $before = $this->db->fetchAllAssociative('SELECT * FROM character_magic_item ORDER BY id');
+        $listed = $this->service->items($this->creator, $this->recipient->getId(), $this->keys['mind-sharpener']);
+        self::assertSame($eligible, $listed[0]['eligible']);
+        if ($eligible) {
+            self::assertNull($listed[0]['reason']);
+            $result = $this->confirm([$this->selection('mind-sharpener', $item)]);
+            self::assertSame($item->getId(), $result['active'][0]['itemId']);
+            self::assertFalse($result['preparation']['open']);
+            $this->rejects(fn () => $this->service->apply($this->actor, $this->keys['mind-sharpener'], $this->recipient->getId(), $item->getId()));
+        } else {
+            self::assertNotEmpty($listed[0]['reason']);
+            $this->rejects(fn () => $this->confirm([$this->selection('mind-sharpener', $item)]));
+            self::assertSame([], $this->service->view($this->creator)['active']);
+        }
+        self::assertSame($before, $this->db->fetchAllAssociative('SELECT * FROM character_magic_item ORDER BY id'));
+    }
+
+    public static function arcaneFocusSupports(): array
+    {
+        return [
+            'wand'=>['Wand',false,true,true], 'staff'=>['Staff',false,true,true], 'rod'=>['Rod',false,true,true],
+            'magical wand'=>['Wand',true,true,false], 'magical staff'=>['Staff',true,true,false], 'magical rod'=>['Rod',true,true,false],
+            'crystal'=>['Crystal',false,true,false], 'orb'=>['Orb',false,true,false],
+            'unknown reference'=>['Unknown',false,true,false], 'custom named wand'=>['Wand',false,false,false],
+        ];
+    }
+
     private function confirm(array $selections): array
     {
         return $this->service->finishPreparation($this->actor, $this->service->preparation($this->actor)['id'], $selections);

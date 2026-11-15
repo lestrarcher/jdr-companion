@@ -66,6 +66,8 @@ export interface SpellbookInscriptionResponse {
 }
 
 export interface CharacterMagicItemResponse {
+  infusion?: { id: number; name: string; creatorName: string; creatorLevel: number; description: string;
+    weaponBonuses: { attack: number; damage: number; itemId: number; requiresUse: boolean } | null } | null;
   custom: boolean;
   quantityAdjustable?: boolean;
   spellbookSpells?: SpellbookInscriptionResponse[] | null;

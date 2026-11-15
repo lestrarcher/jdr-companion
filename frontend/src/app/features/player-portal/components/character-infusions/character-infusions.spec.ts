@@ -38,6 +38,22 @@ describe('Infusion preparation C3', () => {
     http.expectOne(`${url}/recipients/20/items?choiceKey=${key}`).flush({items:[{id:itemId,name:`Objet ${itemId}`,eligible:true,reason:null},{id:99,name:'Incompatible',eligible:false,reason:'Support inconnu'}]});
     c.itemId.set(itemId); c.apply();
   }
+  it('offers backend-approved wand, staff and rod for enhanced focus without client classification', () => {
+    const focus = {choiceKey:'focus', featureKey:'artificer-infusion-enhanced-arcane-focus', name:'Focaliseur arcanique amélioré', mode:'existing-item' as const};
+    const f = setup({...empty,known:[focus]}); const c = f.componentInstance;
+    c.selectChoice('focus'); c.selectRecipient(10);
+    http.expectOne(`${url}/recipients/10/items?choiceKey=focus`).flush({items:[
+      {id:44,name:'Baguette',eligible:true,reason:null}, {id:45,name:'Bâton',eligible:true,reason:null},
+      {id:46,name:'Sceptre',eligible:true,reason:null}, {id:47,name:'Orbe',eligible:false,reason:'Support incompatible'},
+    ]});
+    f.detectChanges();
+    const options = f.nativeElement.querySelectorAll('dialog select')[1].textContent;
+    expect(options).toContain('Baguette'); expect(options).toContain('Bâton'); expect(options).toContain('Sceptre'); expect(options).not.toContain('Orbe');
+    c.itemId.set(44); c.apply(); c.confirm();
+    const request = http.expectOne(`${url}/preparation/confirm`);
+    expect(request.request.body.selections).toEqual([{choiceKey:'focus',recipientId:10,itemId:44}]);
+    request.flush({...empty,preparation:{id:'real-phase',open:false}});
+  });
   it.each([false,true])('shows only active objects in consultation, including readonly with an open phase (%s)', readonly => {
     const f = setup({...empty,active:[active],preparation:{id:'real-phase',open:readonly}});
     f.componentRef.setInput('readonly',readonly); f.detectChanges();

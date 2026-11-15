@@ -197,8 +197,18 @@ final readonly class ItemInfusions
         $definition = $item->getMagicItem();
         if ($definition === null) return 'Support physique non identifié.';
         if ($definition->isMagical()) return 'Un objet magique ne peut pas être imprégné.';
+        if ($choice['featureKey'] === 'artificer-infusion-enhanced-arcane-focus') {
+            // The equipment import stores these official physical references under gear.
+            // Exact reference identity only: never infer a custom item's type from its display name.
+            return $definition->getOrigin() === \App\Enum\ReferenceOrigin::Official
+                && $definition->getEdition() === '2014'
+                && $definition->getCategory() === 'gear'
+                && in_array($definition->getEnglishName(), ['Wand', 'Staff', 'Rod'], true)
+                ? null : 'Une baguette, un bâton ou un sceptre non magique identifié dans le catalogue est requis.';
+        }
         // Only explicit catalogue categories are reliable. No guesses from names or prose.
         $categories = match ($choice['featureKey']) {
+            'artificer-infusion-enhanced-weapon' => ['weapon'],
             'artificer-infusion-enhanced-defense' => ['armor', 'shield'],
             'artificer-infusion-armor-of-magical-strength', 'artificer-infusion-resistant-armor',
             'artificer-infusion-arcane-propulsion-armor', 'artificer-infusion-mind-sharpener' => ['armor'],
