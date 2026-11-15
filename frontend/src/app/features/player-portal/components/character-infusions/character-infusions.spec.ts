@@ -38,6 +38,39 @@ describe('Infusion preparation C3', () => {
     http.expectOne(`${url}/recipients/20/items?choiceKey=${key}`).flush({items:[{id:itemId,name:`Objet ${itemId}`,eligible:true,reason:null},{id:99,name:'Incompatible',eligible:false,reason:'Support inconnu'}]});
     c.itemId.set(itemId); c.apply();
   }
+  it.each([false,true])('shows only active objects in consultation, including readonly with an open phase (%s)', readonly => {
+    const f = setup({...empty,active:[active],preparation:{id:'real-phase',open:readonly}});
+    f.componentRef.setInput('readonly',readonly); f.detectChanges();
+    const c = f.componentInstance;
+    expect(f.nativeElement.textContent).toContain('Guts — Bouclier ordinaire');
+    expect(f.nativeElement.textContent).toContain('Défense améliorée');
+    expect(f.nativeElement.querySelector('.counter').textContent).toContain('1 / 2');
+    expect(f.nativeElement.querySelector('.quickbar, dialog, select, .form-actions')).toBeNull();
+    expect(f.nativeElement.querySelectorAll('button')).toHaveLength(1); // Refresh only.
+    c.selectChoice('defense'); c.selectRecipient(20); c.apply(); c.remove('defense'); c.confirm();
+    expect(c.opened()).toBe(false); expect(c.draft()).toHaveLength(1);
+    http.expectNone(() => true);
+  });
+  it('shows a discreet empty consultation without the known catalogue or preparation actions', () => {
+    const f = setup({...empty,preparation:{id:null,open:false}});
+    expect(f.nativeElement.textContent).toContain('Aucune imprégnation active.');
+    expect(f.nativeElement.textContent).not.toContain('Objet magique reproduit');
+    expect(f.nativeElement.querySelector('.quickbar, dialog')).toBeNull();
+  });
+  it('returns to consultation after confirmation and preserves the application at the next rest', () => {
+    const f = setup(); const c = f.componentInstance;
+    choose(c,'defense',30); c.confirm();
+    const closed = {...empty,active:[active],preparation:{id:'real-phase',open:false}};
+    http.expectOne(`${url}/preparation/confirm`).flush(closed); f.detectChanges();
+    expect(f.nativeElement.querySelector('.quickbar, dialog, .form-actions')).toBeNull();
+    expect(f.nativeElement.textContent).toContain('Guts — Bouclier ordinaire');
+    f.componentRef.setInput('refresh',1); f.detectChanges();
+    flush({...closed,preparation:{id:'next-rest',open:true}}); f.detectChanges();
+    expect(f.nativeElement.querySelector('.quickbar')).not.toBeNull();
+    c.confirm(); const request = http.expectOne(`${url}/preparation/confirm`);
+    expect(request.request.body).toEqual({phaseId:'next-rest',selections:[{choiceKey:'defense',recipientId:20,itemId:30}]});
+    request.flush({...closed,preparation:{id:'next-rest',open:false}});
+  });
   it('shows glyph tiles, active indication and opens the existing native dialog pattern', () => {
     const f = setup({...empty,active:[active]});
     expect(f.nativeElement.querySelectorAll('.quick-spell')).toHaveLength(4);

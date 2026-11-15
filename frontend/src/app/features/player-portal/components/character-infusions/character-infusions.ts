@@ -37,7 +37,8 @@ export class CharacterInfusions implements OnChanges {
   readonly itemId = signal(0);
   readonly selectedChoice = computed(() => this.view()?.known.find(c => c.choiceKey === this.choiceKey()));
   readonly phaseOpen = computed(() => !!this.view()?.preparation?.open && !!this.view()?.preparation?.id);
-  readonly editable = computed(() => this.phaseOpen() && !this.readonly() && !this.busy() && !this.loading());
+  readonly preparing = computed(() => this.phaseOpen() && !this.readonly());
+  readonly editable = computed(() => this.preparing() && !this.busy() && !this.loading());
   readonly eligibleItems = computed(() => this.items().filter(item => item.eligible));
   readonly ordered = computed(() => {
     const retained = [...(this.view()?.active ?? [])].sort((a,b) => a.createdAt.localeCompare(b.createdAt) || a.id - b.id)
@@ -52,6 +53,7 @@ export class CharacterInfusions implements OnChanges {
   private get url(): string { return `/api/public/characters/${this.accessToken()}/infusions`; }
 
   ngOnChanges(changes: Record<string, unknown>): void {
+    if (changes['readonly'] && this.readonly()) this.cancel();
     if (changes['accessToken']) { this.view.set(null); this.draft.set([]); this.cancel(); }
     if (changes['accessToken'] || changes['refresh']) this.load();
   }
@@ -80,7 +82,7 @@ export class CharacterInfusions implements OnChanges {
     return /defense|armor|shield/.test(choice.featureKey) ? '⬡' : /weapon|shot/.test(choice.featureKey) ? 'ϟ' : '✧';
   }
   selectChoice(key: string): void {
-    if (this.busy() || this.loading()) return;
+    if (!this.editable() || !this.view()?.known.some(choice => choice.choiceKey === key)) return;
     this.resetItems(); this.choiceKey.set(key); this.recipientId.set(0); this.opened.set(true);
     this.dialog()?.nativeElement.showModal();
     const current = this.draft().find(d => d.choiceKey === key);

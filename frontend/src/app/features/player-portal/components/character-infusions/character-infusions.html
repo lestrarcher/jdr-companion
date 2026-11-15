@@ -1,15 +1,15 @@
 <section aria-label="Gestion des imprégnations" [attr.aria-busy]="loading() || busy()">
   <header class="section-heading">
     <h2 id="infusions-section-title">Imprégnations</h2>
-    @if (view(); as state) { <div class="counter"><strong>{{ phaseOpen() ? planned().length : state.active.length }} <span>/ {{ state.quota }}</span></strong></div> }
+    @if (view(); as state) { <div class="counter"><strong>{{ preparing() ? planned().length : state.active.length }} <span>/ {{ state.quota }}</span></strong></div> }
     <button class="icon-button" type="button" aria-label="Actualiser les imprégnations" (click)="load()" [disabled]="loading() || busy() || opened()">↻</button>
   </header>
   @if (loading()) { <p role="status">Chargement des imprégnations…</p> }
   @if (error()) { <p role="alert">{{ error() }}</p> }
   @if (success()) { <p role="status">{{ success() }}</p> }
   @if (view(); as state) {
-    @if (phaseOpen()) { <p role="status">Après le repos long, préparez vos imprégnations puis confirmez l’ensemble. Aucun changement n’est appliqué avant confirmation.</p> }
-    @else { <p>Les imprégnations pourront être préparées après le prochain repos long validé.</p> }
+    @if (preparing()) {
+    <p role="status">Après le repos long, préparez vos imprégnations puis confirmez l’ensemble. Aucun changement n’est appliqué avant confirmation.</p>
     @if (!state.known.length) { <p>Aucune imprégnation connue. Les choix doivent d’abord être renseignés.</p> }
     <div class="quickbar" role="group" aria-label="Imprégnations connues">
       @for (choice of state.known; track choice.choiceKey) {
@@ -19,7 +19,6 @@
         </button>
       }
     </div>
-    @if (phaseOpen()) {
       <h3>Applications prévues</h3>
       @if (!draft().length) { <p>Aucune application prévue. Confirmer retirera toutes les imprégnations actives.</p> }
       @for (entry of ordered(); track entry.choiceKey) {
@@ -37,6 +36,7 @@
     }
   }
 </section>
+@if (preparing()) {
 <dialog #dialog aria-labelledby="infusion-dialog-title" (cancel)="$event.preventDefault(); cancel()">
   <header class="section-heading"><h2 id="infusion-dialog-title">{{ name(choiceKey()) }}</h2><button type="button" class="icon-button" aria-label="Fermer" (click)="cancel()">×</button></header>
   @if (selectedChoice()?.mode === 'create-object') { <p>La création d’objets magiques reproduits n’est pas encore disponible. Cette formule reste connue et distincte des autres objets reproductibles.</p> }
@@ -55,3 +55,4 @@
     <div class="form-actions"><button type="button" class="button-primary" (click)="apply()" [disabled]="!canApply()">Ajouter au brouillon</button><button type="button" class="button-secondary" (click)="remove(choiceKey())">Retirer du brouillon</button><button type="button" class="button-secondary" (click)="cancel()">Annuler</button></div>
   }
 </dialog>
+}
