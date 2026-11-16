@@ -77,6 +77,12 @@ export class SpellCastDialog implements AfterViewInit, OnDestroy {
   readonly activeSource = computed(() => this.availableSources().find(item => item.source.key === this.sourceChoice())?.source
     ?? (this.availableSources().length === 1 ? this.availableSources()[0].source
       : this.availableSources().length === 0 ? this.sourceChoices()[0]?.source : undefined));
+  // The casting source determines the spellcasting ability, save DC and attack bonus.
+  // These are server-provided base values; equipment-dependent bonuses are not inferred here.
+  readonly castingStats = computed(() => this.selected()?.source ?? this.activeSource() ?? this.spell());
+  signedSpellAttackBonus(value: number | null): string {
+    return value === null || !Number.isFinite(value) ? '—' : `${value >= 0 ? '+' : ''}${value}`;
+  }
   readonly visibleOptions = computed(() => this.displayOptions().filter(option => option.source.key === this.activeSource()?.key));
   readonly standardOptions = computed(() => this.visibleOptions().filter(option => option.method.kind === 'standard-slot'));
   readonly otherOptions = computed(() => this.visibleOptions().filter(option => option.method.kind !== 'standard-slot'));

@@ -25,6 +25,33 @@ function setup(sources = [spell()]) {
 }
 afterEach(() => TestBed.resetTestingModule());
 describe('Shared casting dialog', () => {
+  it('shows server-provided spellcasting values without inventing missing values', () => {
+    const { fixture } = setup();
+    const stats = fixture.nativeElement.querySelector('.casting-stats');
+    expect(stats.textContent).toContain('DD de sauvegarde');
+    expect(stats.textContent).toContain('13');
+    expect(stats.textContent).toContain('Attaque magique');
+    expect(stats.textContent).toContain('+5');
+    const unknown = { ...spell(), spellSaveDc: null, spellAttackBonus: null };
+    fixture.componentRef.setInput('spell', unknown);
+    fixture.componentRef.setInput('sources', [unknown]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.casting-stats dd')[0].textContent.trim()).toBe('—');
+    expect(fixture.nativeElement.querySelectorAll('.casting-stats dd')[1].textContent.trim()).toBe('—');
+  });
+  it('updates spellcasting values when selecting another source', () => {
+    const first = spell('wizard');
+    const second = { ...spell('bard'), policyId: 2, castingAbility: 'charisma', spellSaveDc: 16, spellAttackBonus: 8 };
+    const { fixture, c } = setup([first, second]);
+    c.selectSource('bard'); fixture.detectChanges();
+    const values = fixture.nativeElement.querySelectorAll('.casting-stats dd');
+    expect(values[0].textContent.trim()).toBe('16');
+    expect(values[1].textContent.trim()).toBe('+8');
+    c.selectSource('wizard'); fixture.detectChanges();
+    expect(values[0].textContent.trim()).toBe('13');
+    expect(values[1].textContent.trim()).toBe('+5');
+  });
+
   it.each([['empowered','quickened'], ['quickened','empowered'], ['empowered','twinned']])('combines %s and %s and retains refreshes', (first, second) => {
     const entry = spell();
     entry.castingAvailability!.methods[0].metamagics = ['empowered','quickened','twinned','subtle'].map(key => ({

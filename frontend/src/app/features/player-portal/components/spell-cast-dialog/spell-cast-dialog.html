@@ -7,6 +7,12 @@
     </div>
     <button type="button" class="close" aria-label="Fermer le lancement" [disabled]="saving()" (click)="close()">×</button>
   </header>
+  @if (castingStats(); as stats) {
+    <dl class="casting-stats" aria-label="Statistiques d'incantation">
+      <div><dt>DD de sauvegarde</dt><dd>{{ stats.spellSaveDc ?? '—' }}</dd></div>
+      <div><dt>Attaque magique</dt><dd>{{ signedSpellAttackBonus(stats.spellAttackBonus) }}</dd></div>
+    </dl>
+  }
   @if (pending(); as cast) {
     <p class="pending">{{ cast.name }} · {{ cast.source }} · {{ methodLabel(cast.command.method) }} · niveau {{ cast.command.castingLevel }}</p>
     @if (cast.command.targetCharacterIds; as targets) {

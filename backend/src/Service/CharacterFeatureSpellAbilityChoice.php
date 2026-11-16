@@ -38,8 +38,15 @@ final readonly class CharacterFeatureSpellAbilityChoice
         return $this->db->transactional(function () use ($character,$grantId,$ability) {
             $this->db->fetchOne('SELECT id FROM character WHERE id=? FOR UPDATE', [$character->getId()]);
             $resolution=$this->resolver->resolve($character,$grantId);
-            if (!in_array($resolution['provenance']['type'] ?? null, ['race', 'character'], true) || !in_array($resolution['reason'], ['ability_choice_missing', null], true))
+            $choiceGrant = $this->db->fetchOne("SELECT 1 FROM character_feature_spell c
+                JOIN feature_spell_grant g ON g.id=c.grant_id
+                WHERE c.character_id=? AND c.grant_id=? AND c.active=true
+                  AND g.enabled=true AND g.casting_ability='CHOICE'", [$character->getId(), $grantId]);
+            if ($choiceGrant === false
+                || !in_array($resolution['provenance']['type'] ?? null, ['race', 'character'], true)
+                || !in_array($resolution['abilityReason'], ['ability_choice_missing', null], true)) {
                 throw new BadRequestHttpException('Ce sort ne propose pas de choix de caractéristique pour cette capacité.');
+            }
             $this->db->executeStatement('INSERT INTO character_spell_grant_ability_choice (character_id,grant_id,ability) VALUES (?,?,?) ON CONFLICT (character_id,grant_id) DO UPDATE SET ability=EXCLUDED.ability', [$character->getId(),$grantId,$ability]);
             return $this->list($character);
         });
