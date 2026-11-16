@@ -12,13 +12,13 @@ final readonly class ItemInfusionArmorEffects
     public function __construct(private Connection $db) {}
 
     /** Item-scoped projections, not global attack modifiers or combat execution. */
-    public function itemProperties(Character $owner): array
+    public function itemProperties(Character $owner, bool $theoreticalWeaponUse = false): array
     {
         if ($owner->getId() === null) return [];
         if (!$this->db->fetchOne('SELECT 1 FROM character_item_infusion i JOIN character_magic_item owned ON owned.id=i.item_id WHERE i.active AND owned.character_id=? LIMIT 1', [$owner->getId()])) return [];
         $rows = $this->db->fetchAllAssociative(<<<'SQL'
 SELECT i.id, i.item_id, creator.name AS creator_name, feature.slug, feature.name,
-       owned.equipped, owned.attuned, item.requires_attunement, item.equippable, item.category,
+       owned.equipped, owned.attuned, item.requires_attunement, item.equippable, item.category, item.weapon_profile,
        (SELECT COUNT(*) FROM character_class_level l JOIN character_class c ON c.id=l.character_class_id
         WHERE l.character_id=i.creator_id AND c.slug='artificer') AS artificer_level
 FROM character_item_infusion i
@@ -40,11 +40,16 @@ SQL, [$owner->getId()]);
             $level = (int)$row['artificer_level'];
             if ($level < 2) continue;
             $bonus = $level >= 10 ? 2 : 1;
-            $weapon = $row['slug'] === 'artificer-infusion-enhanced-weapon' && $row['category'] === 'weapon';
-            $usable = $row['equipped'] && $row['equippable'] && (!$row['requires_attunement'] || $row['attuned']);
+            $profile = $row['weapon_profile'] === null ? null : json_decode($row['weapon_profile'], true, 512, JSON_THROW_ON_ERROR);
+            $weapon = $row['category'] === 'weapon' && in_array($row['slug'], ['artificer-infusion-enhanced-weapon','artificer-infusion-returning-weapon','artificer-infusion-repeating-shot'], true);
+            if ($weapon && $row['slug'] === 'artificer-infusion-returning-weapon' && !in_array('thrown', $profile['properties'] ?? [], true)) continue;
+            if ($weapon && $row['slug'] === 'artificer-infusion-repeating-shot' && (($profile['mode'] ?? null) !== 'ranged' || !in_array('ammunition', $profile['properties'] ?? [], true))) continue;
+            $attunement = $row['requires_attunement'] || $row['slug'] === 'artificer-infusion-repeating-shot';
+            $usable = ($theoreticalWeaponUse || $row['equipped']) && $row['equippable'] && (!$attunement || $row['attuned']);
+            $weaponBonus = $row['slug'] === 'artificer-infusion-enhanced-weapon' ? $bonus : 1;
             $description = match ($row['slug']) {
                 'artificer-infusion-enhanced-defense' => "+$bonus à la CA lorsque cette armure ou ce bouclier est équipé. Bonus calculé dans le profil.",
-                'artificer-infusion-enhanced-weapon' => "+$bonus aux jets d’attaque et de dégâts avec cette arme uniquement. Les totaux d’attaque et de dégâts ne sont pas calculés par l’application.",
+                'artificer-infusion-enhanced-weapon' => "+$bonus aux jets d’attaque et de dégâts avec cette arme uniquement. Totaux théoriques dans État → Armes.",
                 'artificer-infusion-enhanced-arcane-focus' => "+$bonus aux attaques de sorts effectuées avec ce focaliseur tenu ; ignore le demi-abri pour ces attaques. Harmonisation requise. Utilisation et harmonisation de l’imprégnation à vérifier manuellement ; aucun bonus global aux sorts.",
                 'artificer-infusion-returning-weapon' => '+1 aux jets d’attaque et de dégâts avec cette arme. Elle revient en main immédiatement après une attaque à distance. Retour non automatisé.',
                 'artificer-infusion-repeating-shot' => '+1 aux attaques et dégâts à distance avec cette arme. Ignore Chargement ; crée une munition magique si aucune munition n’est chargée. Harmonisation requise ; gestion manuelle.',
@@ -56,7 +61,14 @@ SQL, [$owner->getId()]);
             $result[(int)$row['item_id']] = [
                 'id'=>(int)$row['id'], 'name'=>$row['name'], 'creatorName'=>$row['creator_name'],
                 'creatorLevel'=>$level, 'description'=>$description,
-                'weaponBonuses'=>$weapon ? ['attack'=>$usable ? $bonus : 0, 'damage'=>$usable ? $bonus : 0,
+                'requiresAttunement'=>$attunement,
+                'ignoresLoading'=>$row['slug'] === 'artificer-infusion-repeating-shot' && $usable,
+                'weaponNote'=>match ($row['slug']) {
+                    'artificer-infusion-returning-weapon'=>'Revient en main après une attaque à distance.',
+                    'artificer-infusion-repeating-shot'=>'Si harmonisée : ignore Chargement, crée les munitions manquantes. Bonus pour les attaques à distance.',
+                    default=>'',
+                },
+                'weaponBonuses'=>$weapon ? ['attack'=>$usable ? $weaponBonus : 0, 'damage'=>$usable ? $weaponBonus : 0,
                     'itemId'=>(int)$row['item_id'], 'requiresUse'=>true] : null,
             ];
         }

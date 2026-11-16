@@ -370,7 +370,8 @@ final class PublicCharacterMagicItemController extends AbstractController
                 );
             }
 
-            $ownedItem->setAttuned($shouldBeAttuned);
+            $infusion = $this->infusionEffects->itemProperties($character)[$ownedItem->getId()] ?? null;
+            $ownedItem->setAttuned($shouldBeAttuned, $infusion['requiresAttunement'] ?? false);
         }
 
         if (array_key_exists('chargeChange', $payload)) {
@@ -424,7 +425,7 @@ final class PublicCharacterMagicItemController extends AbstractController
             'attunementLimit' => self::ATTUNEMENT_LIMIT,
             'ownedItems' => array_map(
                 fn (CharacterMagicItem $ownedItem): array =>
-                    $this->serializeOwnedItem($ownedItem) + ['infusion'=>$infusions[$ownedItem->getId()] ?? null],
+                    $this->serializeInfusedItem($ownedItem, $infusions[$ownedItem->getId()] ?? null),
                 $character->getMagicItems()->toArray(),
             ),
             'effectiveAbilities' => array_map(
@@ -437,6 +438,14 @@ final class PublicCharacterMagicItemController extends AbstractController
     /**
      * @return array<string, mixed>
      */
+    private function serializeInfusedItem(CharacterMagicItem $item, ?array $infusion): array
+    {
+        $row = $this->serializeOwnedItem($item);
+        $row['infusion'] = $infusion;
+        $row['magicItem']['requiresAttunement'] = $row['magicItem']['requiresAttunement'] || ($infusion['requiresAttunement'] ?? false);
+        return $row;
+    }
+
     private function serializeOwnedItem(
         CharacterMagicItem $ownedItem,
     ): array {

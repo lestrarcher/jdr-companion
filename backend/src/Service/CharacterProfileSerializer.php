@@ -23,6 +23,7 @@ final readonly class CharacterProfileSerializer
         private CharacterTrainingPresenter $trainingPresenter,
         private CharacterArmorClassCalculator $armorClassCalculator,
         private ItemInfusionArmorEffects $infusionArmorEffects,
+        private CharacterWeaponCalculator $weaponCalculator,
     ) {
     }
 
@@ -44,6 +45,7 @@ final readonly class CharacterProfileSerializer
             $armorEffects[] = ['identity' => 'feature:'.$feature->getSlug(), 'source' => $feature->getName(), 'effects' => $feature->getArmorClassEffects()];
         }
 
+        $training = $this->trainingPresenter->resolved($character, includeManualGrantDetails: false);
         return [
             'id' => $character->getId(),
             'campaignId' => $character->getCampaign()->getId(),
@@ -61,7 +63,8 @@ final readonly class CharacterProfileSerializer
             'totalLevel' => $character->getTotalLevel(),
             'proficiencyBonus' => $character->getProficiencyBonus(),
             'armorClass' => $this->armorClassCalculator->calculate($character, $armorEffects),
-            'training' => $this->trainingPresenter->resolved($character, includeManualGrantDetails: false),
+            'training' => $training,
+            'weapons' => $this->weaponCalculator->calculate($character, $training, $this->infusionArmorEffects->itemProperties($character, true)),
             'hitPoints' => $this->hitPointCalculator->calculate($character)->toArray(),
             'classLevels' => array_map(
                 $this->serializeClassLevel(...),

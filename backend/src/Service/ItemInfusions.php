@@ -197,6 +197,16 @@ final readonly class ItemInfusions
         $definition = $item->getMagicItem();
         if ($definition === null) return 'Support physique non identifié.';
         if ($definition->isMagical()) return 'Un objet magique ne peut pas être imprégné.';
+        $weapon = $definition->getWeaponProfile();
+        if ($definition->getCategory() === 'weapon' && $weapon !== null && ($weapon['attackBonus'] !== 0 || $weapon['damageBonus'] !== 0)) return 'Cette arme possède déjà un bonus magique.';
+        if ($choice['featureKey'] === 'artificer-infusion-returning-weapon') {
+            return $definition->getCategory() === 'weapon' && in_array('thrown', $weapon['properties'] ?? [], true)
+                ? null : 'Une arme avec la propriété Lancer est requise.';
+        }
+        if ($choice['featureKey'] === 'artificer-infusion-repeating-shot') {
+            return $definition->getCategory() === 'weapon' && ($weapon['mode'] ?? null) === 'ranged' && in_array('ammunition', $weapon['properties'] ?? [], true)
+                ? null : 'Une arme à distance avec la propriété Munitions est requise.';
+        }
         if ($choice['featureKey'] === 'artificer-infusion-enhanced-arcane-focus') {
             // The equipment import stores these official physical references under gear.
             // Exact reference identity only: never infer a custom item's type from its display name.
@@ -269,6 +279,8 @@ final readonly class ItemInfusions
     /** Central retirement primitive; a future game-clock job can supply a death-expiry reason. */
     private function end(int $id, string $reason): void
     {
+        $itemId = $this->em->getConnection()->fetchOne('SELECT item_id FROM character_item_infusion WHERE id=?', [$id]);
         $this->em->getConnection()->executeStatement('UPDATE character_item_infusion SET active=FALSE, ended_at=CURRENT_TIMESTAMP, end_reason=? WHERE id=? AND active', [$reason,$id]);
+        if ($itemId && ($item = $this->em->find(CharacterMagicItem::class, $itemId))) $this->em->refresh($item);
     }
 }

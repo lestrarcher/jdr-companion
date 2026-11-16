@@ -341,9 +341,11 @@ class CharacterMagicItem
 
     public function setAttuned(
         bool $attuned,
+        bool $infusionRequiresAttunement = false,
     ): static {
         if (
             $attuned
+            && !$infusionRequiresAttunement
             && !$this->magicItem
                 ?->requiresAttunement()
         ) {

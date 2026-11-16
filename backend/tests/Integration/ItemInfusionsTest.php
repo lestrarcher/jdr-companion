@@ -54,6 +54,10 @@ final class ItemInfusionsTest extends TestCase
             $sql = preg_replace('/^CREATE TABLE /', 'CREATE TEMP TABLE ', $query->getStatement());
             $this->db->executeStatement(str_replace('FUNCTION retire_item_infusions()', 'FUNCTION pg_temp.retire_item_infusions()', $sql));
         }
+        require_once dirname(__DIR__,2).'/migrations/Version20261115020000.php';
+        foreach (\DoctrineMigrations\Version20261115020000::guards() as $sql) {
+            $this->db->executeStatement(str_replace('FUNCTION clear_ended_infusion_attunement()', 'FUNCTION pg_temp.clear_ended_infusion_attunement()', $sql));
+        }
         self::assertSame('t', $this->db->fetchOne("SELECT relpersistence FROM pg_class WHERE oid=to_regclass('character_item_infusion')"));
         $owner = (new User())->setEmail('infusions@example.invalid')->setPassword('unused');
         $campaign = new Campaign($owner, 'infusions', 'Infusions');
@@ -207,11 +211,14 @@ final class ItemInfusionsTest extends TestCase
         $this->em->persist($feature); $this->em->flush();
         $this->db->update('feature_choice_option', ['feature_id'=>$feature->getId()], ['key'=>'mind-sharpener']);
         $item = $this->item('weapon', $this->recipient);
+        $profile = json_decode(file_get_contents(dirname(__DIR__,2).'/data/weapon-profiles-2014.json'),true)['phb2014-weapon-longsword'];
+        $item->getMagicItem()->configureWeaponProfile($profile); $this->em->flush();
         $this->apply('mind-sharpener', $item);
         $resolver = new \App\Service\ItemInfusionArmorEffects($this->db);
         $properties = fn () => $resolver->itemProperties($this->recipient);
         self::assertSame([], $resolver->itemProperties($this->creator));
         self::assertSame(0, $properties()[$item->getId()]['weaponBonuses']['attack']);
+        self::assertSame(1, $resolver->itemProperties($this->recipient, true)[$item->getId()]['weaponBonuses']['attack']);
         $item->setEquipped(true); $this->em->flush();
         $bonus = $properties()[$item->getId()]['weaponBonuses'];
         self::assertSame(['attack'=>1, 'damage'=>1, 'itemId'=>$item->getId(), 'requiresUse'=>true], $bonus);
@@ -226,14 +233,20 @@ final class ItemInfusionsTest extends TestCase
         $inventory = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertSame($bonus, $inventory['ownedItems'][0]['infusion']['weaponBonuses']);
         self::assertSame($this->creator->getName(), $inventory['ownedItems'][0]['infusion']['creatorName']);
+        $weaponCalculator = new \App\Service\CharacterWeaponCalculator(new \App\Service\CharacterAbilityCalculator());
+        $total = fn () => $weaponCalculator->calculate($this->recipient, [], $resolver->itemProperties($this->recipient,true))[0];
+        $baseAttack = $total()['attackBonus'];
         self::assertSame([], $resolver->resolve($this->recipient));
         $this->levels($this->artificer, 8);
         self::assertSame(2, $properties()[$item->getId()]['weaponBonuses']['damage']);
+        self::assertSame($baseAttack + 1, $total()['attackBonus']);
         $item->setEquipped(false); $this->em->flush();
         self::assertSame(0, $properties()[$item->getId()]['weaponBonuses']['damage']);
+        self::assertSame($baseAttack + 1, $total()['attackBonus']);
         $second = $this->item('weapon', $this->recipient);
         $this->apply('mind-sharpener', $second);
         self::assertArrayNotHasKey($item->getId(), $properties());
+        self::assertSame($baseAttack - 1, $total()['attackBonus']);
         self::assertArrayHasKey($second->getId(), $properties());
         $this->db->executeStatement('UPDATE character_feature_choice SET active=FALSE WHERE key=?', [$this->keys['mind-sharpener']]);
         self::assertSame([], $properties());
@@ -253,6 +266,80 @@ final class ItemInfusionsTest extends TestCase
         $this->apply('enhanced-defense', $this->item());
         $this->apply('armor-of-magical-strength', $this->item());
         self::assertSame([], $resolver->itemProperties($this->recipient));
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('weaponInfusions')]
+    public function testWeaponInfusionSupportsAndAttunement(string $slug, string $reference, bool $attunement): void
+    {
+        $feature = new CharacterFeatureDefinition('artificer-infusion-'.$slug, 'Weapon infusion');
+        $this->em->persist($feature); $this->em->flush();
+        $this->db->update('feature_choice_option', ['feature_id'=>$feature->getId()], ['key'=>'mind-sharpener']);
+        $profiles = json_decode(file_get_contents(dirname(__DIR__,2).'/data/weapon-profiles-2014.json'),true);
+        $bad = $this->item('weapon'); $bad->getMagicItem()->configureWeaponProfile($profiles['phb2014-weapon-longsword']);
+        $this->em->flush(); $this->rejects(fn () => $this->apply('mind-sharpener',$bad));
+        $item = $this->item('weapon',$this->recipient);
+        $item->getMagicItem()->configureWeaponProfile($profiles['phb2014-weapon-'.$reference]);
+        $this->recipient->addMagicItem($item); $this->em->flush();
+        $this->apply('mind-sharpener',$item);
+        $resolver = new \App\Service\ItemInfusionArmorEffects($this->db);
+        $effects = fn () => $resolver->itemProperties($this->recipient,true)[$item->getId()];
+        self::assertSame($attunement ? 0 : 1,$effects()['weaponBonuses']['attack']);
+        if ($attunement) {
+            $session = new CharacterSessionState($this->actor->getGameSession(), $this->recipient);
+            $this->em->persist($session); $this->em->flush();
+            $container = $this->kernel->getContainer()->get('test.service_container');
+            $response = $container->get(\App\Controller\PublicCharacterMagicItemController::class)->update(
+                $session->getAccessToken(), $item->getId(),
+                \Symfony\Component\HttpFoundation\Request::create('/', 'PATCH', server:['CONTENT_TYPE'=>'application/json'], content:'{"attuned":true}'),
+                $container->get(PlayerCharacterAccess::class), $this->em->getRepository(CharacterMagicItem::class),
+                $container->get(\App\Service\CharacterAbilityCalculator::class), $this->em,
+            );
+            self::assertSame(200,$response->getStatusCode());
+            $inventory = json_decode($response->getContent(),true);
+            self::assertTrue($inventory['ownedItems'][0]['magicItem']['requiresAttunement']);
+            self::assertSame(1,$this->recipient->getAttunedMagicItemCount());
+            self::assertSame(1,$effects()['weaponBonuses']['attack']);
+        }
+        self::assertNotEmpty($effects()['weaponNote']);
+        $calculator = new \App\Service\CharacterWeaponCalculator(new \App\Service\CharacterAbilityCalculator());
+        $row = $calculator->calculate($this->recipient, [], $resolver->itemProperties($this->recipient,true))[0];
+        if ($attunement) {
+            self::assertNotContains('Chargement', $row['notes']);
+            // A deletion must not UPDATE the same possession from the retirement trigger.
+            $this->db->beginTransaction();
+            $this->db->executeStatement('DELETE FROM character_magic_item WHERE id=?', [$item->getId()]);
+            self::assertSame([], $resolver->itemProperties($this->recipient,true));
+            $this->db->rollBack();
+            self::assertSame(1,$effects()['weaponBonuses']['attack']);
+        }
+        $this->db->executeStatement('UPDATE character_feature_choice SET active=FALSE WHERE key=?',[$this->keys['mind-sharpener']]);
+        self::assertSame([],$resolver->itemProperties($this->recipient,true));
+        $this->em->refresh($item);
+        self::assertFalse($item->isAttuned());
+    }
+    public static function weaponInfusions(): array { return [['returning-weapon','dagger',false],['repeating-shot','light-crossbow',true]]; }
+
+    public function testWeaponEnrichmentIsNonDestructiveAndIdempotent(): void
+    {
+        $item = new MagicItem(null,'Reference test',null,null,\App\Enum\ReferenceOrigin::Official);
+        $item->classify('weapon',false,true,'hand','one');
+        $item->setImportMetadata('phb2014-weapon-dagger','PHB 2014');
+        $this->em->persist($item); $this->em->flush();
+        $command = new \Symfony\Component\Console\Tester\CommandTester(new \App\Command\EnrichWeaponProfilesCommand($this->db,dirname(__DIR__,2)));
+        $before = $this->db->fetchAllAssociative('SELECT * FROM character_magic_item ORDER BY id');
+        self::assertSame(0,$command->execute([]));
+        self::assertNull($this->db->fetchOne('SELECT weapon_profile FROM magic_item WHERE id=?',[$item->getId()]));
+        $command->execute(['--apply'=>true]);
+        $configured = $this->db->fetchOne('SELECT weapon_profile FROM magic_item WHERE id=?',[$item->getId()]);
+        self::assertNotNull($configured);
+        $command->execute(['--apply'=>true]);
+        self::assertStringContainsString('Appliqués : 0',$command->getDisplay());
+        self::assertSame($before,$this->db->fetchAllAssociative('SELECT * FROM character_magic_item ORDER BY id'));
+        $override = json_decode($configured,true); $override['dice']='1d6';
+        $this->db->update('magic_item',['weapon_profile'=>json_encode($override)],['id'=>$item->getId()]);
+        $command->execute(['--apply'=>true]);
+        self::assertStringContainsString('Configuration existante préservée',$command->getDisplay());
+        self::assertSame($override,json_decode($this->db->fetchOne('SELECT weapon_profile FROM magic_item WHERE id=?',[$item->getId()]),true));
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('arcaneFocusSupports')]

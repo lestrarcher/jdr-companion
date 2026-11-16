@@ -164,6 +164,7 @@ export interface CharacterTraining {
 }
 
 export interface CharacterProfile extends CharacterApiResponse {
+  weapons?: import('../models/character-weapon.model').CharacterWeapon[];
   armorClass?: CharacterArmorClass;
   training?: CharacterTraining;
   hitPoints: CharacterHitPoints;

@@ -32,6 +32,8 @@ import { SpellQuickList } from './components/spell-quick-list/spell-quick-list';
 import { SpellSlotBar, spellSlotGroups } from './components/spell-slot-bar/spell-slot-bar';
 import { CharacterFeatures } from './components/character-features/character-features';
 import { CharacterInfusions } from './components/character-infusions/character-infusions';
+import { CharacterWeapons } from './components/character-weapons/character-weapons';
+import { CharacterWeapon } from '@core/models/character-weapon.model';
 import { ArcaneRecoveryActionModal, ArcaneRecoveryPayload } from './components/arcane-recovery-action-modal/arcane-recovery-action-modal';
 
 type SessionStatus =
@@ -69,6 +71,7 @@ type PlayerPortalTab =
     FlexibleCastingActionModal,
     CharacterFeatures,
     CharacterInfusions,
+    CharacterWeapons,
     CharacterStatistics,
     PlayerSpells,
     SpellQuickList,
@@ -79,6 +82,7 @@ type PlayerPortalTab =
   styleUrl: './player-portal.scss',
 })
 export class PlayerPortal {
+  protected readonly weapons = signal<CharacterWeapon[]>([]);
   private readonly spellPanel = viewChild(PlayerSpells);
   canLeavePreparation(): boolean { return this.spellPanel()?.canLeavePreparation() ?? true; }
   // Dependencies and route context
@@ -245,6 +249,7 @@ export class PlayerPortal {
     this.abilities.set(response.character.abilities);
     this.armorClass.set(response.character.armorClass ?? null);
     this.training.set(response.character.training ?? null);
+    this.weapons.set(response.character.weapons ?? []);
     this.proficiencyBonus.set(response.character.proficiencyBonus);
     this.features.set(response.character.features);
     this.feats.set(response.character.feats);
@@ -514,6 +519,7 @@ export class PlayerPortal {
           this.abilities.set(response.character.abilities);
           this.armorClass.set(response.character.armorClass ?? null);
           this.training.set(response.character.training ?? null);
+          this.weapons.set(response.character.weapons ?? []);
           this.proficiencyBonus.set(response.character.proficiencyBonus);
           this.features.set(response.character.features);
           this.feats.set(response.character.feats);
@@ -600,6 +606,7 @@ export class PlayerPortal {
                 this.abilities.set(response.character.abilities);
                 this.armorClass.set(response.character.armorClass ?? null);
                 this.training.set(response.character.training ?? null);
+                this.weapons.set(response.character.weapons ?? []);
                 this.proficiencyBonus.set(response.character.proficiencyBonus);
                 this.features.set(response.character.features);
                 this.feats.set(response.character.feats);
@@ -678,6 +685,7 @@ export class PlayerPortal {
       this.abilities.set(response.character.abilities);
       this.armorClass.set(response.character.armorClass ?? null);
       this.training.set(response.character.training ?? null);
+      this.weapons.set(response.character.weapons ?? []);
       this.proficiencyBonus.set(response.character.proficiencyBonus);
       this.features.set(response.character.features);
       this.training.set(response.character.training ?? null);
@@ -900,6 +908,7 @@ protected openAction(
         this.characterStateService.applyServerState(character);
         this.character.set(character);
         this.training.set(response.character.training ?? null);
+        this.weapons.set(response.character.weapons ?? []);
         this.proficiencyBonus.set(response.character.proficiencyBonus);
         this.actions.set(response.character.actions ?? []);
         this.characterActions.set(response.state.characterActions ?? null);
@@ -937,6 +946,7 @@ protected openAction(
         this.characterStateService.applyServerState(character);
         this.character.set(character);
         this.training.set(response.character.training ?? null);
+        this.weapons.set(response.character.weapons ?? []);
         this.proficiencyBonus.set(response.character.proficiencyBonus);
         this.actions.set(response.character.actions ?? []);
         this.characterActions.set(response.state.characterActions ?? null);

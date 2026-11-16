@@ -75,6 +75,17 @@ class MagicItem
     #[ORM\Column(type: 'json', nullable: true)]
     private ?array $armorClassEffects = null;
 
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $weaponProfile = null;
+
+    public function getWeaponProfile(): ?array { return $this->weaponProfile; }
+    public function configureWeaponProfile(?array $profile): void
+    {
+        if ($profile !== null && $this->category !== 'weapon') throw new \InvalidArgumentException('Profil réservé aux armes.');
+        $this->weaponProfile = $profile === null ? null : \App\Service\WeaponProfileSchema::validate($profile);
+        $this->touch();
+    }
+
     public function getArmorClassEffects(): ?array { return $this->armorClassEffects; }
 
     public function configureArmorClassEffects(?array $effects): void

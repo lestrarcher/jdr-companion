@@ -1,0 +1,17 @@
+<div class="weapons-table" role="region" aria-label="Armes possédées" tabindex="0">
+  <table>
+    <thead><tr><th scope="col">Nom</th><th scope="col">Bonus Att</th><th scope="col">Dégâts &amp; Type</th><th scope="col">Notes</th></tr></thead>
+    <tbody>
+      @for (weapon of weapons(); track weapon.id) {
+        <tr>
+          <th scope="row">{{ weapon.name }} @if (weapon.equipped) { <small>Équipée</small> }</th>
+          <td class="attack">{{ weapon.attackBonus === null ? '—' : (weapon.attackBonus >= 0 ? '+' : '') + weapon.attackBonus }}</td>
+          <td class="damage">{{ weapon.damage ?? '—' }}</td>
+          <td class="notes">{{ weapon.notes.join(' · ') }}</td>
+        </tr>
+      } @empty {
+        <tr><td colspan="4" class="notes">Aucune arme identifiée dans l’inventaire.</td></tr>
+      }
+    </tbody>
+  </table>
+</div>
