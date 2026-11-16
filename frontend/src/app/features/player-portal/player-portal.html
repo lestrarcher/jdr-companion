@@ -148,11 +148,6 @@
 
                 <app-character-stored-values [readonly]="!canEdit()" [resources]="storedValueResources()" />
 
-                <section class="magic-section" aria-labelledby="weapons-section-title">
-                  <div class="magic-section__heading"><h2 id="weapons-section-title">Armes</h2></div>
-                  <app-character-weapons [weapons]="weapons()" />
-                </section>
-
                 <div class="tracker-layout">
                   <app-character-vitals [readonly]="!canEdit()" [character]="currentCharacter" />
                   <div class="spell-resource-column">
@@ -172,6 +167,10 @@
                           [editable]="sessionStatus() === 'live'" [busy]="saveStatus() === 'saving'" (refreshed)="refreshTinkering()" />
                       }
                     </app-character-resources>
+                    <section class="magic-section" aria-labelledby="weapons-section-title">
+                      <div class="magic-section__heading"><h2 id="weapons-section-title">Armes</h2></div>
+                      <app-character-weapons [weapons]="weapons()" />
+                    </section>
                     @if (hasInfusions()) {
                       <section class="magic-section" aria-labelledby="infusions-section-title">
                         <app-character-infusions [accessToken]="accessToken" [refresh]="infusionRefresh()" [readonly]="!canEdit()" (changed)="refreshSpells()" />

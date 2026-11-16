@@ -16,7 +16,7 @@ describe('Character weapons read model', () => {
     expect(f.nativeElement.textContent).toContain('+7');
     expect(f.nativeElement.textContent).toContain('1d10+5');
     expect(f.nativeElement.textContent).toContain('Profil incomplet');
-    expect(f.nativeElement.querySelectorAll('small')).toHaveLength(1);
+    expect(f.nativeElement.textContent).not.toContain('Équipée');
     expect(f.nativeElement.querySelector('button')).toBeNull();
     f.componentRef.setInput('weapons',[{id:1,name:'Épée',equipped:false,attackBonus:5,damage:'1d8+3 tranchant',notes:[],complete:true}]);
     f.detectChanges();

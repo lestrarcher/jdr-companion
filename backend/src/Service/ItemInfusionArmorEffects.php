@@ -44,13 +44,13 @@ SQL, [$owner->getId()]);
             $weapon = $row['category'] === 'weapon' && in_array($row['slug'], ['artificer-infusion-enhanced-weapon','artificer-infusion-returning-weapon','artificer-infusion-repeating-shot'], true);
             if ($weapon && $row['slug'] === 'artificer-infusion-returning-weapon' && !in_array('thrown', $profile['properties'] ?? [], true)) continue;
             if ($weapon && $row['slug'] === 'artificer-infusion-repeating-shot' && (($profile['mode'] ?? null) !== 'ranged' || !in_array('ammunition', $profile['properties'] ?? [], true))) continue;
-            $attunement = $row['requires_attunement'] || $row['slug'] === 'artificer-infusion-repeating-shot';
+            $attunement = $row['requires_attunement'] || in_array($row['slug'], ['artificer-infusion-repeating-shot', 'artificer-infusion-enhanced-arcane-focus'], true);
             $usable = ($theoreticalWeaponUse || $row['equipped']) && $row['equippable'] && (!$attunement || $row['attuned']);
             $weaponBonus = $row['slug'] === 'artificer-infusion-enhanced-weapon' ? $bonus : 1;
             $description = match ($row['slug']) {
                 'artificer-infusion-enhanced-defense' => "+$bonus à la CA lorsque cette armure ou ce bouclier est équipé. Bonus calculé dans le profil.",
                 'artificer-infusion-enhanced-weapon' => "+$bonus aux jets d’attaque et de dégâts avec cette arme uniquement. Totaux théoriques dans État → Armes.",
-                'artificer-infusion-enhanced-arcane-focus' => "+$bonus aux attaques de sorts effectuées avec ce focaliseur tenu ; ignore le demi-abri pour ces attaques. Harmonisation requise. Utilisation et harmonisation de l’imprégnation à vérifier manuellement ; aucun bonus global aux sorts.",
+                'artificer-infusion-enhanced-arcane-focus' => "+$bonus aux attaques de sorts effectuées avec ce focaliseur tenu et harmonisé ; ignore le demi-abri pour ces attaques. Harmonisation requise. Utilisation du focaliseur à vérifier manuellement ; aucun bonus global aux sorts.",
                 'artificer-infusion-returning-weapon' => '+1 aux jets d’attaque et de dégâts avec cette arme. Elle revient en main immédiatement après une attaque à distance. Retour non automatisé.',
                 'artificer-infusion-repeating-shot' => '+1 aux attaques et dégâts à distance avec cette arme. Ignore Chargement ; crée une munition magique si aucune munition n’est chargée. Harmonisation requise ; gestion manuelle.',
                 'artificer-infusion-resistant-armor' => 'Résistance au type choisi lors de l’imprégnation, lorsque cette armure est portée et harmonisée. Choix du type non encore raccordé : aucune résistance appliquée automatiquement.',

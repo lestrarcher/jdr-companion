@@ -24,6 +24,12 @@ describe('Infused inventory item properties', () => {
     f.componentRef.setInput('item', {...item, equipped:false, infusion:{...item.infusion!, weaponBonuses:{attack:0,damage:0,itemId:42,requiresUse:true}}});
     f.detectChanges();
     expect(f.nativeElement.textContent).toContain('attaque +0, dégâts +0');
+    f.componentRef.setInput('item', {...item, infusion:{...item.infusion!, name:'Focaliseur arcanique amélioré', description:'+1 aux attaques de sorts effectuées avec ce focaliseur tenu ; ignore le demi-abri pour ces attaques.', weaponBonuses:null}});
+    f.detectChanges();
+    expect(f.nativeElement.textContent).toContain('Focaliseur arcanique amélioré');
+    expect(f.nativeElement.textContent).toContain('+1 aux attaques de sorts');
+    expect(f.nativeElement.textContent).toContain('ignore le demi-abri');
+    expect(f.nativeElement.textContent).not.toContain('attaque +0');
     f.componentRef.setInput('item', {...item, infusion:null});
     f.detectChanges();
     expect(f.nativeElement.textContent).not.toContain('Arme améliorée');

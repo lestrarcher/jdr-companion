@@ -20,11 +20,18 @@ final readonly class CharacterWeaponCalculator
         $result = [];
         foreach ($character->getMagicItems() as $owned) {
             $item = $owned->getMagicItem();
-            if ($item !== null && $item->getCategory() !== 'weapon') continue;
+            $focusStaff = $item !== null && $item->getOrigin() === \App\Enum\ReferenceOrigin::Official
+                && $item->getEdition() === '2014' && !$item->isMagical() && $item->getCategory() === 'gear'
+                && in_array($item->getEnglishName(), ['Staff', 'Wooden staff'], true);
+            if ($item !== null && $item->getCategory() !== 'weapon' && !$focusStaff) continue;
             // Unclassified custom possessions cannot safely be identified as weapons.
             if ($item === null) continue;
             $row = ['id'=>$owned->getId(), 'name'=>$owned->getDisplayName(), 'equipped'=>$owned->isEquipped(), 'attackBonus'=>null, 'damage'=>null, 'notes'=>[], 'complete'=>false];
             $p = $item->getWeaponProfile();
+            if ($focusStaff) {
+                $profiles = json_decode(file_get_contents(__DIR__.'/../../data/weapon-profiles-2014.json'), true, 512, JSON_THROW_ON_ERROR);
+                $p = $profiles['phb2014-weapon-quarterstaff'];
+            }
             if ($p === null) { $row['notes'][] = 'Profil d’arme incomplet : type physique ou bonus non renseignés.'; $result[] = $row; continue; }
             $ability = $p['mode'] === 'ranged' ? 'dexterity' : 'strength';
             if (in_array('finesse', $p['properties'], true)) {

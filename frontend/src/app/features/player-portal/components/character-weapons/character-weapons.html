@@ -4,7 +4,7 @@
     <tbody>
       @for (weapon of weapons(); track weapon.id) {
         <tr>
-          <th scope="row">{{ weapon.name }} @if (weapon.equipped) { <small>Équipée</small> }</th>
+          <th scope="row">{{ weapon.name }}</th>
           <td class="attack">{{ weapon.attackBonus === null ? '—' : (weapon.attackBonus >= 0 ? '+' : '') + weapon.attackBonus }}</td>
           <td class="damage">{{ weapon.damage ?? '—' }}</td>
           <td class="notes">{{ weapon.notes.join(' · ') }}</td>

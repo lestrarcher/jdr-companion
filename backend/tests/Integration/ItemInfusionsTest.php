@@ -371,6 +371,96 @@ final class ItemInfusionsTest extends TestCase
         self::assertSame($before, $this->db->fetchAllAssociative('SELECT * FROM character_magic_item ORDER BY id'));
     }
 
+    private function prepareAttunableArcaneFocus(): array
+    {
+        $feature = new CharacterFeatureDefinition('artificer-infusion-enhanced-arcane-focus', 'Focaliseur arcanique amélioré');
+        $this->em->persist($feature); $this->em->flush();
+        $this->db->update('feature_choice_option', ['feature_id'=>$feature->getId()], ['key'=>'mind-sharpener']);
+        $definition = new MagicItem(null, 'Focaliseur test', null, origin:\App\Enum\ReferenceOrigin::Official);
+        $definition->classify('gear', false, true, 'hand', 'one');
+        $definition->setReferenceDetails('Wand', null, null);
+        $item = new CharacterMagicItem($this->recipient, $definition);
+        $this->recipient->addMagicItem($item);
+        $this->em->persist($definition); $this->em->persist($item); $this->em->flush();
+        $this->apply('mind-sharpener', $item);
+        $resolver = new \App\Service\ItemInfusionArmorEffects($this->db);
+        $properties = $resolver->itemProperties($this->recipient)[$item->getId()];
+        self::assertTrue($properties['requiresAttunement']);
+        self::assertNull($properties['weaponBonuses']);
+        self::assertStringContainsString('+1 aux attaques de sorts', $properties['description']);
+        self::assertStringContainsString('ignore le demi-abri', $properties['description']);
+        self::assertFalse($definition->requiresAttunement());
+
+        $session = new CharacterSessionState($this->actor->getGameSession(), $this->recipient);
+        $this->em->persist($session); $this->em->flush();
+        $container = $this->kernel->getContainer()->get('test.service_container');
+        $attune = fn () => $container->get(\App\Controller\PublicCharacterMagicItemController::class)->update(
+            $session->getAccessToken(), $item->getId(),
+            \Symfony\Component\HttpFoundation\Request::create('/', 'PATCH', server:['CONTENT_TYPE'=>'application/json'], content:'{"attuned":true}'),
+            $container->get(PlayerCharacterAccess::class), $this->em->getRepository(CharacterMagicItem::class),
+            $container->get(\App\Service\CharacterAbilityCalculator::class), $this->em,
+        );
+        return [$item, $resolver, $attune];
+    }
+
+    private function addAttunedItems(int $count): array
+    {
+        $others = [];
+        for ($i = 0; $i < $count; ++$i) {
+            $other = $this->item('gear', $this->recipient, true);
+            $other->getMagicItem()->setRequiresAttunement(true);
+            $other->setAttuned(true);
+            $this->recipient->addMagicItem($other);
+            $others[] = $other;
+        }
+        $this->em->flush();
+        return $others;
+    }
+
+    public function testArcaneFocusAttunementRejectsFourthItem(): void
+    {
+        [$item, , $attune] = $this->prepareAttunableArcaneFocus();
+        $this->addAttunedItems(3);
+        self::assertSame(3, $this->recipient->getAttunedMagicItemCount());
+        try {
+            $attune();
+            self::fail('Une quatrième harmonisation aurait dû être refusée.');
+        } catch (\Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException $e) {
+            self::assertSame(422, $e->getStatusCode());
+        }
+        // Ne pas réutiliser l'EntityManager après le rollback du contrôleur.
+    }
+
+    public function testArcaneFocusAttunementIsReleasedWhenKnowledgeIsLost(): void
+    {
+        [$item, $resolver, $attune] = $this->prepareAttunableArcaneFocus();
+        $others = $this->addAttunedItems(2);
+        $response = $attune();
+        self::assertSame(200, $response->getStatusCode());
+        $rows = json_decode($response->getContent(), true)['ownedItems'];
+        $row = array_values(array_filter($rows, fn ($row) => $row['id'] === $item->getId()))[0];
+        self::assertTrue($row['magicItem']['requiresAttunement']);
+        self::assertTrue($row['attuned']);
+        self::assertSame(3, $this->recipient->getAttunedMagicItemCount());
+
+        $this->db->executeStatement('UPDATE character_feature_choice SET active=FALSE WHERE key=?', [$this->keys['mind-sharpener']]);
+        $this->em->refresh($item);
+        self::assertSame([], $resolver->itemProperties($this->recipient));
+        self::assertFalse($item->isAttuned());
+        self::assertSame(2, $this->recipient->getAttunedMagicItemCount());
+        foreach ($others as $other) {
+            $this->em->refresh($other);
+            self::assertTrue($other->isAttuned());
+            self::assertTrue($other->getMagicItem()->requiresAttunement());
+        }
+        try {
+            $attune();
+            self::fail('Un focaliseur sans imprégnation ne devrait pas être harmonisable.');
+        } catch (\Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException $e) {
+            self::assertSame(422, $e->getStatusCode());
+        }
+    }
+
     public static function arcaneFocusSupports(): array
     {
         return [

@@ -10,6 +10,29 @@ use PHPUnit\Framework\TestCase;
 final class CharacterWeaponCalculatorTest extends TestCase
 {
     private function profiles(): array { return json_decode(file_get_contents(__DIR__.'/../../data/weapon-profiles-2014.json'), true, 512, JSON_THROW_ON_ERROR); }
+    public function testOnlyOfficialOrdinaryFocusStavesReuseQuarterstaffProfile(): void
+    {
+        $character = new Character(new Campaign(new \App\Entity\User(), 'test', 'Test'), 'x', 'X', Character::TYPE_PLAYER);
+        $character->getAbilityScore(Ability::Strength)->setBaseValue(16);
+        foreach (['Wooden staff','Staff','Wand','Rod'] as $reference) {
+            $item = new MagicItem(null, $reference, null, null, \App\Enum\ReferenceOrigin::Official);
+            $item->classify('gear',false,false); $item->setReferenceDetails($reference,null,null);
+            $character->addMagicItem(new CharacterMagicItem($character,$item));
+        }
+        $custom = new MagicItem($character->getCampaign(),'Bâton',null);
+        $custom->classify('gear',false,false); $custom->setReferenceDetails('Staff',null,null);
+        $character->addMagicItem(new CharacterMagicItem($character,$custom));
+        $rows = (new CharacterWeaponCalculator(new CharacterAbilityCalculator()))->calculate($character, ['proficiencies'=>[['type'=>'WEAPON','slug'=>'quarterstaff']]]);
+        self::assertCount(2,$rows);
+        foreach ($rows as $row) {
+            self::assertSame(5,$row['attackBonus']); self::assertSame('1d6+3 contondant',$row['damage']);
+            self::assertContains('Polyvalente (1d8+3)',$row['notes']);
+        }
+        foreach ($character->getMagicItems() as $owned) {
+            self::assertSame('gear',$owned->getMagicItem()->getCategory());
+            self::assertNull($owned->getMagicItem()->getWeaponProfile());
+        }
+    }
     public static function cases(): array
     {
         return [
