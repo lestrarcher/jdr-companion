@@ -7,7 +7,7 @@
           <th scope="row">{{ weapon.name }}</th>
           <td class="attack">{{ weapon.attackBonus === null ? '—' : (weapon.attackBonus >= 0 ? '+' : '') + weapon.attackBonus }}</td>
           <td class="damage">{{ weapon.damage ?? '—' }}</td>
-          <td class="notes">{{ weapon.notes.join(' · ') }}</td>
+          <td class="notes">{{ visibleNotes(weapon.notes).join(' · ') }}</td>
         </tr>
       } @empty {
         <tr><td colspan="4" class="notes">Aucune arme identifiée dans l’inventaire.</td></tr>

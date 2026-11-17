@@ -8,3 +8,6 @@ tbody th { font-weight: 500; min-width: 6rem; width: 24%; overflow-wrap: anywher
 .damage { min-width: 7rem; width: 25%; }
 .notes { color: var(--portal-muted); min-width: 8rem; width: 39%; font-size: .8rem; overflow-wrap: anywhere; }
 tbody tr:last-child > * { border-bottom: 0; }
+
+/* Zébrage discret pour séparer les armes sans rompre le thème sombre. */
+tbody tr:nth-child(even) { background: rgba(201, 168, 95, .065); }

@@ -51,7 +51,7 @@
       </div>
     </div>
 
-    <div class="statistics-derived" aria-label="Statistiques dérivées à venir">
+    <div class="statistics-derived" aria-label="Statistiques secondaires">
       <details class="statistics-derived-card statistics-armor">
         <summary aria-label="Classe d’armure : afficher ou masquer le calcul">
           <span aria-hidden="true"><svg class="statistics-shield" viewBox="0 0 24 24" focusable="false"><path fill="currentColor" d="M12 2 3 5v6c0 5.5 3.8 9.3 9 11 5.2-1.7 9-5.5 9-11V5z"/></svg></span>
@@ -65,9 +65,9 @@
           }
         </div>
       </details>
-      <div class="statistics-derived-card"><span aria-hidden="true">⚔</span><strong>—</strong><small>Initiative</small></div>
+      <div class="statistics-derived-card" title="Modificateur de Dextérité uniquement, hors bonus et malus"><span aria-hidden="true">⚔</span><strong>{{ baseInitiative() === null ? '—' : format(baseInitiative()!) }}</strong><small>Initiative (base)</small></div>
       <div class="statistics-derived-card"><span aria-hidden="true">➤</span><strong>—</strong><small>Vitesse</small></div>
-      <div class="statistics-derived-card"><span aria-hidden="true">◉</span><strong>—</strong><small>Perception passive</small></div>
+      <div class="statistics-derived-card" title="10 + bonus de Perception, hors bonus circonstanciels"><span aria-hidden="true">◉</span><strong>{{ basePassivePerception() ?? '—' }}</strong><small>Perception passive (base)</small></div>
     </div>
 
     @if (ordering() === 'ability') {
