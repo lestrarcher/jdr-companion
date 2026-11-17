@@ -24,6 +24,8 @@ import { CharacterResources } from './components/character-resources/character-r
 import { MagicalTinkeringNotes } from './components/magical-tinkering-notes/magical-tinkering-notes';
 import { CharacterStoredValues } from './components/character-stored-values/character-stored-values';
 import { CharacterVitals } from './components/character-vitals/character-vitals';
+import { CharacterInspiration } from './components/character-inspiration/character-inspiration';
+import { CharacterExhaustion } from './components/character-exhaustion/character-exhaustion';
 import { RestControls } from './components/rest-controls/rest-controls';
 import { FlexibleCastingActionModal, FlexibleCastingPayload } from './components/flexible-casting-action-modal/flexible-casting-action-modal';
 import { CharacterStatistics } from './components/character-statistics/character-statistics';
@@ -63,6 +65,8 @@ type PlayerPortalTab =
     CharacterResources,
     CharacterStoredValues,
     CharacterVitals,
+    CharacterInspiration,
+    CharacterExhaustion,
     CharacterWalletComponent,
     CharacterMagicItems,
     RestControls,
@@ -113,6 +117,8 @@ export class PlayerPortal {
   protected readonly saveError = signal<string | null>(null);
   protected readonly inspiration = signal(false);
   protected readonly inspirationSaving = signal(false);
+  protected readonly exhaustionLevel = signal(0);
+  protected readonly exhaustionSaving = signal(false);
   protected readonly activeTab = signal<PlayerPortalTab>(this.route.snapshot.queryParamMap?.get('tab') === 'spells'
     ? 'spells' : typeof window !== 'undefined' && window.matchMedia('(min-width: 900px)').matches ? 'overview' : 'status');
   protected readonly spellsVisited = signal(this.activeTab() === 'spells');
@@ -129,6 +135,20 @@ export class PlayerPortal {
   // Features and actions
   protected readonly armorClass = signal<CharacterArmorClass | null>(null);
   protected readonly movement = signal<import('@core/services/character-api.service').CharacterMovement | null>(null);
+  // Permanent movement is server-calculated; session exhaustion is transient.
+  protected readonly effectiveMovement = computed(() => {
+    const movement = this.movement();
+    if (!movement) return null;
+    const level = this.exhaustionLevel();
+    if (level < 2) return movement;
+    const adjust = (speed: number): number => level >= 5 ? 0 : speed / 2;
+    return {
+      walkingSpeed: movement.walkingSpeed == null ? null : adjust(movement.walkingSpeed),
+      movementSpeeds: Object.fromEntries(
+        Object.entries(movement.movementSpeeds ?? {}).map(([mode, speed]) => [mode, adjust(speed)]),
+      ),
+    };
+  });
   protected readonly abilities = signal<CharacterAbilityScore[]>([]);
   protected readonly training = signal<CharacterTraining | null>(null);
   protected readonly proficiencyBonus = signal(0);
@@ -246,6 +266,7 @@ export class PlayerPortal {
     this.playerSpells.set(response.spells);
     this.inventoryRefreshRevision.update(revision => revision + 1);
     this.inspiration.set(response.state.inspiration === true);
+    this.exhaustionLevel.set(response.state.exhaustionLevel ?? 0);
     this.tinkeringNotes.set(response.state.magicalTinkeringNotes ?? '');
     this.abilities.set(response.character.abilities);
     this.movement.set(response.character.movement ?? null);
@@ -345,6 +366,38 @@ export class PlayerPortal {
     this.activeTab.set(tab === 'overview' && !this.desktopView() ? 'status' : tab);
   }
 
+  protected changeExhaustion(delta: number): void {
+    if (!this.canEdit() || this.exhaustionSaving() || this.saveStatus() === 'saving'
+      || this.saveStatus() === 'error' || this.pendingRestRequest() || this.preparationPending()) return;
+    const next = Math.max(0, Math.min(6, this.exhaustionLevel() + delta));
+    if (next === this.exhaustionLevel()) return;
+    const generation = this.loadGeneration;
+    this.exhaustionSaving.set(true);
+    this.saveError.set(null);
+    this.saveStatus.set('saving');
+    this.http.patch<{ revision: number; state: CharacterSessionStatePayload }>(
+      `/api/public/characters/${encodeURIComponent(this.accessToken)}`,
+      { state: { exhaustionLevel: next }, revision: this.serverRevision },
+    ).pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.exhaustionSaving.set(false)))
+      .subscribe({
+        next: response => {
+          if (generation !== this.loadGeneration) return;
+          this.serverRevision = response.revision;
+          this.exhaustionLevel.set(response.state.exhaustionLevel ?? 0);
+          this.saveStatus.set('saved');
+          this.loadCharacter(false);
+        },
+        error: error => {
+          if (generation !== this.loadGeneration) return;
+          this.saveStatus.set('error');
+          this.saveError.set(error?.status === 409
+            ? 'Modification concurrente : rechargez puis réessayez.'
+            : error?.error?.message ?? 'Impossible de modifier l’épuisement.');
+          if (error?.status === 409) this.loadCharacter(false);
+        },
+      });
+  }
+
   protected spendInspiration(): void {
     if (!this.inspiration() || this.inspirationSaving() || this.saveStatus() === 'saving'
       || this.sessionStatus() !== 'live' || this.pendingRestRequest() || this.preparationPending()) return;
@@ -355,7 +408,7 @@ export class PlayerPortal {
     this.saveError.set(null);
     this.saveStatus.set('saving');
 
-    this.http.patch<{ revision: number; state: { inspiration?: boolean } }>(
+    this.http.patch<{ revision: number; state: { inspiration?: boolean; exhaustionLevel?: number } }>(
       `/api/public/characters/${encodeURIComponent(this.accessToken)}`,
       { state: { inspiration: false }, revision: this.serverRevision },
     ).pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.inspirationSaving.set(false)))
@@ -364,6 +417,9 @@ export class PlayerPortal {
           if (generation !== this.loadGeneration) return;
           this.serverRevision = response.revision;
           this.inspiration.set(response.state.inspiration === true);
+          if (response.state.exhaustionLevel !== undefined) {
+            this.exhaustionLevel.set(response.state.exhaustionLevel);
+          }
           this.saveStatus.set('saved');
           this.loadCharacter(false);
         },
@@ -463,6 +519,7 @@ export class PlayerPortal {
           if (generation !== this.loadGeneration) return;
           this.serverRevision = response.revision;
           this.inspiration.set(response.state.inspiration === true);
+    this.exhaustionLevel.set(response.state.exhaustionLevel ?? 0);
           if (
             String(response.campaign.id) !==
             this.campaignId
@@ -598,6 +655,7 @@ export class PlayerPortal {
                 if (generation !== this.loadGeneration) return;
                 this.serverRevision = response.revision;
                 this.inspiration.set(response.state.inspiration === true);
+    this.exhaustionLevel.set(response.state.exhaustionLevel ?? 0);
                 if (!isCurrent()) return;
 
                 const character = characterProfileToCharacter(
@@ -679,6 +737,7 @@ export class PlayerPortal {
 
       this.serverRevision = response.revision;
       this.inspiration.set(response.state.inspiration === true);
+    this.exhaustionLevel.set(response.state.exhaustionLevel ?? 0);
 
       this.playerSpells.set(response.spells ?? []);
       const character = characterProfileToCharacter(response.character, response.state);
@@ -843,6 +902,7 @@ export class PlayerPortal {
         next: (response) => {
           this.serverRevision = response.revision;
           this.inspiration.set(response.state.inspiration === true);
+    this.exhaustionLevel.set(response.state.exhaustionLevel ?? 0);
 
           this.actions.set(
             response.character.actions ?? [],
@@ -908,6 +968,7 @@ protected openAction(
       next: response => {
         this.serverRevision = response.revision;
           this.inspiration.set(response.state.inspiration === true);
+    this.exhaustionLevel.set(response.state.exhaustionLevel ?? 0);
         this.playerSpells.set(response.spells ?? []);
       const character = characterProfileToCharacter(response.character, response.state);
         this.characterStateService.applyServerState(character);
@@ -946,6 +1007,7 @@ protected openAction(
       next: response => {
         this.serverRevision = response.revision;
           this.inspiration.set(response.state.inspiration === true);
+    this.exhaustionLevel.set(response.state.exhaustionLevel ?? 0);
         this.playerSpells.set(response.spells ?? []);
       const character = characterProfileToCharacter(response.character, response.state);
         this.characterStateService.applyServerState(character);

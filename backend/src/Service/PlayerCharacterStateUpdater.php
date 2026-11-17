@@ -20,7 +20,7 @@ final readonly class PlayerCharacterStateUpdater
 
     public function merge(CharacterSessionState $session, array $patch): array
     {
-        $this->keys($patch, ['hitPoints', 'hitDice', 'resources', 'progressions', 'inspiration', 'magicalTinkeringNotes']);
+        $this->keys($patch, ['hitPoints', 'hitDice', 'resources', 'progressions', 'inspiration', 'exhaustionLevel', 'magicalTinkeringNotes']);
         $character = $session->getCharacter();
         $state = $session->getState();
         if (array_key_exists('magicalTinkeringNotes', $patch)) {
@@ -50,6 +50,17 @@ final readonly class PlayerCharacterStateUpdater
         }
 
         $after = $this->synchronizer->snapshot($character, $this->synchronizer->extractProgressionValues($state), $state);
+        // Apply exhaustion first, so HP changes in the same request are validated
+        // against the new maximum. Never restore lost HP when exhaustion decreases.
+        if (array_key_exists('exhaustionLevel', $patch)) {
+            $this->integer($patch['exhaustionLevel'], 0, 6);
+            $state['exhaustionLevel'] = $patch['exhaustionLevel'];
+            $maximum = $this->hitPointStateService->effectiveMaximum($character, $state);
+            if ($maximum !== null && isset($state['hitPoints']['current'])) {
+                $state['hitPoints']['current'] = min((int) $state['hitPoints']['current'], $maximum);
+            }
+        }
+
         if (array_key_exists('hitPoints', $patch)) {
             $hp = $patch['hitPoints'];
 

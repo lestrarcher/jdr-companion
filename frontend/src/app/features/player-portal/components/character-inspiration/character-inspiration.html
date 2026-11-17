@@ -1,0 +1,5 @@
+<div class="inspiration-tracker" [class.inspiration-tracker--active]="active()">
+                      <span class="inspiration-tracker__symbol" aria-hidden="true">✦</span>
+                      <div class="inspiration-tracker__details"><strong>Inspiration</strong><span>{{ active() ? 'Disponible' : 'Non disponible' }}</span></div>
+                      <button type="button" [hidden]="!!readonly()" class="inspiration-tracker__action" [disabled]="!!readonly() || !active() || saving()" (click)="spend.emit()">{{ saving() ? 'Dépense…' : 'Dépenser' }}</button>
+                    </div>

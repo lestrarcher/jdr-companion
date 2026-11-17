@@ -27,6 +27,7 @@ final readonly class CharacterSessionStateSerializer
         $gameSession = $state->getGameSession();
         $sessionState = $state->getState();
         unset($sessionState[SpellCastReceipts::STATE_KEY]);
+        $sessionState['exhaustionLevel'] = $sessionState['exhaustionLevel'] ?? 0;
         $profile = $this->profileSerializer->serialize($character, $this->extractProgressionValues($sessionState));
         $maximums = $this->spellSlotStateService->effectiveMaximums($character, $sessionState);
         $resources = [];

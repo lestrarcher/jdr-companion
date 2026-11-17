@@ -668,16 +668,6 @@
 }
 @media (max-width: 899px) { .portal-tabs { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 .overview-panel--state { overflow-wrap: normal; }
-.inspiration-tracker { display:flex; align-items:center; gap:.75rem; min-width:0; padding:.8rem; margin-bottom:1rem; border:1px solid rgba(201,168,95,.28); background:rgba(8,9,14,.88); }
-.inspiration-tracker--active { border-color:rgba(201,168,95,.7); background:rgba(201,168,95,.07); }
-.inspiration-tracker__symbol { font-size:1.6rem; color:#8c806c; }
-.inspiration-tracker--active .inspiration-tracker__symbol { color:#e5bd73; }
-.inspiration-tracker__details { display:flex; flex:1; flex-direction:column; gap:.2rem; min-width:0; }
-.inspiration-tracker__details strong { font:1rem Georgia,serif; color:#eee8dc; }
-.inspiration-tracker__details span { font-size:.78rem; color:var(--portal-muted); }
-.inspiration-tracker__action { flex-shrink:0; padding:.55rem .75rem; color:#e5bd73; background:rgba(201,168,95,.07); border:1px solid rgba(201,168,95,.45); cursor:pointer; }
-.inspiration-tracker__action:disabled { opacity:.45; cursor:default; }
-@media (max-width:650px) { .inspiration-tracker { flex-wrap:wrap; } }
 
 
 .overview-progression { min-width: 0; grid-column: 1 / -1; }
@@ -688,7 +678,6 @@
 
 /* Status: vitals and personal progression share the left-hand column. */
 .status-vitals-column { display: grid; align-content: start; gap: 1rem; min-width: 0; }
-.status-vitals-column > .inspiration-tracker { margin-bottom: 0; }
 .status-personal-progressions { min-width: 0; }
 /* Keep tab labels inside their own grid cells on narrow screens. */
 .portal-tabs button > span:last-child { max-width: 100%; }
