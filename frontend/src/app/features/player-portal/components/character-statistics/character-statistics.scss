@@ -113,3 +113,14 @@
 .statistics-derived--summary .statistics-derived-card strong { font-size: 1.25rem; }
 .statistics-derived--summary .statistics-derived-card small { font-size: .67rem; }
 @media (max-width: 450px) { .statistics-derived--summary { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+
+/* Déplacements : détail repliable identique dans les deux vues. */
+.statistics-derived-card.statistics-movement { display: block; overflow-wrap: anywhere; }
+.statistics-movement summary { display: flex; flex-direction: column; align-items: center; gap: inherit; cursor: pointer; list-style: none; }
+.statistics-movement summary::-webkit-details-marker { display: none; }
+.statistics-movement summary:focus-visible { outline: 2px solid #c9a85f; outline-offset: 2px; }
+.statistics-movement-detail { margin-top: .6rem; padding: .4rem; border-top: 1px solid #55452f; text-align: left; font-size: .78rem; }
+.statistics-movement-detail h3 { margin: 0 0 .5rem; font-size: inherit; color: #e4bd73; }
+.statistics-movement-part { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .5rem; margin: .4rem 0; }
+.statistics-movement-part b { text-align: right; white-space: nowrap; }
+.statistics-movement-empty { margin: .4rem 0; color: #b5a995; }

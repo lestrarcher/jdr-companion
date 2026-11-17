@@ -14,9 +14,27 @@
           }
         </div>
       </details>
-      <div class="statistics-derived-card" title="Modificateur de Dextérité uniquement, hors bonus et malus"><span aria-hidden="true">⚔</span><strong>{{ baseInitiative() === null ? '—' : format(baseInitiative()!) }}</strong><small>Initiative (base)</small></div>
-      <div class="statistics-derived-card"><span aria-hidden="true">➤</span><strong>—</strong><small>Vitesse</small></div>
-      <div class="statistics-derived-card" title="10 + bonus de Perception, hors bonus circonstanciels"><span aria-hidden="true">◉</span><strong>{{ basePassivePerception() ?? '—' }}</strong><small>Perception passive (base)</small></div>
+      <div class="statistics-derived-card" title="Initiative : Dextérité et bonus permanents des dons et capacités"><span aria-hidden="true">⚔</span><strong>{{ initiative() === null ? '—' : format(initiative()!) }}</strong><small>Initiative</small></div>
+      <details class="statistics-derived-card statistics-movement">
+        <summary aria-label="Vitesse : afficher ou masquer les modes de déplacement">
+          <span aria-hidden="true">➤</span>
+          <strong>{{ movement()?.walkingSpeed == null ? '—' : movement()!.walkingSpeed + ' m' }}</strong>
+          <small>Vitesse</small>
+        </summary>
+        <div class="statistics-movement-detail">
+          <h3>Déplacements</h3>
+          @if (movement()?.walkingSpeed != null) {
+            <div class="statistics-movement-part"><span>Marche</span><b>{{ movement()!.walkingSpeed }} m</b></div>
+          }
+          @for (mode of movementModes(); track mode) {
+            <div class="statistics-movement-part"><span>{{ mode.label }}</span><b>{{ mode.speed }} m</b></div>
+          }
+          @if (movement()?.walkingSpeed == null && movementModes().length === 0) {
+            <p class="statistics-movement-empty">Aucune vitesse renseignée.</p>
+          }
+        </div>
+      </details>
+      <div class="statistics-derived-card" title="10 + bonus de Perception + 5 si Observateur, hors bonus circonstanciels"><span aria-hidden="true">◉</span><strong>{{ basePassivePerception() ?? '—' }}</strong><small>Perception passive</small></div>
     </div>
     <div class="statistics-abilities">
       @for (ability of orderedAbilities(); track ability.ability) {
@@ -65,9 +83,27 @@
           }
         </div>
       </details>
-      <div class="statistics-derived-card" title="Modificateur de Dextérité uniquement, hors bonus et malus"><span aria-hidden="true">⚔</span><strong>{{ baseInitiative() === null ? '—' : format(baseInitiative()!) }}</strong><small>Initiative (base)</small></div>
-      <div class="statistics-derived-card"><span aria-hidden="true">➤</span><strong>—</strong><small>Vitesse</small></div>
-      <div class="statistics-derived-card" title="10 + bonus de Perception, hors bonus circonstanciels"><span aria-hidden="true">◉</span><strong>{{ basePassivePerception() ?? '—' }}</strong><small>Perception passive (base)</small></div>
+      <div class="statistics-derived-card" title="Initiative : Dextérité et bonus permanents des dons et capacités"><span aria-hidden="true">⚔</span><strong>{{ initiative() === null ? '—' : format(initiative()!) }}</strong><small>Initiative</small></div>
+      <details class="statistics-derived-card statistics-movement">
+        <summary aria-label="Vitesse : afficher ou masquer les modes de déplacement">
+          <span aria-hidden="true">➤</span>
+          <strong>{{ movement()?.walkingSpeed == null ? '—' : movement()!.walkingSpeed + ' m' }}</strong>
+          <small>Vitesse</small>
+        </summary>
+        <div class="statistics-movement-detail">
+          <h3>Déplacements</h3>
+          @if (movement()?.walkingSpeed != null) {
+            <div class="statistics-movement-part"><span>Marche</span><b>{{ movement()!.walkingSpeed }} m</b></div>
+          }
+          @for (mode of movementModes(); track mode) {
+            <div class="statistics-movement-part"><span>{{ mode.label }}</span><b>{{ mode.speed }} m</b></div>
+          }
+          @if (movement()?.walkingSpeed == null && movementModes().length === 0) {
+            <p class="statistics-movement-empty">Aucune vitesse renseignée.</p>
+          }
+        </div>
+      </details>
+      <div class="statistics-derived-card" title="10 + bonus de Perception + 5 si Observateur, hors bonus circonstanciels"><span aria-hidden="true">◉</span><strong>{{ basePassivePerception() ?? '—' }}</strong><small>Perception passive</small></div>
     </div>
 
     @if (ordering() === 'ability') {

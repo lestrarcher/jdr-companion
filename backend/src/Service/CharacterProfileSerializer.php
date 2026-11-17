@@ -24,6 +24,8 @@ final readonly class CharacterProfileSerializer
         private CharacterArmorClassCalculator $armorClassCalculator,
         private ItemInfusionArmorEffects $infusionArmorEffects,
         private CharacterWeaponCalculator $weaponCalculator,
+        private CharacterRaceMetadataResolver $raceMetadataResolver,
+        private CharacterMovementCalculator $movementCalculator,
     ) {
     }
 
@@ -62,6 +64,10 @@ final readonly class CharacterProfileSerializer
                 : null,
             'totalLevel' => $character->getTotalLevel(),
             'proficiencyBonus' => $character->getProficiencyBonus(),
+            'movement' => $this->movementCalculator->calculate($character, array_map(
+                static fn (CharacterFeatureRule $rule): string => $rule->getFeatureDefinition()->getSlug(),
+                $features,
+            )),
             'armorClass' => $this->armorClassCalculator->calculate($character, $armorEffects),
             'training' => $training,
             'weapons' => $this->weaponCalculator->calculate($character, $training, $this->infusionArmorEffects->itemProperties($character, true)),

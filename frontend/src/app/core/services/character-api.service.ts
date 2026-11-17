@@ -163,7 +163,13 @@ export interface CharacterTraining {
   expertises: Array<{id: number; slug: string; name: string; type: string; proficiencyId: number; sources: string[]}>;
 }
 
+export interface CharacterMovement {
+  walkingSpeed: number | null;
+  movementSpeeds: Record<string, number>;
+}
+
 export interface CharacterProfile extends CharacterApiResponse {
+  movement?: CharacterMovement | null;
   weapons?: import('../models/character-weapon.model').CharacterWeapon[];
   armorClass?: CharacterArmorClass;
   training?: CharacterTraining;

@@ -106,7 +106,7 @@
                       <h2>Caractéristiques</h2>
                       <button type="button" (click)="selectTab('statistics')" aria-label="Ouvrir les caractéristiques">Voir tout ↗</button>
                     </div>
-                    <app-character-statistics [armorClass]="armorClass()" [abilities]="abilities()" [training]="training()" [proficiencyBonus]="proficiencyBonus()" mode="summary" />
+                    <app-character-statistics [movement]="movement()" [armorClass]="armorClass()" [abilities]="abilities()" [training]="training()" [feats]="feats()" [features]="features()" [proficiencyBonus]="proficiencyBonus()" mode="summary" />
                   </section>
                   @if (hasProgressions()) {
                     <div class="overview-progression">
@@ -135,7 +135,7 @@
               }
               @case ('statistics') {
                 <section class="overview-panel statistics-detail">
-                  <app-character-statistics [armorClass]="armorClass()" [abilities]="abilities()" [training]="training()" [proficiencyBonus]="proficiencyBonus()" mode="detail" />
+                  <app-character-statistics [movement]="movement()" [armorClass]="armorClass()" [abilities]="abilities()" [training]="training()" [feats]="feats()" [features]="features()" [proficiencyBonus]="proficiencyBonus()" mode="detail" />
                 </section>
               }
               @case ('status') {

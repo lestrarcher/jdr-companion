@@ -128,6 +128,7 @@ export class PlayerPortal {
 
   // Features and actions
   protected readonly armorClass = signal<CharacterArmorClass | null>(null);
+  protected readonly movement = signal<import('@core/services/character-api.service').CharacterMovement | null>(null);
   protected readonly abilities = signal<CharacterAbilityScore[]>([]);
   protected readonly training = signal<CharacterTraining | null>(null);
   protected readonly proficiencyBonus = signal(0);
@@ -247,6 +248,7 @@ export class PlayerPortal {
     this.inspiration.set(response.state.inspiration === true);
     this.tinkeringNotes.set(response.state.magicalTinkeringNotes ?? '');
     this.abilities.set(response.character.abilities);
+    this.movement.set(response.character.movement ?? null);
     this.armorClass.set(response.character.armorClass ?? null);
     this.training.set(response.character.training ?? null);
     this.weapons.set(response.character.weapons ?? []);
@@ -517,6 +519,7 @@ export class PlayerPortal {
           this.character.set(loadedCharacter);
           this.playerSpells.set(response.spells ?? []);
           this.abilities.set(response.character.abilities);
+    this.movement.set(response.character.movement ?? null);
           this.armorClass.set(response.character.armorClass ?? null);
           this.training.set(response.character.training ?? null);
           this.weapons.set(response.character.weapons ?? []);
@@ -604,6 +607,7 @@ export class PlayerPortal {
                 this.characterStateService.applyServerState(character);
                 this.character.set(character);
                 this.abilities.set(response.character.abilities);
+    this.movement.set(response.character.movement ?? null);
                 this.armorClass.set(response.character.armorClass ?? null);
                 this.training.set(response.character.training ?? null);
                 this.weapons.set(response.character.weapons ?? []);
@@ -683,6 +687,7 @@ export class PlayerPortal {
       this.lastQueuedRevision = this.characterStateService.revision();
       this.character.set(character);
       this.abilities.set(response.character.abilities);
+    this.movement.set(response.character.movement ?? null);
       this.armorClass.set(response.character.armorClass ?? null);
       this.training.set(response.character.training ?? null);
       this.weapons.set(response.character.weapons ?? []);

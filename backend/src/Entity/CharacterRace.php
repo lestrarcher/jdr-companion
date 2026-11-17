@@ -26,7 +26,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\HasLifecycleCallbacks]
 class CharacterRace
 {
-    private const MOVEMENT_SPEED_KEYS = ['swim', 'fly', 'climb'];
+    private const MOVEMENT_SPEED_KEYS = ['swim', 'fly', 'climb', 'burrow'];
     private const SENSE_KEYS = ['darkvision', 'blindsight', 'tremorsense', 'truesight'];
 
     // Existing constructors and factories create official references only.

@@ -1,5 +1,6 @@
+import { calculateInitiative } from './initiative';
 import { Component, computed, input, signal } from '@angular/core';
-import { CharacterAbilityScore, CharacterArmorClass, CharacterTraining } from '@core/services/character-api.service';
+import { CharacterAbilityScore, CharacterArmorClass, CharacterMovement, CharacterFeatSummary, CharacterFeatureSummary, CharacterTraining } from '@core/services/character-api.service';
 
 type Ability = 'strength' | 'dexterity' | 'constitution' | 'intelligence' | 'wisdom' | 'charisma';
 type Skill = { slug: string; name: string; ability: Ability };
@@ -60,18 +61,33 @@ export class CharacterStatistics {
   }
 
   readonly armorClass = input<CharacterArmorClass | null>(null);
+  readonly movement = input<CharacterMovement | null>(null);
+  readonly movementModes = computed(() => {
+    const movement = this.movement();
+    if (!movement) return [];
+    const labels: Record<string, string> = { swim: 'Nage', fly: 'Vol', climb: 'Escalade', burrow: 'Fouissement' };
+    return Object.entries(movement.movementSpeeds ?? {})
+      .filter((entry): entry is [string, number] => typeof entry[1] === 'number' && entry[1] > 0)
+      .map(([mode, speed]) => ({ mode, label: labels[mode] ?? mode, speed }));
+  });
   readonly abilities = input.required<CharacterAbilityScore[]>();
   readonly training = input<CharacterTraining | null>(null);
+  readonly feats = input<CharacterFeatSummary[]>([]);
+  readonly features = input<CharacterFeatureSummary[]>([]);
   readonly proficiencyBonus = input(0);
   readonly mode = input<'summary' | 'detail'>('detail');
   readonly ordering = signal<Ordering>(initialOrdering());
 
-  // Base values only: equipment, features and other modifiers are not yet exposed.
-  readonly baseInitiative = computed(() => this.abilities().find(a => a.ability === 'dexterity')?.modifier ?? null);
+  readonly initiative = computed(() => calculateInitiative(
+    Object.fromEntries(this.abilities().map(ability => [ability.ability, ability.modifier])),
+    this.proficiencyBonus(),
+    this.feats().map(feat => feat.slug),
+    this.features().map(feature => feature.slug),
+  ));
   readonly basePassivePerception = computed(() => {
     if (!this.abilities().some(a => a.ability === 'wisdom')) return null;
     const perception = this.skills().find(skill => skill.slug === 'perception');
-    return perception ? 10 + perception.bonus : null;
+    return perception ? 10 + perception.bonus + (this.feats().some(feat => feat.slug === 'observant') ? 5 : 0) : null;
   });
   readonly orderedAbilities = computed(() => ABILITIES
     .map(key => this.abilities().find(score => score.ability === key))
