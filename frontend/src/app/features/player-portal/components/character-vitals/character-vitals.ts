@@ -20,11 +20,11 @@ export class CharacterVitals {
     inject(CharacterStateService);
 
   readonly character = input.required<Character>();
-  protected hitPointAmount = 0;
+  protected hitPointAmount: number | null = null;
 
   protected applyDamage(): void {
     if (this.readonly()) return;
-    if (this.hitPointAmount <= 0) {
+    if (this.hitPointAmount === null || !Number.isFinite(this.hitPointAmount) || this.hitPointAmount <= 0) {
       return;
     }
 
@@ -32,12 +32,12 @@ export class CharacterVitals {
       this.hitPointAmount,
     );
 
-    this.hitPointAmount = 0;
+    this.hitPointAmount = null;
   }
 
   protected heal(): void {
     if (this.readonly()) return;
-    if (this.hitPointAmount <= 0) {
+    if (this.hitPointAmount === null || !Number.isFinite(this.hitPointAmount) || this.hitPointAmount <= 0) {
       return;
     }
 
@@ -45,7 +45,7 @@ export class CharacterVitals {
       this.hitPointAmount,
     );
 
-    this.hitPointAmount = 0;
+    this.hitPointAmount = null;
   }
 
   protected changeTemporaryHitPoints(change: number): void {
