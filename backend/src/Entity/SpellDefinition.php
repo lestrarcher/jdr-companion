@@ -48,6 +48,18 @@ class SpellDefinition
     #[ORM\Column(type: 'text')]
     private string $duration;
 
+    #[ORM\Column(length: 10, nullable: true)]
+    private ?string $targetType = null;
+
+    #[ORM\Column(options: ['default' => false])]
+    private bool $multipleTargets = false;
+
+    #[ORM\Column(length: 15, nullable: true)]
+    private ?string $multipleTargetsProgression = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $multipleTargetsThreshold = null;
+
     #[ORM\Column(options: ['default' => false])]
     private bool $verbal = false;
 
@@ -126,6 +138,27 @@ class SpellDefinition
         $spell->owner = $owner;
 
         return $spell;
+    }
+
+    public function getTargetType(): ?string { return $this->targetType; }
+    public function isMultipleTargets(): bool { return $this->multipleTargets; }
+    public function getMultipleTargetsProgression(): ?string { return $this->multipleTargetsProgression; }
+    public function getMultipleTargetsThreshold(): ?int { return $this->multipleTargetsThreshold; }
+
+    /** creature means exclusively creatures; mixed or unresolved targeting is special. */
+    public function setTargeting(?string $type, bool $multiple = false, ?string $progression = null, ?int $threshold = null): static
+    {
+        if ($type !== null && !in_array($type, ['self', 'creature', 'object', 'area', 'special'], true)) throw new \InvalidArgumentException('Type de cible invalide.');
+        if (($progression === null) !== ($threshold === null)
+            || ($progression !== null && (!in_array($progression, ['slot', 'character'], true)
+                || $threshold < 1 || $threshold > ($progression === 'slot' ? 9 : 20)))) {
+            throw new \InvalidArgumentException('Progression de ciblage invalide.');
+        }
+        $this->targetType = $type;
+        $this->multipleTargets = $multiple;
+        $this->multipleTargetsProgression = $progression;
+        $this->multipleTargetsThreshold = $threshold;
+        return $this;
     }
 
     public function getId(): ?int { return $this->id; }

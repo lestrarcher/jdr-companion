@@ -46,6 +46,7 @@ final readonly class CharacterSessionStateFactory
 
         return [
             'inspiration' => $character->hasInspiration(),
+            'exhaustionLevel' => 0,
             'hitPoints' => [
                 'current' => $hitPoints->maximumValue + $maximumAdjustment,
                 'temporary' => 0,

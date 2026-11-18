@@ -1,10 +1,10 @@
-import { AfterViewInit, Component, ElementRef, OnDestroy, computed, input, output, signal, viewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, computed, input, linkedSignal, output, signal, viewChild } from '@angular/core';
 import { PlayerSpell } from '@core/services/character-session-state-api.service';
-import { SpellCastCommand, SpellCastingAvailability, availableSpellCastMethods, spellHitPointEffect } from '@core/models/spell-cast.model';
+import { SpellCastCommand, SpellCastingAvailability, SpellMetamagic, availableSpellCastMethods, metamagicReasonLabel, spellHitPointEffect } from '@core/models/spell-cast.model';
 import { CharacterResource } from '@core/models/character.model';
 import { SpellTargetPicker } from '../spell-target-picker/spell-target-picker';
 
-export type SpellCastSelection = Pick<SpellCastCommand, 'sourceKey' | 'method' | 'castingLevel' | 'targetCharacterIds' | 'hitPointRoll'>;
+export type SpellCastSelection = Pick<SpellCastCommand, 'sourceKey' | 'method' | 'castingLevel' | 'targetCharacterIds' | 'hitPointRoll' | 'metamagic' | 'metamagics'>;
 type CastOption = { source: PlayerSpell; method: SpellCastingAvailability['methods'][number]; key: string };
 
 @Component({
@@ -48,6 +48,8 @@ export class SpellCastDialog implements AfterViewInit, OnDestroy {
     return roll !== null && Number.isInteger(roll) && roll >= 2 && roll <= 20;
   });
   readonly canConfirm = computed(() => !this.locked() && !!this.selected()
+    && this.selectedMetamagics().every(selected => this.metamagics().some(option => option.key === selected.key && option.status === 'available'))
+    && this.combinedAffordable()
     && (!this.hitPointEffect() || this.targetIds().length >= 1 && this.targetIds().length <= this.maximumTargets()
       && (this.hitPointEffect() !== 'feast' || this.validRoll())));
   updateTargets(ids: number[]): void { if (!this.locked()) this.targetIds.set([...ids]); }
@@ -75,6 +77,12 @@ export class SpellCastDialog implements AfterViewInit, OnDestroy {
   readonly activeSource = computed(() => this.availableSources().find(item => item.source.key === this.sourceChoice())?.source
     ?? (this.availableSources().length === 1 ? this.availableSources()[0].source
       : this.availableSources().length === 0 ? this.sourceChoices()[0]?.source : undefined));
+  // The casting source determines the spellcasting ability, save DC and attack bonus.
+  // These are server-provided base values; equipment-dependent bonuses are not inferred here.
+  readonly castingStats = computed(() => this.selected()?.source ?? this.activeSource() ?? this.spell());
+  signedSpellAttackBonus(value: number | null): string {
+    return value === null || !Number.isFinite(value) ? '—' : `${value >= 0 ? '+' : ''}${value}`;
+  }
   readonly visibleOptions = computed(() => this.displayOptions().filter(option => option.source.key === this.activeSource()?.key));
   readonly standardOptions = computed(() => this.visibleOptions().filter(option => option.method.kind === 'standard-slot'));
   readonly otherOptions = computed(() => this.visibleOptions().filter(option => option.method.kind !== 'standard-slot'));
@@ -82,6 +90,50 @@ export class SpellCastDialog implements AfterViewInit, OnDestroy {
     ? (this.options().length === 1 ? this.options()[0] : undefined)
     : this.options().find(option => option.key === this.choice()));
   readonly locked = computed(() => this.saving() || this.blocked() || !!this.pending() || !!this.success());
+  readonly hasMetamagics = computed(() => !!this.selectedMetamagic() || this.sources().some(source => source.castingAvailability?.methods.some(method => method.metamagics?.length)));
+  readonly metamagics = computed(() => this.selected()?.method.metamagics ?? []);
+  private readonly metamagicSelection = linkedSignal({
+    source: () => ({ spellId: this.spell().spellId, option: this.selected()
+      ?? this.displayOptions().find(option => option.key === this.choice())
+      ?? (this.choice() === null && this.displayOptions().length === 1 ? this.displayOptions()[0] : undefined) }),
+    computation: (source, previous): (SpellMetamagic & { selectedLevel: number })[] => {
+      const retained = previous?.value;
+      if (!retained?.length || source.spellId !== previous!.source.spellId) return [];
+      // A missing response is not a loss of eligibility. Keep the visible choice,
+      // but canConfirm requires a fresh, available option before sending it.
+      const level = source.option?.method.castingLevel;
+      if (level != null && retained.some(option => level !== option.selectedLevel)) return [];
+      const options = source.option?.method.metamagics;
+      if (options === undefined) return retained;
+      return retained.flatMap(selected => {
+        const current = options.find(option => option.key === selected.key);
+        return current?.status === 'available' || current?.status === 'unknown' ? [{ ...current, selectedLevel: selected.selectedLevel }] : [];
+      });
+    },
+  });
+  readonly selectedMetamagics = computed(() => this.metamagicSelection());
+  readonly selectedMetamagic = computed(() => this.selectedMetamagics()[0]);
+  readonly metamagicCost = computed(() => this.selectedMetamagics().reduce((sum, option) => sum + option.cost, 0));
+  readonly combinedAffordable = computed(() => {
+    if (this.selectedMetamagics().length < 2) return true; // Single-option affordability is supplied by the backend.
+    const pools = this.resources().filter(pool => pool.id === 'sorcery-points');
+    const method = this.selected()?.method;
+    const total = this.metamagicCost() + (method?.poolSlug === 'sorcery-points' ? method.cost : 0);
+    return pools.length === 1 && Number.isInteger(pools[0].currentValue) && pools[0].currentValue >= total;
+  });
+  isMetamagicSelected(key: string): boolean { return this.selectedMetamagics().some(option => option.key === key); }
+  canSelectMetamagic(key: string): boolean {
+    if (this.isMetamagicSelected(key)) return true;
+    const selected = this.selectedMetamagics();
+    return this.metamagics().some(option => option.key === key && option.status === 'available')
+      && (selected.length === 0 || selected.length === 1 && (key === 'metamagic-empowered-spell' || selected[0].key === 'metamagic-empowered-spell'));
+  }
+  readonly metamagicReason = metamagicReasonLabel;
+  selectMetamagic(key: string): void {
+    if (this.locked() || !this.canSelectMetamagic(key)) return;
+    this.metamagicSelection.set(this.isMetamagicSelected(key) ? this.selectedMetamagics().filter(option => option.key !== key)
+      : [...this.selectedMetamagics(), { ...this.metamagics().find(option => option.key === key)!, selectedLevel: this.selected()!.method.castingLevel! }]);
+  }
   readonly upcasting = computed(() => {
     const option = this.selected();
     return option && option.source.level !== null && option.method.castingLevel !== null && option.method.castingLevel > option.source.level;
@@ -101,7 +153,7 @@ export class SpellCastDialog implements AfterViewInit, OnDestroy {
   select(key: string): void {
     if (!this.locked() && this.options().some(option => option.key === key && option.source.key === this.activeSource()?.key)) this.choice.set(key);
   }
-  close(): void { if (!this.saving()) this.closed.emit(); }
+  close(): void { if (!this.saving()) { this.metamagicSelection.set([]); this.closed.emit(); } }
   cancel(event: Event): void { event.preventDefault(); this.close(); }
   confirm(): void {
     const option = this.selected();
@@ -109,6 +161,8 @@ export class SpellCastDialog implements AfterViewInit, OnDestroy {
       method: option.method.kind, castingLevel: option.method.castingLevel,
       ...(this.hitPointEffect() ? { targetCharacterIds: [...this.targetIds()] } : {}),
       ...(this.hitPointEffect() === 'feast' ? { hitPointRoll: this.hitPointRoll()! } : {}),
+      ...(this.selectedMetamagics().length === 2 ? { metamagics: this.selectedMetamagics().map(option => option.key) }
+        : this.selectedMetamagic() ? { metamagic: this.selectedMetamagic()!.key } : {}),
     });
   }
   levelLabel(level: number | null): string { return ['0', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'][level ?? -1] ?? '?'; }

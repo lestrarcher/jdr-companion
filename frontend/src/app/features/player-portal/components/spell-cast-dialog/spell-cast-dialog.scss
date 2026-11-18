@@ -30,6 +30,8 @@ select { min-width: 0; max-width: 100%; min-height: 44px; flex: 1; padding: .4re
 .cast-option.selected { border-color: #dfbf80; background: #3d3540; box-shadow: inset 0 0 0 1px #dfbf8055; }
 .cast-option:disabled, fieldset:disabled .cast-option { cursor: default; opacity: .55; filter: grayscale(1); }
 .method-option { max-width: 100%; font-size: .8rem; }
+.metamagic-option { align-items: flex-start; text-align: left; }
+.metamagic-option small { max-width: 17rem; }
 [data-method=pact-slot] { border-color: #bba9e280; color: #d1c3ed; }
 [data-method=ritual], [data-method=cantrip] { border-color: #91cbe080; color: #b9dfec; }
 .cast-cost { color: #dfbf80; }
@@ -42,3 +44,8 @@ footer { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; 
 .roll-input input { width: 6rem; min-height: 44px; padding: .4rem; border: 1px solid #a78b5980; border-radius: .5rem; background: #232837; color: inherit; font: inherit; }
 .roll-input input:focus-visible { outline: 2px solid #dfbf80; outline-offset: 3px; }
 .hp-bonus { color: #dfbf80; }
+
+.casting-stats { display: flex; flex-wrap: wrap; gap: .5rem; margin: .7rem 0; }
+.casting-stats > div { display: flex; align-items: baseline; gap: .45rem; padding: .4rem .65rem; border: 1px solid #a78b594d; border-radius: .45rem; background: #23283780; }
+.casting-stats dt { color: #cdb482; font-size: .75rem; }
+.casting-stats dd { margin: 0; font-weight: 700; font-size: .9rem; }

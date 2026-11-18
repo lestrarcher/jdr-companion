@@ -1,0 +1,25 @@
+/* Exhaustion — status column */
+.exhaustion-tracker { padding: .9rem; border: 1px solid rgba(201,168,95,.28); background: rgba(8,9,14,.88); color: #eee8dc; }
+.exhaustion-tracker__heading { display:flex; justify-content:space-between; gap:.75rem; align-items:center; margin-bottom:.8rem; }
+.exhaustion-tracker__heading strong { font: 1rem Georgia,serif; }
+.exhaustion-tracker__heading span { font-size:.82rem; color:var(--portal-muted, #aaa); }
+.exhaustion-tracker__controls { display:flex; align-items:center; gap:.5rem; }
+.exhaustion-tracker__controls button { min-width:2.3rem; min-height:2.3rem; border:1px solid rgba(201,168,95,.45); background:rgba(201,168,95,.07); color:#e5bd73; cursor:pointer; }
+.exhaustion-tracker__controls button:disabled { opacity:.4; cursor:default; }
+.exhaustion-tracker__pips { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:.2rem; flex:1; }
+.exhaustion-tracker__pips span { text-align:center; padding:.4rem 0; font-size:.8rem; border:1px solid rgba(201,168,95,.18); color:var(--portal-muted, #aaa); }
+.exhaustion-tracker__pips span.is-active { border-color:rgba(201,168,95,.65); color:#e5bd73; background:rgba(201,168,95,.12); }
+.exhaustion-tracker__effects { padding-left:1.25rem; margin:.75rem 0 0; font-size:.82rem; line-height:1.55; }
+.exhaustion-tracker p { margin:.75rem 0 0; color:var(--portal-muted, #aaa); font-size:.82rem; }
+
+:host { display: block; min-width: 0; }
+
+/* Compact cumulative effect rows, scoped to the exhaustion component. */
+.exhaustion-tracker__effects { display: grid; gap: .35rem; padding: 0; margin: .8rem 0 0; }
+.exhaustion-tracker__effect { display: flex; align-items: center; gap: .65rem; padding: .42rem .55rem; border: 1px solid rgba(201,168,95,.13); background: rgba(201,168,95,.035); border-radius: .2rem; }
+.exhaustion-tracker__effect-level { flex: 0 0 1.35rem; display: grid; place-items: center; height: 1.35rem; border: 1px solid rgba(201,168,95,.38); border-radius: 50%; color: #e5bd73; font-size: .72rem; font-weight: 700; }
+.exhaustion-tracker__effect-label { min-width: 0; font-size: .8rem; line-height: 1.35; }
+.exhaustion-tracker__effect.is-fatal { border-color: rgba(190,72,72,.45); background: rgba(125,24,24,.13); }
+.exhaustion-tracker__effect.is-fatal .exhaustion-tracker__effect-level { border-color: rgba(210,80,80,.7); color: #f1a2a2; }
+.exhaustion-tracker__pips span.is-fatal { border-color: rgba(210,80,80,.7); color: #f1a2a2; background: rgba(125,24,24,.22); }
+.exhaustion-tracker__empty { margin: .8rem 0 0; color: var(--portal-muted, #aaa); font-size: .82rem; }

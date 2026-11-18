@@ -22,6 +22,10 @@ final readonly class CharacterProfileSerializer
         private CharacterActionResolver $actionResolver,
         private CharacterTrainingPresenter $trainingPresenter,
         private CharacterArmorClassCalculator $armorClassCalculator,
+        private ItemInfusionArmorEffects $infusionArmorEffects,
+        private CharacterWeaponCalculator $weaponCalculator,
+        private CharacterRaceMetadataResolver $raceMetadataResolver,
+        private CharacterMovementCalculator $movementCalculator,
     ) {
     }
 
@@ -36,13 +40,14 @@ final readonly class CharacterProfileSerializer
     ): array {
         $resources = $this->serializeResources($character, $progressionValues);
         $features = $this->featureResolver->resolve($character, $progressionValues);
-        $armorEffects = [];
+        $armorEffects = $this->infusionArmorEffects->resolve($character);
         foreach ($features as $rule) {
             $feature = $rule->getFeatureDefinition();
             if ($feature->getActivationType() !== \App\Enum\FeatureActivationType::Passive || $feature->getArmorClassEffects() === null) continue;
             $armorEffects[] = ['identity' => 'feature:'.$feature->getSlug(), 'source' => $feature->getName(), 'effects' => $feature->getArmorClassEffects()];
         }
 
+        $training = $this->trainingPresenter->resolved($character, includeManualGrantDetails: false);
         return [
             'id' => $character->getId(),
             'campaignId' => $character->getCampaign()->getId(),
@@ -59,8 +64,13 @@ final readonly class CharacterProfileSerializer
                 : null,
             'totalLevel' => $character->getTotalLevel(),
             'proficiencyBonus' => $character->getProficiencyBonus(),
+            'movement' => $this->movementCalculator->calculate($character, array_map(
+                static fn (CharacterFeatureRule $rule): string => $rule->getFeatureDefinition()->getSlug(),
+                $features,
+            )),
             'armorClass' => $this->armorClassCalculator->calculate($character, $armorEffects),
-            'training' => $this->trainingPresenter->resolved($character, includeManualGrantDetails: false),
+            'training' => $training,
+            'weapons' => $this->weaponCalculator->calculate($character, $training, $this->infusionArmorEffects->itemProperties($character, true)),
             'hitPoints' => $this->hitPointCalculator->calculate($character)->toArray(),
             'classLevels' => array_map(
                 $this->serializeClassLevel(...),

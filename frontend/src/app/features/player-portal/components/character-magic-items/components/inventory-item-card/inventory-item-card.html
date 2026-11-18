@@ -31,6 +31,12 @@
               @if (item().magicItem.requiresAttunement) { <p class="magic-item__rarity">Harmonisation requise</p> }
               @if (item().magicItem.description) { <p class="magic-item__description">{{ item().magicItem.description }}</p> }
               @if (item().notes) { <p class="magic-item__notes">{{ item().notes }}</p> }
+              @if (item().infusion; as infusion) {
+                <p class="magic-item__description"><strong>{{ infusion.name }}</strong> — {{ infusion.creatorName }} (artificier {{ infusion.creatorLevel }})<br>{{ infusion.description }}</p>
+                @if (infusion.weaponBonuses; as bonus) {
+                  <p class="magic-item__notes">Avec cette arme équipée et utilisée : attaque +{{ bonus.attack }}, dégâts +{{ bonus.damage }}.</p>
+                }
+              }
               @if (item().magicItem.category === 'spellbook') {
                 <section class="spellbook-contents" [attr.aria-label]="'Sorts inscrits dans ' + item().magicItem.name">
                   <h4>Sorts inscrits ({{ item().spellbookSpells?.length ?? 0 }})</h4>

@@ -529,6 +529,171 @@ final class CharacterFeatureChoicesTest extends TestCase
         self::assertNotNull($book->getPactChoiceKey());
     }
 
+    private function infusion(string $name, int $slot = 1, int $level = 2): array
+    {
+        return $this->pick('artificer-infusions', $level, 'artificer-infusion-'.$name, $slot);
+    }
+
+    private function initialInfusions(): array
+    {
+        return array_map(fn ($name, $slot) => $this->infusion($name, $slot),
+            ['enhanced-defense','enhanced-weapon','enhanced-arcane-focus','returning-weapon'], [1,2,3,4]);
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidInfusions')]
+    public function testInfusionInitialLevelRefusesIncompleteDuplicateOrPrematureChoices(string $invalid): void
+    {
+        $this->catalogue(); $this->levels('artificer', 1);
+        $choices = $this->initialInfusions();
+        if ($invalid === 'missing') array_pop($choices);
+        elseif ($invalid === 'duplicate') $choices[3] = $this->infusion('enhanced-defense', 4);
+        else $choices[3] = $this->infusion('helm-of-awareness', 4);
+        $class = $this->em->getRepository(CharacterClass::class)->findOneBy(['slug'=>'artificer']);
+        $id = $this->character->getId();
+        try {
+            $this->kernel->getContainer()->get('test.service_container')->get(\App\Service\CharacterLevelUpService::class)
+                ->levelUp($this->character, $class, featureChoices:$choices);
+            self::fail('Invalid infusions accepted');
+        } catch (\DomainException $error) {
+            self::assertSame(2, (int)$this->db->fetchOne('SELECT count(*) FROM character_class_level WHERE character_id=?', [$id]));
+            self::assertSame(0, (int)$this->db->fetchOne('SELECT count(*) FROM character_feature_choice'));
+        }
+    }
+
+    public static function invalidInfusions(): array { return [['missing'],['duplicate'],['prerequisite']]; }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('infusionReplacement')]
+    public function testInfusionAcquisitionReplacementAndMulticlassProgression(bool $replace): void
+    {
+        $this->catalogue(); $this->levels('artificer', 1);
+        $class = $this->em->getRepository(CharacterClass::class)->findOneBy(['slug'=>'artificer']);
+        $this->kernel->getContainer()->get('test.service_container')->get(\App\Service\CharacterLevelUpService::class)
+            ->levelUp($this->character, $class, featureChoices:$this->initialInfusions());
+        self::assertSame(3, $this->character->getTotalLevel()); // Only two artificer levels.
+        $before = $this->service->preview($this->character);
+        $old = array_values(array_filter($before['history'], fn ($row) => $row['slot'] === 1))[0];
+        $this->levels('artificer',1);
+        $this->service->applyLevel($this->character,$this->character->getClassLevels()->last(),$before,
+            $replace ? [$this->infusion('mind-sharpener')+['replacesKey'=>$old['key']]] : []);
+        self::assertSame(4, (int)$this->db->fetchOne('SELECT count(*) FROM character_feature_choice WHERE active'));
+        self::assertArrayHasKey('artificer-infusion-'.($replace ? 'mind-sharpener' : 'enhanced-defense'), $this->resolver->resolve($this->character));
+        // Gaining another class level must not open an artificer replacement.
+        $before = $this->service->preview($this->character);
+        $current = array_values(array_filter($before['history'], fn ($row) => $row['active'] && $row['slot'] === 1))[0];
+        $otherLevel = $this->addLevel();
+        try {
+            $this->service->applyLevel($this->character,$otherLevel,$before,[$this->infusion('repeating-shot')+['replacesKey'=>$current['key']]]);
+            self::fail('Replacement on another class accepted');
+        } catch (\DomainException $error) { self::assertStringContainsString('non autorisé',$error->getMessage()); }
+        $this->levels('artificer',2);
+        $before = $this->service->preview($this->character);
+        $this->levels('artificer',1);
+        $level = $this->character->getClassLevels()->last();
+        $this->service->applyLevel($this->character,$level,$before,[
+            $this->infusion('boots-of-the-winding-path',1,6), $this->infusion('radiant-weapon',2,6),
+            $this->infusion('repeating-shot')+['replacesKey'=>$current['key']],
+        ]);
+        self::assertSame(6, (int)$this->db->fetchOne('SELECT count(*) FROM character_feature_choice WHERE active'));
+        $profile = $this->kernel->getContainer()->get('test.service_container')->get(\App\Service\CharacterProfileSerializer::class)->serialize($this->character);
+        self::assertStringContainsString('artificer-infusion-radiant-weapon', json_encode($profile['features']));
+        $active = array_values(array_filter($this->service->preview($this->character)['history'], fn ($row) => $row['active'] && $row['grant_key'] === 'artificer-infusions-6'))[0];
+        try {
+            $this->service->applyLevel($this->character,$level,$before,[$this->infusion('resistant-armor',$active['slot'],6)+['replacesKey'=>$active['key']]]);
+            self::fail('Second replacement in same level accepted');
+        } catch (\DomainException $error) { self::assertStringContainsString('déjà utilisé',$error->getMessage()); }
+        $this->levels('artificer',12);
+        $grants = array_filter($this->service->preview($this->character)['grants'], fn ($g) => $g['classKey'] === 'artificer');
+        self::assertSame(12,array_sum(array_column($grants,'choice_count')));
+    }
+
+    public static function infusionReplacement(): array { return [[false],[true]]; }
+
+    public function testLevelUpReplacementRetiresActiveInfusion(): void
+    {
+        $this->catalogue(); $this->levels('artificer', 1);
+        $class = $this->em->getRepository(CharacterClass::class)->findOneBy(['slug'=>'artificer']);
+        $levelUp = $this->kernel->getContainer()->get('test.service_container')->get(\App\Service\CharacterLevelUpService::class);
+        $levelUp->levelUp($this->character, $class, featureChoices:$this->initialInfusions());
+        require_once dirname(__DIR__,2).'/migrations/Version20261114020000.php';
+        foreach (\DoctrineMigrations\Version20261114020000::guards() as $sql) {
+            $this->db->executeStatement(str_replace('FUNCTION retire_item_infusions()', 'FUNCTION pg_temp.retire_item_infusions()', $sql));
+        }
+        $old = array_values(array_filter($this->service->preview($this->character)['history'], fn ($row) => $row['slot'] === 1))[0];
+        $definition = new \App\Entity\MagicItem($this->character->getCampaign(), 'Test shield', null);
+        $item = new \App\Entity\CharacterMagicItem($this->character, $definition);
+        $this->em->persist($definition); $this->em->persist($item); $this->em->flush();
+        $this->db->insert('character_item_infusion', ['creator_id'=>$this->character->getId(), 'item_id'=>$item->getId(), 'choice_key'=>$old['key'], 'item_name'=>'Test shield', 'created_at'=>'2026-01-01 00:00:00', 'active'=>true]);
+        $subclass = new \App\Entity\CharacterSubclass($class, 'fixture-artificer', 'Test artificer');
+        $this->em->persist($subclass); $this->em->flush();
+        $levelUp->levelUp($this->character, $class, subclass:$subclass, featureChoices:[$this->infusion('mind-sharpener')+['replacesKey'=>$old['key']]]);
+        self::assertSame(0, (int)$this->db->fetchOne('SELECT count(*) FROM character_item_infusion WHERE active'));
+        self::assertSame('choice_lost', $this->db->fetchOne('SELECT end_reason FROM character_item_infusion'));
+        self::assertSame(1, (int)$this->db->fetchOne('SELECT count(*) FROM character_magic_item WHERE id=?', [$item->getId()]));
+    }
+
+    public function testTashaReplicasUseExistingQuotasAndClassLevelPrerequisites(): void
+    {
+        $catalogue = $this->catalogue();
+        $group = array_values(array_filter($catalogue->load()['groups'], fn ($g) => $g['key'] === 'artificer-infusions'))[0];
+        $replicas = array_values(array_filter($group['options'], fn ($o) => str_starts_with($o['key'], 'artificer-infusions-replicate-')));
+        self::assertCount(49, $replicas);
+        self::assertCount(49, array_unique(array_column($replicas, 'feature')));
+        $counts = [];
+        foreach ($replicas as $option) {
+            $minimum = $option['prerequisites']['classLevels']['artificer'];
+            $counts[$minimum] = ($counts[$minimum] ?? 0) + 1;
+        }
+        self::assertSame([2=>8,6=>8,10=>21,14=>12], $counts);
+        self::assertSame([], $catalogue->run()['created']);
+        // A high total level must not unlock a higher artificer table.
+        for ($i=0; $i<5; ++$i) $this->addLevel();
+        $this->levels('artificer',2);
+        $pick = static fn ($key, $slot) => ['grantKey'=>'artificer-infusions-2','optionKey'=>'artificer-infusions-replicate-'.$key,'slot'=>$slot];
+        $this->save([$pick('bag-of-holding',1),$pick('alchemy-jug',2),$this->infusion('enhanced-defense',3),$this->infusion('enhanced-weapon',4)]);
+        self::assertSame(4,(int)$this->db->fetchOne('SELECT count(*) FROM character_feature_choice WHERE active'));
+        self::assertArrayHasKey('artificer-infusion-replicate-bag-of-holding',$this->resolver->resolve($this->character));
+        $before = $this->service->preview($this->character);
+        $old = array_values(array_filter($before['history'], fn ($row) => $row['slot'] === 1))[0];
+        $this->levels('artificer',1);
+        $this->service->applyLevel($this->character,$this->character->getClassLevels()->last(),$before,[$pick('wand-of-secrets',1)+['replacesKey'=>$old['key']]]);
+        self::assertSame(4,(int)$this->db->fetchOne('SELECT count(*) FROM character_feature_choice WHERE active'));
+        self::assertArrayNotHasKey('artificer-infusion-replicate-bag-of-holding',$this->resolver->resolve($this->character));
+        foreach ([3,5,6,9,10,13,14] as $level) {
+            while ($this->character->getLevelInClass($this->em->getRepository(CharacterClass::class)->findOneBy(['slug'=>'artificer'])) < $level) $this->levels('artificer',1);
+            $grant = array_column($this->service->preview($this->character)['grants'],null,'key')['artificer-infusions-2'];
+            $options = array_column($grant['options'],null,'key');
+            foreach ($replicas as $replica) {
+                self::assertSame($level < $replica['prerequisites']['classLevels']['artificer'],
+                    in_array('classLevels:artificer',$options[$replica['key']]['reasons'],true),$replica['key'].' at '.$level);
+            }
+        }
+        self::assertSame(0,(int)$this->db->fetchOne('SELECT count(*) FROM character_magic_item'));
+        self::assertSame(0,(int)$this->db->fetchOne('SELECT count(*) FROM magic_item'));
+        self::assertSame(0,(int)$this->db->fetchOne("SELECT count(*) FROM character_feature_definition WHERE slug LIKE 'artificer-infusion-replicate-%' AND (armor_class_effects IS NOT NULL OR resource_definition_id IS NOT NULL)"));
+        $this->expectException(\DomainException::class);
+        $this->save([['grantKey'=>'artificer-infusions-6','optionKey'=>'artificer-infusions-replicate-alchemy-jug','slot'=>1]]);
+    }
+
+    public function testReplicatedItemsCanUseDistinctFeatureOptionsWithoutInventoryChanges(): void
+    {
+        $this->catalogue(); $this->levels('artificer',2);
+        foreach (['fixture-bag','fixture-jug'] as $key) {
+            $definition = new CharacterFeatureDefinition('artificer-infusion-replicate-'.$key,'Objet magique reproduit : '.$key);
+            $this->em->persist($definition); $this->em->flush();
+            $this->db->insert('feature_choice_option',['key'=>$key,'group_key'=>'artificer-infusions','feature_id'=>$definition->getId(),
+                'prerequisites'=>'{"classLevels":{"artificer":2}}','source_code'=>'TCE']);
+        }
+        $this->save([
+            ['grantKey'=>'artificer-infusions-2','optionKey'=>'fixture-bag','slot'=>1],
+            ['grantKey'=>'artificer-infusions-2','optionKey'=>'fixture-jug','slot'=>2],
+        ]);
+        self::assertArrayHasKey('artificer-infusion-replicate-fixture-bag',$this->resolver->resolve($this->character));
+        self::assertArrayHasKey('artificer-infusion-replicate-fixture-jug',$this->resolver->resolve($this->character));
+        self::assertSame(0,(int)$this->db->fetchOne('SELECT count(*) FROM character_magic_item'));
+        $this->expectException(\DomainException::class);
+        $this->save([['grantKey'=>'artificer-infusions-2','optionKey'=>'fixture-bag','slot'=>3]]);
+    }
+
     public function testConcreteCatalogueIsReadOnlyInPreviewAndIdempotentAfterInstallation(): void
     {
         $catalogue = $this->catalogue(false);

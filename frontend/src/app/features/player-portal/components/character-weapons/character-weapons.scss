@@ -1,0 +1,13 @@
+:host { display: block; min-width: 0; }
+.weapons-table { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: .85rem; }
+th, td { text-align: left; vertical-align: top; padding: .6rem .45rem; border-bottom: 1px solid rgba(201, 168, 95, .4); }
+thead th { color: var(--portal-accent); font-weight: 500; white-space: nowrap; }
+tbody th { font-weight: 500; min-width: 6rem; width: 24%; overflow-wrap: anywhere; }
+.attack { text-align: center; width: 12%; }
+.damage { min-width: 7rem; width: 25%; }
+.notes { color: var(--portal-muted); min-width: 8rem; width: 39%; font-size: .8rem; overflow-wrap: anywhere; }
+tbody tr:last-child > * { border-bottom: 0; }
+
+/* Zébrage discret pour séparer les armes sans rompre le thème sombre. */
+tbody tr:nth-child(even) { background: rgba(201, 168, 95, .065); }

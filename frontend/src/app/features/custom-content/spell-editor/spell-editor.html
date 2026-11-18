@@ -109,6 +109,35 @@
           <section class="tab-panel tab-panel--casting" aria-label="Incantation et composantes">
             <h3>Incantation et composantes</h3>
             <div class="form-grid">
+              <label class="field">Type de cible
+                <select name="targetType" [(ngModel)]="draft.targetType" (ngModelChange)="targetingChanged()">
+                  <option [ngValue]="null">Inconnu / non renseigné</option>
+                  <option value="self">Soi-même</option>
+                  <option value="creature">Créature uniquement</option>
+                  <option value="object">Objet</option>
+                  <option value="area">Zone d’effet</option>
+                  <option value="special">Spécial / ciblage mixte</option>
+                </select>
+              </label>
+              <label class="checkbox-field"><input type="checkbox" name="multipleTargets" [(ngModel)]="draft.multipleTargets" (ngModelChange)="targetingChanged()"><span>Plusieurs cibles possibles dès le niveau de base</span></label>
+              <p class="form-note field--wide">Décrivez les cibles possibles du sort, même si le joueur n’en choisit qu’une. Un ciblage inconnu, spécial ou mixte ne permet pas Sort jumelé. La compatibilité reste vérifiée par le serveur.</p>
+              @if (draft.targetType === 'creature' && !draft.multipleTargets) {
+                <label class="field">Progression multicible
+                  <select name="multipleTargetsProgression" [(ngModel)]="draft.multipleTargetsProgression" (ngModelChange)="progressionChanged()">
+                    <option [ngValue]="null">Aucune</option>
+                    <option value="slot">Selon le niveau de lancement</option>
+                    <option value="character">Selon le niveau global du personnage</option>
+                  </select>
+                </label>
+                @if (draft.multipleTargetsProgression) {
+                  <label class="field">Multicible à partir du niveau (inclus)
+                    <input type="number" name="multipleTargetsThreshold" [(ngModel)]="draft.multipleTargetsThreshold" min="1" [max]="draft.multipleTargetsProgression === 'slot' ? 9 : 20" step="1" pattern="[0-9]+" required>
+                  </label>
+                  <p class="form-note field--wide">{{ draft.multipleTargetsProgression === 'slot' ? 'Niveau effectif de lancement, de 1 à 9, y compris avec un emplacement de pacte.' : 'Niveau total du personnage, de 1 à 20, toutes classes confondues.' }} Dès ce seuil, Sort jumelé devient indisponible.</p>
+                }
+              }
+            </div>
+            <div class="form-grid">
               @for (field of textFields; track field.key) {
                 @if (field.label.toLowerCase().includes('incantation') || field.label.toLowerCase().includes('portée') || field.label.toLowerCase().includes('durée') || field.label.toLowerCase().includes('matérielle')) {
                   <label class="field field--wide">{{ field.label }}<textarea [name]="field.key" [attr.name]="field.key" [(ngModel)]="draft[field.key]" [required]="field.required" maxlength="50000" rows="3"></textarea></label>

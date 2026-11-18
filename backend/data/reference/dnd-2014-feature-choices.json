@@ -8,6 +8,326 @@
                     "SCAG":  "https://www.dndbeyond.com/sources/dnd/scag"
                 },
     "features":  [
+        {
+            "slug": "artificer-infusion-replicate-alchemy-jug",
+            "name": "Objet magique reproduit — Cruche alchimique",
+            "description": "Imprégnation connue : reproduction de Cruche alchimique. Tasha, table de niveau 2. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-bag-of-holding",
+            "name": "Objet magique reproduit — Sac sans fond",
+            "description": "Imprégnation connue : reproduction de Sac sans fond. Tasha, table de niveau 2. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-cap-of-water-breathing",
+            "name": "Objet magique reproduit — Bonnet de respiration aquatique",
+            "description": "Imprégnation connue : reproduction de Bonnet de respiration aquatique. Tasha, table de niveau 2. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-goggles-of-night",
+            "name": "Objet magique reproduit — Lunettes de vision nocturne",
+            "description": "Imprégnation connue : reproduction de Lunettes de vision nocturne. Tasha, table de niveau 2. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-rope-of-climbing",
+            "name": "Objet magique reproduit — Corde d’escalade",
+            "description": "Imprégnation connue : reproduction de Corde d’escalade. Tasha, table de niveau 2. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-sending-stones",
+            "name": "Objet magique reproduit — Pierres de communication",
+            "description": "Imprégnation connue : reproduction de Pierres de communication. Tasha, table de niveau 2. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-wand-of-magic-detection",
+            "name": "Objet magique reproduit — Baguette de détection de la magie",
+            "description": "Imprégnation connue : reproduction de Baguette de détection de la magie. Tasha, table de niveau 2. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-wand-of-secrets",
+            "name": "Objet magique reproduit — Baguette des secrets",
+            "description": "Imprégnation connue : reproduction de Baguette des secrets. Tasha, table de niveau 2. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-boots-of-elvenkind",
+            "name": "Objet magique reproduit — Bottes elfiques",
+            "description": "Imprégnation connue : reproduction de Bottes elfiques. Tasha, table de niveau 6. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-cloak-of-elvenkind",
+            "name": "Objet magique reproduit — Cape elfique",
+            "description": "Imprégnation connue : reproduction de Cape elfique. Tasha, table de niveau 6. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-cloak-of-the-manta-ray",
+            "name": "Objet magique reproduit — Cape de la raie manta",
+            "description": "Imprégnation connue : reproduction de Cape de la raie manta. Tasha, table de niveau 6. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-eyes-of-charming",
+            "name": "Objet magique reproduit — Yeux de charme",
+            "description": "Imprégnation connue : reproduction de Yeux de charme. Tasha, table de niveau 6. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-gloves-of-thievery",
+            "name": "Objet magique reproduit — Gants de vol",
+            "description": "Imprégnation connue : reproduction de Gants de vol. Tasha, table de niveau 6. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-lantern-of-revealing",
+            "name": "Objet magique reproduit — Lanterne de révélation",
+            "description": "Imprégnation connue : reproduction de Lanterne de révélation. Tasha, table de niveau 6. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-pipes-of-haunting",
+            "name": "Objet magique reproduit — Flûte terrifiante",
+            "description": "Imprégnation connue : reproduction de Flûte terrifiante. Tasha, table de niveau 6. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-ring-of-water-walking",
+            "name": "Objet magique reproduit — Anneau de marche sur l’eau",
+            "description": "Imprégnation connue : reproduction de Anneau de marche sur l’eau. Tasha, table de niveau 6. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-boots-of-striding-and-springing",
+            "name": "Objet magique reproduit — Bottes de marche et de saut",
+            "description": "Imprégnation connue : reproduction de Bottes de marche et de saut. Tasha, table de niveau 10. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-boots-of-the-winterlands",
+            "name": "Objet magique reproduit — Bottes des contrées hivernales",
+            "description": "Imprégnation connue : reproduction de Bottes des contrées hivernales. Tasha, table de niveau 10. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-bracers-of-archery",
+            "name": "Objet magique reproduit — Bracelets d’archerie",
+            "description": "Imprégnation connue : reproduction de Bracelets d’archerie. Tasha, table de niveau 10. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-brooch-of-shielding",
+            "name": "Objet magique reproduit — Broche de protection",
+            "description": "Imprégnation connue : reproduction de Broche de protection. Tasha, table de niveau 10. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-cloak-of-protection",
+            "name": "Objet magique reproduit — Cape de protection",
+            "description": "Imprégnation connue : reproduction de Cape de protection. Tasha, table de niveau 10. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-eyes-of-the-eagle",
+            "name": "Objet magique reproduit — Yeux d’aigle",
+            "description": "Imprégnation connue : reproduction de Yeux d’aigle. Tasha, table de niveau 10. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-gauntlets-of-ogre-power",
+            "name": "Objet magique reproduit — Gantelets de force d’ogre",
+            "description": "Imprégnation connue : reproduction de Gantelets de force d’ogre. Tasha, table de niveau 10. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-gloves-of-missile-snaring",
+            "name": "Objet magique reproduit — Gants de capture de projectiles",
+            "description": "Imprégnation connue : reproduction de Gants de capture de projectiles. Tasha, table de niveau 10. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-gloves-of-swimming-and-climbing",
+            "name": "Objet magique reproduit — Gants de nage et d’escalade",
+            "description": "Imprégnation connue : reproduction de Gants de nage et d’escalade. Tasha, table de niveau 10. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-hat-of-disguise",
+            "name": "Objet magique reproduit — Chapeau de déguisement",
+            "description": "Imprégnation connue : reproduction de Chapeau de déguisement. Tasha, table de niveau 10. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-headband-of-intellect",
+            "name": "Objet magique reproduit — Bandeau d’intelligence",
+            "description": "Imprégnation connue : reproduction de Bandeau d’intelligence. Tasha, table de niveau 10. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-helm-of-telepathy",
+            "name": "Objet magique reproduit — Heaume de télépathie",
+            "description": "Imprégnation connue : reproduction de Heaume de télépathie. Tasha, table de niveau 10. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-medallion-of-thoughts",
+            "name": "Objet magique reproduit — Médaillon des pensées",
+            "description": "Imprégnation connue : reproduction de Médaillon des pensées. Tasha, table de niveau 10. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-necklace-of-adaptation",
+            "name": "Objet magique reproduit — Collier d’adaptation",
+            "description": "Imprégnation connue : reproduction de Collier d’adaptation. Tasha, table de niveau 10. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-periapt-of-wound-closure",
+            "name": "Objet magique reproduit — Périapte de cicatrisation",
+            "description": "Imprégnation connue : reproduction de Périapte de cicatrisation. Tasha, table de niveau 10. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-pipes-of-the-sewers",
+            "name": "Objet magique reproduit — Flûte des égouts",
+            "description": "Imprégnation connue : reproduction de Flûte des égouts. Tasha, table de niveau 10. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-quiver-of-ehlonna",
+            "name": "Objet magique reproduit — Carquois d’Ehlonna",
+            "description": "Imprégnation connue : reproduction de Carquois d’Ehlonna. Tasha, table de niveau 10. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-ring-of-jumping",
+            "name": "Objet magique reproduit — Anneau de saut",
+            "description": "Imprégnation connue : reproduction de Anneau de saut. Tasha, table de niveau 10. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-ring-of-mind-shielding",
+            "name": "Objet magique reproduit — Anneau de protection mentale",
+            "description": "Imprégnation connue : reproduction de Anneau de protection mentale. Tasha, table de niveau 10. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-slippers-of-spider-climbing",
+            "name": "Objet magique reproduit — Chaussons d’araignée",
+            "description": "Imprégnation connue : reproduction de Chaussons d’araignée. Tasha, table de niveau 10. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-winged-boots",
+            "name": "Objet magique reproduit — Bottes ailées",
+            "description": "Imprégnation connue : reproduction de Bottes ailées. Tasha, table de niveau 10. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-amulet-of-health",
+            "name": "Objet magique reproduit — Amulette de santé",
+            "description": "Imprégnation connue : reproduction de Amulette de santé. Tasha, table de niveau 14. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-belt-of-hill-giant-strength",
+            "name": "Objet magique reproduit — Ceinture de force de géant des collines",
+            "description": "Imprégnation connue : reproduction de Ceinture de force de géant des collines. Tasha, table de niveau 14. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-boots-of-levitation",
+            "name": "Objet magique reproduit — Bottes de lévitation",
+            "description": "Imprégnation connue : reproduction de Bottes de lévitation. Tasha, table de niveau 14. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-boots-of-speed",
+            "name": "Objet magique reproduit — Bottes de rapidité",
+            "description": "Imprégnation connue : reproduction de Bottes de rapidité. Tasha, table de niveau 14. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-bracers-of-defense",
+            "name": "Objet magique reproduit — Bracelets de défense",
+            "description": "Imprégnation connue : reproduction de Bracelets de défense. Tasha, table de niveau 14. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-cloak-of-the-bat",
+            "name": "Objet magique reproduit — Cape de la chauve-souris",
+            "description": "Imprégnation connue : reproduction de Cape de la chauve-souris. Tasha, table de niveau 14. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-dimensional-shackles",
+            "name": "Objet magique reproduit — Entraves dimensionnelles",
+            "description": "Imprégnation connue : reproduction de Entraves dimensionnelles. Tasha, table de niveau 14. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-gem-of-seeing",
+            "name": "Objet magique reproduit — Gemme de vision",
+            "description": "Imprégnation connue : reproduction de Gemme de vision. Tasha, table de niveau 14. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-horn-of-blasting",
+            "name": "Objet magique reproduit — Cor de dévastation",
+            "description": "Imprégnation connue : reproduction de Cor de dévastation. Tasha, table de niveau 14. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-ring-of-free-action",
+            "name": "Objet magique reproduit — Anneau de liberté d’action",
+            "description": "Imprégnation connue : reproduction de Anneau de liberté d’action. Tasha, table de niveau 14. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-ring-of-protection",
+            "name": "Objet magique reproduit — Anneau de protection",
+            "description": "Imprégnation connue : reproduction de Anneau de protection. Tasha, table de niveau 14. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-replicate-ring-of-the-ram",
+            "name": "Objet magique reproduit — Anneau du bélier",
+            "description": "Imprégnation connue : reproduction de Anneau du bélier. Tasha, table de niveau 14. Le choix n’attribue aucun objet ni effet magique."
+        },
+        {
+            "slug": "artificer-infusion-arcane-propulsion-armor",
+            "name": "Armure de propulsion arcanique",
+            "description": "Armure propulsive et gantelets projetables."
+        },
+        {
+            "slug": "artificer-infusion-armor-of-magical-strength",
+            "name": "Armure de force magique",
+            "description": "Armure aidant les efforts de Force."
+        },
+        {
+            "slug": "artificer-infusion-boots-of-the-winding-path",
+            "name": "Bottes du chemin sinueux",
+            "description": "Bottes permettant une téléportation de retour."
+        },
+        {
+            "slug": "artificer-infusion-enhanced-arcane-focus",
+            "name": "Focaliseur arcanique amélioré",
+            "description": "Focaliseur améliorant les attaques de sort."
+        },
+        {
+            "slug": "artificer-infusion-enhanced-defense",
+            "name": "Défense améliorée",
+            "description": "Armure ou bouclier à protection renforcée."
+        },
+        {
+            "slug": "artificer-infusion-enhanced-weapon",
+            "name": "Arme améliorée",
+            "description": "Arme aux attaques et dégâts améliorés."
+        },
+        {
+            "slug": "artificer-infusion-helm-of-awareness",
+            "name": "Heaume de vigilance",
+            "description": "Heaume améliorant la vigilance et l’initiative."
+        },
+        {
+            "slug": "artificer-infusion-homunculus-servant",
+            "name": "Serviteur homoncule",
+            "description": "Création d’un serviteur autour d’une gemme."
+        },
+        {
+            "slug": "artificer-infusion-mind-sharpener",
+            "name": "Aiguiseur d’esprit",
+            "description": "Vêtement aidant au maintien de la concentration."
+        },
+        {
+            "slug": "artificer-infusion-radiant-weapon",
+            "name": "Arme radiante",
+            "description": "Arme lumineuse pouvant aveugler."
+        },
+        {
+            "slug": "artificer-infusion-repeating-shot",
+            "name": "Tir à répétition",
+            "description": "Arme produisant ses munitions."
+        },
+        {
+            "slug": "artificer-infusion-repulsion-shield",
+            "name": "Bouclier de répulsion",
+            "description": "Bouclier pouvant repousser un attaquant."
+        },
+        {
+            "slug": "artificer-infusion-resistant-armor",
+            "name": "Armure résistante",
+            "description": "Armure conférant une résistance."
+        },
+        {
+            "slug": "artificer-infusion-returning-weapon",
+            "name": "Arme de retour",
+            "description": "Arme de lancer revenant en main."
+        },
+        {
+            "slug": "artificer-infusion-spell-refueling-ring",
+            "name": "Anneau de recharge de sort",
+            "description": "Anneau permettant de récupérer un emplacement."
+        },
                      {
                          "slug":  "martial-versatility-fighter",
                          "name":  "Polyvalence martiale — fighter",
@@ -532,6 +852,655 @@
                      }
                  ],
     "groups":  [
+        {
+            "key": "artificer-infusions",
+            "name": "Imprégnations connues",
+            "uniqueness": "group",
+            "replacement": "class-level",
+            "replacementWindows": [],
+            "options": [
+        {
+            "key": "artificer-infusions-replicate-alchemy-jug",
+            "feature": "artificer-infusion-replicate-alchemy-jug",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 2
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-bag-of-holding",
+            "feature": "artificer-infusion-replicate-bag-of-holding",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 2
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-cap-of-water-breathing",
+            "feature": "artificer-infusion-replicate-cap-of-water-breathing",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 2
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-goggles-of-night",
+            "feature": "artificer-infusion-replicate-goggles-of-night",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 2
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-rope-of-climbing",
+            "feature": "artificer-infusion-replicate-rope-of-climbing",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 2
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-sending-stones",
+            "feature": "artificer-infusion-replicate-sending-stones",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 2
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-wand-of-magic-detection",
+            "feature": "artificer-infusion-replicate-wand-of-magic-detection",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 2
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-wand-of-secrets",
+            "feature": "artificer-infusion-replicate-wand-of-secrets",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 2
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-boots-of-elvenkind",
+            "feature": "artificer-infusion-replicate-boots-of-elvenkind",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 6
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-cloak-of-elvenkind",
+            "feature": "artificer-infusion-replicate-cloak-of-elvenkind",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 6
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-cloak-of-the-manta-ray",
+            "feature": "artificer-infusion-replicate-cloak-of-the-manta-ray",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 6
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-eyes-of-charming",
+            "feature": "artificer-infusion-replicate-eyes-of-charming",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 6
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-gloves-of-thievery",
+            "feature": "artificer-infusion-replicate-gloves-of-thievery",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 6
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-lantern-of-revealing",
+            "feature": "artificer-infusion-replicate-lantern-of-revealing",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 6
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-pipes-of-haunting",
+            "feature": "artificer-infusion-replicate-pipes-of-haunting",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 6
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-ring-of-water-walking",
+            "feature": "artificer-infusion-replicate-ring-of-water-walking",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 6
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-boots-of-striding-and-springing",
+            "feature": "artificer-infusion-replicate-boots-of-striding-and-springing",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 10
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-boots-of-the-winterlands",
+            "feature": "artificer-infusion-replicate-boots-of-the-winterlands",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 10
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-bracers-of-archery",
+            "feature": "artificer-infusion-replicate-bracers-of-archery",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 10
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-brooch-of-shielding",
+            "feature": "artificer-infusion-replicate-brooch-of-shielding",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 10
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-cloak-of-protection",
+            "feature": "artificer-infusion-replicate-cloak-of-protection",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 10
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-eyes-of-the-eagle",
+            "feature": "artificer-infusion-replicate-eyes-of-the-eagle",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 10
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-gauntlets-of-ogre-power",
+            "feature": "artificer-infusion-replicate-gauntlets-of-ogre-power",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 10
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-gloves-of-missile-snaring",
+            "feature": "artificer-infusion-replicate-gloves-of-missile-snaring",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 10
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-gloves-of-swimming-and-climbing",
+            "feature": "artificer-infusion-replicate-gloves-of-swimming-and-climbing",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 10
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-hat-of-disguise",
+            "feature": "artificer-infusion-replicate-hat-of-disguise",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 10
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-headband-of-intellect",
+            "feature": "artificer-infusion-replicate-headband-of-intellect",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 10
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-helm-of-telepathy",
+            "feature": "artificer-infusion-replicate-helm-of-telepathy",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 10
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-medallion-of-thoughts",
+            "feature": "artificer-infusion-replicate-medallion-of-thoughts",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 10
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-necklace-of-adaptation",
+            "feature": "artificer-infusion-replicate-necklace-of-adaptation",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 10
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-periapt-of-wound-closure",
+            "feature": "artificer-infusion-replicate-periapt-of-wound-closure",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 10
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-pipes-of-the-sewers",
+            "feature": "artificer-infusion-replicate-pipes-of-the-sewers",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 10
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-quiver-of-ehlonna",
+            "feature": "artificer-infusion-replicate-quiver-of-ehlonna",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 10
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-ring-of-jumping",
+            "feature": "artificer-infusion-replicate-ring-of-jumping",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 10
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-ring-of-mind-shielding",
+            "feature": "artificer-infusion-replicate-ring-of-mind-shielding",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 10
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-slippers-of-spider-climbing",
+            "feature": "artificer-infusion-replicate-slippers-of-spider-climbing",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 10
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-winged-boots",
+            "feature": "artificer-infusion-replicate-winged-boots",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 10
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-amulet-of-health",
+            "feature": "artificer-infusion-replicate-amulet-of-health",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 14
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-belt-of-hill-giant-strength",
+            "feature": "artificer-infusion-replicate-belt-of-hill-giant-strength",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 14
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-boots-of-levitation",
+            "feature": "artificer-infusion-replicate-boots-of-levitation",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 14
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-boots-of-speed",
+            "feature": "artificer-infusion-replicate-boots-of-speed",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 14
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-bracers-of-defense",
+            "feature": "artificer-infusion-replicate-bracers-of-defense",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 14
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-cloak-of-the-bat",
+            "feature": "artificer-infusion-replicate-cloak-of-the-bat",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 14
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-dimensional-shackles",
+            "feature": "artificer-infusion-replicate-dimensional-shackles",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 14
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-gem-of-seeing",
+            "feature": "artificer-infusion-replicate-gem-of-seeing",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 14
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-horn-of-blasting",
+            "feature": "artificer-infusion-replicate-horn-of-blasting",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 14
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-ring-of-free-action",
+            "feature": "artificer-infusion-replicate-ring-of-free-action",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 14
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-ring-of-protection",
+            "feature": "artificer-infusion-replicate-ring-of-protection",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 14
+                }
+            },
+            "source": "TCE"
+        },
+        {
+            "key": "artificer-infusions-replicate-ring-of-the-ram",
+            "feature": "artificer-infusion-replicate-ring-of-the-ram",
+            "prerequisites": {
+                "classLevels": {
+                    "artificer": 14
+                }
+            },
+            "source": "TCE"
+        },
+                {
+                    "key": "artificer-infusions-artificer-infusion-arcane-propulsion-armor",
+                    "feature": "artificer-infusion-arcane-propulsion-armor",
+                    "prerequisites": {
+                        "classLevels": {
+                            "artificer": 14
+                        }
+                    },
+                    "source": "TCE"
+                },
+                {
+                    "key": "artificer-infusions-artificer-infusion-armor-of-magical-strength",
+                    "feature": "artificer-infusion-armor-of-magical-strength",
+                    "prerequisites": {
+                        "classLevels": {
+                            "artificer": 2
+                        }
+                    },
+                    "source": "TCE"
+                },
+                {
+                    "key": "artificer-infusions-artificer-infusion-boots-of-the-winding-path",
+                    "feature": "artificer-infusion-boots-of-the-winding-path",
+                    "prerequisites": {
+                        "classLevels": {
+                            "artificer": 6
+                        }
+                    },
+                    "source": "TCE"
+                },
+                {
+                    "key": "artificer-infusions-artificer-infusion-enhanced-arcane-focus",
+                    "feature": "artificer-infusion-enhanced-arcane-focus",
+                    "prerequisites": {
+                        "classLevels": {
+                            "artificer": 2
+                        }
+                    },
+                    "source": "TCE"
+                },
+                {
+                    "key": "artificer-infusions-artificer-infusion-enhanced-defense",
+                    "feature": "artificer-infusion-enhanced-defense",
+                    "prerequisites": {
+                        "classLevels": {
+                            "artificer": 2
+                        }
+                    },
+                    "source": "TCE"
+                },
+                {
+                    "key": "artificer-infusions-artificer-infusion-enhanced-weapon",
+                    "feature": "artificer-infusion-enhanced-weapon",
+                    "prerequisites": {
+                        "classLevels": {
+                            "artificer": 2
+                        }
+                    },
+                    "source": "TCE"
+                },
+                {
+                    "key": "artificer-infusions-artificer-infusion-helm-of-awareness",
+                    "feature": "artificer-infusion-helm-of-awareness",
+                    "prerequisites": {
+                        "classLevels": {
+                            "artificer": 10
+                        }
+                    },
+                    "source": "TCE"
+                },
+                {
+                    "key": "artificer-infusions-artificer-infusion-homunculus-servant",
+                    "feature": "artificer-infusion-homunculus-servant",
+                    "prerequisites": {
+                        "classLevels": {
+                            "artificer": 2
+                        }
+                    },
+                    "source": "TCE"
+                },
+                {
+                    "key": "artificer-infusions-artificer-infusion-mind-sharpener",
+                    "feature": "artificer-infusion-mind-sharpener",
+                    "prerequisites": {
+                        "classLevels": {
+                            "artificer": 2
+                        }
+                    },
+                    "source": "TCE"
+                },
+                {
+                    "key": "artificer-infusions-artificer-infusion-radiant-weapon",
+                    "feature": "artificer-infusion-radiant-weapon",
+                    "prerequisites": {
+                        "classLevels": {
+                            "artificer": 6
+                        }
+                    },
+                    "source": "TCE"
+                },
+                {
+                    "key": "artificer-infusions-artificer-infusion-repeating-shot",
+                    "feature": "artificer-infusion-repeating-shot",
+                    "prerequisites": {
+                        "classLevels": {
+                            "artificer": 2
+                        }
+                    },
+                    "source": "TCE"
+                },
+                {
+                    "key": "artificer-infusions-artificer-infusion-repulsion-shield",
+                    "feature": "artificer-infusion-repulsion-shield",
+                    "prerequisites": {
+                        "classLevels": {
+                            "artificer": 6
+                        }
+                    },
+                    "source": "TCE"
+                },
+                {
+                    "key": "artificer-infusions-artificer-infusion-resistant-armor",
+                    "feature": "artificer-infusion-resistant-armor",
+                    "prerequisites": {
+                        "classLevels": {
+                            "artificer": 6
+                        }
+                    },
+                    "source": "TCE"
+                },
+                {
+                    "key": "artificer-infusions-artificer-infusion-returning-weapon",
+                    "feature": "artificer-infusion-returning-weapon",
+                    "prerequisites": {
+                        "classLevels": {
+                            "artificer": 2
+                        }
+                    },
+                    "source": "TCE"
+                },
+                {
+                    "key": "artificer-infusions-artificer-infusion-spell-refueling-ring",
+                    "feature": "artificer-infusion-spell-refueling-ring",
+                    "prerequisites": {
+                        "classLevels": {
+                            "artificer": 6
+                        }
+                    },
+                    "source": "TCE"
+                }
+            ]
+        },
                    {
                        "key":  "fighting-style-fighter",
                        "name":  "Styles de combat — fighter",
@@ -1839,6 +2808,51 @@
                    }
                ],
     "grants":  [
+        {
+            "key": "artificer-infusions-2",
+            "group": "artificer-infusions",
+            "class": "artificer",
+            "subclass": null,
+            "feature": "infusions-known",
+            "level": 2,
+            "count": 4
+        },
+        {
+            "key": "artificer-infusions-6",
+            "group": "artificer-infusions",
+            "class": "artificer",
+            "subclass": null,
+            "feature": "infusions-known",
+            "level": 6,
+            "count": 2
+        },
+        {
+            "key": "artificer-infusions-10",
+            "group": "artificer-infusions",
+            "class": "artificer",
+            "subclass": null,
+            "feature": "infusions-known",
+            "level": 10,
+            "count": 2
+        },
+        {
+            "key": "artificer-infusions-14",
+            "group": "artificer-infusions",
+            "class": "artificer",
+            "subclass": null,
+            "feature": "infusions-known",
+            "level": 14,
+            "count": 2
+        },
+        {
+            "key": "artificer-infusions-18",
+            "group": "artificer-infusions",
+            "class": "artificer",
+            "subclass": null,
+            "feature": "infusions-known",
+            "level": 18,
+            "count": 2
+        },
                    {
                        "key":  "fighting-style-fighter-1",
                        "group":  "fighting-style-fighter",

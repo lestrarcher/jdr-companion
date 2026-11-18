@@ -60,7 +60,7 @@
               <span class="portal-tab-symbol" aria-hidden="true">✦</span><span><strong>État</strong><small>Santé et ressources</small></span>
             </button>
             <button type="button" [class.portal-tab--active]="activeTab() === 'statistics'" [attr.aria-pressed]="activeTab() === 'statistics'" (click)="selectTab('statistics')">
-              <span class="portal-tab-symbol" aria-hidden="true">◇</span><span><strong>Caractéristiques</strong><small>Attributs et valeurs</small></span>
+              <span class="portal-tab-symbol" aria-hidden="true">◇</span><span><strong><span class="portal-label-desktop">Caractéristiques</span><span class="portal-label-mobile">Stats</span></strong><small>Attributs et valeurs</small></span>
             </button>
             <button type="button" [class.portal-tab--active]="activeTab() === 'features'" [attr.aria-pressed]="activeTab() === 'features'" (click)="selectTab('features')">
               <span class="portal-tab-symbol" aria-hidden="true">✧</span><span><strong>Capacités</strong><small>Origines et descriptions</small></span>
@@ -94,19 +94,16 @@
                       <h2>État</h2>
                       <button type="button" (click)="selectTab('status')" aria-label="Ouvrir l'état détaillé">Voir tout ↗</button>
                     </div>
-                    <div class="inspiration-tracker" [class.inspiration-tracker--active]="inspiration()">
-                      <span class="inspiration-tracker__symbol" aria-hidden="true">✦</span>
-                      <div class="inspiration-tracker__details"><strong>Inspiration</strong><span>{{ inspiration() ? 'Disponible' : 'Non disponible' }}</span></div>
-                      <button type="button" [hidden]="!canEdit()" class="inspiration-tracker__action" [disabled]="!canEdit() || !inspiration() || inspirationSaving() || saveStatus() === 'saving'" (click)="spendInspiration()">{{ inspirationSaving() ? 'Dépense…' : 'Dépenser' }}</button>
-                    </div>
+                    <app-character-inspiration [active]="inspiration()" [readonly]="!canEdit()" [saving]="inspirationSaving() || saveStatus() === 'saving'" (spend)="spendInspiration()" />
                     <app-character-vitals [readonly]="!canEdit()" [character]="currentCharacter" />
+                    <app-character-exhaustion [level]="exhaustionLevel()" [readonly]="!canEdit()" [saving]="exhaustionSaving() || saveStatus() === 'saving' || saveStatus() === 'error'" (change)="changeExhaustion($event)" />
                   </section>
                   <section class="overview-panel overview-panel--statistics">
                     <div class="overview-panel__heading">
                       <h2>Caractéristiques</h2>
                       <button type="button" (click)="selectTab('statistics')" aria-label="Ouvrir les caractéristiques">Voir tout ↗</button>
                     </div>
-                    <app-character-statistics [armorClass]="armorClass()" [abilities]="abilities()" [training]="training()" [proficiencyBonus]="proficiencyBonus()" mode="summary" />
+                    <app-character-statistics [movement]="effectiveMovement()" [armorClass]="armorClass()" [abilities]="abilities()" [training]="training()" [feats]="feats()" [features]="features()" [proficiencyBonus]="proficiencyBonus()" mode="summary" />
                   </section>
                   @if (hasProgressions()) {
                     <div class="overview-progression">
@@ -135,21 +132,28 @@
               }
               @case ('statistics') {
                 <section class="overview-panel statistics-detail">
-                  <app-character-statistics [armorClass]="armorClass()" [abilities]="abilities()" [training]="training()" [proficiencyBonus]="proficiencyBonus()" mode="detail" />
+                  <app-character-statistics [movement]="effectiveMovement()" [armorClass]="armorClass()" [abilities]="abilities()" [training]="training()" [feats]="feats()" [features]="features()" [proficiencyBonus]="proficiencyBonus()" mode="detail" />
                 </section>
               }
               @case ('status') {
-                <app-character-progressions [readonly]="!canEdit()"
-                  [progressions]="currentCharacter.progressions ?? []"
-                  [resources]="currentCharacter.resources"
-                  (progressionChanged)="handleProgressionChange($event)"
-                  (resourceChanged)="handleProgressionResourceChange($event)"
-                />
-
                 <app-character-stored-values [readonly]="!canEdit()" [resources]="storedValueResources()" />
 
                 <div class="tracker-layout">
-                  <app-character-vitals [readonly]="!canEdit()" [character]="currentCharacter" />
+                  <div class="status-vitals-column">
+                    <app-character-inspiration [active]="inspiration()" [readonly]="!canEdit()" [saving]="inspirationSaving() || saveStatus() === 'saving'" (spend)="spendInspiration()" />
+                    <app-character-vitals [readonly]="!canEdit()" [character]="currentCharacter" />
+                    <app-character-exhaustion [level]="exhaustionLevel()" [readonly]="!canEdit()" [saving]="exhaustionSaving() || saveStatus() === 'saving' || saveStatus() === 'error'" (change)="changeExhaustion($event)" />
+                    @if (hasProgressions()) {
+                      <div class="status-personal-progressions">
+                        <app-character-progressions [readonly]="!canEdit()"
+                          [progressions]="currentCharacter.progressions ?? []"
+                          [resources]="currentCharacter.resources"
+                          (progressionChanged)="handleProgressionChange($event)"
+                          (resourceChanged)="handleProgressionResourceChange($event)"
+                        />
+                      </div>
+                    }
+                  </div>
                   <div class="spell-resource-column">
                     <section class="magic-section" aria-labelledby="magic-section-title">
                       <div class="magic-section__heading">
@@ -167,6 +171,15 @@
                           [editable]="sessionStatus() === 'live'" [busy]="saveStatus() === 'saving'" (refreshed)="refreshTinkering()" />
                       }
                     </app-character-resources>
+                    <section class="magic-section" aria-labelledby="weapons-section-title">
+                      <div class="magic-section__heading"><h2 id="weapons-section-title">Armes</h2></div>
+                      <app-character-weapons [weapons]="weapons()" />
+                    </section>
+                    @if (hasInfusions()) {
+                      <section class="magic-section" aria-labelledby="infusions-section-title">
+                        <app-character-infusions [accessToken]="accessToken" [refresh]="infusionRefresh()" [readonly]="!canEdit()" (changed)="refreshSpells()" />
+                      </section>
+                    }
                   </div>
                 </div>
 

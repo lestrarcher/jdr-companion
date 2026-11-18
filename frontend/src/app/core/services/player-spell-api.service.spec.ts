@@ -35,6 +35,19 @@ describe('Player spell casting API', () => {
   });
   afterEach(() => { http.verify(); vi.restoreAllMocks(); TestBed.resetTestingModule(); });
 
+  it('snapshots both metamagics and sends them unchanged on retry', () => {
+    const keys = ['metamagic-quickened-spell','metamagic-empowered-spell'];
+    const pending = createSpellCastCommand({...intent, metamagics:keys});
+    keys.pop();
+    for (let i=0; i<2; i++) {
+      api.cast('token',pending).subscribe();
+      const req = http.expectOne('/api/public/characters/token/spells/cast');
+      expect(req.request.body.metamagics).toEqual(['metamagic-quickened-spell','metamagic-empowered-spell']);
+      expect(req.request.body.requestId).toBe(pending.requestId);
+      req.flush(response);
+    }
+  });
+
   it('POSTs exactly five fields, preserving the supplied UUID and encoding the token', () => {
     const uuid = vi.spyOn(crypto, 'randomUUID');
     const input = { ...command, requestId: id.toUpperCase(), cost: 99, resources: ['untrusted'] };
@@ -105,6 +118,19 @@ describe('Player spell casting API', () => {
     const second = createSpellCastCommand(intent);
     expect(first.requestId).not.toBe(second.requestId);
     expect(uuid).toHaveBeenCalledTimes(2);
+  });
+
+  it('snapshots and retries the same metamagic without sending a client cost', () => {
+    const mutable = {...intent, metamagic:'metamagic-subtle-spell'};
+    const pending = createSpellCastCommand(mutable);
+    mutable.metamagic = 'metamagic-twinned-spell';
+    api.cast('token', {...pending, cost:99} as SpellCastCommand).subscribe({error:()=>{}});
+    const first = http.expectOne('/api/public/characters/token/spells/cast');
+    expect(first.request.body).toEqual({...pending, metamagic:'metamagic-subtle-spell'});
+    first.error(new ProgressEvent('error'));
+    api.cast('token',pending).subscribe();
+    const retry = http.expectOne('/api/public/characters/token/spells/cast');
+    expect(retry.request.body).toEqual(first.request.body); retry.flush(response);
   });
 
   it('snapshots and freezes target parameters and sends exactly the same body on retry', () => {

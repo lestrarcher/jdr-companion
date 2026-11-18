@@ -111,6 +111,10 @@ final readonly class SpellCatalogue
     private function serialize(array $row, User $user, bool $official = false, ?array $classes = null): array
     {
         $data = ['id' => (int) $row['id'], 'slug' => $row['slug'], 'level' => (int) $row['level'], 'school' => $row['school'], 'origin' => $row['origin'], 'edition' => $row['edition'], 'importKey' => $row['import_key'], 'materialCostCp' => $row['material_cost_cp'] === null ? null : (int) $row['material_cost_cp']];
+        $data['targetType'] = $row['target_type'];
+        $data['multipleTargets'] = filter_var($row['multiple_targets'], FILTER_VALIDATE_BOOL);
+        $data['multipleTargetsProgression'] = $row['multiple_targets_progression'];
+        $data['multipleTargetsThreshold'] = $row['multiple_targets_threshold'] === null ? null : (int) $row['multiple_targets_threshold'];
         foreach (self::TEXT as $field => $column) $data[$field] = $row[$column];
         foreach (self::FLAGS as $field => $column) $data[$field] = filter_var($row[$column], FILTER_VALIDATE_BOOL);
         $classes ??= $this->classesForSpells([(int) $row['id']])[$row['id']] ?? [];
@@ -167,13 +171,18 @@ final readonly class SpellCatalogue
                 $row = $id === null ? null : $this->row($id, $user, true);
                 if ($official) $this->requireAdmin($user);
                 if ($row !== null && ($row['origin'] === 'OFFICIAL') !== $official) throw new AccessDeniedHttpException('Interface incompatible avec l’origine du sort.');
-                $allowed = [...array_keys(self::TEXT), ...array_keys(self::FLAGS), 'level', 'school', 'materialCostCp', 'classIds', ...($id === null ? ['slug'] : [])];
+                $targeting = ['targetType'=>null, 'multipleTargets'=>false, 'multipleTargetsProgression'=>null, 'multipleTargetsThreshold'=>null];
+                $allowed = [...array_keys(self::TEXT), ...array_keys(self::FLAGS), ...array_keys($targeting), 'level', 'school', 'materialCostCp', 'classIds', ...($id === null ? ['slug'] : [])];
                 if (array_diff(array_keys($payload), $allowed)) throw new BadRequestHttpException('Champ inconnu ou protégé.');
                 $data = array_replace($row === null ? array_fill_keys(array_keys(self::TEXT), null) + array_fill_keys(array_keys(self::FLAGS), false) + ['materialCostCp' => null] : $this->serialize($row, $user), $payload);
                 foreach (self::TEXT as $field => $_) if ($data[$field] !== null && !is_string($data[$field])) throw new BadRequestHttpException('Texte invalide : '.$field);
                 foreach (self::FLAGS as $field => $_) if (!is_bool($data[$field])) throw new BadRequestHttpException('Booléen invalide : '.$field);
                 foreach (['slug', 'name', 'school', 'castingTime', 'range', 'duration', 'description'] as $field) if (!is_string($data[$field] ?? null)) throw new BadRequestHttpException('Champ requis : '.$field);
                 if (!is_int($data['level'] ?? null) || ($data['materialCostCp'] !== null && !is_int($data['materialCostCp']))) throw new BadRequestHttpException('Niveau ou coût invalide.');
+                $data += $targeting;
+                if (!is_bool($data['multipleTargets']) || ($data['targetType'] !== null && !is_string($data['targetType']))
+                    || ($data['multipleTargetsProgression'] !== null && !is_string($data['multipleTargetsProgression']))
+                    || ($data['multipleTargetsThreshold'] !== null && !is_int($data['multipleTargetsThreshold']))) throw new BadRequestHttpException('Ciblage invalide.');
                 $school = SpellSchool::tryFrom($data['school']) ?? throw new BadRequestHttpException('École invalide.');
                 $official = $row === null ? $official : $row['origin'] === 'OFFICIAL';
                 $classIds = $payload['classIds'] ?? ($id === null ? [] : $data['classIds']);
@@ -188,11 +197,14 @@ final readonly class SpellCatalogue
                 }
                 $args = [$data['slug'], $data['name'], $data['level'], $school, $data['castingTime'], $data['range'], $data['duration'], $data['description']];
                 $candidate = $official ? new SpellDefinition(...$args) : SpellDefinition::forOwner($user, ...$args);
+                $candidate->setTargeting($data['targetType'], $data['multipleTargets'], $data['multipleTargetsProgression'], $data['multipleTargetsThreshold']);
                 $candidate->setOriginalName($data['originalName'])->setHigherLevels($data['higherLevels'])->setRulesVariant($data['rulesVariant'])
                     ->setSource($data['sourceCode'], $data['sourceReference'], $data['sourceUrl'])
                     ->setComponents($data['verbal'], $data['somatic'], $data['material'], $data['materialDescription'], $data['materialCostCp'], $data['materialConsumed'])
                     ->setConcentration($data['concentration'])->setRitual($data['ritual']);
                 $columns = ['level' => $candidate->getLevel(), 'school' => $candidate->getSchool()->value, 'material_cost_cp' => $candidate->getMaterialCostCp()];
+                $columns += ['target_type'=>$candidate->getTargetType(), 'multiple_targets'=>$candidate->isMultipleTargets() ? 'true' : 'false',
+                    'multiple_targets_progression'=>$candidate->getMultipleTargetsProgression(), 'multiple_targets_threshold'=>$candidate->getMultipleTargetsThreshold()];
                 foreach (self::TEXT as $field => $column) $columns[$column] = $candidate->{'get'.ucfirst($field)}();
                 foreach (self::FLAGS as $field => $column) $columns[$column] = $candidate->{'is'.ucfirst($field)}() ? 'true' : 'false';
                 $substitutionUse=$row!==null && $this->db->fetchOne("SELECT to_regclass('character_spell_substitution')")!==null && ($this->db->fetchOne('SELECT 1 FROM character_spell_substitution WHERE spell_id=? LIMIT 1',[$id]) || $this->db->fetchOne('SELECT 1 FROM spell_grant_substitution_rule r JOIN spell_subclass_grant g ON g.id=r.grant_id WHERE g.spell_id=? LIMIT 1',[$id]));
@@ -200,8 +212,8 @@ final readonly class SpellCatalogue
                     foreach ($columns as $column => $value) {
                         if (in_array($column, ['name', 'original_name', 'description', 'source_code', 'source_reference', 'source_url'], true)) continue;
                         $previous = $row[$column];
-                        if (in_array($column, array_values(self::FLAGS), true)) $previous = filter_var($previous, FILTER_VALIDATE_BOOL) ? 'true' : 'false';
-                        if (in_array($column, ['level', 'material_cost_cp'], true) && $previous !== null) $previous = (int) $previous;
+                        if (in_array($column, [...array_values(self::FLAGS), 'multiple_targets'], true)) $previous = filter_var($previous, FILTER_VALIDATE_BOOL) ? 'true' : 'false';
+                        if (in_array($column, ['level', 'material_cost_cp', 'multiple_targets_threshold'], true) && $previous !== null) $previous = (int) $previous;
                         if ($previous !== $value) throw new ConflictHttpException('Les mécaniques de ce sort acquis sont verrouillées.');
                     }
                     $previousIds = array_map('intval', $this->db->fetchFirstColumn('SELECT character_class_id FROM spell_class_list_entry WHERE spell_id = ?', [$id]));

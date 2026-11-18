@@ -43,10 +43,13 @@ final readonly class CharacterHitPointStateService
             return null;
         }
 
-        return max(
-            0,
-            $baseMaximum + $this->maximumAdjustment($state),
-        );
+        $maximum = max(0, $baseMaximum + $this->maximumAdjustment($state));
+
+        // D&D 2014: level 4+ exhaustion halves the effective HP maximum.
+        // Neither the base maximum nor the stored current HP is modified.
+        return ($state['exhaustionLevel'] ?? 0) >= 4
+            ? intdiv($maximum, 2)
+            : $maximum;
     }
 
     /**
@@ -85,8 +88,9 @@ final readonly class CharacterHitPointStateService
 
         $current = (int) ($state['hitPoints']['current'] ?? 0);
 
-        if ($current > $newMaximum) {
-            $state['hitPoints']['current'] = $newMaximum;
+        $effectiveMaximum = $this->effectiveMaximum($character, $state);
+        if ($effectiveMaximum !== null && $current > $effectiveMaximum) {
+            $state['hitPoints']['current'] = $effectiveMaximum;
         }
 
         return $state;

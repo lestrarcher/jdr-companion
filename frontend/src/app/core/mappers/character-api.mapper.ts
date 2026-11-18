@@ -8,6 +8,7 @@ export interface CharacterActionsState {
 export interface CharacterSessionStatePayload {
   magicalTinkeringNotes?: string;
   inspiration?: boolean;
+  exhaustionLevel?: number;
   hitPoints: {
     current: number;
     temporary: number;

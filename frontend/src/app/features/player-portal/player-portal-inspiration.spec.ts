@@ -1,3 +1,4 @@
+import '@angular/compiler';
 import { computed, signal } from '@angular/core';
 import { EMPTY, Subject, of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
@@ -21,6 +22,7 @@ function portal() {
     saveStatus: signal('saved'), loadGeneration: 1, serverRevision: 4,
     sessionStatus: signal('draft'), levelUpAllowed: signal(false),
     inspiration: signal(true), inspirationSaving: signal(false),
+    exhaustionLevel: signal(0), exhaustionSaving: signal(false),
     tinkeringNotes: signal(''),
     pendingRestRequest: signal(null), latestRestRequest: signal(null),
     restRequestInitialCheckDone: true, restRequestApi: { getLatest: vi.fn(() => of(null)) },

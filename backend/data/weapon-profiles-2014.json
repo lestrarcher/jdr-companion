@@ -1,0 +1,510 @@
+{
+  "phb2014-weapon-club": {
+    "proficiency": "club",
+    "group": "simple-weapons",
+    "mode": "melee",
+    "dice": "1d4",
+    "damageType": "bludgeoning",
+    "properties": [
+      "light"
+    ],
+    "attackBonus": 0,
+    "damageBonus": 0
+  },
+  "phb2014-weapon-dagger": {
+    "proficiency": "dagger",
+    "group": "simple-weapons",
+    "mode": "melee",
+    "dice": "1d4",
+    "damageType": "piercing",
+    "properties": [
+      "finesse",
+      "light",
+      "thrown"
+    ],
+    "attackBonus": 0,
+    "damageBonus": 0,
+    "range": [
+      6,
+      18
+    ]
+  },
+  "phb2014-weapon-greatclub": {
+    "proficiency": "greatclub",
+    "group": "simple-weapons",
+    "mode": "melee",
+    "dice": "1d8",
+    "damageType": "bludgeoning",
+    "properties": [
+      "two-handed"
+    ],
+    "attackBonus": 0,
+    "damageBonus": 0
+  },
+  "phb2014-weapon-handaxe": {
+    "proficiency": "handaxe",
+    "group": "simple-weapons",
+    "mode": "melee",
+    "dice": "1d6",
+    "damageType": "slashing",
+    "properties": [
+      "light",
+      "thrown"
+    ],
+    "attackBonus": 0,
+    "damageBonus": 0,
+    "range": [
+      6,
+      18
+    ]
+  },
+  "phb2014-weapon-javelin": {
+    "proficiency": "javelin",
+    "group": "simple-weapons",
+    "mode": "melee",
+    "dice": "1d6",
+    "damageType": "piercing",
+    "properties": [
+      "thrown"
+    ],
+    "attackBonus": 0,
+    "damageBonus": 0,
+    "range": [
+      9,
+      36
+    ]
+  },
+  "phb2014-weapon-light-hammer": {
+    "proficiency": "light-hammer",
+    "group": "simple-weapons",
+    "mode": "melee",
+    "dice": "1d4",
+    "damageType": "bludgeoning",
+    "properties": [
+      "light",
+      "thrown"
+    ],
+    "attackBonus": 0,
+    "damageBonus": 0,
+    "range": [
+      6,
+      18
+    ]
+  },
+  "phb2014-weapon-mace": {
+    "proficiency": "mace",
+    "group": "simple-weapons",
+    "mode": "melee",
+    "dice": "1d6",
+    "damageType": "bludgeoning",
+    "properties": [],
+    "attackBonus": 0,
+    "damageBonus": 0
+  },
+  "phb2014-weapon-quarterstaff": {
+    "proficiency": "quarterstaff",
+    "group": "simple-weapons",
+    "mode": "melee",
+    "dice": "1d6",
+    "damageType": "bludgeoning",
+    "properties": [],
+    "attackBonus": 0,
+    "damageBonus": 0,
+    "versatile": "1d8"
+  },
+  "phb2014-weapon-sickle": {
+    "proficiency": "sickle",
+    "group": "simple-weapons",
+    "mode": "melee",
+    "dice": "1d4",
+    "damageType": "slashing",
+    "properties": [
+      "light"
+    ],
+    "attackBonus": 0,
+    "damageBonus": 0
+  },
+  "phb2014-weapon-spear": {
+    "proficiency": "spear",
+    "group": "simple-weapons",
+    "mode": "melee",
+    "dice": "1d6",
+    "damageType": "piercing",
+    "properties": [
+      "thrown"
+    ],
+    "attackBonus": 0,
+    "damageBonus": 0,
+    "versatile": "1d8",
+    "range": [
+      6,
+      18
+    ]
+  },
+  "phb2014-weapon-light-crossbow": {
+    "proficiency": "light-crossbow",
+    "group": "simple-weapons",
+    "mode": "ranged",
+    "dice": "1d8",
+    "damageType": "piercing",
+    "properties": [
+      "ammunition",
+      "loading",
+      "two-handed"
+    ],
+    "attackBonus": 0,
+    "damageBonus": 0,
+    "range": [
+      24,
+      96
+    ]
+  },
+  "phb2014-weapon-dart": {
+    "proficiency": "dart",
+    "group": "simple-weapons",
+    "mode": "ranged",
+    "dice": "1d4",
+    "damageType": "piercing",
+    "properties": [
+      "finesse",
+      "thrown"
+    ],
+    "attackBonus": 0,
+    "damageBonus": 0,
+    "range": [
+      6,
+      18
+    ]
+  },
+  "phb2014-weapon-shortbow": {
+    "proficiency": "shortbow",
+    "group": "simple-weapons",
+    "mode": "ranged",
+    "dice": "1d6",
+    "damageType": "piercing",
+    "properties": [
+      "ammunition",
+      "two-handed"
+    ],
+    "attackBonus": 0,
+    "damageBonus": 0,
+    "range": [
+      24,
+      96
+    ]
+  },
+  "phb2014-weapon-sling": {
+    "proficiency": "sling",
+    "group": "simple-weapons",
+    "mode": "ranged",
+    "dice": "1d4",
+    "damageType": "bludgeoning",
+    "properties": [
+      "ammunition"
+    ],
+    "attackBonus": 0,
+    "damageBonus": 0,
+    "range": [
+      9,
+      36
+    ]
+  },
+  "phb2014-weapon-battleaxe": {
+    "proficiency": "battleaxe",
+    "group": "martial-weapons",
+    "mode": "melee",
+    "dice": "1d8",
+    "damageType": "slashing",
+    "properties": [],
+    "attackBonus": 0,
+    "damageBonus": 0,
+    "versatile": "1d10"
+  },
+  "phb2014-weapon-flail": {
+    "proficiency": "flail",
+    "group": "martial-weapons",
+    "mode": "melee",
+    "dice": "1d8",
+    "damageType": "bludgeoning",
+    "properties": [],
+    "attackBonus": 0,
+    "damageBonus": 0
+  },
+  "phb2014-weapon-glaive": {
+    "proficiency": "glaive",
+    "group": "martial-weapons",
+    "mode": "melee",
+    "dice": "1d10",
+    "damageType": "slashing",
+    "properties": [
+      "heavy",
+      "reach",
+      "two-handed"
+    ],
+    "attackBonus": 0,
+    "damageBonus": 0
+  },
+  "phb2014-weapon-greataxe": {
+    "proficiency": "greataxe",
+    "group": "martial-weapons",
+    "mode": "melee",
+    "dice": "1d12",
+    "damageType": "slashing",
+    "properties": [
+      "heavy",
+      "two-handed"
+    ],
+    "attackBonus": 0,
+    "damageBonus": 0
+  },
+  "phb2014-weapon-greatsword": {
+    "proficiency": "greatsword",
+    "group": "martial-weapons",
+    "mode": "melee",
+    "dice": "2d6",
+    "damageType": "slashing",
+    "properties": [
+      "heavy",
+      "two-handed"
+    ],
+    "attackBonus": 0,
+    "damageBonus": 0
+  },
+  "phb2014-weapon-halberd": {
+    "proficiency": "halberd",
+    "group": "martial-weapons",
+    "mode": "melee",
+    "dice": "1d10",
+    "damageType": "slashing",
+    "properties": [
+      "heavy",
+      "reach",
+      "two-handed"
+    ],
+    "attackBonus": 0,
+    "damageBonus": 0
+  },
+  "phb2014-weapon-lance": {
+    "proficiency": "lance",
+    "group": "martial-weapons",
+    "mode": "melee",
+    "dice": "1d12",
+    "damageType": "piercing",
+    "properties": [
+      "reach",
+      "special"
+    ],
+    "attackBonus": 0,
+    "damageBonus": 0,
+    "notes": "Désavantage contre une cible à 1,50 m ; deux mains hors monture."
+  },
+  "phb2014-weapon-longsword": {
+    "proficiency": "longsword",
+    "group": "martial-weapons",
+    "mode": "melee",
+    "dice": "1d8",
+    "damageType": "slashing",
+    "properties": [],
+    "attackBonus": 0,
+    "damageBonus": 0,
+    "versatile": "1d10"
+  },
+  "phb2014-weapon-maul": {
+    "proficiency": "maul",
+    "group": "martial-weapons",
+    "mode": "melee",
+    "dice": "2d6",
+    "damageType": "bludgeoning",
+    "properties": [
+      "heavy",
+      "two-handed"
+    ],
+    "attackBonus": 0,
+    "damageBonus": 0
+  },
+  "phb2014-weapon-morningstar": {
+    "proficiency": "morningstar",
+    "group": "martial-weapons",
+    "mode": "melee",
+    "dice": "1d8",
+    "damageType": "piercing",
+    "properties": [],
+    "attackBonus": 0,
+    "damageBonus": 0
+  },
+  "phb2014-weapon-pike": {
+    "proficiency": "pike",
+    "group": "martial-weapons",
+    "mode": "melee",
+    "dice": "1d10",
+    "damageType": "piercing",
+    "properties": [
+      "heavy",
+      "reach",
+      "two-handed"
+    ],
+    "attackBonus": 0,
+    "damageBonus": 0
+  },
+  "phb2014-weapon-rapier": {
+    "proficiency": "rapier",
+    "group": "martial-weapons",
+    "mode": "melee",
+    "dice": "1d8",
+    "damageType": "piercing",
+    "properties": [
+      "finesse"
+    ],
+    "attackBonus": 0,
+    "damageBonus": 0
+  },
+  "phb2014-weapon-scimitar": {
+    "proficiency": "scimitar",
+    "group": "martial-weapons",
+    "mode": "melee",
+    "dice": "1d6",
+    "damageType": "slashing",
+    "properties": [
+      "finesse",
+      "light"
+    ],
+    "attackBonus": 0,
+    "damageBonus": 0
+  },
+  "phb2014-weapon-shortsword": {
+    "proficiency": "shortsword",
+    "group": "martial-weapons",
+    "mode": "melee",
+    "dice": "1d6",
+    "damageType": "piercing",
+    "properties": [
+      "finesse",
+      "light"
+    ],
+    "attackBonus": 0,
+    "damageBonus": 0
+  },
+  "phb2014-weapon-trident": {
+    "proficiency": "trident",
+    "group": "martial-weapons",
+    "mode": "melee",
+    "dice": "1d6",
+    "damageType": "piercing",
+    "properties": [
+      "thrown"
+    ],
+    "attackBonus": 0,
+    "damageBonus": 0,
+    "versatile": "1d8",
+    "range": [
+      6,
+      18
+    ]
+  },
+  "phb2014-weapon-war-pick": {
+    "proficiency": "war-pick",
+    "group": "martial-weapons",
+    "mode": "melee",
+    "dice": "1d8",
+    "damageType": "piercing",
+    "properties": [],
+    "attackBonus": 0,
+    "damageBonus": 0
+  },
+  "phb2014-weapon-warhammer": {
+    "proficiency": "warhammer",
+    "group": "martial-weapons",
+    "mode": "melee",
+    "dice": "1d8",
+    "damageType": "bludgeoning",
+    "properties": [],
+    "attackBonus": 0,
+    "damageBonus": 0,
+    "versatile": "1d10"
+  },
+  "phb2014-weapon-whip": {
+    "proficiency": "whip",
+    "group": "martial-weapons",
+    "mode": "melee",
+    "dice": "1d4",
+    "damageType": "slashing",
+    "properties": [
+      "finesse",
+      "reach"
+    ],
+    "attackBonus": 0,
+    "damageBonus": 0
+  },
+  "phb2014-weapon-blowgun": {
+    "proficiency": "blowgun",
+    "group": "martial-weapons",
+    "mode": "ranged",
+    "dice": "1",
+    "damageType": "piercing",
+    "properties": [
+      "ammunition",
+      "loading"
+    ],
+    "attackBonus": 0,
+    "damageBonus": 0,
+    "range": [
+      7.5,
+      30
+    ]
+  },
+  "phb2014-weapon-hand-crossbow": {
+    "proficiency": "hand-crossbow",
+    "group": "martial-weapons",
+    "mode": "ranged",
+    "dice": "1d6",
+    "damageType": "piercing",
+    "properties": [
+      "ammunition",
+      "light",
+      "loading"
+    ],
+    "attackBonus": 0,
+    "damageBonus": 0,
+    "range": [
+      9,
+      36
+    ]
+  },
+  "phb2014-weapon-heavy-crossbow": {
+    "proficiency": "heavy-crossbow",
+    "group": "martial-weapons",
+    "mode": "ranged",
+    "dice": "1d10",
+    "damageType": "piercing",
+    "properties": [
+      "ammunition",
+      "heavy",
+      "loading",
+      "two-handed"
+    ],
+    "attackBonus": 0,
+    "damageBonus": 0,
+    "range": [
+      30,
+      120
+    ]
+  },
+  "phb2014-weapon-longbow": {
+    "proficiency": "longbow",
+    "group": "martial-weapons",
+    "mode": "ranged",
+    "dice": "1d8",
+    "damageType": "piercing",
+    "properties": [
+      "ammunition",
+      "heavy",
+      "two-handed"
+    ],
+    "attackBonus": 0,
+    "damageBonus": 0,
+    "range": [
+      45,
+      180
+    ]
+  }
+}

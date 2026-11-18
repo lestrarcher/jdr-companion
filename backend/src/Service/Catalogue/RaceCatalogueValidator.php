@@ -20,7 +20,7 @@ final class RaceCatalogueValidator
     private const REPRESENTATIONS = ['full', 'partial', 'descriptive'];
     private const TRAIT_CATEGORIES = ['descriptive-feature', 'ability-modifier', 'metadata', 'resource', 'choice', 'spell-grant', 'proficiency', 'other'];
     private const CHOICE_KINDS = ['ability', 'language', 'proficiency', 'spell', 'trait', 'feat', 'other'];
-    private const MOVEMENT_KEYS = ['swim', 'fly', 'climb'];
+    private const MOVEMENT_KEYS = ['swim', 'fly', 'climb', 'burrow'];
     private const SENSE_KEYS = ['darkvision', 'blindsight', 'tremorsense', 'truesight'];
 
     /** @return list<string> */

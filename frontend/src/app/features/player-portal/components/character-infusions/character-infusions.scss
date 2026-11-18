@@ -1,0 +1,65 @@
+﻿:host { display: block; min-width: 0; }
+* { box-sizing: border-box; }
+// State panel shell: magic-section. Rows/counter: character-resources.
+// Form controls follow magical-tinkering-notes; colors inherit the portal.
+.section-heading {
+  display: flex; align-items: center; gap: .65rem; margin-bottom: 1rem;
+  h2 { flex: 1; min-width: 0; margin: 0; color: var(--portal-text); font: 400 1.4rem/1.2 Georgia, 'Times New Roman', serif; }
+}
+.counter {
+  flex: 0 0 auto;
+  strong { color: #f1e8d8; font-size: 1.25rem; white-space: nowrap; }
+  span { color: var(--portal-muted); font-size: .8rem; }
+}
+.resource-row {
+  display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+  padding: .75rem 0; border-bottom: 1px solid rgba(201, 168, 95, .12);
+  &:last-of-type { margin-bottom: .75rem; }
+}
+.resource-information {
+  display: flex; flex-direction: column; gap: .25rem; min-width: 0;
+  strong { font: 400 1rem Georgia, 'Times New Roman', serif; }
+  small { color: var(--portal-muted); font-size: .75rem; line-height: 1.5; }
+}
+button, select { font: inherit; border-radius: 3px; }
+button {
+  min-height: 2.75rem; padding: .5rem .75rem; max-width: 100%;
+  font-size: .75rem; color: #ead79e; border: 1px solid rgba(201, 168, 95, .4);
+  background: rgba(201, 168, 95, .1); cursor: pointer; touch-action: manipulation;
+  &:hover:not(:disabled) { background: rgba(201, 168, 95, .2); }
+  &:disabled { opacity: .4; cursor: default; }
+}
+.button-secondary { background: transparent; border-color: rgba(201, 168, 95, .16); color: var(--portal-muted); }
+.remove-button { flex: 0 0 auto; }
+.icon-button { flex: 0 0 auto; width: 2.75rem; padding: 0; font-size: 1.4rem; background: transparent; border-color: transparent; }
+button:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--portal-accent, #c9a85f); outline-offset: 2px; }
+details { margin: .75rem 0; color: var(--portal-muted); font-size: .8rem; }
+summary { cursor: pointer; padding: .35rem 0; }
+ul { list-style: none; margin: .35rem 0 0; padding: 0; }
+li { padding: .4rem 0; line-height: 1.5; border-top: 1px solid rgba(201, 168, 95, .12); }
+fieldset { border: 0; border-top: 1px solid rgba(201, 168, 95, .12); padding: .75rem 0 0; min-width: 0; margin: .75rem 0 0; }
+legend { font: 400 1rem Georgia, 'Times New Roman', serif; padding-right: .5rem; }
+label { display: grid; gap: .4rem; margin-bottom: .75rem; color: var(--portal-muted); font-size: .75rem; }
+select { width: 100%; min-width: 0; padding: .65rem; color: #f3eee4; border: 1px solid rgba(201, 168, 95, .28); background: #151620; }
+.form-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
+.confirmation { margin: .75rem 0; padding: .75rem; border: 1px solid rgba(201, 168, 95, .16); background: rgba(255, 255, 255, .025); }
+p { margin: .65rem 0; font-size: .8rem; line-height: 1.5; color: var(--portal-muted); }
+p, li, small, strong { overflow-wrap: anywhere; }
+.warning { color: var(--portal-accent); }
+[role=alert] { color: var(--portal-danger, #ef9a9a); }
+@media (max-width: 600px) {
+  .form-actions button { flex: 1 1 auto; }
+  .section-heading { gap: .4rem; h2 { font-size: 1.2rem; } }
+  .resource-row { align-items: flex-start; gap: .5rem; }
+}
+
+// Same compact quickbar geometry and glyph treatment as SpellQuickList.
+.quickbar { display: flex; flex-wrap: wrap; gap: .65rem; padding: .75rem .2rem .55rem; }
+.quick-spell { flex: 0 0 5rem; width: 5rem; min-height: 6.4rem; display: flex; flex-direction: column; align-items: center; gap: .35rem; padding: .45rem .3rem; border: 1px solid #716b8066; border-radius: .65rem; background: #232837; color: var(--portal-text); }
+.quick-spell.is-selected { border-color: #dfbf80; background: #3d3540; }
+.spell-icon { display: grid; place-items: center; width: 2.8rem; height: 2.8rem; font-size: 2rem; color: #bba9e2; background: radial-gradient(circle, #7561a344, transparent 70%); }
+.quick-name { font-size: .68rem; line-height: 1.25; overflow-wrap: anywhere; }
+h3 { font: 400 1rem Georgia, serif; }
+// Native dialog follows SpellCastDialog, including focus containment and Escape.
+dialog { width: min(38rem, calc(100% - 1rem)); max-height: calc(100dvh - 2rem); overflow-y: auto; overscroll-behavior: contain; padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom)); border: 1px solid #be94428c; border-radius: .85rem; background: radial-gradient(circle at top, #78552022, transparent 50%), #090a10; color: #f4ead5; box-shadow: 0 24px 80px #000b; }
+dialog::backdrop { background: #04050ad1; backdrop-filter: blur(4px); }

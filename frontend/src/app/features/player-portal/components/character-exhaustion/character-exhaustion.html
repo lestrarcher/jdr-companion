@@ -1,0 +1,29 @@
+<section class="exhaustion-tracker" aria-label="Épuisement">
+  <div class="exhaustion-tracker__heading">
+    <strong>Épuisement</strong>
+    <span>Niveau {{ level() }} / 6</span>
+  </div>
+  <div class="exhaustion-tracker__controls">
+    <button type="button" aria-label="Réduire l’épuisement" [disabled]="readonly() || saving() || level() === 0" (click)="change.emit(-1)">−</button>
+    <div class="exhaustion-tracker__pips" aria-label="Niveau d’épuisement actuel">
+      @for (step of [1, 2, 3, 4, 5, 6]; track step) {
+        <span [class.is-active]="step <= level()" [class.is-fatal]="step === 6 && level() === 6">{{ step }}</span>
+      }
+    </div>
+    <button type="button" aria-label="Augmenter l’épuisement" [disabled]="readonly() || saving() || level() === 6" (click)="change.emit(1)">+</button>
+  </div>
+  @if (level() === 0) {
+    <p class="exhaustion-tracker__empty">Aucun effet d'épuisement.</p>
+  } @else {
+    <div class="exhaustion-tracker__effects" aria-label="Effets actifs de l’épuisement">
+      @for (effect of effects; track effect.level) {
+        @if (effect.level <= level()) {
+          <div class="exhaustion-tracker__effect" [class.is-fatal]="effect.level === 6">
+            <span class="exhaustion-tracker__effect-level">{{ effect.level }}</span>
+            <span class="exhaustion-tracker__effect-label">{{ effect.label }}</span>
+          </div>
+        }
+      }
+    </div>
+  }
+</section>

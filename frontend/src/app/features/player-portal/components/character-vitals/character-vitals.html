@@ -48,7 +48,8 @@
 
       <input [disabled]="readonly()"
         type="number"
-        min="0"
+        min="1"
+        placeholder="0"
         inputmode="numeric"
         [(ngModel)]="hitPointAmount"
       />
@@ -58,7 +59,7 @@
       class="damage-button"
       type="button"
       (click)="applyDamage()"
-      [disabled]="hitPointAmount <= 0"
+      [disabled]="hitPointAmount === null || hitPointAmount <= 0"
     >
       Dégâts
     </button>
@@ -67,7 +68,7 @@
       class="healing-button"
       type="button"
       (click)="heal()"
-      [disabled]="hitPointAmount <= 0"
+      [disabled]="hitPointAmount === null || hitPointAmount <= 0"
     >
       Soins
     </button>
