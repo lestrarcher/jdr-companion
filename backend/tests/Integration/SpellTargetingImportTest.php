@@ -151,8 +151,8 @@ final class SpellTargetingImportTest extends TestCase
             self::assertSame('creature', $byKey['aidedd-2014:'.$key]['target_type']);
         }
         foreach (['malefice','marque-du-chasseur','bouclier-de-platine-de-fizban','eclair-de-chaos','projectile-magique'] as $key) self::assertTrue($byKey['aidedd-2014:'.$key]['multiple_targets']);
-        self::assertSame('special', $byKey['aidedd-2014:trait-de-feu']['target_type']);
-        foreach (['souffle-du-dragon','couteau-de-glace','serviteur-miniature','souhait','enervation'] as $key) self::assertSame('review', $byKey['aidedd-2014:'.$key]['status']);
+        self::assertSame('creature', $byKey['aidedd-2014:trait-de-feu']['target_type']);
+        foreach (['souffle-du-dragon','couteau-de-glace','serviteur-miniature','souhait','enervation'] as $key) self::assertSame('ready', $byKey['aidedd-2014:'.$key]['status']);
     }
 
     public function testFullReferencePreservesTheFourteenValidatedProfiles(): void
