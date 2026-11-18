@@ -51,11 +51,15 @@ final readonly class CharacterWeaponCalculator
                 $attack += $infusion['weaponBonuses']['attack'] ?? 0;
                 $damage += $infusion['weaponBonuses']['damage'] ?? 0;
                 $row['notes'][] = $infusion['name'].' — '.$infusion['creatorName'];
-                if (($infusion['requiresAttunement'] ?? false) && !$owned->isAttuned()) $row['notes'][] = 'Harmonisation requise : bonus d’imprégnation non appliqué.';
+                if (($infusion['requiresAttunement'] ?? false) && !$owned->isAttuned()) {
+                    $attack -= $infusion['weaponBonuses']['attack'] ?? 0;
+                    $damage -= $infusion['weaponBonuses']['damage'] ?? 0;
+                    $row['notes'][] = 'Harmonisation requise : bonus d’imprégnation non appliqué.';
+                }
                 if (isset($infusion['weaponNote'])) $row['notes'][] = $infusion['weaponNote'];
             }
             $row['attackBonus'] = $modifier + ($proficient ? $character->getProficiencyBonus() : 0) + $attack;
-            $row['damage'] = $p['dice'].self::signed($modifier + $damage, true).' '.match($p['damageType']) { 'slashing'=>'tranchant', 'piercing'=>'perforant', 'bludgeoning'=>'contondant' };
+            $row['damage'] = $p['dice'] === null ? 'Aucun dégât' : $p['dice'].self::signed($modifier + $damage, true).' '.match($p['damageType']) { 'slashing'=>'tranchant', 'piercing'=>'perforant', 'bludgeoning'=>'contondant' };
             $row['complete'] = true;
             $row['ability'] = $ability;
             $row['proficient'] = $proficient;
