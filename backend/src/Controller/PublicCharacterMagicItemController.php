@@ -457,6 +457,7 @@ final class PublicCharacterMagicItemController extends AbstractController
             'quantityAdjustable' => $ownedItem->isStackableCustom(),
             'quantity' => $ownedItem->getQuantity(),
             'currentCharges' => $ownedItem->getCurrentCharges(),
+            'baseWeaponKey' => $ownedItem->getBaseWeaponKey(),
             'attuned' => $ownedItem->isAttuned(),
             'equipped' => $ownedItem->isEquipped(),
             'effectActive' => $ownedItem->isEffectActive(),
@@ -470,7 +471,7 @@ final class PublicCharacterMagicItemController extends AbstractController
             // Keep the existing inventory view shape; a null ID is not a catalogue entry.
             'magicItem' => [
                 'id' => $magicItem?->getId(),
-                'name' => $ownedItem->getPactOwner() !== null ? $ownedItem->getDisplayName() : ($magicItem?->getName() ?? $ownedItem->getDisplayName()),
+                'name' => $ownedItem->getDisplayName(),
                 'description' => $magicItem?->getDescription() ?? $ownedItem->getCustomDescription(),
                 'rarity' => $magicItem?->getRarity()?->value,
                 'category' => $magicItem?->getCategory() ?? 'other',

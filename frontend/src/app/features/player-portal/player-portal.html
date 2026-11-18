@@ -173,7 +173,7 @@
                     </app-character-resources>
                     <section class="magic-section" aria-labelledby="weapons-section-title">
                       <div class="magic-section__heading"><h2 id="weapons-section-title">Armes</h2></div>
-                      <app-character-weapons [weapons]="weapons()" />
+                      <app-character-weapons [weapons]="weapons()" [accessToken]="accessToken" [readonly]="!canEdit()" (chargesChanged)="refreshSpells()" />
                     </section>
                     @if (hasInfusions()) {
                       <section class="magic-section" aria-labelledby="infusions-section-title">
