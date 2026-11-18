@@ -12,9 +12,12 @@ final class WeaponProfileSchema
         if (!is_string($p['proficiency']) || !preg_match('/^[a-z][a-z0-9-]{0,79}$/D', $p['proficiency'])
             || !in_array($p['group'], ['simple-weapons','martial-weapons'], true)
             || !in_array($p['mode'], ['melee','ranged'], true)
-            || !in_array($p['damageType'], ['slashing','piercing','bludgeoning'], true)) self::invalid();
+            || !in_array($p['damageType'], ['slashing','piercing','bludgeoning',null], true)) self::invalid();
         foreach (['dice','versatile'] as $key) if (isset($p[$key]) && (!is_string($p[$key]) || !preg_match('/^(?:[1-9][0-9]?d(?:4|6|8|10|12)|1)$/D', $p[$key]))) self::invalid();
-        if (!is_string($p['dice'])) self::invalid();
+        if ($p['proficiency'] === 'net') {
+            if ($p['dice'] !== null || $p['damageType'] !== null || $p['damageBonus'] !== 0
+                || $p['mode'] !== 'ranged' || !in_array('special', $p['properties'], true)) self::invalid();
+        } elseif (!is_string($p['dice']) || $p['damageType'] === null) self::invalid();
         foreach (['attackBonus','damageBonus'] as $key) if (!is_int($p[$key]) || $p[$key] < 0 || $p[$key] > 3) self::invalid();
         if (!is_array($p['properties']) || !array_is_list($p['properties'])) self::invalid();
         foreach ($p['properties'] as $property) if (!is_string($property) || !in_array($property, ['finesse','light','heavy','two-handed','reach','thrown','ammunition','loading','special'], true)) self::invalid();
