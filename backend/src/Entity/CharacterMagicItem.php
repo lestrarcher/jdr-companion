@@ -93,6 +93,18 @@ class CharacterMagicItem
     #[ORM\Column(nullable: true)]
     private ?int $currentCharges = null;
 
+    #[ORM\Column(length: 40, nullable: true)]
+    private ?string $baseWeaponKey = null;
+
+    public function getBaseWeaponKey(): ?string { return $this->baseWeaponKey; }
+    public function setBaseWeaponKey(string $key): void
+    {
+        if ($this->magicItem === null || !\App\Service\SpecialWeaponProfiles::isVariable($this->magicItem)) throw new \InvalidArgumentException('Objet non configurable.');
+        \App\Service\SpecialWeaponProfiles::profile($this->magicItem, $key);
+        $this->baseWeaponKey = $key;
+        $this->setDisplayName($this->magicItem->getName().' ('.\App\Service\SpecialWeaponProfiles::baseLabel($key).')');
+    }
+
     #[ORM\Column]
     private bool $attuned = false;
 

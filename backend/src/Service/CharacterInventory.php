@@ -49,6 +49,7 @@ final readonly class CharacterInventory
         bool $player = false,
         ?string $notes = null,
         ?int $inscribedSpellId = null,
+        ?string $baseWeaponKey = null,
     ): array {
         if ($quantity < 1 || $quantity > 9999) {
             throw new \InvalidArgumentException(
@@ -86,8 +87,16 @@ final readonly class CharacterInventory
             throw new \InvalidArgumentException('Cet objet ne peut pas contenir un sort variable.');
         }
 
+        if (SpecialWeaponProfiles::isVariable($definition)) {
+            if ($player) throw new \InvalidArgumentException('Le choix de l’arme de base est réservé au MJ.');
+            if ($baseWeaponKey === null) throw new \InvalidArgumentException('Choisissez une arme de base.');
+            SpecialWeaponProfiles::profile($definition, $baseWeaponKey);
+        } elseif ($baseWeaponKey !== null) {
+            throw new \InvalidArgumentException('Cet objet ne permet pas de choisir une arme de base.');
+        }
+
         // Regrouper les objets empilables déjà possédés.
-        if (!$isScroll && $definition->getQuantityMode() === 'stackable') {
+        if (!$isScroll && !SpecialWeaponProfiles::isVariable($definition) && $definition->getQuantityMode() === 'stackable') {
             $existingItems = $this->em->getRepository(CharacterMagicItem::class)->findBy([
                 'character' => $character,
                 'magicItem' => $definition,
@@ -112,11 +121,12 @@ final readonly class CharacterInventory
         }
 
         // Créer une pile ou plusieurs exemplaires individuels.
-        $individual = $isScroll || $definition->getQuantityMode() !== 'stackable';
+        $individual = $isScroll || SpecialWeaponProfiles::isVariable($definition) || $definition->getQuantityMode() !== 'stackable';
         $created = [];
 
         for ($i = 0; $i < ($individual ? $quantity : 1); $i++) {
             $owned = new CharacterMagicItem($character, $definition);
+            if ($baseWeaponKey !== null) $owned->setBaseWeaponKey($baseWeaponKey);
 
             if (!$individual) {
                 $owned->setQuantity($quantity);

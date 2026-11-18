@@ -72,6 +72,7 @@ export interface AssignMagicItemPayload {
   quantity?: number;
   notes?: string | null;
   inscribedSpellId?: number;
+  baseWeaponKey?: string;
 }
 
 interface MagicItemListApiResponse {

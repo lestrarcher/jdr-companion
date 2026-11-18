@@ -35,12 +35,13 @@ export class ItemAssignmentModal {
   private bookRequest = 0;
   readonly search = signal('');
   readonly quantity = signal(1);
+  readonly selectedBaseWeaponKey = signal<string | null>(null);
   readonly catalogSearch = output<string>();
   readonly filteredCatalog = computed(() => this.catalog().filter(item => item.name.toLocaleLowerCase().includes(this.search().trim().toLocaleLowerCase())).slice(0, 80));
 
   readonly closed = output<void>();
   readonly magicItemSelected = output<number | null>();
-  readonly assignmentRequested = output<{quantity: number; inscribedSpellId?: number; spellIds?: number[]; notes?: string}>();
+  readonly assignmentRequested = output<{quantity: number; inscribedSpellId?: number; spellIds?: number[]; notes?: string; baseWeaponKey?: string}>();
 
   protected readonly selectedMagicItem = computed(() => {
     const selectedId = this.selectedMagicItemId();
@@ -57,6 +58,7 @@ export class ItemAssignmentModal {
 
   protected updateSearch(value: string): void { this.search.set(value); this.catalogSearch.emit(value); }
   protected selectItem(id: number): void {
+    this.selectedBaseWeaponKey.set(null);
     this.selectedScrollSpellId.set(null);
     this.selectedBookSpells.set([]);
     this.bookSpells.set([]);
@@ -99,11 +101,12 @@ export class ItemAssignmentModal {
   protected requestAssignment(): void {
     const item = this.selectedMagicItem();
     if (item?.isSpellScroll && this.selectedScrollSpellId() === null) return;
+    if (item?.weaponBaseOptions?.length && this.selectedBaseWeaponKey() === null) return;
     if (item?.category === 'spellbook') {
       this.assignmentRequested.emit({quantity: 1, spellIds: this.selectedBookSpells().map(spell => spell.id), notes: this.bookNotes()});
       return;
     }
-    this.assignmentRequested.emit({ quantity: this.quantity(), ...(item?.isSpellScroll ? {inscribedSpellId: this.selectedScrollSpellId()!} : {}) });
+    this.assignmentRequested.emit({ quantity: this.quantity(), ...(item?.isSpellScroll ? {inscribedSpellId: this.selectedScrollSpellId()!} : {}), ...(this.selectedBaseWeaponKey() ? {baseWeaponKey:this.selectedBaseWeaponKey()!} : {}) });
   }
 
   protected selectMagicItem(event: Event): void {

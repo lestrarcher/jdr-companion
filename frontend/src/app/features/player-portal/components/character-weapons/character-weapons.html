@@ -1,17 +1,59 @@
 <div class="weapons-table" role="region" aria-label="Armes possédées" tabindex="0">
   <table>
-    <thead><tr><th scope="col">Nom</th><th scope="col">Bonus Att</th><th scope="col">Dégâts &amp; Type</th><th scope="col">Notes</th></tr></thead>
+    <thead><tr><th scope="col">Nom</th><th scope="col">Bonus Att</th><th scope="col">Dégâts &amp; Type</th><th scope="col">Notes</th><th scope="col"><span class="sr-only">Détails</span></th></tr></thead>
     <tbody>
       @for (weapon of weapons(); track weapon.id) {
         <tr>
           <th scope="row">{{ weapon.name }}</th>
-          <td class="attack">{{ weapon.attackBonus === null ? '—' : (weapon.attackBonus >= 0 ? '+' : '') + weapon.attackBonus }}</td>
+          <td class="attack">{{ attackLabel(weapon.attackBonus) }}</td>
           <td class="damage">{{ weapon.damage ?? '—' }}</td>
           <td class="notes">{{ visibleNotes(weapon.notes).join(' · ') }}</td>
+          <td class="details-control"><button type="button" class="details-toggle" [attr.aria-label]="'Afficher les détails de ' + weapon.name" aria-haspopup="dialog" (click)="toggleDetails(weapon.id)">+</button></td>
         </tr>
       } @empty {
-        <tr><td colspan="4" class="notes">Aucune arme identifiée dans l’inventaire.</td></tr>
+        <tr><td colspan="5" class="notes">Aucune arme identifiée dans l’inventaire.</td></tr>
       }
     </tbody>
   </table>
 </div>
+<dialog #weaponDialog aria-labelledby="weapon-dialog-title" (cancel)="cancelDetails($event)" (close)="onDialogClosed()">
+  @if (selectedWeapon(); as weapon) {
+    <header>
+      <div>
+        <small>Arme @if (itemsById().get(weapon.id); as owned) { · {{ rarityLabel(owned.magicItem.rarity) }} }</small>
+        <h2 id="weapon-dialog-title">{{ weapon.name }}</h2>
+        @if (itemsById().get(weapon.id); as owned) {
+          <p class="weapon-meta">{{ owned.magicItem.category }} @if (owned.magicItem.requiresAttunement) { · Harmonisation {{ owned.attuned ? 'active' : 'requise' }} }</p>
+        }
+      </div>
+      <button type="button" class="close" aria-label="Fermer les détails de l’arme" (click)="closeDetails()">×</button>
+    </header>
+    <dl class="weapon-stats">
+      <div><dt>Bonus d’attaque</dt><dd>{{ attackLabel(weapon.attackBonus) }}</dd></div>
+      <div><dt>Dégâts &amp; type</dt><dd>{{ weapon.damage ?? '—' }}</dd></div>
+    </dl>
+    @if (visibleNotes(weapon.notes).length) { <p class="weapon-meta">{{ visibleNotes(weapon.notes).join(' · ') }}</p> }
+    @if (itemsById().get(weapon.id); as owned) {
+      @if (owned.magicItem.description) {
+        <section class="weapon-effects" aria-label="Effets magiques">
+          <h3>Effets et propriétés</h3>
+          <p>{{ owned.magicItem.description }}</p>
+        </section>
+      }
+      @if (owned.magicItem.maximumCharges !== null) {
+        <fieldset class="weapon-charges">
+          <legend>Charges</legend>
+          <div class="charge-content">
+            <div><strong>{{ owned.currentCharges }} / {{ owned.magicItem.maximumCharges }}</strong>
+              @if (owned.magicItem.rechargeFormula) { <p class="recharge">Recharge : {{ owned.magicItem.rechargeFormula }}</p> }
+            </div>
+            @if (!readonly()) {
+              <button type="button" [disabled]="owned.currentCharges <= 0 || updatingId() !== null" (click)="spendCharge(owned)">{{ updatingId() === owned.id ? 'En cours…' : 'Dépenser 1 charge' }}</button>
+            }
+          </div>
+        </fieldset>
+      }
+    } @else if (loading()) { <p class="weapon-meta">Chargement des effets…</p> }
+    @if (error()) { <p class="weapon-error" role="alert">{{ error() }}</p> }
+  }
+</dialog>

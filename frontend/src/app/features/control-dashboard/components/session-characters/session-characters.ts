@@ -517,7 +517,7 @@ export class SessionCharacters implements OnInit {
     this.assignmentFeedback.set(null);
   }
 
-  protected assignSelectedItem(selection: {quantity: number; inscribedSpellId?: number; spellIds?: number[]; notes?: string}): void {
+  protected assignSelectedItem(selection: {quantity: number; inscribedSpellId?: number; spellIds?: number[]; notes?: string; baseWeaponKey?: string}): void {
     const { quantity, inscribedSpellId } = selection;
     const character = this.selectedCharacter();
     const magicItemId = this.selectedMagicItemId();
@@ -551,7 +551,7 @@ export class SessionCharacters implements OnInit {
     this.magicItemApi
       .assignToCharacter(
         character.character.id,
-        { magicItemId, quantity, ...(inscribedSpellId !== undefined ? {inscribedSpellId} : {}) },
+        { magicItemId, quantity, ...(inscribedSpellId !== undefined ? {inscribedSpellId} : {}), ...(selection.baseWeaponKey ? {baseWeaponKey:selection.baseWeaponKey} : {}) },
       )
       .pipe(
         finalize(() =>

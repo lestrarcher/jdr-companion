@@ -1,13 +1,51 @@
 :host { display: block; min-width: 0; }
 .weapons-table { overflow-x: auto; }
 table { border-collapse: collapse; width: 100%; font-size: .85rem; }
-th, td { text-align: left; vertical-align: top; padding: .6rem .45rem; border-bottom: 1px solid rgba(201, 168, 95, .4); }
+th, td { text-align: left; vertical-align: top; padding: .6rem .45rem; border-bottom: 1px solid rgba(201,168,95,.4); }
 thead th { color: var(--portal-accent); font-weight: 500; white-space: nowrap; }
 tbody th { font-weight: 500; min-width: 6rem; width: 24%; overflow-wrap: anywhere; }
 .attack { text-align: center; width: 12%; }
 .damage { min-width: 7rem; width: 25%; }
 .notes { color: var(--portal-muted); min-width: 8rem; width: 39%; font-size: .8rem; overflow-wrap: anywhere; }
 tbody tr:last-child > * { border-bottom: 0; }
-
-/* Zébrage discret pour séparer les armes sans rompre le thème sombre. */
-tbody tr:nth-child(even) { background: rgba(201, 168, 95, .065); }
+tbody tr:nth-child(even) { background: rgba(201,168,95,.065); }
+.details-control { width: 2rem; text-align: right; }
+.details-toggle { border: 1px solid rgba(201,168,95,.5); background: transparent; color: var(--portal-accent); border-radius: .35rem; min-width: 1.8rem; min-height: 1.8rem; cursor: pointer; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+/* Mêmes dimensions, palette et fond que la modale d'incantation. */
+dialog { box-sizing: border-box; width: min(38rem, calc(100% - 1rem)); max-height: calc(100dvh - 2rem); overflow-y: auto; overscroll-behavior: contain; padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom)); border: 1px solid #be94428c; border-radius: .85rem; background: radial-gradient(circle at top, #78552022, transparent 50%), #090a10; color: #f4ead5; box-shadow: 0 24px 80px #000b; overflow-wrap: anywhere; }
+dialog::backdrop { background: #04050ad1; backdrop-filter: blur(4px); }
+header { display: flex; gap: .75rem; justify-content: space-between; align-items: start; }
+h2 { margin: .3rem 0; font-family: Georgia, serif; font-size: 1.5rem; }
+h3 { font-size: .9rem; margin: .4rem 0; }
+p { margin: .5rem 0; font-size: .85rem; line-height: 1.5; }
+small { color: #cdb482; font-size: .75rem; }
+dialog button { min-height: 44px; padding: .5rem .75rem; border: 1px solid #a78b5980; border-radius: .5rem; background: #232837; color: inherit; font: inherit; cursor: pointer; }
+dialog button:disabled { opacity: .55; cursor: default; }
+button:focus-visible { outline: 2px solid #e5c78e; outline-offset: 3px; }
+.close { min-width: 44px; font-size: 1.3rem; }
+.weapon-meta { color: #b9b5c1; font-size: .75rem; }
+.weapon-stats { display: flex; flex-wrap: wrap; gap: .5rem; margin: .7rem 0; }
+.weapon-stats > div { display: flex; align-items: baseline; gap: .45rem; padding: .4rem .65rem; border: 1px solid #a78b594d; border-radius: .45rem; background: #23283780; }
+.weapon-stats dt { color: #cdb482; font-size: .75rem; }
+.weapon-stats dd { margin: 0; font-weight: 700; font-size: .9rem; }
+/* Lecture confortable des descriptions longues, sans modifier les retours à la ligne du catalogue. */
+.weapon-effects { margin-block: 1.1rem 1.35rem; }
+.weapon-effects h3 { margin: 0 0 .85rem; }
+.weapon-effects p {
+  margin: 0;
+  font-size: .9rem;
+  line-height: 1.7;
+  white-space: pre-line;
+  text-align: justify;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+@media (max-width: 600px) {
+  .weapon-effects p { text-align: left; }
+}
+.weapon-charges { min-width: 0; margin: .75rem 0; padding: 0; border: 0; }
+.weapon-charges legend { font-size: .75rem; margin-bottom: .4rem; color: #cdb482; }
+.charge-content { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .75rem; }
+.recharge { color: #b9b5c1; font-size: .75rem; }
+.weapon-error { color: #f1b5ac; }

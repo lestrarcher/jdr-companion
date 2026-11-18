@@ -28,6 +28,12 @@ final readonly class CharacterWeaponCalculator
             if ($item === null) continue;
             $row = ['id'=>$owned->getId(), 'name'=>$owned->getDisplayName(), 'equipped'=>$owned->isEquipped(), 'attackBonus'=>null, 'damage'=>null, 'notes'=>[], 'complete'=>false];
             $p = $item->getWeaponProfile();
+            if (SpecialWeaponProfiles::isVariable($item)) {
+                $key=$owned->getBaseWeaponKey();
+                $p=$key === null ? null : SpecialWeaponProfiles::profile($item,$key);
+            } elseif ($p === null && SpecialWeaponProfiles::isFixed($item)) {
+                $p=SpecialWeaponProfiles::profile($item,null);
+            }
             if ($focusStaff) {
                 $profiles = json_decode(file_get_contents(__DIR__.'/../../data/weapon-profiles-2014.json'), true, 512, JSON_THROW_ON_ERROR);
                 $p = $profiles['phb2014-weapon-quarterstaff'];
@@ -59,7 +65,7 @@ final readonly class CharacterWeaponCalculator
                 if (isset($infusion['weaponNote'])) $row['notes'][] = $infusion['weaponNote'];
             }
             $row['attackBonus'] = $modifier + ($proficient ? $character->getProficiencyBonus() : 0) + $attack;
-            $row['damage'] = $p['dice'] === null ? 'Aucun dégât' : $p['dice'].self::signed($modifier + $damage, true).' '.match($p['damageType']) { 'slashing'=>'tranchant', 'piercing'=>'perforant', 'bludgeoning'=>'contondant' };
+            $row['damage'] = $p['dice'] === null ? 'Aucun dégât' : $p['dice'].self::signed($modifier + $damage, true).' '.(str_ends_with($item->getImportKey() ?? '', ':sun-blade') ? 'radiant' : match($p['damageType']) { 'slashing'=>'tranchant', 'piercing'=>'perforant', 'bludgeoning'=>'contondant' });
             $row['complete'] = true;
             $row['ability'] = $ability;
             $row['proficient'] = $proficient;

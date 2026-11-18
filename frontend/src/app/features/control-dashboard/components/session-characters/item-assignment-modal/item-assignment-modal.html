@@ -112,6 +112,17 @@
         </article>
       }
 
+      @if (selectedMagicItem()?.weaponBaseOptions?.length) {
+        <label class="modal-field">
+          <span>Arme de base (choix obligatoire du MJ)</span>
+          <select [value]="selectedBaseWeaponKey() ?? ''" (change)="selectedBaseWeaponKey.set($any($event.target).value || null)" [disabled]="assigning()">
+            <option value="">Choisir une arme compatible…</option>
+            @for (base of selectedMagicItem()!.weaponBaseOptions!; track base.key) {
+              <option [value]="base.key">{{ base.label }}</option>
+            }
+          </select>
+        </label>
+      }
       @if (selectedMagicItem()?.isSpellScroll) {
         <label class="modal-field">
           <span>Sort inscrit (choix du MJ)</span>
@@ -174,6 +185,7 @@
             assigning()
             || selectedMagicItemId() === null
             || (selectedMagicItem()?.isSpellScroll && selectedScrollSpellId() === null)
+            || ((selectedMagicItem()?.weaponBaseOptions?.length ?? 0) > 0 && selectedBaseWeaponKey() === null)
           "
           (click)="requestAssignment()"
         >

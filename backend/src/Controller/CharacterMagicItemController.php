@@ -139,6 +139,8 @@ public function assign(
 
         $notes = $payload['notes'] ?? null;
         $inscribedSpellId = $payload['inscribedSpellId'] ?? null;
+        $baseWeaponKey = $payload['baseWeaponKey'] ?? null;
+        if ($baseWeaponKey !== null && (!is_string($baseWeaponKey) || strlen($baseWeaponKey) > 40)) throw new \InvalidArgumentException('Arme de base invalide.');
 
         if ($notes !== null && !is_string($notes)) {
             throw new \InvalidArgumentException('Les notes doivent être du texte.');
@@ -155,7 +157,8 @@ public function assign(
             $magicItemId,
             $quantity,
             $notes,
-            $inscribedSpellId
+            $inscribedSpellId,
+            $baseWeaponKey
         ): array {
             $entityManager->lock($character, LockMode::PESSIMISTIC_WRITE);
             $entityManager->refresh($character);
@@ -166,7 +169,8 @@ public function assign(
                 $quantity,
                 false,
                 $notes,
-                $inscribedSpellId
+                $inscribedSpellId,
+                $baseWeaponKey
             );
         });
     } catch (\InvalidArgumentException $exception) {
@@ -355,6 +359,7 @@ public function assign(
                 $item?->getId(),
             'name' => $ownedItem->getInscribedSpell() !== null ? 'Parchemin de ' . $ownedItem->getInscribedSpell()->getName() : $ownedItem->getDisplayName(),
             'inscribedSpellId' => $ownedItem->getInscribedSpell()?->getId(),
+            'baseWeaponKey' => $ownedItem->getBaseWeaponKey(),
             'description' =>
                 $item?->getDescription() ?? $ownedItem->getCustomDescription(),
             'rarity' =>

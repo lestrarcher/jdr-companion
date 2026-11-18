@@ -39,6 +39,7 @@ export interface MagicItemAbilityEffectResponse {
 }
 
 export interface MagicItemResponse {
+  weaponBaseOptions?: {key: string; label: string}[];
   armorType?: 'light' | 'medium' | 'heavy' | 'shield' | null;
   baseArmorClass?: number | null;
   id: number;
@@ -70,6 +71,7 @@ export interface CharacterMagicItemResponse {
     weaponBonuses: { attack: number; damage: number; itemId: number; requiresUse: boolean } | null } | null;
   custom: boolean;
   quantityAdjustable?: boolean;
+  baseWeaponKey?: string | null;
   spellbookSpells?: SpellbookInscriptionResponse[] | null;
   pactTome?: boolean;
   pactTomeOwnerId?: number | null;
