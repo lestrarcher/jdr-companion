@@ -5,7 +5,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 type Beast = {
   id: number; slug: string; name: string | null; challengeRating: string | null;
-  seen: boolean; habitats: string[]; sourceUrl: string | null;
+  seen: boolean; habitats: string[]; sourceUrl: string | null; imageUrl: string | null;
   statBlock: { armorClass?: number; hitPoints?: number; hitDice?: string; speed?: Record<string, number>; abilities?: Record<string, number>;
     actions?: Array<{ name: string; description?: string; attackBonus?: number }>;
     traits?: Array<{ name: string; desc?: string; translatedName?: string; translatedDescription?: string }> } | null;

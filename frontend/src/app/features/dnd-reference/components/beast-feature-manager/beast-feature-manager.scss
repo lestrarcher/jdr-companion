@@ -18,3 +18,11 @@ h2 { margin:0; font:1.55rem Georgia,serif; } h3 { color:#e6c56d; font:1.1rem Geo
 .beast-manager__feature p { margin:.4rem 0 0; color:#aaa2a5; font-size:.85rem; } .beast-manager__save { margin-top:1rem; }
 .beast-manager__message { color:#e6c56d; } .empty-state { color:#aaa2a5; }
 @media(max-width:760px) { .beast-manager { grid-template-columns:1fr; } .beast-manager__sidebar { border-right:0; border-bottom:1px solid rgba(202,165,86,.2); } .beast-manager__add { grid-template-columns:1fr; } }
+
+.beast-manager__image-editor { display:flex; align-items:center; gap:1rem; flex-wrap:wrap; margin:0 0 1.2rem; }
+.beast-manager__image-editor img,.beast-manager__image-placeholder { width:112px; height:112px; object-fit:cover; border:1px solid rgba(202,165,86,.35); background:#15131c; }
+.beast-manager__image-placeholder { display:grid; place-items:center; color:#aaa2a5; font-size:.75rem; }
+.beast-manager__image-actions { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; }
+.beast-manager__image-actions label { cursor:pointer; }
+.beast-manager__image-actions input[type=file] { position:absolute; width:1px; height:1px; opacity:0; overflow:hidden; }
+.beast-manager__image-actions small { width:100%; color:#aaa2a5; }

@@ -1,7 +1,7 @@
 # JdR Companion — Documentation du système de Forme sauvage
 
-> **État au 20 novembre 2026** — chantier `feature/druid-wild-shape`  
-> Référentiel de fonctionnement, architecture, données, règles et points restant à traiter.  
+> **État au 20 novembre 2026 — mise à jour de transmission Codex** — chantier `feature/druid-wild-shape`
+> Référentiel de fonctionnement, architecture, données, règles et points restant à traiter.
 > **Périmètre :** système D&D 5e 2014 tel que développé et testé dans JdR Companion. Les détails d'API, schémas et signatures non confirmés doivent être vérifiés dans le dépôt avant maintenance.
 
 ## 1. Objectif et principes
@@ -37,7 +37,7 @@ Principes retenus :
 | Restriction d'incantation | Implémenté | Exceptions de haut niveau à traiter |
 | Guérison lunaire | Validé | Carte virtuelle dans Sorts, dés physiques |
 | Repos court/long | Validé | Recharge et actualisation sans F5 |
-| Traduction des traits | À faire | 28 définitions importées |
+| Traduction des traits | À revérifier | Le document initial dénombrait 28 définitions ; des enrichissements ont suivi |
 | Audit général des formules de PV | À faire | Anomalie confirmée sur le loup sanguinaire |
 | PV à zéro et dégâts excédentaires | À vérifier | Retour forcé et report sur le druide |
 
@@ -405,3 +405,89 @@ Les numéros servent de repères historiques ; le détail exact de chaque patch 
 Le correctif du loup sanguinaire (`5d10+10`, maximum 60) a été testé avec succès **en base locale**, mais n'est pas garanti dans les fichiers versionnés. Le prochain chantier naturel est l'**audit des formules de PV** puis la **traduction des traits**.
 
 Pour toute modification, demander ou ouvrir les **fichiers actuels** de la branche `feature/druid-wild-shape` : les archives de lots précédents peuvent être dépassées.
+
+
+## 17. Évolution récente et problème architectural majeur — à transmettre à Codex
+
+### 17.1. Décision de conception (prioritaire)
+
+**Le modèle actuel n'est pas satisfaisant pour un référentiel administrable.** Les bêtes sont principalement manipulées via la table PostgreSQL `beast`, des blocs `stat_block` JSON, des commandes d'import et des services utilisant directement **Doctrine DBAL / SQL**. Il n'existe pas, dans l'état inspecté lors de ce chantier, d'entité Doctrine `Beast` servant de point d'entrée métier. Les fichiers JSON sont adaptés au *seeding* mais **ne doivent pas tenir lieu de modèle métier ou de source de vérité à l'exécution**.
+
+Le besoin réel du MJ est de pouvoir **lister, rechercher, créer, éditer et gérer individuellement** chaque bête : identité, caractéristiques, FP, CA, PV, vitesses, traits/capacités, attaques naturelles, habitats, illustrations et relations utiles à la Forme sauvage. La tentative d'ajouter une image a révélé ce problème plus large.
+
+**Mission proposée à Codex : refactoriser progressivement vers un modèle Doctrine orienté objet, sans perdre les données ni casser le portail joueur.** Ne pas confondre POO et création d'une table pour chaque propriété : des champs typés, objets-valeurs ou `Embeddable` conviennent aux scores de caractéristiques et vitesses ; les armes naturelles, habitats et capacités partagées justifient des objets et associations dédiés. Réutiliser les entités génériques existantes si elles conviennent.
+
+Modèle cible **à confirmer après audit du schéma réel** :
+
+- `Beast` : entité Doctrine mappée sur la table **existante** `beast` (pas de table parallèle), identité, slug, FP, caractéristiques, CA, PV, vitesses, image, etc.
+- `BeastNaturalWeapon` : entité mappée sur la table existante `beast_natural_weapon`, relation vers `Beast`, composantes de dégâts, bonus, portée et description.
+- Traits/capacités : réutiliser les définitions de capacités existantes et leurs tables d'association ; ne pas dupliquer le référentiel générique.
+- Habitats : entités ou référentiels existants et associations bête–habitat, selon le schéma réel.
+- Illustration : référence à un média ou fichier géré par le système d'upload, avec un stockage global indépendant des campagnes.
+- Services de règles (`WildShapeRules2014`, `WildShapeSessionService`) : **conserver leur responsabilité métier** ; remplacer progressivement les accès DBAL du catalogue par des repositories, sans réécrire les règles fonctionnelles validées.
+
+**Exigences non négociables** : migration non destructive, aucune perte de bêtes/observations/relations/transformations, API compatibles ou adaptation coordonnée du frontend, pas de doublons de définitions, imports idempotents, tests de non-régression, vérification des règles 2014 et du personnage Greto. Les imports JSON deviennent des commandes de chargement initial, non des modifications permanentes de données administrées par le MJ. Prévoir une stratégie explicite de conflit entre import et modifications manuelles.
+
+### 17.2. Armes naturelles structurées (travail ajouté après la documentation initiale)
+
+Un lot a introduit une **table `beast_natural_weapon`**, la migration `backend/migrations/Version20261120020000.php`, le service `BeastNaturalWeaponCatalogue.php` et la commande `ImportBeastNaturalWeapons2014Command.php` (`app:beasts:import-natural-weapons-2014`). L'import a été exécuté en développement : **113 actions créées pour 80 bêtes**, puis un second passage sans modification. Un correctif ultérieur a nettoyé les descriptions pour retirer la répétition des jets d'attaque/dégâts ; l'import a signalé 113 mises à jour, puis 0 au passage suivant. **Ces chiffres sont historiques, à revérifier après les nouveaux imports.**
+
+Le portail joueur consomme les profils structurés dans `character-weapons`, au lieu d'interpréter les textes d'action avec des regex. Exemple validé : araignée géante, *Morsure* (+5, 1d8+3 perforants) et *Toile* (+5, action spéciale sans dégâts directs). Le tableau d'armes a été allégé : **nom, bonus d'attaque, dégâts, détails** ; les notes, effets et capacités longues appartiennent à la **modale descriptive**, pas à une colonne « Notes ». En responsive, cartes compactes sans défilement horizontal.
+
+Attention : un profil d'arme naturelle est distinct d'une capacité passive et peut contenir un effet spécial ; le modèle Doctrine et les DTO doivent préserver cette distinction. Le texte traduit et les modifications manuelles doivent survivre aux réimports.
+
+### 17.3. Navigation et ergonomie du portail
+
+La navigation a été extraite du composant parent vers `frontend/src/app/features/player-portal/components/player-portal-tabs/` (`.ts`, `.html`, `.scss`). Répartition `space-evenly` ; libellés desktop, icônes Bootstrap Icons sur mobile ; l'onglet **Formes sauvages** n'apparaît que lorsqu'il est pertinent. L'icône `bi-paw-print` n'existe pas dans Bootstrap Icons : elle a été remplacée par `bi-bug`. La dépendance `bootstrap-icons` est installée via npm **dans le conteneur frontend**, et sa CSS est importée **globalement** dans `frontend/src/styles.scss` ; ne pas l'importer dans le SCSS d'un composant (dépassement du budget Angular). Un build a été validé ; reste un warning indépendant sur `feature-definition-manager.scss`.
+
+Le composant `druid-wild-shapes` présente les formes dans des cartes compactes regroupées par FP, avec filtres et modale. Le mobile doit rester léger, notamment pour Greto qui a un onglet supplémentaire.
+
+### 17.4. Images des bêtes : lot préparé, bug d'administration à résoudre
+
+Le besoin est un **upload d'image par le MJ**, réutilisant la logique d'upload déjà disponible pour les figures, avec illustrations officielles ou personnelles, et **miniatures lazy-loaded** dans le portail joueur. Les médias des figures sont rattachés aux campagnes : **ne pas utiliser leur dossier comme stockage définitif d'un référentiel global**.
+
+Un patch de lot 1 a été préparé avec :
+
+- migration `backend/migrations/Version20261120180000.php` ajoutant `beast.image_filename` nullable ;
+- adaptation de `MediaStorageService.php`, `BeastCatalogue.php` et `BeastFeatureAdminController.php` ;
+- `PublicBeastImageController.php`, endpoint de consultation des fichiers référencés ;
+- modifications du gestionnaire MJ `beast-feature-manager` et de `druid-wild-shapes` ;
+- stockage global `backend/public/uploads/beasts`, formats JPEG/PNG/WebP/GIF, limite prévue de 5 Mo ; attributs HTML `loading="lazy"` et `decoding="async"`.
+
+**Ne pas considérer ce lot comme entièrement validé.** Une capture du 20 novembre montre que la requête réseau `beast-features` renvoie un objet avec un tableau `beasts` (champs `id`, `name`, `slug`, `imageFilename`), **mais l'interface du gestionnaire affiche « Aucune bête trouvée »**. Le composant ne parvient donc pas à présenter la liste nécessaire pour sélectionner une bête et modifier son image. Vérifier le flux exact HTTP → service Angular → état du composant → filtrage/template, les erreurs console et la compatibilité des structures de réponse. Ne pas conclure sans diagnostic que Doctrine est la cause directe de ce bug. Vérifier également le statut réel de la migration et de l'upload sur la branche.
+
+**Optimisation ultérieure** : générer des miniatures WebP/AVIF adaptées au rendu (le simple `loading="lazy"` ne réduit pas le poids d'une image originale). Prévoir image de remplacement, dimensions fixes, et préserver les images lors des imports.
+
+### 17.5. Nouvelles bêtes du PDF « dinosaurs.pdf »
+
+Un PDF de trois pages a été fourni. Il comporte **neuf fiches** :
+
+| Bête | FP | CA | PV | Page PDF |
+|---|---:|---:|---:|---:|
+| Allosaure | 2 | 13 | 51 | 1 |
+| Ankylosaure | 3 | 15 | 68 | 1 |
+| Plésiosaure | 2 | 13 | 68 | 1 |
+| Ptéranodon | 1/4 | 13 | 13 | 1 |
+| Quetzalcoatlus | 2 | 13 | 30 | 2 |
+| Strige | 1/8 | 14 | 2 | 2 |
+| Tricératops | 5 | 13 | 95 | 2 |
+| Tyrannosaure | 8 | 13 | 136 | 3 |
+| Vélociraptor | 1/4 | 13 | 10 | 3 |
+
+Le document source est **partiel** pour le quetzalcoatlus et le vélociraptor : ne pas inventer leurs attaques manquantes. Un patch d'import a été préparé : `backend/data/beasts-dinosaurs-pdf.json` et `backend/src/Command/ImportDinosaursPdfCommand.php`, commande `app:beasts:import-dinosaurs-pdf` (simulation par défaut, `--apply` pour insertion). Il compare les **slugs**, ignore les bêtes déjà présentes et ajoute les manquantes via SQL dans `beast` ; il ne met pas à jour les fiches existantes. **L'exécution effective de cet import et le nouveau nombre total de bêtes ne sont pas confirmés dans cette documentation.**
+
+Après import, vérifier les associations habitats/traits et les armes naturelles : les commandes de synchronisation ne doivent pas écraser les données enrichies ou administrées manuellement. Les chiffres historiques **94 bêtes / 80 blocs / 14 incomplets** ci-dessus précèdent cette opération et ne doivent pas être présentés comme un état courant garanti.
+
+### 17.6. Plan d'exécution conseillé à Codex
+
+1. **Auditer avant de modifier** : schéma PostgreSQL, migrations, services DBAL, JSON, routes/DTO, relations et tests. Dresser une cartographie des tables existantes et des données déjà persistées. Vérifier le statut des patches images/dinosaures sur la branche.
+2. **Débloquer le gestionnaire MJ** : réparer l'affichage de la liste de bêtes renvoyée par `beast-features`, puis tester sélection et upload d'image ; éviter une refonte globale comme prétexte pour laisser ce bug ouvert.
+3. **Introduire le modèle Doctrine** : entités et associations mappées sur les tables existantes, repositories, types cohérents et règles de validation ; **pas de migration destructive ni de duplication de tables**.
+4. **Migrer les accès aux données par tranches** : catalogue et administration d'abord, puis les consommateurs publics, sans changer arbitrairement les contrats JSON ni la logique de transformation. Conserver les services de règles métier.
+5. **Créer le gestionnaire complet** : liste/recherche, création, édition, image, statistiques, attaques, capacités et habitats ; gérer les suppressions avec protections référentielles et préférer une désactivation si une bête est utilisée.
+6. **Sécuriser les imports** : idempotence, respect des modifications MJ, import dinosaures et mise à jour des associations ; conserver le JSON comme source d'amorçage seulement.
+7. **Recette** : tests backend et frontend, build Angular, Greto (transformations, armes, capacités, PV, ressources), uploads et lazy loading, aucun changement de comportement des autres personnages.
+
+**Définition de terminé** : un MJ peut administrer individuellement une bête de bout en bout ; la fiche est persistée via des objets/repositories Doctrine ; les images et relations sont conservées ; le portail joueur continue à fonctionner ; les imports ne détruisent pas les corrections manuelles ; les tests et builds passent.
+
+**Ne pas élargir automatiquement la mission à tout le référentiel D&D.** La refonte vise d'abord les bêtes ; ne toucher aux modules partagés que lorsque leur réutilisation est nécessaire et documentée. Le propriétaire du projet souhaite garder Codex disponible pour d'autres chantiers : privilégier des lots autonomes et vérifiables plutôt qu'une réécriture monolithique.

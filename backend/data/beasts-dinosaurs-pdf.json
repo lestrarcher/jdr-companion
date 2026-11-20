@@ -1,0 +1,554 @@
+[
+  {
+    "slug": "allosaure",
+    "name": "Allosaure",
+    "challengeRating": "2",
+    "statBlock": {
+      "armorClass": 13,
+      "hitPoints": 51,
+      "hitDice": "6d10+18",
+      "size": "Large",
+      "abilities": {
+        "str": 19,
+        "dex": 13,
+        "con": 17,
+        "int": 2,
+        "wis": 12,
+        "cha": 5
+      },
+      "speed": {
+        "walk": 18
+      },
+      "actions": [
+        {
+          "name": "Griffes",
+          "description": "Attaque d’arme au corps à corps : +6 au toucher, allonge 1,50 m, une cible. Touché : 8 (1d8 + 4) dégâts tranchants.",
+          "attackBonus": 6,
+          "damage": [
+            {
+              "damage_dice": "1d8+4",
+              "damage_type": {
+                "index": "slashing",
+                "name": "Tranchants"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Morsure",
+          "description": "Attaque d’arme au corps à corps : +6 au toucher, allonge 1,50 m, une cible. Touché : 15 (2d10 + 4) dégâts perforants.",
+          "attackBonus": 6,
+          "damage": [
+            {
+              "damage_dice": "2d10+4",
+              "damage_type": {
+                "index": "piercing",
+                "name": "Perforants"
+              }
+            }
+          ]
+        }
+      ],
+      "traits": [
+        {
+          "name": "Bond agressif",
+          "desc": "Si l’allosaure se déplace d’au moins 9 mètres en ligne droite vers une créature, puis la touche lors d’une attaque avec ses griffes dans le même tour, la cible doit réussir un jet de sauvegarde de Force DD 13 ou tomber à terre. Si la cible est à terre, l’allosaure peut effectuer une attaque de morsure contre elle en tant qu’action bonus.",
+          "translatedName": "Bond agressif",
+          "translatedDescription": "Si l’allosaure se déplace d’au moins 9 mètres en ligne droite vers une créature, puis la touche lors d’une attaque avec ses griffes dans le même tour, la cible doit réussir un jet de sauvegarde de Force DD 13 ou tomber à terre. Si la cible est à terre, l’allosaure peut effectuer une attaque de morsure contre elle en tant qu’action bonus."
+        }
+      ],
+      "proficiencies": [
+        {
+          "value": 5,
+          "proficiency": {
+            "index": "skill-perception",
+            "name": "Skill: perception"
+          }
+        }
+      ],
+      "senses": {
+        "passive_perception": 15
+      },
+      "source": {
+        "rules": "2014",
+        "document": "dinosaurs.pdf",
+        "note": "Transcription des fiches fournies ; informations absentes non complétées"
+      }
+    }
+  },
+  {
+    "slug": "ankylosaure",
+    "name": "Ankylosaure",
+    "challengeRating": "3",
+    "statBlock": {
+      "armorClass": 15,
+      "hitPoints": 68,
+      "hitDice": "8d12+16",
+      "size": "Huge",
+      "abilities": {
+        "str": 19,
+        "dex": 11,
+        "con": 15,
+        "int": 2,
+        "wis": 12,
+        "cha": 5
+      },
+      "speed": {
+        "walk": 9
+      },
+      "actions": [
+        {
+          "name": "Queue",
+          "description": "Attaque d’arme au corps à corps : +7 au toucher, allonge 3 m, une cible. Touché : 18 (4d6 + 4) dégâts contondants. Si la cible est une créature, celle-ci doit réussir un jet de sauvegarde de Force DD 14 ou tomber à terre.",
+          "attackBonus": 7,
+          "damage": [
+            {
+              "damage_dice": "4d6+4",
+              "damage_type": {
+                "index": "bludgeoning",
+                "name": "Contondants"
+              }
+            }
+          ]
+        }
+      ],
+      "traits": [],
+      "proficiencies": [],
+      "senses": {
+        "passive_perception": 11
+      },
+      "source": {
+        "rules": "2014",
+        "document": "dinosaurs.pdf",
+        "note": "Transcription des fiches fournies ; informations absentes non complétées"
+      }
+    }
+  },
+  {
+    "slug": "plesiosaure",
+    "name": "Plésiosaure",
+    "challengeRating": "2",
+    "statBlock": {
+      "armorClass": 13,
+      "hitPoints": 68,
+      "hitDice": "8d10+24",
+      "size": "Large",
+      "abilities": {
+        "str": 18,
+        "dex": 15,
+        "con": 16,
+        "int": 2,
+        "wis": 12,
+        "cha": 5
+      },
+      "speed": {
+        "walk": 6,
+        "swim": 12
+      },
+      "actions": [
+        {
+          "name": "Morsure",
+          "description": "Attaque d’arme au corps à corps : +6 au toucher, allonge 3 m, une cible. Touché : 14 (3d6 + 4) dégâts perforants.",
+          "attackBonus": 6,
+          "damage": [
+            {
+              "damage_dice": "3d6+4",
+              "damage_type": {
+                "index": "piercing",
+                "name": "Perforants"
+              }
+            }
+          ]
+        }
+      ],
+      "traits": [
+        {
+          "name": "Apnée",
+          "desc": "Le plésiosaure peut retenir son souffle durant 1 heure.",
+          "translatedName": "Apnée",
+          "translatedDescription": "Le plésiosaure peut retenir son souffle durant 1 heure."
+        }
+      ],
+      "proficiencies": [
+        {
+          "value": 3,
+          "proficiency": {
+            "index": "skill-perception",
+            "name": "Skill: perception"
+          }
+        }
+      ],
+      "senses": {
+        "passive_perception": 13
+      },
+      "source": {
+        "rules": "2014",
+        "document": "dinosaurs.pdf",
+        "note": "Transcription des fiches fournies ; informations absentes non complétées"
+      }
+    }
+  },
+  {
+    "slug": "pteranodon",
+    "name": "Ptéranodon",
+    "challengeRating": "1/4",
+    "statBlock": {
+      "armorClass": 13,
+      "hitPoints": 13,
+      "hitDice": "3d8",
+      "size": "Medium",
+      "abilities": {
+        "str": 12,
+        "dex": 15,
+        "con": 10,
+        "int": 2,
+        "wis": 9,
+        "cha": 5
+      },
+      "speed": {
+        "walk": 3,
+        "fly": 18
+      },
+      "actions": [
+        {
+          "name": "Morsure",
+          "description": "Attaque d’arme au corps à corps : +3 au toucher, allonge 1,50 m, une cible. Touché : 6 (2d4 + 1) dégâts perforants.",
+          "attackBonus": 3,
+          "damage": [
+            {
+              "damage_dice": "2d4+1",
+              "damage_type": {
+                "index": "piercing",
+                "name": "Perforants"
+              }
+            }
+          ]
+        }
+      ],
+      "traits": [
+        {
+          "name": "Repli aérien",
+          "desc": "Le ptéranodon ne provoque pas d’attaques d’opportunité lorsqu’il quitte l’allonge d’un ennemi en volant.",
+          "translatedName": "Repli aérien",
+          "translatedDescription": "Le ptéranodon ne provoque pas d’attaques d’opportunité lorsqu’il quitte l’allonge d’un ennemi en volant."
+        }
+      ],
+      "proficiencies": [],
+      "senses": {
+        "passive_perception": 11
+      },
+      "source": {
+        "rules": "2014",
+        "document": "dinosaurs.pdf",
+        "note": "Transcription des fiches fournies ; informations absentes non complétées"
+      }
+    }
+  },
+  {
+    "slug": "quetzalcoatlus",
+    "name": "Quetzalcoatlus",
+    "challengeRating": "2",
+    "statBlock": {
+      "armorClass": 13,
+      "hitPoints": 30,
+      "hitDice": "4d12+4",
+      "size": "Huge",
+      "abilities": {
+        "str": 15,
+        "dex": 13,
+        "con": 13,
+        "int": 2,
+        "wis": 10,
+        "cha": 5
+      },
+      "speed": {
+        "walk": 3,
+        "fly": 24
+      },
+      "actions": [
+        {
+          "name": "Morsure",
+          "description": "Morsure. Le bloc de statistiques complet de cette créature n’est pas disponible dans le document fourni (non OGL)."
+        }
+      ],
+      "traits": [
+        {
+          "name": "Repli aérien",
+          "desc": "Repli aérien. Le document ne précise pas les effets de ce trait.",
+          "translatedName": "Repli aérien",
+          "translatedDescription": "Repli aérien. Le document ne précise pas les effets de ce trait."
+        }
+      ],
+      "proficiencies": [
+        {
+          "value": 2,
+          "proficiency": {
+            "index": "skill-perception",
+            "name": "Skill: perception"
+          }
+        }
+      ],
+      "senses": {
+        "passive_perception": 12
+      },
+      "source": {
+        "rules": "2014",
+        "document": "dinosaurs.pdf",
+        "note": "Transcription des fiches fournies ; informations absentes non complétées"
+      }
+    }
+  },
+  {
+    "slug": "strige",
+    "name": "Strige",
+    "challengeRating": "1/8",
+    "statBlock": {
+      "armorClass": 14,
+      "hitPoints": 2,
+      "hitDice": "1d4",
+      "size": "Tiny",
+      "abilities": {
+        "str": 4,
+        "dex": 16,
+        "con": 11,
+        "int": 2,
+        "wis": 8,
+        "cha": 6
+      },
+      "speed": {
+        "walk": 3,
+        "fly": 12
+      },
+      "actions": [
+        {
+          "name": "Absorption de sang",
+          "description": "Attaque d’arme au corps à corps : +5 au toucher, allonge 1,50 m, une créature. Touché : 5 (1d4 + 3) dégâts perforants, et la strige reste attachée à sa cible. Tant qu’elle est attachée, la strige n’attaque pas mais au début de chaque tour de la strige, la cible perd 5 (1d4 + 3) points de vie du fait qu’elle perde son sang. La strige peut se détacher en dépensant 1,50 mètre de mouvement, ce qu’elle fait une fois qu’elle a absorbé 10 points de vie de sang de la cible, ou lorsque cette dernière est morte. Toute créature, dont la cible, peut utiliser son action pour détacher la strige.",
+          "attackBonus": 5,
+          "damage": [
+            {
+              "damage_dice": "1d4+3",
+              "damage_type": {
+                "index": "piercing",
+                "name": "Perforants"
+              }
+            }
+          ]
+        }
+      ],
+      "traits": [],
+      "proficiencies": [],
+      "senses": {
+        "passive_perception": 9
+      },
+      "source": {
+        "rules": "2014",
+        "document": "dinosaurs.pdf",
+        "note": "Transcription des fiches fournies ; informations absentes non complétées"
+      }
+    }
+  },
+  {
+    "slug": "triceratops",
+    "name": "Tricératops",
+    "challengeRating": "5",
+    "statBlock": {
+      "armorClass": 13,
+      "hitPoints": 95,
+      "hitDice": "10d12+30",
+      "size": "Huge",
+      "abilities": {
+        "str": 22,
+        "dex": 9,
+        "con": 17,
+        "int": 2,
+        "wis": 11,
+        "cha": 5
+      },
+      "speed": {
+        "walk": 15
+      },
+      "actions": [
+        {
+          "name": "Corne",
+          "description": "Attaque d’arme au corps à corps : +9 au toucher, allonge 1,50 m, une cible. Touché : 24 (4d8 + 6) dégâts perforants.",
+          "attackBonus": 9,
+          "damage": [
+            {
+              "damage_dice": "4d8+6",
+              "damage_type": {
+                "index": "piercing",
+                "name": "Perforants"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Piétinement",
+          "description": "Attaque d’arme au corps à corps : +9 au toucher, allonge 1,50 m, une créature à terre. Touché : 22 (3d10 + 6) dégâts contondants.",
+          "attackBonus": 9,
+          "damage": [
+            {
+              "damage_dice": "3d10+6",
+              "damage_type": {
+                "index": "bludgeoning",
+                "name": "Contondants"
+              }
+            }
+          ]
+        }
+      ],
+      "traits": [
+        {
+          "name": "Charge écrasante",
+          "desc": "Si le tricératops se déplace d’au moins 6 mètres en ligne droite vers une créature, puis la touche lors d’une attaque avec sa corne dans le même tour, la cible doit réussir un jet de sauvegarde de Force DD 13 ou tomber à terre. Si la cible est à terre, le tricératops peut effectuer une attaque de piétinement contre celle-ci par une action bonus.",
+          "translatedName": "Charge écrasante",
+          "translatedDescription": "Si le tricératops se déplace d’au moins 6 mètres en ligne droite vers une créature, puis la touche lors d’une attaque avec sa corne dans le même tour, la cible doit réussir un jet de sauvegarde de Force DD 13 ou tomber à terre. Si la cible est à terre, le tricératops peut effectuer une attaque de piétinement contre celle-ci par une action bonus."
+        }
+      ],
+      "proficiencies": [],
+      "senses": {
+        "passive_perception": 10
+      },
+      "source": {
+        "rules": "2014",
+        "document": "dinosaurs.pdf",
+        "note": "Transcription des fiches fournies ; informations absentes non complétées"
+      }
+    }
+  },
+  {
+    "slug": "tyrannosaure",
+    "name": "Tyrannosaure",
+    "challengeRating": "8",
+    "statBlock": {
+      "armorClass": 13,
+      "hitPoints": 136,
+      "hitDice": "13d12+52",
+      "size": "Huge",
+      "abilities": {
+        "str": 25,
+        "dex": 10,
+        "con": 19,
+        "int": 2,
+        "wis": 12,
+        "cha": 9
+      },
+      "speed": {
+        "walk": 15
+      },
+      "actions": [
+        {
+          "name": "Attaques multiples",
+          "description": "Le tyrannosaure effectue deux attaques : une de morsure et une avec sa queue. Il ne peut pas faire les deux attaques contre la même cible."
+        },
+        {
+          "name": "Morsure",
+          "description": "Attaque d’arme au corps à corps : +10 au toucher, allonge 3 m, une cible. Touché : 33 (4d12 + 7) dégâts perforants. Si la cible est une créature de taille M ou plus petite, elle est agrippée (évasion DD 17). Tant qu’elle est agrippée, la cible est entravée, et le tyrannosaure ne peut pas mordre une autre cible.",
+          "attackBonus": 10,
+          "damage": [
+            {
+              "damage_dice": "4d12+7",
+              "damage_type": {
+                "index": "piercing",
+                "name": "Perforants"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Queue",
+          "description": "Attaque d’arme au corps à corps : +10 au toucher, allonge 3 m, une cible. Touché : 20 (3d8 + 7) dégâts contondants.",
+          "attackBonus": 10,
+          "damage": [
+            {
+              "damage_dice": "3d8+7",
+              "damage_type": {
+                "index": "bludgeoning",
+                "name": "Contondants"
+              }
+            }
+          ]
+        }
+      ],
+      "traits": [],
+      "proficiencies": [
+        {
+          "value": 4,
+          "proficiency": {
+            "index": "skill-perception",
+            "name": "Skill: perception"
+          }
+        }
+      ],
+      "senses": {
+        "passive_perception": 14
+      },
+      "source": {
+        "rules": "2014",
+        "document": "dinosaurs.pdf",
+        "note": "Transcription des fiches fournies ; informations absentes non complétées"
+      }
+    }
+  },
+  {
+    "slug": "velociraptor",
+    "name": "Vélociraptor",
+    "challengeRating": "1/4",
+    "statBlock": {
+      "armorClass": 13,
+      "hitPoints": 10,
+      "hitDice": "3d4+3",
+      "size": "Tiny",
+      "abilities": {
+        "str": 6,
+        "dex": 14,
+        "con": 13,
+        "int": 4,
+        "wis": 12,
+        "cha": 6
+      },
+      "speed": {
+        "walk": 9
+      },
+      "actions": [
+        {
+          "name": "Attaques multiples",
+          "description": "Attaques multiples. Les valeurs des attaques ne figurent pas dans le document fourni (non OGL)."
+        },
+        {
+          "name": "Morsure",
+          "description": "Morsure. Statistiques non disponibles dans le document fourni."
+        },
+        {
+          "name": "Griffes",
+          "description": "Griffes. Statistiques non disponibles dans le document fourni."
+        }
+      ],
+      "traits": [
+        {
+          "name": "Tactique de groupe",
+          "desc": "Tactique de groupe. Le document ne précise pas les effets de ce trait.",
+          "translatedName": "Tactique de groupe",
+          "translatedDescription": "Tactique de groupe. Le document ne précise pas les effets de ce trait."
+        }
+      ],
+      "proficiencies": [
+        {
+          "value": 3,
+          "proficiency": {
+            "index": "skill-perception",
+            "name": "Skill: perception"
+          }
+        }
+      ],
+      "senses": {
+        "passive_perception": 13
+      },
+      "source": {
+        "rules": "2014",
+        "document": "dinosaurs.pdf",
+        "note": "Transcription des fiches fournies ; informations absentes non complétées"
+      }
+    }
+  }
+]

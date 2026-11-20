@@ -15,6 +15,22 @@
   <div class="beast-manager__content">
     @if (selectedBeast() !== null) {
       <header class="panel-header"><div><span class="eyebrow">{{ mode() === 'catalog' ? 'Catalogue animal' : 'Source de capacité' }}</span><h2>{{ selectedBeastName() }}</h2></div></header>
+      @if (mode() === 'catalog') {
+        <section class="beast-manager__image-editor" aria-label="Illustration de la bête">
+          @if (selectedImageUrl(); as imageUrl) {
+            <img [src]="imageUrl" alt="Illustration de {{ selectedBeastName() }}" loading="lazy" decoding="async" width="112" height="112" />
+          } @else { <span class="beast-manager__image-placeholder" aria-hidden="true">Aucune image</span> }
+          @if (!readOnly) {
+            <div class="beast-manager__image-actions">
+              <label class="action-button">{{ imageBusy() ? 'Envoi…' : 'Importer une image' }}
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" [disabled]="imageBusy()" (change)="uploadImage($event)" />
+              </label>
+              @if (selectedImageUrl()) { <button type="button" class="remove-button" [disabled]="imageBusy()" (click)="deleteImage()">Supprimer l’image</button> }
+              <small>JPEG, PNG, WebP ou GIF · 5 Mo maximum</small>
+            </div>
+          }
+        </section>
+      }
       <p class="beast-manager__intro">{{ mode() === 'catalog' ? 'Capacités associées à cette bête. Leur création et leur modification se font dans l’onglet Capacités.' : 'Sélectionne une définition créée dans Capacités, puis attribue-la à la bête sélectionnée.' }}</p>
       @if (mode() === 'assignments' && !readOnly) {
         <div class="beast-manager__add">

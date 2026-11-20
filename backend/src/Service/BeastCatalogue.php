@@ -8,7 +8,7 @@ final readonly class BeastCatalogue
     public function __construct(private Connection $db) {}
     public function listForCharacter(int $characterId): array
     {
-        $rows = $this->db->fetchAllAssociative('SELECT b.id, b.slug, b.name, b.challenge_rating AS "challengeRating", b.source_url AS "sourceUrl", b.stat_block AS "statBlock", (s.beast_id IS NOT NULL) AS seen FROM beast b LEFT JOIN character_seen_beast s ON s.beast_id = b.id AND s.character_id = :character ORDER BY b.slug', ['character' => $characterId]);
+        $rows = $this->db->fetchAllAssociative('SELECT b.id, b.slug, b.name, b.challenge_rating AS "challengeRating", b.source_url AS "sourceUrl", CASE WHEN b.image_filename IS NOT NULL THEN \'/api/public/beasts/images/\' || b.image_filename ELSE NULL END AS "imageUrl", b.stat_block AS "statBlock", (s.beast_id IS NOT NULL) AS seen FROM beast b LEFT JOIN character_seen_beast s ON s.beast_id = b.id AND s.character_id = :character ORDER BY b.slug', ['character' => $characterId]);
         $habitats = $this->db->fetchAllAssociative('SELECT beast_id, habitat FROM beast_habitat ORDER BY habitat');
         $byBeast = [];
         foreach ($habitats as $habitat) $byBeast[(int) $habitat['beast_id']][] = $habitat['habitat'];

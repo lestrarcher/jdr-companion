@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { REFERENCE_READ_ONLY } from '@core/services/reference-editor-context';
 
-type Beast = { id: number; name: string; slug: string };
+type Beast = { id: number; name: string; slug: string; imageFilename: string | null };
 type Feature = { id: number; name: string; description: string | null };
 type Link = { beastId: number; featureId: number };
 
@@ -24,6 +24,11 @@ export class BeastFeatureManager implements OnInit {
   protected readonly selectedBeast = signal<number | null>(null);
   protected readonly selectedFeatures = signal<number[]>([]);
   protected readonly busy = signal(false);
+  protected readonly imageBusy = signal(false);
+  protected readonly selectedImageUrl = computed(() => {
+    const filename = this.beasts().find(b => b.id === this.selectedBeast())?.imageFilename;
+    return filename ? `/api/public/beasts/images/${filename}` : null;
+  });
   protected readonly message = signal('');
   protected readonly filter = signal('');
   protected readonly filteredBeasts = computed(() => this.beasts().filter(b => b.name.toLocaleLowerCase('fr').includes(this.filter().toLocaleLowerCase('fr'))));
@@ -49,6 +54,36 @@ export class BeastFeatureManager implements OnInit {
     this.selectedBeast.set(id);
     this.selectedFeatures.set(this.links().filter(l => Number(l.beastId) === id).map(l => Number(l.featureId)));
     this.message.set('');
+  }
+
+  protected uploadImage(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    const id = this.selectedBeast();
+    if (!file || id === null || this.readOnly || this.imageBusy()) return;
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+      this.message.set('Image JPEG, PNG, WebP ou GIF de 5 Mo maximum.'); input.value = ''; return;
+    }
+    const data = new FormData(); data.append('image', file);
+    this.imageBusy.set(true);
+    this.http.post<{imageUrl: string}>(`/api/dnd/beast-features/${id}/image`, data).subscribe({
+      next: result => {
+        const filename = result.imageUrl.split('/').pop() ?? null;
+        this.beasts.update(items => items.map(b => b.id === id ? {...b, imageFilename: filename} : b));
+        this.imageBusy.set(false); this.message.set('Illustration enregistrée.'); input.value = '';
+      },
+      error: e => { this.imageBusy.set(false); this.message.set(e.error?.detail ?? 'Upload impossible.'); input.value = ''; },
+    });
+  }
+
+  protected deleteImage(): void {
+    const id = this.selectedBeast();
+    if (id === null || this.readOnly || this.imageBusy()) return;
+    this.imageBusy.set(true);
+    this.http.delete(`/api/dnd/beast-features/${id}/image`).subscribe({
+      next: () => { this.beasts.update(items => items.map(b => b.id === id ? {...b, imageFilename: null} : b)); this.imageBusy.set(false); this.message.set('Illustration supprimée.'); },
+      error: () => { this.imageBusy.set(false); this.message.set('Suppression impossible.'); },
+    });
   }
 
   protected addFeature(): void {

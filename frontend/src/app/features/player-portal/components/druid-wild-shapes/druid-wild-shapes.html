@@ -61,7 +61,9 @@
         <div class="wild-grid">
           @for (beast of group.beasts; track beast.id) {
             <article class="wild-card" [class.wild-card--locked]="!catalog() && !isAvailable(beast)">
-              <span class="wild-beast-icon" aria-hidden="true">{{ beastSymbol(beast) }}</span>
+              @if (beast.imageUrl) {
+                <img class="wild-beast-image" [src]="beast.imageUrl" [alt]="'Illustration de ' + (beast.name || beast.slug)" loading="lazy" decoding="async" width="64" height="64" />
+              } @else { <span class="wild-beast-icon" aria-hidden="true">{{ beastSymbol(beast) }}</span> }
               <div class="wild-card__name"><strong>{{ beast.name || beast.slug }}</strong>
                 @if (!catalog() && !isAvailable(beast)) { <small>{{ reason(beast) }}</small> }
               </div>

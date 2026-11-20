@@ -71,6 +71,41 @@ final class MediaStorageService
         return $filename;
     }
 
+    /** Stockage global des illustrations du bestiaire (indépendant des campagnes). */
+    public function storeBeast(UploadedFile $file): string
+    {
+        $this->validate($file);
+        // Limite plus stricte pour les vignettes du catalogue.
+        if (($file->getSize() ?: 0) > 5 * 1024 * 1024) {
+            throw new \InvalidArgumentException('Illustration limitée à 5 Mo.');
+        }
+        $extension = match ($file->getMimeType()) {
+            'image/jpeg' => 'jpg', 'image/png' => 'png',
+            'image/webp' => 'webp', 'image/gif' => 'gif',
+            default => throw new \InvalidArgumentException('Format invalide.'),
+        };
+        $directory = $this->projectDir . '/public/uploads/beasts';
+        if (!is_dir($directory) && !mkdir($directory, 0775, true) && !is_dir($directory)) {
+            throw new \RuntimeException('Impossible de créer le répertoire du bestiaire.');
+        }
+        $filename = bin2hex(random_bytes(16)) . '.' . $extension;
+        try { $file->move($directory, $filename); }
+        catch (FileException $e) { throw new \RuntimeException('Impossible de stocker l’illustration.', previous: $e); }
+        return $filename;
+    }
+
+    public function removeBeast(string $filename): void
+    {
+        if (!preg_match('/^[a-f0-9]{32}\.(?:jpg|png|webp|gif)$/D', $filename)) {
+            throw new \InvalidArgumentException('Nom de fichier invalide.');
+        }
+        $directory = $this->projectDir . '/public/uploads/beasts';
+        $path = $directory . '/' . $filename;
+        if (is_link($path) || (is_file($path) && !unlink($path))) {
+            throw new \RuntimeException('Suppression de l’illustration impossible.');
+        }
+    }
+
     public function remove(
         string $filename,
         int $campaignId,

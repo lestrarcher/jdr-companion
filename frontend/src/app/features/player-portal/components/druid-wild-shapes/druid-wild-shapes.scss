@@ -83,3 +83,5 @@
   .wild-controls > input { grid-column:auto; }
 }
 @media(max-width:390px) { .wild-card { padding:.55rem .35rem; min-height:7.1rem; } }
+
+.wild-beast-image { display:block; width:3.25rem; height:3.25rem; flex:0 0 3.25rem; object-fit:cover; border:1px solid rgba(201,168,95,.35); background:#17151e; border-radius:.2rem; }
