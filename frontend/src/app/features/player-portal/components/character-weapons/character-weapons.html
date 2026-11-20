@@ -1,17 +1,16 @@
 <div class="weapons-table" role="region" [attr.aria-label]="naturalForm() ? 'Armes naturelles de la forme sauvage' : 'Armes possédées'" tabindex="0">
   <table>
-    <thead><tr><th scope="col">Nom</th><th scope="col">Bonus Att</th><th scope="col">Dégâts &amp; Type</th><th scope="col">Notes</th><th scope="col"><span class="sr-only">Détails</span></th></tr></thead>
+    <thead><tr><th scope="col">Nom</th><th scope="col">Bonus Att</th><th scope="col">Dégâts &amp; Type</th><th scope="col"><span class="sr-only">Détails</span></th></tr></thead>
     <tbody>
       @for (weapon of weapons(); track weapon.id) {
         <tr>
           <th scope="row">{{ weapon.name }}</th>
           <td class="attack">{{ attackLabel(weapon.attackBonus) }}</td>
           <td class="damage">{{ weapon.damage ?? '—' }}</td>
-          <td class="notes">{{ visibleNotes(weapon.notes).join(' · ') }}</td>
-          <td class="details-control"><button type="button" class="details-toggle" [attr.aria-label]="'Afficher les détails de ' + weapon.name" aria-haspopup="dialog" (click)="toggleDetails(weapon.id)">+</button></td>
+          <td class="details-control"><button type="button" class="details-toggle" [attr.aria-label]="'Afficher les détails de ' + weapon.name" aria-haspopup="dialog" (click)="toggleDetails(weapon.id)"><span class="desktop-details" aria-hidden="true">+</span><span class="mobile-details" aria-hidden="true">Détails ›</span></button></td>
         </tr>
       } @empty {
-        <tr><td colspan="5" class="notes">Aucune arme identifiée dans l’inventaire.</td></tr>
+        <tr><td colspan="4" class="notes">Aucune arme identifiée dans l’inventaire.</td></tr>
       }
     </tbody>
   </table>
@@ -32,7 +31,12 @@
       <div><dt>Bonus d’attaque</dt><dd>{{ attackLabel(weapon.attackBonus) }}</dd></div>
       <div><dt>Dégâts &amp; type</dt><dd>{{ weapon.damage ?? '—' }}</dd></div>
     </dl>
-    @if (visibleNotes(weapon.notes).length) { <p class="weapon-meta">{{ visibleNotes(weapon.notes).join(' · ') }}</p> }
+    @if (visibleNotes(weapon.notes).length) {
+      <section class="weapon-effects" aria-label="Propriétés et effets de l’arme">
+        <h3>{{ naturalForm() ? 'Effets de l’attaque' : 'Propriétés et notes' }}</h3>
+        @for (note of visibleNotes(weapon.notes); track $index) { <p>{{ note }}</p> }
+      </section>
+    }
     @if (itemsById().get(weapon.id); as owned) {
       @if (owned.magicItem.description) {
         <section class="weapon-effects" aria-label="Effets magiques">

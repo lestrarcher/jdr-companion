@@ -1,3 +1,4 @@
+import { PlayerPortalTabs, type PlayerPortalTab } from './components/player-portal-tabs/player-portal-tabs';
 import { DruidWildShapes } from './components/druid-wild-shapes/druid-wild-shapes';
 import { Component, DestroyRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
@@ -50,14 +51,6 @@ type SaveStatus =
   | 'saved'
   | 'error';
 
-type PlayerPortalTab =
-  | 'overview'
-  | 'status'
-  | 'statistics'
-  | 'features'
-  | 'spells'
-  | 'possessions'
-  | 'wild-shapes';
 
 @Component({
   selector: 'app-player-portal',
@@ -72,6 +65,7 @@ type PlayerPortalTab =
     CharacterWalletComponent,
     CharacterMagicItems,
     DruidWildShapes,
+    PlayerPortalTabs,
     RestControls,
     ActionPreparationModal,
     RouterLink,
@@ -238,22 +232,40 @@ export class PlayerPortal {
     abilities: Record<string, number>; speed: Record<string, number>;
     actions: Array<{ name: string; description?: string; attackBonus?: number }>;
     senses: unknown; proficiencies?: unknown;
+    naturalWeapons?: Array<{
+      id: number; name: string; attackType: string; attackBonus: number | null;
+      damageComponents: Array<{ dice: string; type: string | null }>;
+      description: string; sortOrder: number;
+    }>;
   }>(null);
-  // Natural attacks use the existing weapon presentation, without creating inventory items.
+  // Les attaques naturelles sont lues depuis la table dédiée : aucun parsing de texte,
+  // aucune recalcul des bonus avec les caractéristiques du personnage.
   protected readonly effectiveWeapons = computed(() => {
     const beast = this.activeBeast();
     if (!beast) return this.weapons();
-    return (beast.actions ?? []).map((action, index) => {
-      const description = action.description ?? '';
-      const hit = description.match(/(?:Hit|Touché)\s*:\s*[^()]*\(([^)]+)\)\s*([^.,;]*)/i);
-      const damage = hit ? `${hit[1]} ${hit[2]}`.trim() : null;
-      return {
-        id: -(index + 1), name: action.name, equipped: true,
-        attackBonus: typeof action.attackBonus === 'number' ? action.attackBonus : null,
-        damage, notes: description ? [description] : [], complete: true,
-      };
-    });
+    return (beast.naturalWeapons ?? []).map(weapon => ({
+      id: -weapon.id, name: weapon.name, equipped: true,
+      attackBonus: weapon.attackBonus,
+      damage: weapon.damageComponents.length
+        ? weapon.damageComponents.map(component =>
+            `${component.dice}${component.type ? ' ' + this.naturalDamageTypeLabel(component.type) : ''}`
+          ).join(' + ')
+        : null,
+      notes: weapon.description ? [weapon.description] : [],
+      complete: true,
+    }));
   });
+
+  private naturalDamageTypeLabel(type: string): string {
+    const labels: Record<string, string> = {
+      piercing: 'perforants', slashing: 'tranchants', bludgeoning: 'contondants',
+      poison: 'poison', acid: 'acide', fire: 'feu', cold: 'froid',
+      lightning: 'foudre', thunder: 'tonnerre', necrotic: 'nécrotiques',
+      radiant: 'radiants', force: 'force', psychic: 'psychiques',
+    };
+    return labels[type.toLowerCase()] ?? type;
+  }
+
   protected readonly effectiveAbilities = computed(() => {
     const beast = this.activeBeast();
     if (!beast) return this.abilities();

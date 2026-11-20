@@ -8,7 +8,7 @@ type Beast = {
   seen: boolean; habitats: string[]; sourceUrl: string | null;
   statBlock: { armorClass?: number; hitPoints?: number; hitDice?: string; speed?: Record<string, number>; abilities?: Record<string, number>;
     actions?: Array<{ name: string; description?: string; attackBonus?: number }>;
-    traits?: Array<{ name: string; desc?: string }> } | null;
+    traits?: Array<{ name: string; desc?: string; translatedName?: string; translatedDescription?: string }> } | null;
 };
 const HABITATS = ['aquatique', 'arctique', 'collines', 'desert', 'foret', 'littoral', 'marais', 'montagne', 'plaine', 'outreterre'];
 @Component({
@@ -54,14 +54,53 @@ export class DruidWildShapes implements OnInit {
   readonly catalog = signal(false);
   readonly search = signal('');
   readonly habitat = signal('');
+  readonly movement = signal<'all' | 'fly' | 'swim'>('all');
+  readonly availability = signal<'all' | 'available' | 'unavailable'>('all');
   readonly selected = signal<number | null>(null);
   readonly habitats = HABITATS;
   readonly filtered = computed(() => this.beasts().filter(beast =>
     (this.catalog() || beast.seen) &&
     (!this.habitat() || beast.habitats.includes(this.habitat())) &&
+    (this.movement() === 'all' || (beast.statBlock?.speed?.[this.movement()] ?? 0) > 0) &&
+    (this.availability() === 'all' || (this.availability() === 'available' ? this.isAvailable(beast) : !this.isAvailable(beast))) &&
     (!this.search() || `${beast.name ?? ''} ${beast.slug}`.toLowerCase().includes(this.search().toLowerCase()))));
   readonly seenCount = computed(() => this.beasts().filter(beast => beast.seen).length);
   readonly selectedBeast = computed(() => this.beasts().find(beast => beast.id === this.selected()) ?? null);
+  readonly groups = computed(() => {
+    const buckets = new Map<string, Beast[]>();
+    for (const beast of this.filtered()) {
+      const fp = beast.challengeRating ?? '?';
+      if (!buckets.has(fp)) buckets.set(fp, []);
+      buckets.get(fp)!.push(beast);
+    }
+    return [...buckets.entries()]
+      .sort(([a], [b]) => this.crValue(a) - this.crValue(b))
+      .map(([fp, beasts]) => ({ fp, beasts: beasts.sort((a, b) => (a.name ?? a.slug).localeCompare(b.name ?? b.slug, 'fr')) }));
+  });
+  private crValue(value: string): number {
+    if (value.includes('/')) { const [a, b] = value.split('/').map(Number); return b ? a / b : Infinity; }
+    return value === '?' ? Infinity : Number(value);
+  }
+  beastSymbol(beast: Beast): string {
+    const slug = beast.slug.toLowerCase();
+    if (/araignee|scorpion|insect|mille-pattes/.test(slug)) return '✳';
+    if (/oiseau|aigle|corbeau|hibou|chouette|vautour|faucon|chauve-souris/.test(slug)) return '◆';
+    if (/requin|poisson|dauphin|pieuvre|crocodile|crabe|serpent/.test(slug)) return '≈';
+    return '♣';
+  }
+  openBeast(beast: Beast): void {
+    this.hitPointMethod.set('average');
+    this.rolledHitPoints.set('');
+    this.selected.set(beast.id);
+  }
+  closeBeast(): void { this.selected.set(null); }
+  isAvailable(beast: Beast): boolean { return beast.seen && this.eligible(beast); }
+  speedLabel(key: string): string { return ({ walk: 'Marche', fly: 'Vol', swim: 'Nage', climb: 'Escalade', burrow: 'Fouissement' } as Record<string, string>)[key] ?? key; }
+  abilityLabel(key: string): string { return ({ str: 'FOR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'SAG', cha: 'CHA' } as Record<string, string>)[key] ?? key.toUpperCase(); }
+  canTransform(beast: Beast): boolean {
+    return beast.seen && this.eligible(beast) && !this.mutating() && this.wildState().active === null
+      && this.wildState().usesRemaining > 0 && (this.hitPointMethod() !== 'rolled' || this.validRolledHitPoints(beast));
+  }
 
   ngOnInit(): void { this.reload(); this.loadWildState(); }
   private wildUrl(): string { return `/api/public/characters/${encodeURIComponent(this.token())}/wild-shape`; }
@@ -83,6 +122,7 @@ export class DruidWildShapes implements OnInit {
         next: response => {
           this.wildState.set(response.wildShape);
           this.mutating.set(false);
+          this.selected.set(null);
           this.transformed.emit();
         },
         error: response => {

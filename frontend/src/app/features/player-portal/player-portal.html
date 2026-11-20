@@ -50,33 +50,12 @@
             </div>
           </header>
 
-          <nav class="portal-tabs" aria-label="Sections du personnage">
-            @if (desktopView()) {
-              <button type="button" [class.portal-tab--active]="activeTab() === 'overview'" [attr.aria-pressed]="activeTab() === 'overview'" (click)="selectTab('overview')">
-                <span class="portal-tab-symbol" aria-hidden="true">⌂</span><span><strong>Tableau de bord</strong><small>Vue d'ensemble</small></span>
-              </button>
-            }
-            <button type="button" [class.portal-tab--active]="activeTab() === 'status'" [attr.aria-pressed]="activeTab() === 'status'" (click)="selectTab('status')">
-              <span class="portal-tab-symbol" aria-hidden="true">✦</span><span><strong>État</strong><small>Santé et ressources</small></span>
-            </button>
-            <button type="button" [class.portal-tab--active]="activeTab() === 'statistics'" [attr.aria-pressed]="activeTab() === 'statistics'" (click)="selectTab('statistics')">
-              <span class="portal-tab-symbol" aria-hidden="true">◇</span><span><strong><span class="portal-label-desktop">Caractéristiques</span><span class="portal-label-mobile">Stats</span></strong><small>Attributs et valeurs</small></span>
-            </button>
-            <button type="button" [class.portal-tab--active]="activeTab() === 'features'" [attr.aria-pressed]="activeTab() === 'features'" (click)="selectTab('features')">
-              <span class="portal-tab-symbol" aria-hidden="true">✧</span><span><strong>Capacités</strong><small>Origines et descriptions</small></span>
-            </button>
-            <button type="button" [class.portal-tab--active]="activeTab() === 'spells'" [attr.aria-pressed]="activeTab() === 'spells'" (click)="selectTab('spells')">
-              <span class="portal-tab-symbol" aria-hidden="true">✧</span><span><strong>Sorts</strong><small>Grimoire et magie</small></span>
-            </button>
-            @if (druidLevel() > 0) {
-              <button type="button" [class.portal-tab--active]="activeTab() === 'wild-shapes'" [attr.aria-pressed]="activeTab() === 'wild-shapes'" (click)="selectTab('wild-shapes')">
-                <span class="portal-tab-symbol" aria-hidden="true">♣</span><span><strong>Formes sauvages</strong><small>Bestiaire observé</small></span>
-              </button>
-            }
-            <button type="button" [class.portal-tab--active]="activeTab() === 'possessions'" [attr.aria-pressed]="activeTab() === 'possessions'" (click)="selectTab('possessions')">
-              <span class="portal-tab-symbol" aria-hidden="true">◈</span><span><strong>Inventaire</strong><small>Bourse et objets</small></span>
-            </button>
-          </nav>
+          <app-player-portal-tabs
+            [activeTab]="activeTab()"
+            [desktopView]="desktopView()"
+            [hasWildShapes]="druidLevel() > 0"
+            (tabSelected)="selectTab($event)"
+          />
 
           @if ((activeTab() === 'status' || activeTab() === 'overview') && canEdit() && levelUpAllowed()) {
             <section class="level-up-callout">

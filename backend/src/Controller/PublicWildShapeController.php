@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\Service\{PlayerCharacterAccess, WildShapeSessionService, WildShapeRules2014};
+use App\Service\{PlayerCharacterAccess, WildShapeSessionService, WildShapeRules2014, BeastNaturalWeaponCatalogue};
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -20,13 +20,20 @@ final class PublicWildShapeController extends AbstractController
         private readonly WildShapeRules2014 $rules,
         private readonly EntityManagerInterface $em,
         private readonly Connection $db,
+        private readonly BeastNaturalWeaponCatalogue $naturalWeapons,
     ) {}
 
     #[Route('', methods: ['GET'])]
     public function get(string $accessToken): JsonResponse
     {
         $session = $this->access->requireParticipating($accessToken);
-        return $this->json(['wildShape' => $session->getState()[WildShapeSessionService::KEY] ?? ['usesRemaining' => 2, 'active' => null]]);
+        $wildShape = $session->getState()[WildShapeSessionService::KEY] ?? ['usesRemaining' => 2, 'active' => null];
+        // Les attaques viennent de la table dédiée, et non des textes du stat_block.
+        // Ne pas persister ces données de catalogue dans l'état de session.
+        if (is_array($wildShape['active'] ?? null) && !empty($wildShape['active']['beastId'])) {
+            $wildShape['active']['naturalWeapons'] = $this->naturalWeapons->forBeast((int) $wildShape['active']['beastId']);
+        }
+        return $this->json(['wildShape' => $wildShape]);
     }
 
     #[Route('/features', methods: ['GET'])]

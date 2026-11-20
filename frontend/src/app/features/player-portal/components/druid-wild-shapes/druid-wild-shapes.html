@@ -1,24 +1,34 @@
 <section class="wild-shapes">
   <header class="wild-heading">
-    <div><span class="eyebrow">Druide · Forme sauvage</span><h2>{{ catalog() ? 'Bestiaire des observations' : 'Formes connues' }}</h2><p>{{ seenCount() }} bêtes observées sur {{ beasts().length }}</p></div>
-    <button type="button" (click)="catalog.set(!catalog()); selected.set(null)">{{ catalog() ? '← Formes sauvages' : 'Gérer les observations ↗' }}</button>
+    <div>
+      <span class="eyebrow">Druide · Forme sauvage</span>
+      <h2>{{ catalog() ? 'Bestiaire des observations' : 'Formes connues' }}</h2>
+      <p>{{ seenCount() }} bêtes observées sur {{ beasts().length }}</p>
+    </div>
+    <button type="button" class="wild-secondary" (click)="catalog.set(!catalog()); closeBeast()">{{ catalog() ? '← Formes connues' : 'Gérer les observations ↗' }}</button>
   </header>
+
   @if (wildState().active; as active) {
     <section class="wild-active" aria-live="polite">
-      <strong>Forme active : {{ active.beastName }}</strong>
-      <p>PV animaux : {{ active.hitPoints.current }} / {{ active.hitPoints.maximum }} · CA {{ active.armorClass }}</p>
-      <p>Temps écoulé : {{ active.elapsedMinutes }} / {{ active.durationMinutes }} minutes de jeu</p>
-      <button type="button" [disabled]="mutating()" (click)="mutateWildShape('revert')">Reprendre sa forme normale (action bonus)</button>
+      <div class="wild-active__heading">
+        <span class="wild-beast-icon" aria-hidden="true">♣</span>
+        <div><span class="eyebrow">Transformation active</span><h3>{{ active.beastName }}</h3></div>
+        <span class="wild-active__badge">En cours</span>
+      </div>
+      <div class="wild-active__stats">
+        <div><small>PV animaux</small><strong>{{ active.hitPoints.current }} / {{ active.hitPoints.maximum }}</strong>
+          <div class="wild-health-track"><span [style.width.%]="active.hitPoints.maximum > 0 ? (100 * active.hitPoints.current / active.hitPoints.maximum) : 0"></span></div>
+        </div>
+        <div><small>CA</small><strong>{{ active.armorClass }}</strong></div>
+        <div><small>Durée</small><strong>{{ active.elapsedMinutes }} / {{ active.durationMinutes }} min</strong></div>
+      </div>
+      <div class="wild-active__actions">
+        <button type="button" class="wild-primary" [disabled]="mutating()" (click)="mutateWildShape('revert')">Reprendre sa forme normale</button>
+      </div>
     </section>
   }
-  <p>Formes sauvages restantes : {{ wildState().usesRemaining }} / 2</p>
-  @if (!wildState().active && !catalog()) {
-    <label>Équipement à la transformation :
-      <select [value]="equipmentChoice()" (change)="equipmentChoice.set($any($event.target).value)">
-        <option value="merge">Fusionner</option><option value="drop">Laisser tomber</option><option value="wear">Porter (accord du MJ)</option>
-      </select>
-    </label>
-  }
+
+  <div class="wild-uses"><span>Formes sauvages restantes</span><strong>{{ wildState().usesRemaining }} / 2</strong></div>
   @if (error()) { <p class="wild-error" role="alert">{{ error() }}</p> }
   @if (loading()) { <p>Chargement du bestiaire…</p> }
   @else {
@@ -28,54 +38,103 @@
         <option value="">Tous les habitats</option>
         @for (item of habitats; track item) { <option [value]="item">{{ item }}</option> }
       </select>
+      <select aria-label="Filtrer par déplacement" [value]="movement()" (change)="movement.set($any($event.target).value)">
+        <option value="all">Tous les déplacements</option>
+        <option value="fly">Vol</option>
+        <option value="swim">Nage</option>
+      </select>
+      <select aria-label="Filtrer par disponibilité" [value]="availability()" (change)="availability.set($any($event.target).value)">
+        <option value="all">Toutes les formes</option>
+        <option value="available">Disponibles</option>
+        <option value="unavailable">Indisponibles</option>
+      </select>
     </div>
     @if (catalog() && habitat()) {
-      <div class="wild-bulk"><span>Observations de l'habitat : {{ habitat() }}</span>
+      <div class="wild-bulk"><span>Habitat : {{ habitat() }}</span>
         <button type="button" [disabled]="saving()" (click)="setHabitatSeen(true)">Tout observer</button>
         <button type="button" [disabled]="saving()" (click)="setHabitatSeen(false)">Tout retirer</button>
       </div>
     }
-    <div class="wild-grid">
-      @for (beast of filtered(); track beast.id) {
-        <article class="wild-card" [class.wild-card--locked]="!catalog() && !eligible(beast)">
-          <div class="wild-card-title"><strong>{{ beast.name || beast.slug }}</strong><span>FP {{ beast.challengeRating ?? '?' }}</span></div>
-          <small>{{ beast.habitats.join(' · ') || 'Habitat non renseigné' }}</small>
-          @if (catalog()) {
-            <label><input type="checkbox" [checked]="beast.seen" [disabled]="saving()" (change)="setSeen(beast, $any($event.target).checked)" /> Observé</label>
-          } @else { <span class="wild-availability">{{ eligible(beast) ? 'Forme accessible' : reason(beast) }}</span> }
-          @if (!catalog() && eligible(beast) && beast.seen) {
-            <div class="wild-hit-points-choice">
-              <label>Méthode de PV
+    @for (group of groups(); track group.fp) {
+      <section class="wild-group">
+        <h3 class="wild-group__title">FP {{ group.fp }} <span>{{ group.beasts.length }}</span></h3>
+        <div class="wild-grid">
+          @for (beast of group.beasts; track beast.id) {
+            <article class="wild-card" [class.wild-card--locked]="!catalog() && !isAvailable(beast)">
+              <span class="wild-beast-icon" aria-hidden="true">{{ beastSymbol(beast) }}</span>
+              <div class="wild-card__name"><strong>{{ beast.name || beast.slug }}</strong>
+                @if (!catalog() && !isAvailable(beast)) { <small>{{ reason(beast) }}</small> }
+              </div>
+              @if (catalog()) {
+                <label class="wild-observed"><input type="checkbox" [checked]="beast.seen" [disabled]="saving()" (change)="setSeen(beast, $any($event.target).checked)" /> Observé</label>
+              }
+              <button type="button" class="wild-card__open" (click)="openBeast(beast)" [attr.aria-label]="'Voir la fiche de ' + (beast.name || beast.slug)">Voir <span aria-hidden="true">›</span></button>
+            </article>
+          }
+        </div>
+      </section>
+    } @empty {
+      <p>{{ catalog() ? 'Aucune bête ne correspond aux filtres.' : 'Aucune forme observée. Ouvre le catalogue pour enregistrer tes rencontres.' }}</p>
+    }
+  }
+
+  @if (selectedBeast(); as beast) {
+    <div class="wild-modal-backdrop" (click)="closeBeast()">
+      <section class="wild-modal" role="dialog" aria-modal="true" [attr.aria-label]="'Fiche de ' + (beast.name || beast.slug)" (click)="$event.stopPropagation()">
+        <header class="wild-modal__heading">
+          <span class="wild-beast-icon" aria-hidden="true">{{ beastSymbol(beast) }}</span>
+          <div><span class="eyebrow">Bête · FP {{ beast.challengeRating ?? '?' }}</span><h2>{{ beast.name || beast.slug }}</h2></div>
+          <button type="button" class="wild-modal__close" (click)="closeBeast()" aria-label="Fermer la fiche">✕</button>
+        </header>
+        <div class="wild-modal__body">
+          <p class="wild-habitats">{{ beast.habitats.join(' · ') || 'Habitat non renseigné' }}</p>
+          @if (beast.statBlock; as stats) {
+            <div class="wild-summary"><div><small>Classe d’armure</small><strong>{{ stats.armorClass ?? '—' }}</strong></div><div><small>PV moyens</small><strong>{{ stats.hitPoints ?? '—' }}</strong></div><div><small>Dés de vie</small><strong>{{ stats.hitDice ?? '—' }}</strong></div></div>
+            <div class="wild-abilities">
+              @for (ability of ['str','dex','con','int','wis','cha']; track ability) {
+                <div><small>{{ abilityLabel(ability) }}</small><strong>{{ stats.abilities?.[ability] ?? '—' }}</strong></div>
+              }
+            </div>
+            @if (stats.speed) { <p class="wild-speeds"><b>Déplacements :</b> @for (speed of (stats.speed | keyvalue); track speed.key) { <span>{{ speedLabel(speed.key) }} : {{ speed.value }} m · </span> }</p> }
+            @if (stats.actions?.length) {
+              <h3>Attaques et actions</h3>
+              @for (action of stats.actions ?? []; track $index) { <p class="wild-rule"><b>{{ action.name }}</b> — {{ action.description }}</p> }
+            }
+            @if (stats.traits?.length) {
+              <h3>Capacités</h3>
+              @for (trait of stats.traits ?? []; track $index) { <p class="wild-rule"><b>{{ trait.translatedName || trait.name }}</b> — {{ trait.translatedDescription || trait.desc }}</p> }
+            }
+          } @else { <p>Statistiques non disponibles pour cette bête.</p> }
+        </div>
+        @if (!catalog()) {
+          <footer class="wild-modal__footer">
+            @if (beast.seen && eligible(beast)) {
+              @if (!wildState().active) {
+                <label class="wild-equipment">Équipement
+                  <select [value]="equipmentChoice()" (change)="equipmentChoice.set($any($event.target).value)">
+                    <option value="merge">Fusionner</option><option value="drop">Laisser tomber</option><option value="wear">Porter (accord du MJ)</option>
+                  </select>
+                </label>
+              }
+              <label class="wild-pv-method">Points de vie
                 <select [value]="hitPointMethod()" (change)="hitPointMethod.set($any($event.target).value)">
                   <option value="average">Moyenne : {{ beast.statBlock?.hitPoints }} PV</option>
                   @if (hitDiceBounds(beast)) { <option value="rolled">Lancer les dés : {{ beast.statBlock?.hitDice }}</option> }
                 </select>
               </label>
               @if (hitPointMethod() === 'rolled' && hitDiceBounds(beast); as bounds) {
-                <label>Somme des dés, hors bonus ({{ bounds.min }}–{{ bounds.max }})
+                <label class="wild-pv-method">Somme des dés hors bonus ({{ bounds.min }}–{{ bounds.max }})
                   <input type="number" [min]="bounds.min" [max]="bounds.max" step="1" [value]="rolledHitPoints()" (input)="rolledHitPoints.set($any($event.target).value)" />
                 </label>
-                @if (validRolledHitPoints(beast)) {
-                  <span>PV de la forme : {{ +rolledHitPoints() + bounds.modifier }} / {{ +rolledHitPoints() + bounds.modifier }} (dés {{ rolledHitPoints() }} {{ bounds.modifier >= 0 ? '+' : '−' }} {{ bounds.modifier < 0 ? -bounds.modifier : bounds.modifier }})</span>
-                }
+                @if (validRolledHitPoints(beast)) { <p class="wild-pv-preview">PV de la forme : {{ +rolledHitPoints() + bounds.modifier }}</p> }
               }
-            </div>
-            <button type="button" [disabled]="mutating() || wildState().active !== null || wildState().usesRemaining < 1 || (hitPointMethod() === 'rolled' && !validRolledHitPoints(beast))" (click)="mutateWildShape('transform', beast)">Se transformer</button>
-          }
-          <button type="button" (click)="selected.set(selected() === beast.id ? null : beast.id)">{{ selected() === beast.id ? 'Masquer la fiche' : 'Voir la fiche' }}</button>
-          @if (selected() === beast.id) {
-            @if (beast.statBlock; as stats) {
-              <div class="wild-statblock"><p><b>CA</b> {{ stats.armorClass }} · <b>PV</b> {{ stats.hitPoints }}</p>
-                <p>@for (ability of ['str','dex','con','int','wis','cha']; track ability) { <span>{{ ability.toUpperCase() }} {{ stats.abilities?.[ability] ?? '—' }} · </span> }</p>
-                <p>@for (speed of (stats.speed | keyvalue); track speed.key) { <span>{{ speed.key }} : {{ speed.value }} m · </span> }</p>
-                @for (action of stats.actions ?? []; track action.name) { <p><b>{{ action.name }}</b> — {{ action.description }}</p> }
-                @for (trait of stats.traits ?? []; track trait.name) { <p><b>{{ trait.name }}</b> — {{ trait.desc }}</p> }
-              </div>
-            } @else { <p>Statistiques non disponibles pour cette bête.</p> }
-          }
-        </article>
-      } @empty { <p>{{ catalog() ? 'Aucune bête ne correspond aux filtres.' : 'Aucune forme observée. Ouvre le catalogue pour enregistrer tes rencontres.' }}</p> }
+              <button type="button" class="wild-primary" [disabled]="!canTransform(beast)" (click)="mutateWildShape('transform', beast)">Se transformer</button>
+              @if (wildState().active) { <small>Reprends d’abord ta forme normale.</small> }
+              @else if (wildState().usesRemaining < 1) { <small>Plus aucune utilisation de Forme sauvage disponible.</small> }
+            } @else { <p class="wild-unavailable">{{ reason(beast) }}</p> }
+          </footer>
+        }
+      </section>
     </div>
-    <p class="wild-note">Les PV de la forme animale sont affichés ici. La synchronisation des dégâts avec l’onglet État sera intégrée dans le prochain lot. Les fiches SRD peuvent contenir des descriptions en anglais.</p>
   }
 </section>
