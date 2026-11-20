@@ -1,14 +1,18 @@
 <section class="hit-points-card">
   <span class="section-label">Points de vie</span>
+  @if (wildShape()?.active; as beast) {
+    <p>Forme sauvage : {{ beast.beastName }}</p>
+  }
+  @if (wildShapeError()) { <p role="status">{{ wildShapeError() }}</p> }
 
   <div class="hit-points-summary">
     <div class="hit-points-value">
       <strong>
-        {{ character().hitPoints.current }}
+        {{ wildShape()?.active?.hitPoints?.current ?? character().hitPoints.current }}
       </strong>
 
       <span>
-        / {{ character().hitPoints.maximum }}
+        / {{ wildShape()?.active?.hitPoints?.maximum ?? character().hitPoints.maximum }}
       </span>
     </div>
 
@@ -59,7 +63,7 @@
       class="damage-button"
       type="button"
       (click)="applyDamage()"
-      [disabled]="hitPointAmount === null || hitPointAmount <= 0"
+      [disabled]="wildShapeBusy() || hitPointAmount === null || hitPointAmount <= 0"
     >
       Dégâts
     </button>
@@ -68,7 +72,7 @@
       class="healing-button"
       type="button"
       (click)="heal()"
-      [disabled]="hitPointAmount === null || hitPointAmount <= 0"
+      [disabled]="wildShapeBusy() || hitPointAmount === null || hitPointAmount <= 0"
     >
       Soins
     </button>

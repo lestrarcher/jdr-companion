@@ -21,6 +21,9 @@
           </div>
 
           <div class="counter">
+            @if (isWildResource(resource)) {
+              <button type="button" aria-label="Gérer la Forme sauvage" (click)="openQuick()" [disabled]="readonly() || !quickState() || (!quickState()?.active && (quickState()?.usesRemaining ?? 0) < 1)">🐾</button>
+            } @else {
             <button
               type="button"
               [attr.aria-label]="
@@ -31,16 +34,17 @@
             >
               −
             </button>
+            }
 
             <strong>
-              {{ resource.currentValue }}
+              {{ isWildResource(resource) ? (quickState()?.usesRemaining ?? resource.currentValue) : resource.currentValue }}
 
               <span>
                 / {{ resource.maximumValue }}
               </span>
             </strong>
 
-            @if (canIncreaseResource(resource)) {
+            @if (!isWildResource(resource) && canIncreaseResource(resource)) {
               <button
                 type="button"
                 [attr.aria-label]="
@@ -90,3 +94,50 @@
     }
   </div>
 </section>
+
+@if (quickOpen()) {
+  <div class="quick-wild-overlay" (click)="quickOpen.set(false)">
+    <section class="quick-wild-dialog" role="dialog" aria-modal="true" aria-label="Forme sauvage" (click)="$event.stopPropagation()">
+      <header><span class="section-label">FORME SAUVAGE</span><h2>{{ quickState()?.active ? 'Changer de forme' : 'Se transformer' }}</h2></header>
+      @if (quickError()) { <p role="alert">{{ quickError() }}</p> }
+      @if (quickState()?.active; as active) {
+        <p>Forme actuelle : <strong>{{ active.beastName }}</strong> · {{ active.hitPoints.current }} / {{ active.hitPoints.maximum }} PV</p>
+      }
+      @if ((quickState()?.usesRemaining ?? 0) > 0) {
+        <label>Nouvelle forme animale
+          <select [value]="quickSelected()" (change)="quickSelected.set(+$any($event.target).value); quickRoll.set('')">
+            @for (beast of quickBeasts(); track beast.id) { <option [value]="beast.id">{{ beast.name || beast.slug }}</option> }
+          </select>
+        </label>
+        @if (quickBeast(); as beast) {
+          <label>Points de vie
+            <select [value]="quickMethod()" (change)="quickMethod.set($any($event.target).value)">
+              <option value="average">Moyenne : {{ beast.statBlock.hitPoints }} PV</option>
+              @if (quickBounds()) { <option value="rolled">Dés : {{ beast.statBlock.hitDice }}</option> }
+            </select>
+          </label>
+          @if (quickMethod() === 'rolled' && quickBounds(); as bounds) {
+            <label>Total des dés (sans modificateur, {{ bounds.min }}–{{ bounds.max }})
+              <input type="number" [value]="quickRoll()" (input)="quickRoll.set($any($event.target).value)" />
+            </label>
+            @if (quickRollValid()) { <p>PV confirmés : {{ +quickRoll() + bounds.modifier }}</p> }
+          }
+          <label>Équipement
+            <select [value]="quickEquipment()" (change)="quickEquipment.set($any($event.target).value)">
+              <option value="merge">Fusionner</option><option value="drop">Laisser tomber</option><option value="wear">Porter (accord du MJ)</option>
+            </select>
+          </label>
+          <p>Coût : 1 utilisation · Restantes après transformation : {{ (quickState()?.usesRemaining ?? 1) - 1 }}</p>
+        } @else { <p>Aucune bête observée et éligible.</p> }
+      } @else {
+        <p>Aucune utilisation restante pour changer de forme.</p>
+      }
+      @if (quickState()?.active) { <p>Reprendre forme normale ne dépense aucune utilisation.</p> }
+      <footer>
+        <button type="button" (click)="quickOpen.set(false)">Annuler</button>
+        @if (quickState()?.active) { <button type="button" [disabled]="quickBusy() || readonly()" (click)="quickRevert()">Reprendre forme normale</button> }
+        <button type="button" [disabled]="quickBusy() || readonly() || (quickState()?.usesRemaining ?? 0) < 1 || !quickBeast() || (quickMethod() === 'rolled' && !quickRollValid())" (click)="quickSubmit()">{{ quickState()?.active ? 'Confirmer le changement' : 'Confirmer la transformation' }}</button>
+      </footer>
+    </section>
+  </div>
+}

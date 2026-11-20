@@ -71,6 +71,7 @@
           <option value="race">Race</option>
           <option value="feat">Don</option>
           <option value="progression">Progression</option>
+          <option value="beast">Bête</option>
         </select>
       </label>
 
@@ -80,7 +81,9 @@
       </label>
 
       <div class="compact-grid">
-        @if (form.sourceType === 'progression') {
+        @if (form.sourceType === 'beast') {
+          <p class="inline-empty">Les capacités animales sont disponibles pendant la transformation, sans niveau de déblocage.</p>
+        } @else if (form.sourceType === 'progression') {
           <label class="field">
             <span>Seuil de déblocage</span>
             <input type="number" name="progressionThreshold" min="0" step="1"
@@ -124,7 +127,9 @@
           <span>
             {{ sourceTypeLabel(rule.sourceType) }} ·
             {{ rule.sourceName }} ·
-            @if (rule.sourceType === 'progression') {
+            @if (rule.sourceType === 'beast') {
+              forme animale
+            } @else if (rule.sourceType === 'progression') {
               seuil {{ rule.progressionThreshold }}
             } @else {
               niveau {{ rule.unlockLevel }}
@@ -186,7 +191,7 @@
       </div>
 
       <span class="counter">
-        {{ filteredRules().length }} / {{ rules().length }}
+        {{ filteredRules().length }} / {{ allRules().length }}
       </span>
     </header>
 
@@ -213,6 +218,7 @@
           <option value="race">Races</option>
           <option value="feat">Dons</option>
           <option value="progression">Progression</option>
+          <option value="beast">Bêtes</option>
         </select>
       </label>
 
@@ -272,7 +278,9 @@
               <span class="rule-card__source">{{ rule.sourceName }}</span>
 
               <span class="rule-card__details">
-                @if (rule.sourceType === 'progression') {
+                @if (rule.sourceType === 'beast') {
+                  Forme animale
+                } @else if (rule.sourceType === 'progression') {
                   Seuil {{ rule.progressionThreshold }}
                 } @else {
                   Niveau {{ rule.unlockLevel }}
@@ -296,3 +304,4 @@
     </div>
   </section>
 </section>
+

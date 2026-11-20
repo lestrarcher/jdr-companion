@@ -1,0 +1,20 @@
+:host { display:block; min-height:0; }
+.beast-manager { display:grid; grid-template-columns:minmax(280px,.8fr) minmax(0,2.2fr); min-height:620px; border:1px solid rgba(202,165,86,.25); background:rgba(8,8,14,.72); color:#f7f1e7; }
+.beast-manager__sidebar,.beast-manager__content { min-width:0; padding:1.25rem; }
+.beast-manager__sidebar { border-right:1px solid rgba(202,165,86,.2); background:rgba(7,7,12,.75); }
+.panel-header { padding-bottom:1rem; margin-bottom:1rem; border-bottom:1px solid rgba(202,165,86,.25); }
+.eyebrow,.field span { display:block; margin-bottom:.4rem; color:#d6b45e; font-size:.72rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
+h2 { margin:0; font:1.55rem Georgia,serif; } h3 { color:#e6c56d; font:1.1rem Georgia,serif; }
+.field { display:block; margin-bottom:1rem; } .field input,.field select { box-sizing:border-box; width:100%; min-height:2.5rem; padding:.55rem; color:#f7f1e7; background:#111119; border:1px solid rgba(202,165,86,.3); }
+.beast-manager__beasts { display:grid; gap:.4rem; max-height:34rem; overflow:auto; }
+.beast-manager__beast { display:flex; flex-direction:column; gap:.25rem; text-align:left; padding:.8rem; border:1px solid rgba(202,165,86,.2); color:#f7f1e7; background:#14141d; cursor:pointer; }
+.beast-manager__beast--selected { border-color:#d6b45e; background:rgba(202,165,86,.12); }
+.beast-manager__beast small { color:#aaa2a5; } .beast-manager__intro { color:#bdb5b9; }
+.beast-manager__add { display:grid; grid-template-columns:1fr 1fr auto; align-items:end; gap:.7rem; margin:1.2rem 0; }
+.action-button,.remove-button { padding:.65rem 1rem; border:1px solid rgba(202,165,86,.5); background:rgba(202,165,86,.1); color:#e6c56d; cursor:pointer; }
+.action-button:disabled,.remove-button:disabled { opacity:.5; cursor:default; }
+.beast-manager__assigned { display:grid; gap:.5rem; max-height:28rem; overflow:auto; }
+.beast-manager__feature { display:flex; justify-content:space-between; align-items:start; gap:1rem; padding:.85rem; border:1px solid rgba(202,165,86,.18); background:#14141d; }
+.beast-manager__feature p { margin:.4rem 0 0; color:#aaa2a5; font-size:.85rem; } .beast-manager__save { margin-top:1rem; }
+.beast-manager__message { color:#e6c56d; } .empty-state { color:#aaa2a5; }
+@media(max-width:760px) { .beast-manager { grid-template-columns:1fr; } .beast-manager__sidebar { border-right:0; border-bottom:1px solid rgba(202,165,86,.2); } .beast-manager__add { grid-template-columns:1fr; } }

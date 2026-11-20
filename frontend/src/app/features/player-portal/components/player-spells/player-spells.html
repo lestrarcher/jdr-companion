@@ -28,6 +28,14 @@
   @for (warning of view()?.warnings ?? []; track warning) { <p class="notice">{{ warning }}</p> }
   <ng-content select="[spell-slots]" />
 
+  @if (wildShapeActive()) {
+    <div class="quickbar-shell">
+      <p class="eyebrow" id="spell-quickbar-label">Répertoire rapide</p>
+      @if (moonDruid()) {
+        <app-spell-quick-list [spells]="[]" [lunarHealing]="true" (lunarSelected)="openLunarDialog()" />
+      } @else { <p class="notice">Impossible de lancer des sorts sous cette forme animale.</p> }
+    </div>
+  } @else {
   @if (displayed().length === 0) {
     <p class="empty-state">{{ mode() === 'spellbook' ? 'Aucun sort inscrit dans le grimoire.' : 'Aucun sort enregistré pour ce personnage.' }}</p>
   } @else {
@@ -40,7 +48,7 @@
 
   }
   }
-    @if (selectedSpell(); as spell) {
+    @if (!wildShapeActive() && selectedSpell(); as spell) {
       <article id="selected-spell-details" class="spell-details" aria-live="polite">
         <div class="spell-summary">
         <header class="detail-heading">
@@ -126,6 +134,7 @@
     </section>
   }
   }
+  }
 </section>
 
 @if (mode() === 'portal' && pendingCast() && !dialogOpen()) {
@@ -142,4 +151,10 @@
     [pending]="pendingCast()" [uncertain]="castUncertain()" [error]="castError()" [success]="castSuccess()"
     (confirmed)="confirmDialogSelection($event)" (closed)="closeCastDialog()" (retried)="retryCast()"
     (dismissed)="dismissCastRefusal()" (refreshed)="refreshAfterCastRefusal()" />
+}
+
+@if (lunarDialogOpen() && spells().length > 0) {
+  <app-spell-cast-dialog [spell]="spells()[0]" [sources]="[]" [lunarHealing]="true"
+    [lunarSlots]="lunarSlots()" [lunarBusy]="lunarBusy()" [lunarError]="lunarError()" [lunarSuccess]="lunarSuccess()"
+    [blocked]="readonly() || busy()" (lunarConfirmed)="lunarHeal($event)" (closed)="closeLunarDialog()" />
 }

@@ -1,0 +1,50 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Tests\Service;
+
+use App\Service\{WildShapeRules2014, WildShapeSessionService};
+use PHPUnit\Framework\TestCase;
+
+final class WildShapeSessionServiceTest extends TestCase
+{
+    private function service(): WildShapeSessionService { return new WildShapeSessionService(new WildShapeRules2014()); }
+    private function beast(): array
+    {
+        return ['id' => 7, 'slug' => 'loup', 'name' => 'Loup', 'challengeRating' => '1/4', 'statBlock' => [
+            'hitPoints' => 11, 'hitDice' => '2d8+2', 'armorClass' => 13,
+            'abilities' => ['str'=>12,'dex'=>15,'con'=>12,'int'=>3,'wis'=>12,'cha'=>6],
+            'speed' => ['walk' => 12], 'actions' => [],
+        ]];
+    }
+    public function testTransformConsumesOneUseAndPreventsDoubleTransformation(): void
+    {
+        $service = $this->service();
+        $state = $service->transform(['hitPoints'=>['current'=>19]], $this->beast(), 2, false, true, 'merge');
+        self::assertSame(1, $state['wildShape']['usesRemaining']);
+        self::assertSame(19, $state['hitPoints']['current']);
+        self::assertSame(11, $state['wildShape']['active']['hitPoints']['current']);
+        $this->expectException(\DomainException::class);
+        $service->transform($state, $this->beast(), 2, false, true, 'merge');
+    }
+    public function testOverflowAndRest(): void
+    {
+        $service = $this->service();
+        $state = $service->transform(['hitPoints'=>['current'=>19]], $this->beast(), 2, false, true, 'merge');
+        $state = $service->damage($state, 15);
+        self::assertNull($state['wildShape']['active']);
+        self::assertSame(15, $state['hitPoints']['current']);
+        $state = $service->afterRest($state);
+        self::assertSame(2, $state['wildShape']['usesRemaining']);
+    }
+    public function testVoluntaryRevertPreservesNormalHp(): void
+    {
+        $service = $this->service();
+        $state = $service->transform(['hitPoints'=>['current'=>19]], $this->beast(), 2, false, true, 'merge');
+        $state = $service->damage($state, 3);
+        $state = $service->revert($state);
+        self::assertSame(19, $state['hitPoints']['current']);
+        self::assertNull($state['wildShape']['active']);
+    }
+}

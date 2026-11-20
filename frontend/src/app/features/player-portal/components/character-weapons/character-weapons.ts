@@ -10,6 +10,7 @@ import {
 export class CharacterWeapons {
   readonly weapons = input.required<CharacterWeapon[]>();
   readonly accessToken = input('');
+  readonly naturalForm = input(false);
   readonly readonly = input(false);
   readonly refreshRevision = input(0);
   readonly chargesChanged = output<void>();
@@ -35,7 +36,7 @@ export class CharacterWeapons {
     this.error.set(null);
     const dialog = this.dialog().nativeElement;
     if (!dialog.open) dialog.showModal();
-    this.loadInventory();
+    if (!this.naturalForm()) this.loadInventory();
   }
 
   protected closeDetails(): void {

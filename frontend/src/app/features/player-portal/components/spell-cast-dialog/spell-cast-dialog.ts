@@ -15,6 +15,16 @@ type CastOption = { source: PlayerSpell; method: SpellCastingAvailability['metho
 })
 export class SpellCastDialog implements AfterViewInit, OnDestroy {
   readonly spell = input.required<PlayerSpell>();
+  readonly lunarHealing = input(false);
+  readonly lunarSlots = input<readonly { level: number; remaining: number }[]>([]);
+  readonly lunarBusy = input(false);
+  readonly lunarError = input('');
+  readonly lunarSuccess = input('');
+  readonly lunarConfirmed = output<number>();
+  readonly lunarLevel = signal<number | null>(null);
+  readonly lunarChosen = computed(() => this.lunarLevel() ?? (this.lunarSlots().length === 1 ? this.lunarSlots()[0].level : null));
+  readonly lunarCanConfirm = computed(() => !this.blocked() && !this.lunarBusy() && !this.lunarSuccess()
+    && this.lunarSlots().some(slot => slot.level === this.lunarChosen()));
   readonly accessToken = input('');
   readonly sources = input.required<PlayerSpell[]>();
   readonly resources = input<readonly Pick<CharacterResource, 'id' | 'currentValue'>[]>([]);
@@ -153,7 +163,7 @@ export class SpellCastDialog implements AfterViewInit, OnDestroy {
   select(key: string): void {
     if (!this.locked() && this.options().some(option => option.key === key && option.source.key === this.activeSource()?.key)) this.choice.set(key);
   }
-  close(): void { if (!this.saving()) { this.metamagicSelection.set([]); this.closed.emit(); } }
+  close(): void { if (!this.saving() && !this.lunarBusy()) { this.metamagicSelection.set([]); this.closed.emit(); } }
   cancel(event: Event): void { event.preventDefault(); this.close(); }
   confirm(): void {
     const option = this.selected();

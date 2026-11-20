@@ -249,3 +249,12 @@ textarea {
     min-height: 3.75rem;
   }
 }
+
+.quick-wild-overlay { position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.78);display:grid;place-items:center;padding:1rem; }
+.quick-wild-dialog { width:min(100%,520px);max-height:90vh;overflow:auto;padding:1.5rem;background:#101016;border:1px solid #c9a85f;color:#f2e7d4;box-shadow:0 20px 70px #000;display:grid;gap:1rem; }
+.quick-wild-dialog h2 {font-family:Georgia,serif;margin:.3rem 0;}
+.quick-wild-dialog label {display:grid;gap:.4rem;color:#c9a85f;}
+.quick-wild-dialog select,.quick-wild-dialog input {width:100%;background:#17151e;color:#f2e7d4;border:1px solid #806d4b;padding:.6rem;}
+.quick-wild-dialog footer {display:flex;justify-content:flex-end;gap:.7rem;}
+.quick-wild-dialog button {padding:.6rem .8rem;background:#c9a85f;color:#17121b;border:1px solid #c9a85f;cursor:pointer;}
+.quick-wild-dialog button:disabled {opacity:.4;cursor:not-allowed;}

@@ -53,7 +53,14 @@ export function spellArtwork(spell: Pick<PlayerSpell, 'spellId' | 'school'>): st
           @if (spell.prepared) { <span class="prepared-dot" aria-label="Préparé"></span> }
         </button>
       }
-      @if (levelFilter() !== null && entries().length === 0) {
+      @if (lunarHealing()) {
+        <button type="button" class="quick-spell" data-school="divination" title="Guérison lunaire · Cercle de la Lune"
+          [disabled]="disabled()" aria-label="Guérison lunaire · Action bonus" (click)="lunarSelected.emit()">
+          <span class="spell-icon" aria-hidden="true"><span class="school-glyph">☾</span></span>
+          <span class="spell-level">✦</span><span class="quick-name">Guérison lunaire</span>
+        </button>
+      }
+      @if (levelFilter() !== null && entries().length === 0 && !lunarHealing()) {
         <p role="status">{{ levelFilter() === 0 ? 'Aucun tour de magie connu.' : 'Aucun sort compatible avec ce niveau.' }}</p>
       }
     </div>
@@ -99,6 +106,8 @@ export class SpellQuickList {
     }
   }
   readonly spells = input.required<PlayerSpell[]>();
+  readonly lunarHealing = input(false);
+  readonly lunarSelected = output<void>();
   readonly mode = input<'directory' | 'play'>('directory');
   readonly levelFilter = input<number | null>(null);
   readonly hideUnavailable = input(false);

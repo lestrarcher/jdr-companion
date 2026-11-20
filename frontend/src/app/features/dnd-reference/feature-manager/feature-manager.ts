@@ -1,3 +1,4 @@
+import { BeastFeatureManager } from '../components/beast-feature-manager/beast-feature-manager';
 import { ItemReference } from '../item-reference/item-reference';
 import { AuthService } from '@core/services/auth.service';
 import { Component, inject, signal, viewChild } from '@angular/core';
@@ -16,6 +17,7 @@ import { BackgroundEditor } from '../../custom-content/background-editor/backgro
 import { SpellEditor } from '../../custom-content/spell-editor/spell-editor';
 
 type ManagerSection =
+  | 'beasts'
   | 'items'
   | 'classes'
   | 'races'
@@ -43,6 +45,7 @@ interface ManagerTab {
     { provide: REFERENCE_READ_ONLY, useFactory: () => inject(REFERENCE_VIEW_ORIGIN) === 'OFFICIAL' && inject(REFERENCE_EDITOR_SCOPE) !== 'official' }],
   imports: [
     ClassManager,
+    BeastFeatureManager,
     ItemReference,
     RaceManager,
     SubclassManager,
@@ -100,6 +103,11 @@ export class FeatureManager {
       section: 'progressions',
       label: 'Progressions',
       description: 'Jauges narratives et paliers',
+    },
+    {
+      section: 'beasts',
+      label: 'Bêtes',
+      description: 'Capacités des formes animales',
     },
     {
       section: 'features',

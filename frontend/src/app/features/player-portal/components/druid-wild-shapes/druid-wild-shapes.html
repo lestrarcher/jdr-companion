@@ -1,0 +1,81 @@
+<section class="wild-shapes">
+  <header class="wild-heading">
+    <div><span class="eyebrow">Druide · Forme sauvage</span><h2>{{ catalog() ? 'Bestiaire des observations' : 'Formes connues' }}</h2><p>{{ seenCount() }} bêtes observées sur {{ beasts().length }}</p></div>
+    <button type="button" (click)="catalog.set(!catalog()); selected.set(null)">{{ catalog() ? '← Formes sauvages' : 'Gérer les observations ↗' }}</button>
+  </header>
+  @if (wildState().active; as active) {
+    <section class="wild-active" aria-live="polite">
+      <strong>Forme active : {{ active.beastName }}</strong>
+      <p>PV animaux : {{ active.hitPoints.current }} / {{ active.hitPoints.maximum }} · CA {{ active.armorClass }}</p>
+      <p>Temps écoulé : {{ active.elapsedMinutes }} / {{ active.durationMinutes }} minutes de jeu</p>
+      <button type="button" [disabled]="mutating()" (click)="mutateWildShape('revert')">Reprendre sa forme normale (action bonus)</button>
+    </section>
+  }
+  <p>Formes sauvages restantes : {{ wildState().usesRemaining }} / 2</p>
+  @if (!wildState().active && !catalog()) {
+    <label>Équipement à la transformation :
+      <select [value]="equipmentChoice()" (change)="equipmentChoice.set($any($event.target).value)">
+        <option value="merge">Fusionner</option><option value="drop">Laisser tomber</option><option value="wear">Porter (accord du MJ)</option>
+      </select>
+    </label>
+  }
+  @if (error()) { <p class="wild-error" role="alert">{{ error() }}</p> }
+  @if (loading()) { <p>Chargement du bestiaire…</p> }
+  @else {
+    <div class="wild-controls">
+      <input aria-label="Rechercher une bête" placeholder="Rechercher une bête…" [value]="search()" (input)="search.set($any($event.target).value)" />
+      <select aria-label="Filtrer par habitat" [value]="habitat()" (change)="habitat.set($any($event.target).value)">
+        <option value="">Tous les habitats</option>
+        @for (item of habitats; track item) { <option [value]="item">{{ item }}</option> }
+      </select>
+    </div>
+    @if (catalog() && habitat()) {
+      <div class="wild-bulk"><span>Observations de l'habitat : {{ habitat() }}</span>
+        <button type="button" [disabled]="saving()" (click)="setHabitatSeen(true)">Tout observer</button>
+        <button type="button" [disabled]="saving()" (click)="setHabitatSeen(false)">Tout retirer</button>
+      </div>
+    }
+    <div class="wild-grid">
+      @for (beast of filtered(); track beast.id) {
+        <article class="wild-card" [class.wild-card--locked]="!catalog() && !eligible(beast)">
+          <div class="wild-card-title"><strong>{{ beast.name || beast.slug }}</strong><span>FP {{ beast.challengeRating ?? '?' }}</span></div>
+          <small>{{ beast.habitats.join(' · ') || 'Habitat non renseigné' }}</small>
+          @if (catalog()) {
+            <label><input type="checkbox" [checked]="beast.seen" [disabled]="saving()" (change)="setSeen(beast, $any($event.target).checked)" /> Observé</label>
+          } @else { <span class="wild-availability">{{ eligible(beast) ? 'Forme accessible' : reason(beast) }}</span> }
+          @if (!catalog() && eligible(beast) && beast.seen) {
+            <div class="wild-hit-points-choice">
+              <label>Méthode de PV
+                <select [value]="hitPointMethod()" (change)="hitPointMethod.set($any($event.target).value)">
+                  <option value="average">Moyenne : {{ beast.statBlock?.hitPoints }} PV</option>
+                  @if (hitDiceBounds(beast)) { <option value="rolled">Lancer les dés : {{ beast.statBlock?.hitDice }}</option> }
+                </select>
+              </label>
+              @if (hitPointMethod() === 'rolled' && hitDiceBounds(beast); as bounds) {
+                <label>Somme des dés, hors bonus ({{ bounds.min }}–{{ bounds.max }})
+                  <input type="number" [min]="bounds.min" [max]="bounds.max" step="1" [value]="rolledHitPoints()" (input)="rolledHitPoints.set($any($event.target).value)" />
+                </label>
+                @if (validRolledHitPoints(beast)) {
+                  <span>PV de la forme : {{ +rolledHitPoints() + bounds.modifier }} / {{ +rolledHitPoints() + bounds.modifier }} (dés {{ rolledHitPoints() }} {{ bounds.modifier >= 0 ? '+' : '−' }} {{ bounds.modifier < 0 ? -bounds.modifier : bounds.modifier }})</span>
+                }
+              }
+            </div>
+            <button type="button" [disabled]="mutating() || wildState().active !== null || wildState().usesRemaining < 1 || (hitPointMethod() === 'rolled' && !validRolledHitPoints(beast))" (click)="mutateWildShape('transform', beast)">Se transformer</button>
+          }
+          <button type="button" (click)="selected.set(selected() === beast.id ? null : beast.id)">{{ selected() === beast.id ? 'Masquer la fiche' : 'Voir la fiche' }}</button>
+          @if (selected() === beast.id) {
+            @if (beast.statBlock; as stats) {
+              <div class="wild-statblock"><p><b>CA</b> {{ stats.armorClass }} · <b>PV</b> {{ stats.hitPoints }}</p>
+                <p>@for (ability of ['str','dex','con','int','wis','cha']; track ability) { <span>{{ ability.toUpperCase() }} {{ stats.abilities?.[ability] ?? '—' }} · </span> }</p>
+                <p>@for (speed of (stats.speed | keyvalue); track speed.key) { <span>{{ speed.key }} : {{ speed.value }} m · </span> }</p>
+                @for (action of stats.actions ?? []; track action.name) { <p><b>{{ action.name }}</b> — {{ action.description }}</p> }
+                @for (trait of stats.traits ?? []; track trait.name) { <p><b>{{ trait.name }}</b> — {{ trait.desc }}</p> }
+              </div>
+            } @else { <p>Statistiques non disponibles pour cette bête.</p> }
+          }
+        </article>
+      } @empty { <p>{{ catalog() ? 'Aucune bête ne correspond aux filtres.' : 'Aucune forme observée. Ouvre le catalogue pour enregistrer tes rencontres.' }}</p> }
+    </div>
+    <p class="wild-note">Les PV de la forme animale sont affichés ici. La synchronisation des dégâts avec l’onglet État sera intégrée dans le prochain lot. Les fiches SRD peuvent contenir des descriptions en anglais.</p>
+  }
+</section>
