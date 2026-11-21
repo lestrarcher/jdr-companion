@@ -6,6 +6,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 type Beast = {
   id: number; slug: string; name: string | null; challengeRating: string | null;
   seen: boolean; habitats: string[]; sourceUrl: string | null; imageUrl: string | null;
+  naturalWeapons: { name: string; attackBonus: number | null; damageComponents: {dice: string; type: string | null}[]; description: string }[];
+  features: { id: number; name: string; description: string | null }[];
   statBlock: { armorClass?: number; hitPoints?: number; hitDice?: string; speed?: Record<string, number>; abilities?: Record<string, number>;
     actions?: Array<{ name: string; description?: string; attackBonus?: number }>;
     traits?: Array<{ name: string; desc?: string; translatedName?: string; translatedDescription?: string }> } | null;
@@ -19,6 +21,10 @@ const HABITATS = ['aquatique', 'arctique', 'collines', 'desert', 'foret', 'litto
   styleUrl: './druid-wild-shapes.scss',
 })
 export class DruidWildShapes implements OnInit {
+  protected imageFailed(event: Event): void {
+    const image = event.target as HTMLImageElement;
+    if (!image.src.endsWith('/assets/beast-placeholder.svg')) image.src = '/assets/beast-placeholder.svg';
+  }
   private readonly http = inject(HttpClient);
   private readonly destroyRef = inject(DestroyRef);
   readonly token = input.required<string>();

@@ -18,13 +18,19 @@ final class WildShapeSessionServiceTest extends TestCase
             'speed' => ['walk' => 12], 'actions' => [],
         ]];
     }
-    public function testTransformConsumesOneUseAndPreventsDoubleTransformation(): void
+    public function testDirectChangeConsumesAnotherUseAndRejectsExhaustedResource(): void
     {
         $service = $this->service();
         $state = $service->transform(['hitPoints'=>['current'=>19]], $this->beast(), 2, false, true, 'merge');
         self::assertSame(1, $state['wildShape']['usesRemaining']);
         self::assertSame(19, $state['hitPoints']['current']);
         self::assertSame(11, $state['wildShape']['active']['hitPoints']['current']);
+        $other = $this->beast(); $other['id'] = 8; $other['name'] = 'Autre bête';
+        $state = $service->transform($state, $other, 2, false, true, 'merge');
+        self::assertSame(0, $state['wildShape']['usesRemaining']);
+        self::assertSame(8, $state['wildShape']['active']['beastId']);
+        self::assertSame(19, $state['hitPoints']['current']);
+        self::assertNull($service->revert($state)['wildShape']['active']);
         $this->expectException(\DomainException::class);
         $service->transform($state, $this->beast(), 2, false, true, 'merge');
     }

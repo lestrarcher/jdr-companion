@@ -1,0 +1,15 @@
+:host { display: block; min-width: 0; margin-bottom: 1.5rem; }
+fieldset { border: 1px solid #665331; border-radius: .6rem; padding: 1rem; min-width: 0; }
+legend, h4 { color: #d8ba78; }
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: .75rem; }
+label { display: flex; flex-direction: column; gap: .35rem; margin-bottom: .7rem; font-size: .85rem; min-width: 0; }
+input, select, textarea { box-sizing: border-box; width: 100%; min-width: 0; padding: .55rem; background: #181c24; color: #eee; border: 1px solid #555; border-radius: .3rem; font: inherit; }
+textarea { resize: vertical; }
+button { background: #302b22; color: #ead7a9; border: 1px solid #75613b; padding: .5rem .7rem; border-radius: .3rem; cursor: pointer; margin: .2rem; }
+button:disabled { opacity: .5; cursor: default; }
+.row, .actions, .habitats { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
+.row label { flex: 1 1 130px; }
+.habitats label { flex-direction: row; align-items: center; }
+.habitats input { width: auto; }
+article { padding: .8rem; margin: .7rem 0; border: 1px solid #444; border-radius: .4rem; }
+.delete { color: #f1adad; margin-top: 1rem; }

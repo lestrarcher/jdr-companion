@@ -6,6 +6,8 @@ namespace App\Controller;
 
 use App\Service\{PlayerCharacterAccess, WildShapeSessionService, WildShapeRules2014, BeastNaturalWeaponCatalogue};
 use Doctrine\DBAL\Connection;
+use App\Repository\BeastRepository;
+use App\Service\BeastSerializer;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\{JsonResponse, Request, Response};
@@ -21,6 +23,8 @@ final class PublicWildShapeController extends AbstractController
         private readonly EntityManagerInterface $em,
         private readonly Connection $db,
         private readonly BeastNaturalWeaponCatalogue $naturalWeapons,
+        private readonly BeastRepository $beasts,
+        private readonly BeastSerializer $beastSerializer,
     ) {}
 
     #[Route('', methods: ['GET'])]
@@ -45,13 +49,11 @@ final class PublicWildShapeController extends AbstractController
             return $this->json(['beastId' => null, 'features' => []]);
         }
         $beastId = (int) $active['beastId'];
-        $features = $this->db->fetchAllAssociative(
-            'SELECT f.id, f.name, f.description FROM beast_feature bf
-             INNER JOIN character_feature_definition f ON f.id = bf.feature_definition_id
-             WHERE bf.beast_id = :beastId AND f.visible = true
-             ORDER BY bf.display_order, f.name',
-            ['beastId' => $beastId],
-        );
+        $features = [];
+        foreach ($this->beasts->find($beastId)?->getFeatures() ?? [] as $link) {
+            $feature = $link->getDefinition();
+            if ($feature->isVisible()) $features[] = ['id' => $feature->getId(), 'name' => $feature->getName(), 'description' => $feature->getDescription()];
+        }
         return $this->json(['beastId' => $beastId, 'beastName' => (string) ($active['beastName'] ?? 'Forme animale'), 'features' => $features]);
     }
 
@@ -80,10 +82,11 @@ final class PublicWildShapeController extends AbstractController
                         throw new \DomainException('Total de PV lancé invalide.');
                     }
                     if (!is_int($id) || $id < 1 || !is_string($equipment)) throw new \DomainException('Bête ou équipement invalide.');
-                    $row = $this->db->fetchAssociative('SELECT b.*, (s.beast_id IS NOT NULL) AS seen FROM beast b LEFT JOIN character_seen_beast s ON s.beast_id = b.id AND s.character_id = :character WHERE b.id = :beast', ['character' => $character->getId(), 'beast' => $id]);
-                    if ($row === false) throw new \DomainException('Bête inconnue.');
-                    $beast = ['id' => (int) $row['id'], 'slug' => $row['slug'], 'name' => $row['name'], 'challengeRating' => $row['challenge_rating'], 'statBlock' => $row['stat_block'] === null ? null : json_decode((string) $row['stat_block'], true)];
-                    $state = $this->wildShape->transform($state, $beast, $profile['level'], $profile['moon'], filter_var($row['seen'], FILTER_VALIDATE_BOOLEAN), $equipment, $rolledHitPoints);
+                    $entity = $this->beasts->find($id, \Doctrine\DBAL\LockMode::PESSIMISTIC_READ);
+                    if (!$entity) throw new \DomainException('Bête inconnue.');
+                    $beast = $this->beastSerializer->catalogue($entity);
+                    $seen = (bool) $this->db->fetchOne('SELECT 1 FROM character_seen_beast WHERE character_id = ? AND beast_id = ?', [$character->getId(), $id]);
+                    $state = $this->wildShape->transform($state, $beast, $profile['level'], $profile['moon'], $seen, $equipment, $rolledHitPoints);
                 } elseif ($action === 'revert') {
                     $state = $this->wildShape->revert($state);
                 } elseif ($action === 'lunar-heal') {

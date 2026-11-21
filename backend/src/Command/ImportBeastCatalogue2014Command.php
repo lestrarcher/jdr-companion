@@ -17,7 +17,7 @@ final class ImportBeastCatalogue2014Command extends Command
         $entries = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
         $count = 0;
         foreach ($entries as $entry) {
-            $this->db->executeStatement('INSERT INTO beast (slug, source_url) VALUES (:slug, :url) ON CONFLICT (slug) DO UPDATE SET source_url = EXCLUDED.source_url', ['slug' => $entry['slug'], 'url' => $entry['sourceUrl']]);
+            $this->db->executeStatement('INSERT INTO beast (slug, source_url) VALUES (:slug, :url) ON CONFLICT (slug) DO NOTHING', ['slug' => $entry['slug'], 'url' => $entry['sourceUrl']]);
             ++$count;
         }
         $output->writeln(sprintf('%d références de bêtes synchronisées (statistiques non importées).', $count));

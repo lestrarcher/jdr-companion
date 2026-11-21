@@ -2,23 +2,15 @@
 declare(strict_types=1);
 namespace App\Service;
 use Doctrine\DBAL\Connection;
+use App\Repository\BeastRepository;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 final readonly class BeastCatalogue
 {
-    public function __construct(private Connection $db) {}
+    public function __construct(private Connection $db, private BeastRepository $beasts, private BeastSerializer $serializer) {}
     public function listForCharacter(int $characterId): array
     {
-        $rows = $this->db->fetchAllAssociative('SELECT b.id, b.slug, b.name, b.challenge_rating AS "challengeRating", b.source_url AS "sourceUrl", CASE WHEN b.image_filename IS NOT NULL THEN \'/api/public/beasts/images/\' || b.image_filename ELSE NULL END AS "imageUrl", b.stat_block AS "statBlock", (s.beast_id IS NOT NULL) AS seen FROM beast b LEFT JOIN character_seen_beast s ON s.beast_id = b.id AND s.character_id = :character ORDER BY b.slug', ['character' => $characterId]);
-        $habitats = $this->db->fetchAllAssociative('SELECT beast_id, habitat FROM beast_habitat ORDER BY habitat');
-        $byBeast = [];
-        foreach ($habitats as $habitat) $byBeast[(int) $habitat['beast_id']][] = $habitat['habitat'];
-        return array_map(static function (array $row) use ($byBeast): array {
-            $row['id'] = (int) $row['id'];
-            $row['seen'] = filter_var($row['seen'], FILTER_VALIDATE_BOOLEAN);
-            $row['habitats'] = $byBeast[$row['id']] ?? [];
-            $row['statBlock'] = $row['statBlock'] === null ? null : json_decode((string) $row['statBlock'], true);
-            return $row;
-        }, $rows);
+        $seen = array_flip(array_map('intval', $this->db->fetchFirstColumn('SELECT beast_id FROM character_seen_beast WHERE character_id = ?', [$characterId])));
+        return array_map(fn ($beast) => $this->serializer->catalogue($beast) + ['seen' => isset($seen[$beast->getId()])], $this->beasts->catalogue());
     }
     public function setSeen(int $characterId, int $beastId, bool $seen): void
     {

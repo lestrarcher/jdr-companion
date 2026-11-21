@@ -22,6 +22,7 @@ final class EnrichBeastCatalogue2014Command extends Command
     {
         $this->addOption('file', null, InputOption::VALUE_REQUIRED, 'JSON data file (relative to backend or absolute)', 'data/beasts-2014-stats.json');
         $this->addOption('apply', null, InputOption::VALUE_NONE, 'Persist the validated stat blocks');
+        $this->addOption('replace-unmanaged', null, InputOption::VALUE_NONE, 'Replace existing profiles only when not marked as edited by the GM (review dry-run first)');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -44,6 +45,7 @@ final class EnrichBeastCatalogue2014Command extends Command
         }
 
         $changes = [];
+        $preserved = 0;
         $slugs = [];
         $errors = [];
         foreach ($entries as $index => $entry) {
@@ -86,7 +88,7 @@ final class EnrichBeastCatalogue2014Command extends Command
                     $errors[] = "$prefix ($slug) : vitesse $kind invalide";
                 }
             }
-            $current = $this->db->fetchAssociative('SELECT id, name, challenge_rating, stat_block FROM beast WHERE slug = :slug', ['slug' => $slug]);
+            $current = $this->db->fetchAssociative('SELECT id, name, challenge_rating, stat_block, customized FROM beast WHERE slug = :slug', ['slug' => $slug]);
             if ($current === false) {
                 $errors[] = "$prefix ($slug) : absent du catalogue initial";
                 continue;
@@ -97,6 +99,10 @@ final class EnrichBeastCatalogue2014Command extends Command
             $crDiff = (string) $current['challenge_rating'] !== (string) $cr;
             $statsDiff = $this->normalizeJson($stored) !== $this->normalizeJson($block);
 
+            if (filter_var($current['customized'], FILTER_VALIDATE_BOOLEAN) || ($stored !== null && !$input->getOption('replace-unmanaged'))) {
+                if ($nameDiff || $crDiff || $statsDiff) { ++$preserved; $output->writeln('Profil existant préservé : '.$slug); }
+                continue;
+            }
             if ($nameDiff || $crDiff || $statsDiff) {
                 $changes[] = ['id' => (int) $current['id'], 'slug' => $slug, 'name' => $name, 'cr' => (string) $cr, 'json' => $json];
             }
@@ -106,14 +112,14 @@ final class EnrichBeastCatalogue2014Command extends Command
             $output->writeln('<error>Aucune modification appliquée.</error>');
             return Command::FAILURE;
         }
-        $output->writeln(sprintf('Fiches vérifiées : %d ; à enrichir/actualiser : %d ; déjà conformes : %d.', count($entries), count($changes), count($entries) - count($changes)));
+        $output->writeln(sprintf('Fiches vérifiées : %d ; à enrichir/actualiser : %d ; différences préservées : %d ; déjà conformes : %d.', count($entries), count($changes), $preserved, count($entries) - count($changes) - $preserved));
         if (!$input->getOption('apply')) {
             $output->writeln('Simulation uniquement. Ajouter --apply pour écrire.');
             return Command::SUCCESS;
         }
-        $this->db->transactional(function () use ($changes): void {
+        $this->db->transactional(function () use ($changes, $input): void {
             foreach ($changes as $entry) {
-                $this->db->executeStatement('UPDATE beast SET name = :name, challenge_rating = :cr, stat_block = :block WHERE id = :id', [
+                $this->db->executeStatement('UPDATE beast SET name = :name, challenge_rating = :cr, stat_block = :block WHERE id = :id AND customized = FALSE'.($input->getOption('replace-unmanaged') ? '' : ' AND stat_block IS NULL'), [
                     'name' => $entry['name'], 'cr' => $entry['cr'], 'block' => $entry['json'], 'id' => $entry['id'],
                 ]);
             }

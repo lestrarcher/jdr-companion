@@ -23,6 +23,7 @@ final class ImportBeastNaturalWeapons2014Command extends Command
     protected function configure(): void
     {
         $this->addOption('apply', null, InputOption::VALUE_NONE, 'Enregistrer les modifications');
+        $this->addOption('replace-unmanaged', null, InputOption::VALUE_NONE, 'Actualiser les actions existantes non personnalisées après revue de la simulation');
     }
 
     /**
@@ -62,7 +63,7 @@ final class ImportBeastNaturalWeapons2014Command extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $beasts = $this->db->fetchAllAssociative('SELECT id, slug, stat_block FROM beast WHERE stat_block IS NOT NULL ORDER BY id');
+        $beasts = $this->db->fetchAllAssociative('SELECT id, slug, stat_block FROM beast WHERE stat_block IS NOT NULL AND customized = FALSE ORDER BY id');
         $insert = [];
         $update = [];
         $preserved = 0;
@@ -93,7 +94,7 @@ final class ImportBeastNaturalWeapons2014Command extends Command
                 $values = ['beast' => (int) $beast['id'], 'key' => $key, 'name' => $name, 'kind' => $kind, 'bonus' => $bonus, 'damage' => $componentsJson, 'description' => $description, 'position' => (int) $position, 'hash' => $sourceHash];
                 $existing = $this->db->fetchAssociative('SELECT source_hash, customized FROM beast_natural_weapon WHERE beast_id = :beast AND source_key = :key', ['beast' => $values['beast'], 'key' => $key]);
                 if ($existing === false) $insert[] = $values;
-                elseif (filter_var($existing['customized'], FILTER_VALIDATE_BOOLEAN)) ++$preserved;
+                elseif (filter_var($existing['customized'], FILTER_VALIDATE_BOOLEAN) || !$input->getOption('replace-unmanaged')) ++$preserved;
                 elseif ($existing['source_hash'] !== $sourceHash) $update[] = $values;
             }
         }
@@ -104,9 +105,11 @@ final class ImportBeastNaturalWeapons2014Command extends Command
         }
         $this->db->transactional(function () use ($insert, $update): void {
             foreach ($insert as $row) {
+                if (filter_var($this->db->fetchOne('SELECT customized FROM beast WHERE id = ? FOR UPDATE', [$row['beast']]), FILTER_VALIDATE_BOOLEAN)) continue;
                 $this->db->executeStatement('INSERT INTO beast_natural_weapon (beast_id, source_key, name, attack_type, attack_bonus, damage_components, description, sort_order, source_hash) VALUES (:beast, :key, :name, :kind, :bonus, :damage, :description, :position, :hash)', $row);
             }
             foreach ($update as $row) {
+                if (filter_var($this->db->fetchOne('SELECT customized FROM beast WHERE id = ? FOR UPDATE', [$row['beast']]), FILTER_VALIDATE_BOOLEAN)) continue;
                 $this->db->executeStatement('UPDATE beast_natural_weapon SET name = :name, attack_type = :kind, attack_bonus = :bonus, damage_components = :damage, description = :description, sort_order = :position, source_hash = :hash WHERE beast_id = :beast AND source_key = :key AND customized = FALSE', $row);
             }
         });

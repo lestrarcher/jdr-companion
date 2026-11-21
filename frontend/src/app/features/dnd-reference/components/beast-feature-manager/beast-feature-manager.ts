@@ -2,6 +2,7 @@ import { Component, inject, signal, computed, OnInit, input } from '@angular/cor
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { REFERENCE_READ_ONLY } from '@core/services/reference-editor-context';
+import { BeastProfileEditor, BeastProfile } from './beast-profile-editor';
 
 type Beast = { id: number; name: string; slug: string; imageFilename: string | null };
 type Feature = { id: number; name: string; description: string | null };
@@ -10,7 +11,7 @@ type Link = { beastId: number; featureId: number };
 @Component({
   selector: 'app-beast-feature-manager',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, BeastProfileEditor],
   templateUrl: './beast-feature-manager.html',
   styleUrl: './beast-feature-manager.scss',
 })
@@ -22,12 +23,13 @@ export class BeastFeatureManager implements OnInit {
   protected readonly features = signal<Feature[]>([]);
   protected readonly links = signal<Link[]>([]);
   protected readonly selectedBeast = signal<number | null>(null);
+  protected readonly creating = signal(false);
   protected readonly selectedFeatures = signal<number[]>([]);
   protected readonly busy = signal(false);
   protected readonly imageBusy = signal(false);
   protected readonly selectedImageUrl = computed(() => {
     const filename = this.beasts().find(b => b.id === this.selectedBeast())?.imageFilename;
-    return filename ? `/api/public/beasts/images/${filename}` : null;
+    return filename ? `/api/public/beasts/images/${filename}/thumbnail` : null;
   });
   protected readonly message = signal('');
   protected readonly filter = signal('');
@@ -41,7 +43,7 @@ export class BeastFeatureManager implements OnInit {
   ngOnInit(): void {
     this.http.get<{beasts: Beast[]; features: Feature[]; links: Link[]}>('/api/dnd/beast-features').subscribe({
       next: result => {
-        this.beasts.set((result.beasts ?? []).map(b => ({...b, id: Number(b.id)})));
+        this.beasts.set((result.beasts ?? []).map(b => ({...b, id: Number(b.id), name: b.name ?? b.slug})));
         this.features.set((result.features ?? []).map(f => ({...f, id: Number(f.id)})));
         this.links.set((result.links ?? []).map(l => ({beastId: Number(l.beastId), featureId: Number(l.featureId)})));
         if (result.beasts?.length) this.selectBeast(Number(result.beasts[0].id));
@@ -51,9 +53,26 @@ export class BeastFeatureManager implements OnInit {
   }
 
   protected selectBeast(id: number): void {
+    this.creating.set(false);
     this.selectedBeast.set(id);
     this.selectedFeatures.set(this.links().filter(l => Number(l.beastId) === id).map(l => Number(l.featureId)));
     this.message.set('');
+  }
+
+  protected newBeast(): void {
+    this.creating.set(true); this.selectedBeast.set(null); this.selectedFeatures.set([]); this.message.set('');
+  }
+  protected profileSaved(beast: BeastProfile): void {
+    if (!beast.id) return;
+    const entry = {id: beast.id, name: beast.name ?? beast.slug, slug: beast.slug, imageFilename: beast.imageFilename ?? null};
+    this.beasts.update(items => [...items.filter(b => b.id !== beast.id), entry].sort((a,b) => a.name.localeCompare(b.name, 'fr')));
+    this.selectBeast(beast.id);
+  }
+  protected profileDeleted(id: number): void {
+    this.beasts.update(items => items.filter(b => b.id !== id));
+    this.links.update(items => items.filter(l => l.beastId !== id));
+    const first = this.beasts()[0];
+    if (first) this.selectBeast(first.id); else this.selectedBeast.set(null);
   }
 
   protected uploadImage(event: Event): void {

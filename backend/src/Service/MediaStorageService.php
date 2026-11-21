@@ -79,6 +79,10 @@ final class MediaStorageService
         if (($file->getSize() ?: 0) > 5 * 1024 * 1024) {
             throw new \InvalidArgumentException('Illustration limitée à 5 Mo.');
         }
+        $dimensions = @getimagesize($file->getPathname());
+        if (!$dimensions || $dimensions[0] * $dimensions[1] > 16000000) {
+            throw new \InvalidArgumentException('Illustration invalide ou supérieure à 16 millions de pixels.');
+        }
         $extension = match ($file->getMimeType()) {
             'image/jpeg' => 'jpg', 'image/png' => 'png',
             'image/webp' => 'webp', 'image/gif' => 'gif',
@@ -104,6 +108,46 @@ final class MediaStorageService
         if (is_link($path) || (is_file($path) && !unlink($path))) {
             throw new \RuntimeException('Suppression de l’illustration impossible.');
         }
+        $thumbnail = $directory . '/thumbnails/' . $filename . '.webp';
+        if (is_link($thumbnail) || (is_file($thumbnail) && !unlink($thumbnail))) {
+            throw new \RuntimeException('Suppression de la miniature impossible.');
+        }
+    }
+
+    /** Lazy generation also covers illustrations uploaded before thumbnails existed. */
+    public function beastThumbnail(string $filename): string
+    {
+        if (!preg_match('/^[a-f0-9]{32}\.(?:jpg|png|webp|gif)$/D', $filename)) throw new \InvalidArgumentException('Nom de fichier invalide.');
+        $directory = $this->projectDir . '/public/uploads/beasts';
+        $source = $directory . '/' . $filename;
+        if (!is_file($source) || is_link($source)) throw new \RuntimeException('Illustration introuvable.');
+        $target = $directory . '/thumbnails/' . $filename . '.webp';
+        if (is_file($target) && !is_link($target)) return $target;
+        if (!extension_loaded('gd')) throw new \RuntimeException('Extension GD requise pour les miniatures.');
+        $dimensions = @getimagesize($source);
+        if (!$dimensions || $dimensions[0] * $dimensions[1] > 16000000) throw new \InvalidArgumentException('Illustration trop grande.');
+        $image = match ($dimensions[2]) {
+            IMAGETYPE_JPEG => @imagecreatefromjpeg($source), IMAGETYPE_PNG => @imagecreatefrompng($source),
+            IMAGETYPE_WEBP => @imagecreatefromwebp($source), IMAGETYPE_GIF => @imagecreatefromgif($source),
+            default => false,
+        };
+        if (!$image) throw new \InvalidArgumentException('Image illisible.');
+        $ratio = min(1, 256 / max($dimensions[0], $dimensions[1]));
+        $width = max(1, (int) round($dimensions[0] * $ratio));
+        $height = max(1, (int) round($dimensions[1] * $ratio));
+        $thumb = imagecreatetruecolor($width, $height);
+        imagealphablending($thumb, false); imagesavealpha($thumb, true);
+        imagefill($thumb, 0, 0, imagecolorallocatealpha($thumb, 0, 0, 0, 127));
+        imagecopyresampled($thumb, $image, 0, 0, 0, 0, $width, $height, $dimensions[0], $dimensions[1]);
+        if (!is_dir(dirname($target)) && !mkdir(dirname($target), 0775, true) && !is_dir(dirname($target))) throw new \RuntimeException('Stockage des miniatures inaccessible.');
+        $temporary = $target . '.' . bin2hex(random_bytes(8));
+        try {
+            if (!imagewebp($thumb, $temporary, 80) || !rename($temporary, $target)) throw new \RuntimeException('Création de miniature impossible.');
+        } finally {
+            if (is_file($temporary)) unlink($temporary);
+            imagedestroy($thumb); imagedestroy($image);
+        }
+        return $target;
     }
 
     public function remove(

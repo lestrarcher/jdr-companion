@@ -1,0 +1,62 @@
+@if (loading()) { <p role="status">Chargement de la fiche…</p> }
+@if (message()) { <p role="status">{{ message() }}</p> }
+@if (model(); as beast) {
+  <form (ngSubmit)="save()">
+    <fieldset [disabled]="readOnly || busy()">
+      <legend>Identité et statistiques</legend>
+      <div class="fields">
+        <label>Nom<input name="name" [(ngModel)]="beast.name" required maxlength="160" /></label>
+        <label>Slug<input name="slug" [(ngModel)]="beast.slug" [readonly]="!!beast.id" required maxlength="120" pattern="[a-z0-9]+(-[a-z0-9]+)*" /></label>
+        <label>Facteur de puissance<input name="cr" [(ngModel)]="beast.challengeRating" placeholder="0, 1/8, 1/4, 1/2, 1…" /></label>
+        <label>Source<input name="source" type="url" [(ngModel)]="beast.sourceUrl" maxlength="300" /></label>
+      </div>
+      @if (beast.statBlock; as stats) {
+        <div class="fields">
+          <label>Type<input value="Bête" disabled /></label>
+          <label>Taille<select name="size" [(ngModel)]="stats.size"><option value="Tiny">Très petite</option><option value="Small">Petite</option><option value="Medium">Moyenne</option><option value="Large">Grande</option><option value="Huge">Très grande</option><option value="Gargantuan">Gigantesque</option></select></label>
+          <label>Classe d’armure<input name="ac" type="number" [(ngModel)]="stats.armorClass" min="1" max="50" required /></label>
+          <label>PV moyens<input name="hp" type="number" [(ngModel)]="stats.hitPoints" min="1" max="100000" required /></label>
+          <label>Dés de vie<input name="dice" [(ngModel)]="stats.hitDice" placeholder="5d10+10" /></label>
+          @for (ability of abilities; track ability.key) { <label>{{ ability.label }}<input [name]="ability.key" type="number" [(ngModel)]="stats.abilities[ability.key]" min="1" max="30" required /></label> }
+        </div>
+        <h4>Vitesses (mètres)</h4>
+        <div class="fields">
+          @for (speed of speeds; track speed.key) { <label>{{ speed.label }}<input [name]="speed.key" type="number" [ngModel]="stats.speed[speed.key] ?? 0" (ngModelChange)="stats.speed[speed.key] = $event" min="0" max="10000" step="0.5" required /></label> }
+        </div>
+        <h4>Sens</h4>
+        @for (sense of senses; track $index; let i = $index) {
+          <div class="row"><label>Sens<input [name]="'sense-key-'+i" [(ngModel)]="sense.key" placeholder="darkvision, passive_perception…" required /></label><label>Valeur<input [name]="'sense-value-'+i" [(ngModel)]="sense.value" /></label><button type="button" (click)="senses.splice(i,1)">Retirer</button></div>
+        }
+        @if (!readOnly) { <button type="button" (click)="senses.push({key:'',value:''})">Ajouter un sens</button> }
+      } @else {
+        <p>Profil incomplet : cette bête ne peut pas encore être utilisée comme forme sauvage.</p>
+        @if (!readOnly) { <button type="button" (click)="initializeStats()">Renseigner les statistiques</button> }
+      }
+      <h4>Habitats</h4>
+      <div class="habitats">@for (habitat of habitats; track habitat) { <label><input type="checkbox" [name]="'habitat-'+habitat" [ngModel]="beast.habitats.includes(habitat)" (ngModelChange)="toggleHabitat(habitat,$event)" />{{ habitat }}</label> }</div>
+      <h4>Armes et actions naturelles</h4>
+      @for (weapon of beast.naturalWeapons; track $index; let i = $index) {
+        <article>
+          <div class="fields">
+            <label>Nom<input [name]="'weapon-name-'+i" [(ngModel)]="weapon.name" required maxlength="160" /></label>
+            <label>Type<select [name]="'weapon-type-'+i" [(ngModel)]="weapon.attackType"><option value="melee">Corps à corps</option><option value="ranged">À distance</option><option value="special">Action spéciale</option></select></label>
+            <label>Bonus d’attaque<input [name]="'weapon-bonus-'+i" type="number" [(ngModel)]="weapon.attackBonus" min="-30" max="50" /></label>
+          </div>
+          @for (damage of weapon.damageComponents; track $index; let j = $index) {
+            <div class="row"><label>Dégâts<input [name]="'damage-dice-'+i+'-'+j" [(ngModel)]="damage.dice" placeholder="1d8+3" required /></label><label>Type de dégâts<input [name]="'damage-type-'+i+'-'+j" [(ngModel)]="damage.type" placeholder="piercing, poison…" /></label><button type="button" (click)="weapon.damageComponents.splice(j,1)">Retirer</button></div>
+          }
+          @if (!readOnly) { <button type="button" (click)="weapon.damageComponents.push({dice:'1d6',type:null})">Ajouter des dégâts</button> }
+          <label>Portée, description et effets particuliers<textarea [name]="'weapon-description-'+i" [(ngModel)]="weapon.description" rows="4"></textarea></label>
+          @if (!readOnly) { <button type="button" (click)="beast.naturalWeapons.splice(i,1)">Supprimer cette action</button> }
+        </article>
+      } @empty { <p>Aucune arme naturelle renseignée.</p> }
+      @if (!readOnly) {
+        <div class="actions"><button type="button" (click)="addWeapon()">Ajouter une action</button><button type="submit">{{ busy() ? 'Enregistrement…' : 'Enregistrer la fiche' }}</button></div>
+      }
+    </fieldset>
+  </form>
+  @if (beast.id && !readOnly) {
+    @if (confirmDelete()) { <p>Supprimer définitivement cette bête et ses associations ? Les observations et transformations empêcheront la suppression.</p><button type="button" [disabled]="busy()" (click)="delete()">Confirmer la suppression</button><button type="button" (click)="confirmDelete.set(false)">Annuler</button> }
+    @else { <button class="delete" type="button" [disabled]="busy()" (click)="confirmDelete.set(true)">Supprimer la bête</button> }
+  }
+}

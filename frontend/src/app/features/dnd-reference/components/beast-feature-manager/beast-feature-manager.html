@@ -3,6 +3,7 @@
     <header class="panel-header">
       <div><span class="eyebrow">Référentiel</span><h2>{{ mode() === 'catalog' ? 'Bêtes' : 'Attributions aux bêtes' }}</h2></div>
     </header>
+    @if (mode() === 'catalog' && !readOnly) { <button type="button" class="action-button" (click)="newBeast()">Créer une bête</button> }
     <label class="field"><span>Rechercher une bête</span><input type="search" [ngModel]="filter()" (ngModelChange)="filter.set($event)" placeholder="Nom de la bête…" /></label>
     <div class="beast-manager__beasts">
       @for (beast of filteredBeasts(); track beast.id) {
@@ -13,9 +14,12 @@
     </div>
   </aside>
   <div class="beast-manager__content">
+    @if (message()) { <p role="status" class="beast-manager__message">{{ message() }}</p> }
+    @if (creating()) { <app-beast-profile-editor [beastId]="null" (saved)="profileSaved($event)" /> }
     @if (selectedBeast() !== null) {
       <header class="panel-header"><div><span class="eyebrow">{{ mode() === 'catalog' ? 'Catalogue animal' : 'Source de capacité' }}</span><h2>{{ selectedBeastName() }}</h2></div></header>
       @if (mode() === 'catalog') {
+        <app-beast-profile-editor [beastId]="selectedBeast()" (saved)="profileSaved($event)" (deleted)="profileDeleted($event)" />
         <section class="beast-manager__image-editor" aria-label="Illustration de la bête">
           @if (selectedImageUrl(); as imageUrl) {
             <img [src]="imageUrl" alt="Illustration de {{ selectedBeastName() }}" loading="lazy" decoding="async" width="112" height="112" />
@@ -32,7 +36,7 @@
         </section>
       }
       <p class="beast-manager__intro">{{ mode() === 'catalog' ? 'Capacités associées à cette bête. Leur création et leur modification se font dans l’onglet Capacités.' : 'Sélectionne une définition créée dans Capacités, puis attribue-la à la bête sélectionnée.' }}</p>
-      @if (mode() === 'assignments' && !readOnly) {
+      @if (!readOnly) {
         <div class="beast-manager__add">
           <label class="field"><span>Rechercher une capacité</span><input type="search" [ngModel]="featureSearch()" (ngModelChange)="featureSearch.set($event)" placeholder="Nom de capacité…" /></label>
           <label class="field"><span>Capacité à attribuer</span><select [ngModel]="featureToAdd()" (ngModelChange)="featureToAdd.set($event === null ? null : +$event)"><option [ngValue]="null">Sélectionner…</option>@for (feature of availableFeatures(); track feature.id) { <option [ngValue]="feature.id">{{ feature.name }}</option> }</select></label>
@@ -43,12 +47,11 @@
       <div class="beast-manager__assigned">
         @for (feature of assignedFeatures(); track feature.id) {
           <article class="beast-manager__feature"><div><strong>{{ feature.name }}</strong>@if (feature.description) { <p>{{ feature.description }}</p> }</div>
-            @if (mode() === 'assignments' && !readOnly) { <button type="button" class="remove-button" [disabled]="busy()" (click)="removeFeature(feature.id)" [attr.aria-label]="'Retirer ' + feature.name">Retirer</button> }
+            @if (!readOnly) { <button type="button" class="remove-button" [disabled]="busy()" (click)="removeFeature(feature.id)" [attr.aria-label]="'Retirer ' + feature.name">Retirer</button> }
           </article>
         } @empty { <p class="empty-state">Aucune capacité associée.</p> }
       </div>
-      @if (mode() === 'assignments' && !readOnly) { <button type="button" class="action-button beast-manager__save" (click)="save()" [disabled]="busy()">{{ busy() ? 'Enregistrement…' : 'Enregistrer les attributions' }}</button> }
-      @if (message()) { <p role="status" class="beast-manager__message">{{ message() }}</p> }
-    } @else { <p class="empty-state">Sélectionne une bête.</p> }
+      @if (!readOnly) { <button type="button" class="action-button beast-manager__save" (click)="save()" [disabled]="busy()">{{ busy() ? 'Enregistrement…' : 'Enregistrer les attributions' }}</button> }
+    } @else if (!creating()) { <p class="empty-state">Sélectionne une bête.</p> }
   </div>
 </section>

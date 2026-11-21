@@ -27,6 +27,7 @@ final class ImportBeastTraits2014Command extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        // Keep all variants in slug calculation even when a beast is protected.
         $rows = $this->db->fetchAllAssociative('SELECT id, slug, stat_block FROM beast WHERE stat_block IS NOT NULL ORDER BY id');
         $planned = [];
         $variants = [];
@@ -71,6 +72,7 @@ final class ImportBeastTraits2014Command extends Command
         $created = $linked = $updated = $migrated = $preserved = 0;
         $this->db->transactional(function () use ($planned, $englishDescriptions, &$created, &$linked, &$updated, &$migrated, &$preserved): void {
             foreach ($planned as $entry) {
+                if (filter_var($this->db->fetchOne('SELECT customized FROM beast WHERE id = ? FOR UPDATE', [$entry['beast']]), FILTER_VALIDATE_BOOLEAN)) continue;
                 $feature = $this->db->fetchAssociative('SELECT id, name, description, origin, custom FROM character_feature_definition WHERE slug = ?', [$entry['slug']]);
                 if (!$feature) {
                     $id = $this->db->fetchOne(
@@ -82,13 +84,9 @@ final class ImportBeastTraits2014Command extends Command
                 }
                 if (!$feature) throw new \RuntimeException('Définition introuvable : '.$entry['slug']);
                 $featureId = (int) $feature['id'];
-                $official = $feature['origin'] === 'OFFICIAL' && !$feature['custom'];
                 $oldDescriptions = array_keys($englishDescriptions[$entry['baseSlug']]);
-                $safeDescription = $feature['description'] === $entry['description'] || in_array((string) $feature['description'], $oldDescriptions, true);
-                $safeName = $feature['name'] === $entry['originalName'] || $feature['name'] === $entry['name'];
-                if ($official && $safeDescription && $safeName && ($feature['description'] !== $entry['description'] || $feature['name'] !== $entry['name'])) {
-                    $updated += $this->db->executeStatement('UPDATE character_feature_definition SET name = ?, description = ?, updated_at = NOW() WHERE id = ?', [$entry['name'], $entry['description'], $featureId]);
-                } elseif (!$official || !$safeDescription || !$safeName) {
+                // Existing definitions belong to the shared editor, including historical SQL corrections.
+                if ($feature['description'] !== $entry['description'] || $feature['name'] !== $entry['name']) {
                     ++$preserved;
                 }
                 // Migrer uniquement l'ancien lien automatique, jamais les autres capacités attribuées par le MJ.

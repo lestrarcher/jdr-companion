@@ -61,9 +61,7 @@
         <div class="wild-grid">
           @for (beast of group.beasts; track beast.id) {
             <article class="wild-card" [class.wild-card--locked]="!catalog() && !isAvailable(beast)">
-              @if (beast.imageUrl) {
-                <img class="wild-beast-image" [src]="beast.imageUrl" [alt]="'Illustration de ' + (beast.name || beast.slug)" loading="lazy" decoding="async" width="64" height="64" />
-              } @else { <span class="wild-beast-icon" aria-hidden="true">{{ beastSymbol(beast) }}</span> }
+              <img class="wild-beast-image" [src]="beast.imageUrl || '/assets/beast-placeholder.svg'" [alt]="'Illustration de ' + (beast.name || beast.slug)" (error)="imageFailed($event)" loading="lazy" decoding="async" width="64" height="64" />
               <div class="wild-card__name"><strong>{{ beast.name || beast.slug }}</strong>
                 @if (!catalog() && !isAvailable(beast)) { <small>{{ reason(beast) }}</small> }
               </div>
@@ -98,13 +96,13 @@
               }
             </div>
             @if (stats.speed) { <p class="wild-speeds"><b>Déplacements :</b> @for (speed of (stats.speed | keyvalue); track speed.key) { <span>{{ speedLabel(speed.key) }} : {{ speed.value }} m · </span> }</p> }
-            @if (stats.actions?.length) {
+            @if (beast.naturalWeapons?.length) {
               <h3>Attaques et actions</h3>
-              @for (action of stats.actions ?? []; track $index) { <p class="wild-rule"><b>{{ action.name }}</b> — {{ action.description }}</p> }
+              @for (action of beast.naturalWeapons; track $index) { <p class="wild-rule"><b>{{ action.name }}</b>@if (action.attackBonus !== null) { · {{ action.attackBonus >= 0 ? '+' : '' }}{{ action.attackBonus }} au toucher }@for (damage of action.damageComponents; track $index) { · {{ damage.dice }} {{ damage.type }} } — {{ action.description }}</p> }
             }
-            @if (stats.traits?.length) {
+            @if (beast.features?.length) {
               <h3>Capacités</h3>
-              @for (trait of stats.traits ?? []; track $index) { <p class="wild-rule"><b>{{ trait.translatedName || trait.name }}</b> — {{ trait.translatedDescription || trait.desc }}</p> }
+              @for (trait of beast.features; track trait.id) { <p class="wild-rule"><b>{{ trait.name }}</b> — {{ trait.description }}</p> }
             }
           } @else { <p>Statistiques non disponibles pour cette bête.</p> }
         </div>

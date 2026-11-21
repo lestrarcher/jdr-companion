@@ -1,8 +1,10 @@
 # JdR Companion — Documentation du système de Forme sauvage
 
-> **État au 20 novembre 2026 — mise à jour de transmission Codex** — chantier `feature/druid-wild-shape`
+> **État au 20 novembre 2026 — refonte du référentiel implémentée** — chantier `feature/druid-wild-shape`
 > Référentiel de fonctionnement, architecture, données, règles et points restant à traiter.
 > **Périmètre :** système D&D 5e 2014 tel que développé et testé dans JdR Companion. Les détails d'API, schémas et signatures non confirmés doivent être vérifiés dans le dépôt avant maintenance.
+>
+> **État actuel : voir §18.** Les §3 et §17 conservent les constats historiques du chantier. Le modèle Doctrine, le CRUD, la protection des imports et les miniatures sont désormais implémentés. Comptage DEV vérifié : **103 bêtes, 89 profils, 14 incomplets, 128 actions, 10 habitats / 162 associations, 48 définitions liées / 108 associations de capacités**.
 
 ## 1. Objectif et principes
 
@@ -22,8 +24,8 @@ Principes retenus :
 
 | Domaine | État | Remarques |
 |---|---|---|
-| Catalogue de bêtes | Implémenté | 94 bêtes répertoriées |
-| Blocs statistiques SRD 2014 | Partiel | 80 renseignés, 14 manquants |
+| Catalogue de bêtes | Administrable via Doctrine | 103 bêtes répertoriées |
+| Blocs statistiques | Partiel | 89 renseignés, 14 manquants ; sources SRD et PDF |
 | Habitats | Implémenté | 10 habitats, 162 associations |
 | Bêtes observées | Implémenté | Exemple : 34 formes observées pour Greto |
 | Filtrage des formes éligibles | Implémenté | FP, restrictions nage/vol, observation |
@@ -491,3 +493,100 @@ Après import, vérifier les associations habitats/traits et les armes naturelle
 **Définition de terminé** : un MJ peut administrer individuellement une bête de bout en bout ; la fiche est persistée via des objets/repositories Doctrine ; les images et relations sont conservées ; le portail joueur continue à fonctionner ; les imports ne détruisent pas les corrections manuelles ; les tests et builds passent.
 
 **Ne pas élargir automatiquement la mission à tout le référentiel D&D.** La refonte vise d'abord les bêtes ; ne toucher aux modules partagés que lorsque leur réutilisation est nécessaire et documentée. Le propriétaire du projet souhaite garder Codex disponible pour d'autres chantiers : privilégier des lots autonomes et vérifiables plutôt qu'une réécriture monolithique.
+
+## 18. Référentiel administrable — implémentation du 20 novembre 2026
+
+### 18.1. Audit et modèle retenu
+
+Le schéma DEV confirme les migrations `20261119020000`, `20261119030000`, `20261120010000`, `20261120020000` et `20261120180000`. L'import dinosaures a bien enrichi le catalogue : les anciens nombres 94/80 ne sont plus les compteurs courants. Aucune illustration n'était associée dans cette base au moment de l'audit.
+
+Les responsabilités étaient réparties entre `BeastCatalogue`, `BeastNaturalWeaponCatalogue`, les contrôleurs public/admin et six importeurs DBAL. Les mêmes lectures et conversions JSON étaient répétées. Le bug de liste vide ne venait pas de Doctrine : **14 noms `NULL` provoquaient une exception dans `name.toLocaleLowerCase()`**. Le backend et le gestionnaire affichent maintenant le slug en remplacement ; une erreur de chargement reste visible même sans sélection.
+
+Les entités suivantes mappent directement les tables existantes, sans copie de données :
+
+| Entité | Table / responsabilité |
+|---|---|
+| `Beast` | `beast`, identité, FP, statistiques JSON, image, associations et protection des imports |
+| `BeastNaturalWeapon` | `beast_natural_weapon`, actions individuelles et dégâts structurés ; les identifiants sont conservés à l'édition |
+| `BeastFeature` | `beast_feature`, lien ordonné vers **la même** `CharacterFeatureDefinition` partagée |
+| `BeastHabitat` | `beast_habitat`, identité composée bête/habitat et liste des dix valeurs réutilisables |
+
+`BeastRepository` charge le catalogue et ses relations ; `BeastEditor` valide les requêtes avant mutation ; `BeastSerializer` maintient les contrats JSON. Les scores, CA, PV, dés de vie, taille, vitesses et sens restent dans `stat_block` (`json`) : aucune table par valeur numérique, aucune suppression des métadonnées de source ou champs importés supplémentaires. Les valeurs éditées sont validées côté serveur. Un profil `null` reste autorisé pour une référence incomplète, et reste inéligible aux transformations.
+
+Le référentiel ne contient que des bêtes. Le nom affiché est modifiable ; **le slug d'une bête persistée est stable**, afin qu'un import ne recrée pas son ancienne identité. Les portées/allonges et effets particuliers restent dans la description des actions, conformément au contrat déjà consommé par `character-weapons` ; les jets et composantes de dégâts restent structurés séparément.
+
+### 18.2. Migration et conservation
+
+`Version20261121010000` ajoute uniquement `beast.customized BOOLEAN NOT NULL DEFAULT FALSE`. Aucun changement d'identifiant, aucune table supplémentaire, aucune réécriture des statistiques ou états de session. Son retour arrière est volontairement refusé pour ne pas perdre les marqueurs de protection.
+
+Migration simulée, testée sur une table temporaire, puis appliquée **uniquement en DEV** par exécution ciblée. Les empreintes avant/après des données existantes sont identiques pour : 103 bêtes, 128 armes, 162 liens habitats, 108 liens capacités, 34 observations et 35 états de session. Aucune migration de production, aucun import de catalogue réel, aucun commit/push n'a été effectué.
+
+Les observations restent dans `character_seen_beast`, gérées par le contrat DBAL idempotent existant. Les transformations restent dans `CharacterSessionState.state.wildShape`. Le contrôleur public lit les bêtes via le repository, conserve les règles et verrouille la bête pendant une transformation. Aucun resolver ne cherche une session implicite.
+
+### 18.3. Administration et contrats HTTP
+
+Le composant existant `beast-feature-manager` réutilise ses panneaux et ajoute `beast-profile-editor` pour le formulaire. Création, modification des statistiques, sens, habitats, ajout/édition/retrait d'actions, association/retrait de capacités, images et suppression sont disponibles dans le référentiel. Les capacités partagées continuent à se créer/modifier dans leur gestionnaire existant.
+
+Toutes les routes d'administration exigent un utilisateur connecté et `ROLE_REFERENCE_ADMIN` :
+
+| Méthode / chemin backend (préfixer `/api` depuis Angular) | Résultat |
+|---|---|
+| `GET /dnd/beast-features` | Contrat existant `beasts`, `features`, `links` ; ajoute `habitats` |
+| `POST /dnd/beast-features` | Création, réponse 201 `{beast}` |
+| `GET /dnd/beast-features/{id}` | Détail `{beast}` |
+| `PUT /dnd/beast-features/{id}/profile` | Édition transactionnelle ; relations omises préservées |
+| `PUT /dnd/beast-features/{id}` | Contrat existant de remplacement des `featureIds` |
+| `DELETE /dnd/beast-features/{id}` | Refus 409 si observation ou transformation active ; sinon retrait des relations propres à la bête |
+| `POST / DELETE /dnd/beast-features/{id}/image` | Upload / remplacement / suppression |
+
+Le formulaire de profil n'envoie pas les attributions de capacités : elles sont enregistrées séparément et ne peuvent pas être écrasées par une ancienne réponse de détail. Les champs importés non édités restent conservés. Les tableaux de relations fournis remplacent leur contenu ; les identifiants d'armes étrangers, doublons, habitats inconnus et valeurs invalides sont refusés. Les suppressions ne suppriment jamais les définitions de capacités partagées.
+
+Le catalogue joueur conserve ses champs existants et ajoute `naturalWeapons` et `features`. La modale de consultation affiche ces relations administrées ; `statBlock.actions` et `statBlock.traits` restent des données d'import conservées, sans reprendre l'autorité sur les tables métier. Les onglets Armes et Capacités réutilisent leurs composants habituels. Les statistiques d'une transformation déjà active restent son instantané ; éditer le catalogue ne réécrit pas cet état.
+
+### 18.4. Imports et conflits
+
+- Une édition de profil, d'action, d'habitat ou d'attribution marque la bête `customized=true`. Aucun importeur ne remplace ces données ni ne recrée les relations retirées de cette bête.
+- `app:beasts:import-2014` crée seulement les slugs absents ; les URLs existantes sont préservées.
+- `app:beasts:enrich-2014` remplit les profils absents par défaut. Les différences sur des profils existants sont signalées et préservées, y compris les anciennes corrections SQL sans marqueur.
+- `app:beasts:import-natural-weapons-2014` conserve les actions existantes par défaut ; les actions personnalisées restent toujours protégées.
+- Pour ces deux dernières commandes, `--replace-unmanaged` permet une actualisation explicite **uniquement des données non personnalisées**. Examiner d'abord la simulation sans `--apply`. Cette option peut remplacer d'anciennes corrections SQL non marquées : elle n'est pas nécessaire à l'administration courante.
+- L'import habitats est désormais additif ; il ne retire aucune association existante et ignore les bêtes personnalisées.
+- L'import traits conserve toutes les variantes pour calculer les slugs, ignore les attributions des bêtes personnalisées et ne réécrit plus les définitions partagées existantes. Leur édition appartient au gestionnaire de capacités.
+- L'import PDF reste insert-only, ignore les slugs présents et n'invente pas les actions absentes du document source.
+
+Les fichiers JSON restent des sources d'amorçage. La base administrée est la source de vérité à l'exécution. Les commandes d'enrichissement, habitats, traits, actions et PDF restent en simulation par défaut.
+
+### 18.5. Illustrations et portail
+
+Stockage global dans `public/uploads/beasts`, réutilisant `MediaStorageService`, indépendant des campagnes. JPEG/PNG/WebP/GIF, 5 Mo maximum, limite de décodage à 16 millions de pixels. L'original est conservé. L'endpoint public `/public/beasts/images/{filename}/thumbnail` génère à la demande un WebP de **256 px maximum**, sans agrandissement ; le GIF utilise sa première image. Les miniatures sont mises en cache dans `beasts/thumbnails`, y compris pour les images anciennes. Le remplacement et la suppression retirent l'ancien original et sa miniature après réussite de la transaction.
+
+**GD avec JPEG/WebP est requis** ; le Dockerfile backend l'installe désormais. L'image Docker a été reconstruite et le service backend DEV recréé. Les cartes utilisent les miniatures, `loading="lazy"`, `decoding="async"`, des dimensions fixes et `/assets/beast-placeholder.svg` en absence/échec d'image. Aucun changement de navigation du portail.
+
+### 18.6. Validation et limites explicites
+
+Commandes exécutées depuis le dépôt :
+
+```bash
+docker compose build backend
+docker compose up -d --no-deps backend
+docker compose exec -T backend php bin/console doctrine:migrations:execute 'DoctrineMigrations\Version20261121010000' --up --dry-run --no-interaction
+docker compose exec -T backend php bin/console doctrine:migrations:execute 'DoctrineMigrations\Version20261121010000' --up --no-interaction
+docker compose exec -T backend php bin/phpunit tests/Integration/BeastAdministrationTest.php tests/Service/WildShapeRules2014Test.php tests/Service/WildShapeSessionServiceTest.php
+docker compose exec -T frontend npm test -- --watch=false --include='**/beast-feature-manager.spec.ts'
+docker compose exec -T frontend npm run build
+docker compose exec -T backend php bin/console lint:container
+docker compose exec -T backend php bin/console doctrine:schema:validate
+docker compose exec -T backend php bin/console debug:router --show-controllers
+docker compose exec -T backend php scripts/check-beast-catalogue.php Greto
+git diff --check
+```
+
+Les tests de persistance utilisent exclusivement des tables PostgreSQL temporaires dans une transaction rollbackée. Ils couvrent le CRUD, l'identité des armes, les relations partagées, les valeurs invalides, les droits administrateur, les imports répétés, la migration additive, les suppressions protégées, l'upload/remplacement/suppression et les dimensions réelles des WebP. La suite ciblée comporte **16 tests backend** et **4 tests Angular**. Les tests Angular reproduisent les noms `null`, vérifient le filtrage, les erreurs visibles, la conservation des données et l'annulation d'une requête de détail devenue obsolète.
+
+Un ancien test interdisait le changement direct de forme malgré son implémentation déjà fonctionnelle : il a été corrigé pour vérifier la seconde consommation et le refus à zéro utilisation. Aucun changement des règles n'a été fait pour satisfaire le test.
+
+La recette `check-beast-catalogue.php Greto` vérifie les 103 fiches contre les données SQL et les 128 actions, puis simule **20 formes observées éligibles** de Greto (druide 2, Lune, 34 observations), dont araignée géante, loup sanguinaire et ours brun. Les transformations, changements directs, repos et retour se font en mémoire ; **aucun état de Greto n'est écrit**. Ce contrôle ne remplace pas une recette visuelle interactive sur mobile.
+
+`lint:container`, mapping Doctrine, routes et build Angular passent. Le build garde l'avertissement préexistant `feature-definition-manager.scss` (11,30 kB / budget 10 kB). La validation globale de synchronisation du schéma reste en échec sur les tables historiques DBAL non mappées (`character_seen_beast`, tables de choix/sorts, etc.) et des écarts hors périmètre. La proposition SQL a seulement été lue : **aucune mise à jour globale du schéma n'a été exécutée**. Les quatre tables mappées du bestiaire ne présentent pas d'écart proposé.
+
+Restent hors de cette refonte : compléter les 14 profils absents, vérifier les données partielles du PDF, et traiter les exceptions D&D de haut niveau déjà différées. Aucune donnée de règles n'a été inventée ou réimportée pour remplir ces lacunes.
