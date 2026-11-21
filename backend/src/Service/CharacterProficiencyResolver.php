@@ -9,13 +9,12 @@ use App\Entity\ProficiencyDefinition;
 use App\Entity\ProficiencyGrantRule;
 use App\Enum\ProficiencyAcquisitionMode;
 use App\Repository\ProficiencyGrantRuleRepository;
-use Doctrine\ORM\EntityManagerInterface;
 
 final readonly class CharacterProficiencyResolver
 {
     public function __construct(
         private ProficiencyGrantRuleRepository $ruleRepository,
-        private EntityManagerInterface $em,
+        private CharacterFeatureResolver $features,
     )
     {
     }
@@ -26,9 +25,9 @@ final readonly class CharacterProficiencyResolver
      * No stacking, substitution or persistence is performed here.
      * @return array<string, array{definition: ProficiencyDefinition, grants: list<ProficiencyGrantRule>}>
      */
-    public function resolve(Character $character): array
+    public function resolve(Character $character, array $progressionValues = []): array
     {
-        $result = $this->resolveBase($character);
+        $result = $this->resolveBase($character, $progressionValues);
         $seen = [];
         foreach ($character->getProficiencySubstitutions() as $substitution) {
             $rule = $substitution->getGrantRule();
@@ -55,7 +54,7 @@ final readonly class CharacterProficiencyResolver
     }
 
     /** Grants before explicit background substitutions or manual grants. */
-    public function resolveBase(Character $character): array
+    public function resolveBase(Character $character, array $progressionValues = []): array
     {
         $result = [];
         $owner = $character->getCampaign()->getOwner();
@@ -64,7 +63,7 @@ final readonly class CharacterProficiencyResolver
                 continue;
             }
             $rule->validateRule();
-            if (!$this->isApplicable($character, $rule)) {
+            if (!$this->isApplicable($character, $rule, progressionValues: $progressionValues)) {
                 continue;
             }
 
@@ -96,21 +95,18 @@ final readonly class CharacterProficiencyResolver
         return $result;
     }
 
-    public function isApplicable(Character $character, ProficiencyGrantRule $rule, array $previewFeatureIds = []): bool
+    public function isApplicable(Character $character, ProficiencyGrantRule $rule, array $previewFeatureIds = [], array $progressionValues = []): bool
     {
         if (($feature = $rule->getCharacterFeatureDefinition()) !== null) {
-            // Only active, explicitly selected options may grant proficiency.
-            // Never infer a choice from the parent race/class alone.
+            // The common resolver covers direct, progression and selected-option grants.
+            // It also enforces option gates: owning a parent never implies a selection.
             if ($character->getId() === null) {
                 return in_array($feature->getId(), $previewFeatureIds, true);
             }
-            return (bool) $this->em->getConnection()->fetchOne(
-                'SELECT 1 FROM character_feature_choice c '
-                .'JOIN feature_choice_option o ON o.key = c.option_key '
-                .'JOIN feature_choice_grant g ON g.key = c.grant_key AND g.group_key = o.group_key '
-                .'WHERE c.character_id = ? AND c.active AND o.enabled AND g.enabled AND o.feature_id = ? LIMIT 1',
-                [$character->getId(), $feature->getId()],
-            );
+            foreach ($this->features->resolve($character, $progressionValues) as $featureRule) {
+                if ($featureRule->getFeatureDefinition()->getId() === $feature->getId()) return true;
+            }
+            return false;
         }
         if (($class = $rule->getCharacterClass()) !== null) {
             if ($character->getLevelInClass($class) < $rule->getUnlockLevel()) {

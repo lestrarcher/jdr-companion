@@ -44,7 +44,8 @@ export class CharacterFeatures implements OnInit, OnChanges {
   }
   ngOnInit(): void { this.loadRacialAbilities(); this.loadBeastFeatures(); }
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['accessToken'] && !changes['accessToken'].firstChange) this.loadRacialAbilities();
+    if ((changes['accessToken'] && !changes['accessToken'].firstChange)
+      || (changes['features'] && !changes['features'].firstChange)) this.loadRacialAbilities();
     if (changes['beastId'] || changes['accessToken']) this.loadBeastFeatures();
   }
   private loadBeastFeatures(): void {

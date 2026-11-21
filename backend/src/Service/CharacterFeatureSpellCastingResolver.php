@@ -57,17 +57,17 @@ final readonly class CharacterFeatureSpellCastingResolver
                 }
             }
         }
-        if ($origin['type'] === 'progression' && in_array($grant['casting_ability'], [null, 'CHOICE'], true)) {
-            // Legacy progression CHOICE never represented a persisted choice.
+        if ($origin['type'] === 'progression' && $grant['casting_ability'] === null) {
             $ability = $progressionAbility;
             $abilityReason = 'ability_not_configured';
         } elseif ($grant['casting_ability']==='CHOICE') {
             $ability=$origin['type']==='feat' ? ($assignments[0]->getChosenAbility() ?? null) : null;
-            if (in_array($origin['type'], ['race','character'], true)) {
+            if (in_array($origin['type'], ['race','character','progression'], true)) {
                 $chosen=$this->db->fetchOne('SELECT ability FROM character_spell_grant_ability_choice WHERE character_id=? AND grant_id=?', [$character->getId(), $grantId]);
-                $ability=$chosen===false ? null : CharacterFeatureSpellService::castingAbility($chosen);
+                // Preserve legacy progression defaults until the player overrides them.
+                $ability=$chosen===false ? $progressionAbility : CharacterFeatureSpellService::castingAbility($chosen);
             }
-            $abilityReason=in_array($origin['type'], ['feat','race','character'], true)?'ability_choice_missing':'ability_choice_unsupported';
+            $abilityReason=in_array($origin['type'], ['feat','race','character','progression'], true)?'ability_choice_missing':'ability_choice_unsupported';
         } else {
             $ability=CharacterFeatureSpellService::castingAbility($grant['casting_ability']);
             $abilityReason=$grant['casting_ability']===null?'ability_not_configured':'ability_invalid';

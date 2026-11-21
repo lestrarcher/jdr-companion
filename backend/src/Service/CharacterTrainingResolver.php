@@ -59,10 +59,10 @@ final readonly class CharacterTrainingResolver
         }
         return $requirements;
     }
-    public function resolve(Character $character, ?array $refs = null): array
+    public function resolve(Character $character, ?array $refs = null, array $progressionValues = []): array
     {
         $refs ??= $this->references->load($character);
-        $proficiencies = $this->proficiencies->resolve($character);
+        $proficiencies = $this->proficiencies->resolve($character, $progressionValues);
         $languages = $expertises = [];
         foreach ($this->languageRequirements($character, $refs) as $key => $requirement) {
             $selected = $requirement['automatic'];
