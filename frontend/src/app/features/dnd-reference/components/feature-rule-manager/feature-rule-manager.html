@@ -26,38 +26,11 @@
 
     <form class="rule-form" (ngSubmit)="save()">
       @if (readOnly()) { <p>Référence officielle en consultation.</p> }
-      <fieldset [disabled]="readOnly() || submitting()" style="border:0;padding:0;margin:0;min-width:0">
+      <fieldset [disabled]="readOnly() || submitting()">
       <label class="field">
-        <span>Rechercher une capacité</span>
-        <input
-          type="search"
-          name="featureSearch"
-          placeholder="Nom ou slug…"
-          autocomplete="off"
-          [disabled]="selectedRuleId() !== null"
-          [ngModel]="featureSearch()"
-          (ngModelChange)="featureSearch.set($event)"
-        />
+        <span>Capacité</span>
+        <app-reference-picker name="featureDefinitionId" label="Capacité" [options]="features()" [(ngModel)]="form.featureDefinitionId" [nullable]="false" [disabled]="readOnly()" />
       </label>
-
-      <label class="field">
-        <span>
-          Capacité
-
-          @if (featureSearch()) {
-            <small>{{ filteredFeatures().length }} résultat(s)</small>
-          }
-        </span>
-
-        <app-reference-picker name="featureDefinitionId" label="Capacité" [options]="features()" [(ngModel)]="form.featureDefinitionId" [nullable]="false" [disabled]="readOnly()" (ngModelChange)="featureSelected()" />
-      </label>
-
-      @if (featureSearch() && filteredFeatures().length === 0) {
-        <p class="inline-empty">
-          Aucune capacité ne correspond à cette recherche.
-        </p>
-      }
-
       <label class="field">
         <span>Type de source</span>
         <select
@@ -71,6 +44,7 @@
           <option value="race">Race</option>
           <option value="feat">Don</option>
           <option value="progression">Progression</option>
+          <option value="beast">Bête</option>
         </select>
       </label>
 
@@ -80,7 +54,9 @@
       </label>
 
       <div class="compact-grid">
-        @if (form.sourceType === 'progression') {
+        @if (form.sourceType === 'beast') {
+          <p class="inline-empty">Les capacités animales sont disponibles pendant la transformation, sans niveau de déblocage.</p>
+        } @else if (form.sourceType === 'progression') {
           <label class="field">
             <span>Seuil de déblocage</span>
             <input type="number" name="progressionThreshold" min="0" step="1"
@@ -104,6 +80,7 @@
           </label>
         }
 
+        @if (form.sourceType !== 'beast') {
         <label class="field">
           <span>Ordre d’affichage</span>
           <input
@@ -113,6 +90,7 @@
             [(ngModel)]="form.displayOrder"
           />
         </label>
+        }
       </div>
 
       @if (selectedRule(); as rule) {
@@ -124,7 +102,9 @@
           <span>
             {{ sourceTypeLabel(rule.sourceType) }} ·
             {{ rule.sourceName }} ·
-            @if (rule.sourceType === 'progression') {
+            @if (rule.sourceType === 'beast') {
+              forme animale
+            } @else if (rule.sourceType === 'progression') {
               seuil {{ rule.progressionThreshold }}
             } @else {
               niveau {{ rule.unlockLevel }}
@@ -186,7 +166,7 @@
       </div>
 
       <span class="counter">
-        {{ filteredRules().length }} / {{ rules().length }}
+        {{ filteredRules().length }} / {{ allRules().length }}
       </span>
     </header>
 
@@ -213,6 +193,7 @@
           <option value="race">Races</option>
           <option value="feat">Dons</option>
           <option value="progression">Progression</option>
+          <option value="beast">Bêtes</option>
         </select>
       </label>
 
@@ -272,7 +253,9 @@
               <span class="rule-card__source">{{ rule.sourceName }}</span>
 
               <span class="rule-card__details">
-                @if (rule.sourceType === 'progression') {
+                @if (rule.sourceType === 'beast') {
+                  Forme animale
+                } @else if (rule.sourceType === 'progression') {
                   Seuil {{ rule.progressionThreshold }}
                 } @else {
                   Niveau {{ rule.unlockLevel }}
@@ -296,3 +279,4 @@
     </div>
   </section>
 </section>
+

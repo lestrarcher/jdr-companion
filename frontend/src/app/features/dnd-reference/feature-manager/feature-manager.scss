@@ -40,11 +40,14 @@
 
 .manager-tabs {
   display: grid;
-  grid-template-columns: repeat(11, minmax(0, 1fr));
+  grid-template-columns: minmax(0,9fr) minmax(0,1fr);
   margin: 0 0 1rem;
   border: 1px solid rgba(202, 165, 86, 0.22);
-  overflow-x: auto;
 }
+.manager-tabs__catalogue { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); }
+.manager-tabs__assignments { display:flex; min-width:0; border-left:1px solid rgba(202,165,86,.22); }
+.manager-tabs__assignments .manager-tab { width:100%; align-items:center; justify-content:center; text-align:center; padding:.5rem; }
+.manager-tabs__catalogue .manager-tab { border-bottom:1px solid rgba(202,165,86,.18); }
 
 .manager-tab {
   display: flex;
@@ -107,11 +110,11 @@
   }
 
   .manager-tabs {
-    display: flex;
+    grid-template-columns:minmax(0,1fr);
   }
 
   .manager-tab {
-    flex: 0 0 155px;
+    min-width:0;
     border-right: 1px solid rgba(202, 165, 86, 0.18);
     border-bottom: 0;
   }
@@ -136,5 +139,11 @@
 .reference-scope-tabs a:focus-visible { outline: 2px solid #f0cf73; outline-offset: -2px; }
 @media (max-width: 760px) {
   .reference-scope-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .manager-tabs .manager-tab { flex: 0 0 155px; }
+  .manager-tabs__catalogue { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .manager-tabs__assignments { border-left:0; border-top:1px solid rgba(202,165,86,.22); }
+}
+.manager-tabs .manager-tab { overflow-wrap:anywhere; }
+@media(min-width:761px) and (max-width:1100px) {
+  .manager-tabs { grid-template-columns:minmax(0,4fr) minmax(0,1fr); }
+  .manager-tabs__catalogue { grid-template-columns:repeat(3,minmax(0,1fr)); }
 }

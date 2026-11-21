@@ -1,17 +1,46 @@
-:host { display: block; min-width: 0; }
-.weapons-table { overflow-x: auto; }
-table { border-collapse: collapse; width: 100%; font-size: .85rem; }
-th, td { text-align: left; vertical-align: top; padding: .6rem .45rem; border-bottom: 1px solid rgba(201,168,95,.4); }
-thead th { color: var(--portal-accent); font-weight: 500; white-space: nowrap; }
-tbody th { font-weight: 500; min-width: 6rem; width: 24%; overflow-wrap: anywhere; }
-.attack { text-align: center; width: 12%; }
-.damage { min-width: 7rem; width: 25%; }
-.notes { color: var(--portal-muted); min-width: 8rem; width: 39%; font-size: .8rem; overflow-wrap: anywhere; }
+/* Les détails sont consultables dans la modale, jamais dans le tableau. */
+:host { display: block; min-width: 0; max-width: 100%; }
+.weapons-table { width: 100%; min-width: 0; max-width: 100%; }
+table { border-collapse: collapse; width: 100%; table-layout: fixed; font-size: .85rem; }
+th, td { text-align: left; vertical-align: middle; padding: .65rem .4rem; border-bottom: 1px solid rgba(201,168,95,.4); overflow-wrap: anywhere; }
+thead th { color: var(--portal-accent); font-weight: 500; }
+thead th:nth-child(1) { width: 32%; }
+thead th:nth-child(2) { width: 17%; text-align: center; }
+thead th:nth-child(3) { width: 39%; }
+thead th:nth-child(4) { width: 12%; }
+tbody th { font-weight: 600; }
+.attack { text-align: center; white-space: nowrap; }
+.damage { min-width: 0; }
 tbody tr:last-child > * { border-bottom: 0; }
 tbody tr:nth-child(even) { background: rgba(201,168,95,.065); }
-.details-control { width: 2rem; text-align: right; }
-.details-toggle { border: 1px solid rgba(201,168,95,.5); background: transparent; color: var(--portal-accent); border-radius: .35rem; min-width: 1.8rem; min-height: 1.8rem; cursor: pointer; }
+.details-control { text-align: right; }
+.details-toggle { border: 1px solid rgba(201,168,95,.5); background: transparent; color: var(--portal-accent); border-radius: .35rem; min-width: 2rem; min-height: 2rem; cursor: pointer; }
+.mobile-details { display: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+@media (max-width: 650px) {
+  .weapons-table table, .weapons-table tbody { display: block; width: 100%; }
+  .weapons-table thead { display: none; }
+  .weapons-table tbody { display: grid; gap: .55rem; }
+  .weapons-table tbody tr {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: 'name attack' 'damage details';
+    align-items: center; gap: .45rem .65rem;
+    min-width: 0; padding: .75rem;
+    border: 1px solid rgba(201,168,95,.35);
+    border-radius: .5rem; background: rgba(201,168,95,.035);
+  }
+  .weapons-table tbody tr > * { display: block; width: auto; min-width: 0; padding: 0; border: 0; }
+  .weapons-table tbody th { grid-area: name; font-size: .9rem; }
+  .weapons-table .attack { grid-area: attack; text-align: right; color: var(--portal-accent); font-weight: 700; }
+  .weapons-table .attack::before { content: 'Att. '; font-size: .72rem; font-weight: 400; color: var(--portal-muted); }
+  .weapons-table .damage { grid-area: damage; color: var(--portal-muted); font-size: .8rem; }
+  .weapons-table .details-control { grid-area: details; text-align: right; }
+  .details-toggle { min-height: 2.4rem; padding: .35rem .6rem; font-size: .8rem; }
+  .desktop-details { display: none; }
+  .mobile-details { display: inline; }
+  .weapons-table tbody tr:has(td[colspan]) { display: block; }
+}
 /* Mêmes dimensions, palette et fond que la modale d'incantation. */
 dialog { box-sizing: border-box; width: min(38rem, calc(100% - 1rem)); max-height: calc(100dvh - 2rem); overflow-y: auto; overscroll-behavior: contain; padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom)); border: 1px solid #be94428c; border-radius: .85rem; background: radial-gradient(circle at top, #78552022, transparent 50%), #090a10; color: #f4ead5; box-shadow: 0 24px 80px #000b; overflow-wrap: anywhere; }
 dialog::backdrop { background: #04050ad1; backdrop-filter: blur(4px); }
@@ -31,7 +60,8 @@ button:focus-visible { outline: 2px solid #e5c78e; outline-offset: 3px; }
 .weapon-stats dd { margin: 0; font-weight: 700; font-size: .9rem; }
 /* Lecture confortable des descriptions longues, sans modifier les retours à la ligne du catalogue. */
 .weapon-effects { margin-block: 1.1rem 1.35rem; }
-.weapon-effects h3 { margin: 0 0 .85rem; }
+.weapon-effects h3 { margin: 0 0 .65rem; }
+.weapon-effects p + p { margin-top: .7rem; }
 .weapon-effects p {
   margin: 0;
   font-size: .9rem;

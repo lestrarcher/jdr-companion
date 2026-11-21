@@ -1,4 +1,35 @@
 <dialog #dialog aria-labelledby="spell-cast-title" (cancel)="cancel($event)" [attr.aria-busy]="saving()">
+  @if (lunarHealing()) {
+  <header>
+    <div><small>Capacité · Cercle de la Lune</small><h2 id="spell-cast-title">☾ Guérison lunaire</h2>
+      <p class="spell-meta">Action bonus · Forme sauvage de combat</p>    </div>
+    <button type="button" class="close" aria-label="Fermer le lancement" [disabled]="saving() || lunarBusy()" (click)="close()">×</button>
+  </header>
+  <p class="source-caption">Dépensez un emplacement de sort, lancez 1d8 par niveau d’emplacement, puis appliquez le total aux PV de votre forme animale dans État → Soins.</p>
+  <fieldset [disabled]="lunarBusy() || blocked() || !!lunarSuccess()">
+    <legend>Emplacement · niveau</legend>
+    <div class="levels">
+      @for (slot of lunarSlots(); track slot.level) {
+        <button type="button" class="cast-option level-option" [class.selected]="lunarChosen() === slot.level"
+          [attr.aria-pressed]="lunarChosen() === slot.level" (click)="lunarLevel.set(slot.level)">
+          <strong>{{ levelLabel(slot.level) }}</strong><small>{{ slot.remaining }} rest.</small>
+        </button>
+      }
+    </div>
+  </fieldset>
+  @if (lunarChosen(); as level) { <p class="cast-cost">Consommer un emplacement de niveau {{ level }} · À lancer : {{ level }}d8 (dés physiques).</p> }
+  @if (!lunarSlots().length) { <p>Aucun emplacement disponible.</p> }
+  @if (lunarError()) { <p class="error" role="alert">{{ lunarError() }}</p> }
+  @if (lunarSuccess()) { <p class="success" role="status">{{ lunarSuccess() }}</p> }
+  <footer>
+    <button type="button" class="cancel" [disabled]="lunarBusy()" (click)="close()">Fermer</button>
+    @if (!lunarSuccess()) {
+      <button type="button" class="cast-confirm" [disabled]="!lunarCanConfirm()" (click)="lunarConfirmed.emit(lunarChosen()!)">
+        {{ lunarBusy() ? 'Guérison en cours…' : 'Dépenser l’emplacement' }}
+      </button>
+    }
+  </footer>
+  } @else {
   <header>
     <div><small>Incantation · {{ spell().level === 0 ? 'Tour de magie' : 'Niveau ' + (spell().level ?? '?') }}</small>
       <h2 id="spell-cast-title">{{ spell().name }}</h2>
@@ -140,4 +171,5 @@
       <button type="button" class="cast-confirm" [disabled]="!canConfirm()" (click)="confirm()">Confirmer le lancement</button>
     }
   </footer>
+  }
 </dialog>

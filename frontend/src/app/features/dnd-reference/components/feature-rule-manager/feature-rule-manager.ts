@@ -1,8 +1,9 @@
 import { ReferencePicker } from '../reference-picker/reference-picker';
-import { REFERENCE_VIEW_ORIGIN, REFERENCE_READ_ONLY, matchesReferenceOrigin } from '@core/services/reference-editor-context';
+import { REFERENCE_EDITOR_SCOPE, REFERENCE_VIEW_ORIGIN, REFERENCE_READ_ONLY, matchesReferenceOrigin } from '@core/services/reference-editor-context';
 import { ReferenceFeatureEditorApiService } from '@core/services/reference-feature-editor-api.service';
 import { ReferenceCatalogueEditorApiService } from '@core/services/reference-catalogue-editor-api.service';
 import { Component, computed, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import {
@@ -21,6 +22,13 @@ import {
   SubclassReference,
 } from '@core/services/legacy-dnd-reference-api.service';
 
+type AssignmentSource = FeatureSourceType | 'beast';
+interface BeastRecord { id: number; name: string; slug: string }
+interface BeastLink { beastId: number; featureId: number }
+interface BeastApiResponse { beasts: BeastRecord[]; features: {id: number; name: string}[]; links: BeastLink[] }
+interface BeastAssignment { id: number; sourceType: 'beast'; sourceId: number; sourceName: string; feature: CharacterFeatureDefinition; unlockLevel: number; displayOrder: number; progressionThreshold: null; editable: boolean }
+type DisplayAssignment = CharacterFeatureRule | BeastAssignment;
+
 interface SourceOption {
   custom?: boolean;
   id: number;
@@ -29,7 +37,7 @@ interface SourceOption {
 
 interface RuleForm {
   featureDefinitionId: number | null;
-  sourceType: FeatureSourceType;
+  sourceType: AssignmentSource;
   sourceId: number | null;
   unlockLevel: number;
   progressionThreshold: number | null;
@@ -47,7 +55,9 @@ interface RuleForm {
 export class FeatureRuleManager {
   protected readonly contextReadOnly = inject(REFERENCE_READ_ONLY);
   protected readonly viewOrigin = inject(REFERENCE_VIEW_ORIGIN);
+  private readonly beastScope = this.viewOrigin === 'OFFICIAL' ? 'official' : inject(REFERENCE_EDITOR_SCOPE);
 
+  private readonly http = inject(HttpClient);
   private readonly featureApi = inject(ReferenceFeatureEditorApiService);
   private readonly referenceApi = inject(ReferenceCatalogueEditorApiService);
 
@@ -58,12 +68,23 @@ export class FeatureRuleManager {
   protected readonly features = signal<CharacterFeatureDefinition[]>([]);
   protected readonly rules = signal<CharacterFeatureRule[]>([]);
   protected readonly progressions = signal<ProgressionReference[]>([]);
+  protected readonly beasts = signal<BeastRecord[]>([]);
+  protected readonly beastLinks = signal<BeastLink[]>([]);
+  protected readonly beastAssignments = computed<BeastAssignment[]>(() => {
+    const beasts = new Map(this.beasts().map(b => [b.id, b.name]));
+    const features = new Map(this.features().map(f => [f.id, f]));
+    return this.beastLinks().flatMap(link => {
+      const feature = features.get(link.featureId);
+      const name = beasts.get(link.beastId);
+      return feature && name ? [{id: -((link.beastId * 1000000) + link.featureId), sourceType: 'beast' as const, sourceId: link.beastId, sourceName: name, feature, unlockLevel: 1, displayOrder: 0, progressionThreshold: null, editable: true}] : [];
+    });
+  });
+  protected readonly allRules = computed<DisplayAssignment[]>(() => [...this.rules(), ...this.beastAssignments()]);
 
   protected readonly selectedRuleId = signal<number | null>(null);
-  protected readonly featureSearch = signal('');
   protected readonly ruleSearch = signal('');
   protected readonly sourceTypeFilter =
-    signal<FeatureSourceType | 'all'>('all');
+    signal<AssignmentSource | 'all'>('all');
   protected readonly sourceIdFilter = signal<number | null>(null);
   protected readonly loading = signal(true);
   protected readonly submitting = signal(false);
@@ -74,21 +95,7 @@ export class FeatureRuleManager {
 
   protected readonly selectedRule = computed(() => {
     const selectedId = this.selectedRuleId();
-    return this.rules().find(rule => rule.id === selectedId) ?? null;
-  });
-
-  protected readonly filteredFeatures = computed(() => {
-    const search = this.normalizeSearch(this.featureSearch());
-
-    if (!search) {
-      return this.features();
-    }
-
-    return this.features().filter(feature =>
-      this.normalizeSearch(
-        `${feature.name} ${feature.slug} ${feature.activationLabel}`,
-      ).includes(search),
-    );
+    return this.allRules().find(rule => rule.id === selectedId) ?? null;
   });
 
   protected readonly filteredRules = computed(() => {
@@ -96,7 +103,7 @@ export class FeatureRuleManager {
     const sourceType = this.sourceTypeFilter();
     const sourceId = this.sourceIdFilter();
 
-    return this.rules().filter(item => matchesReferenceOrigin(item, this.viewOrigin))
+    return this.allRules().filter(item => item.sourceType === 'beast' || matchesReferenceOrigin(item as CharacterFeatureRule, this.viewOrigin))
       .filter(rule => {
         if (sourceType !== 'all' && rule.sourceType !== sourceType) {
           return false;
@@ -157,7 +164,7 @@ export class FeatureRuleManager {
 
     const sources = new Map<number, string>();
 
-    for (const rule of this.rules()) {
+    for (const rule of this.allRules()) {
       if (rule.sourceType === sourceType) {
         sources.set(rule.sourceId, rule.sourceName);
       }
@@ -171,7 +178,7 @@ export class FeatureRuleManager {
     this.loadData();
   }
 
-  protected selectRule(rule: CharacterFeatureRule): void {
+  protected selectRule(rule: DisplayAssignment): void {
     this.selectedRuleId.set(rule.id);
     this.form = {
       featureDefinitionId: rule.feature.id,
@@ -182,18 +189,16 @@ export class FeatureRuleManager {
         rule.progressionThreshold ?? null,
       displayOrder: rule.displayOrder,
     };
-    this.featureSearch.set('');
     this.clearMessages();
   }
 
   protected startCreation(): void {
     this.selectedRuleId.set(null);
     this.form = this.emptyForm();
-    this.featureSearch.set('');
     this.clearMessages();
   }
 
-  protected readonly readOnly = computed(() => this.contextReadOnly || this.selectedRuleId() !== null && this.selectedRule()?.editable !== true);
+  protected readonly readOnly = computed(() => this.contextReadOnly || (this.selectedRuleId() !== null && this.selectedRule()?.editable !== true));
   protected save(): void {
     if (this.readOnly() || this.submitting()) return;
     if (this.submitting()) {
@@ -216,10 +221,19 @@ export class FeatureRuleManager {
     this.submitting.set(true);
     this.clearMessages();
 
+    if (this.form.sourceType === 'beast') {
+      const beastId = Number(this.form.sourceId);
+      const featureId = Number(this.form.featureDefinitionId);
+      const otherLinks = this.beastLinks().filter(link => link.beastId === beastId && (selectedId === null || link.featureId !== this.selectedRule()?.feature.id));
+      const ids = [...new Set([...otherLinks.map(link => link.featureId), featureId])];
+      this.saveBeastLinks(beastId, ids, selectedId === null ? 'La capacité a bien été attribuée.' : 'L’attribution a bien été mise à jour.', featureId);
+      return;
+    }
+
     if (selectedId !== null) {
       this.featureApi.updateRule(selectedId, {
         featureDefinitionId: Number(this.form.featureDefinitionId),
-        sourceType: this.form.sourceType,
+        sourceType: this.form.sourceType as FeatureSourceType,
         sourceId: Number(this.form.sourceId),
         ...(this.form.sourceType === 'progression'
           ? {
@@ -247,7 +261,7 @@ export class FeatureRuleManager {
 
     const payload: CreateFeatureRulePayload = {
       featureDefinitionId: Number(this.form.featureDefinitionId),
-      sourceType: this.form.sourceType,
+      sourceType: this.form.sourceType as FeatureSourceType,
       sourceId: Number(this.form.sourceId),
       unlockLevel: Number(this.form.unlockLevel),
       displayOrder: Number(this.form.displayOrder),
@@ -269,7 +283,7 @@ export class FeatureRuleManager {
     });
   }
 
-  protected deleteRule(rule: CharacterFeatureRule): void {
+  protected deleteRule(rule: DisplayAssignment): void {
     if (rule.editable !== true) return;
     const confirmed = window.confirm(
       `Retirer « ${rule.feature.name} » de « ${rule.sourceName} » ?`,
@@ -281,6 +295,12 @@ export class FeatureRuleManager {
 
     this.submitting.set(true);
     this.clearMessages();
+
+    if (rule.sourceType === 'beast') {
+      const ids = this.beastLinks().filter(link => link.beastId === rule.sourceId && link.featureId !== rule.feature.id).map(link => link.featureId);
+      this.saveBeastLinks(rule.sourceId, ids, 'L’attribution a bien été supprimée.');
+      return;
+    }
 
     this.featureApi.deleteRule(rule.id).subscribe({
       next: () => {
@@ -306,29 +326,26 @@ export class FeatureRuleManager {
   }
 
   protected sourceTypeFilterChanged(
-    sourceType: FeatureSourceType | 'all',
+    sourceType: AssignmentSource | 'all',
   ): void {
     this.sourceTypeFilter.set(sourceType);
     this.sourceIdFilter.set(null);
   }
 
-  protected featureSelected(): void {
-    this.featureSearch.set('');
-  }
-
-  protected resetFilters(): void {
+protected resetFilters(): void {
     this.ruleSearch.set('');
     this.sourceTypeFilter.set('all');
     this.sourceIdFilter.set(null);
   }
 
-  protected sourceTypeLabel(sourceType: FeatureSourceType): string {
+  protected sourceTypeLabel(sourceType: AssignmentSource): string {
     return {
       class: 'Classe',
       subclass: 'Sous-classe',
       race: 'Race',
       feat: 'Don',
       progression: 'Progression',
+      beast: 'Bête',
     }[sourceType];
   }
 
@@ -338,7 +355,7 @@ export class FeatureRuleManager {
     )?.name ?? 'Classe inconnue';
   }
 
-  protected trackRule(_: number, rule: CharacterFeatureRule): number {
+  protected trackRule(_: number, rule: DisplayAssignment): number {
     return rule.id;
   }
 
@@ -352,6 +369,7 @@ export class FeatureRuleManager {
       features: this.featureApi.getFeatures(),
       rules: this.featureApi.getRules(),
       progressions: this.referenceApi.getProgressions(),
+      beasts: this.http.get<BeastApiResponse>(`/api/dnd/beast-features/scope/${this.beastScope}`),
     }).subscribe({
       next: result => {
         this.classes.set(this.sortByName(result.reference.classes));
@@ -363,6 +381,8 @@ export class FeatureRuleManager {
         );
         this.features.set(this.sortByName(result.features.features));
         this.rules.set(result.rules.rules);
+        this.beasts.set(result.beasts.beasts.map(b => ({...b, id: Number(b.id)})));
+        this.beastLinks.set(result.beasts.links.map(l => ({beastId: Number(l.beastId), featureId: Number(l.featureId)})));
         this.loading.set(false);
       },
       error: error => {
@@ -376,8 +396,10 @@ export class FeatureRuleManager {
     });
   }
 
-  private sourceOptions(sourceType: FeatureSourceType): SourceOption[] {
+  private sourceOptions(sourceType: AssignmentSource): SourceOption[] {
     switch (sourceType) {
+      case 'beast':
+        return this.beasts().map(b => ({id: b.id, name: b.name}));
       case 'class':
         return this.classes().map(item => ({
           id: item.id, custom: item.custom,
@@ -410,6 +432,22 @@ export class FeatureRuleManager {
     }
   }
 
+  private saveBeastLinks(beastId: number, featureIds: number[], message: string, selectedFeatureId?: number): void {
+    this.http.put<{beastId: number; featureIds: number[]}>(`/api/dnd/beast-features/scope/${this.beastScope}/${beastId}`, {featureIds}).subscribe({
+      next: response => {
+        this.beastLinks.update(links => [
+          ...links.filter(link => link.beastId !== beastId),
+          ...response.featureIds.map(featureId => ({beastId, featureId: Number(featureId)})),
+        ]);
+        this.selectedRuleId.set(selectedFeatureId === undefined ? null : -((beastId * 1000000) + selectedFeatureId));
+        if (selectedFeatureId === undefined) this.form = this.emptyForm();
+        this.success.set(message);
+        this.submitting.set(false);
+      },
+      error: error => this.handleSaveError(error),
+    });
+  }
+
   private replaceRule(savedRule: CharacterFeatureRule): void {
     this.rules.update(rules =>
       rules.map(rule => rule.id === savedRule.id ? savedRule : rule),
@@ -421,7 +459,7 @@ export class FeatureRuleManager {
       return;
     }
 
-    const sourceStillExists = this.rules().some(rule =>
+    const sourceStillExists = this.allRules().some(rule =>
       rule.sourceType === deletedRule.sourceType &&
       rule.sourceId === deletedRule.sourceId,
     );

@@ -1,0 +1,458 @@
+[
+  {
+    "slug": "aigle",
+    "status": "imported",
+    "source": "eagle"
+  },
+  {
+    "slug": "aigle-geant",
+    "status": "imported",
+    "source": "giant-eagle"
+  },
+  {
+    "slug": "araignee",
+    "status": "imported",
+    "source": "spider"
+  },
+  {
+    "slug": "araignee-geante",
+    "status": "imported",
+    "source": "giant-spider"
+  },
+  {
+    "slug": "araignee-loup-geante",
+    "status": "imported",
+    "source": "giant-wolf-spider"
+  },
+  {
+    "slug": "auroch",
+    "status": "not_mapped_or_not_in_srd"
+  },
+  {
+    "slug": "babouin",
+    "status": "imported",
+    "source": "baboon"
+  },
+  {
+    "slug": "bec-de-hache",
+    "status": "imported",
+    "source": "axe-beak"
+  },
+  {
+    "slug": "belette",
+    "status": "imported",
+    "source": "weasel"
+  },
+  {
+    "slug": "belette-geante",
+    "status": "imported",
+    "source": "giant-weasel"
+  },
+  {
+    "slug": "blaireau",
+    "status": "imported",
+    "source": "badger"
+  },
+  {
+    "slug": "blaireau-geant",
+    "status": "imported",
+    "source": "giant-badger"
+  },
+  {
+    "slug": "boeuf",
+    "status": "not_mapped_or_not_in_srd"
+  },
+  {
+    "slug": "cachalot",
+    "status": "not_mapped_or_not_in_srd"
+  },
+  {
+    "slug": "cerf",
+    "status": "imported",
+    "source": "deer"
+  },
+  {
+    "slug": "chacal",
+    "status": "imported",
+    "source": "jackal"
+  },
+  {
+    "slug": "chameau",
+    "status": "imported",
+    "source": "camel"
+  },
+  {
+    "slug": "chat",
+    "status": "imported",
+    "source": "cat"
+  },
+  {
+    "slug": "chauve-souris",
+    "status": "imported",
+    "source": "bat"
+  },
+  {
+    "slug": "chauve-souris-geante",
+    "status": "imported",
+    "source": "giant-bat"
+  },
+  {
+    "slug": "cheval-de-guerre",
+    "status": "imported",
+    "source": "warhorse"
+  },
+  {
+    "slug": "cheval-de-selle",
+    "status": "imported",
+    "source": "riding-horse"
+  },
+  {
+    "slug": "cheval-de-trait",
+    "status": "imported",
+    "source": "draft-horse"
+  },
+  {
+    "slug": "chevre",
+    "status": "not_mapped_or_not_in_srd"
+  },
+  {
+    "slug": "chevre-de-montagne",
+    "status": "not_mapped_or_not_in_srd"
+  },
+  {
+    "slug": "chevre-geante",
+    "status": "not_mapped_or_not_in_srd"
+  },
+  {
+    "slug": "chouette",
+    "status": "imported",
+    "source": "owl"
+  },
+  {
+    "slug": "chouette-geante",
+    "status": "imported",
+    "source": "giant-owl"
+  },
+  {
+    "slug": "corbeau",
+    "status": "imported",
+    "source": "raven"
+  },
+  {
+    "slug": "crabe",
+    "status": "imported",
+    "source": "crab"
+  },
+  {
+    "slug": "crabe-geant",
+    "status": "imported",
+    "source": "giant-crab"
+  },
+  {
+    "slug": "crapaud-geant",
+    "status": "imported",
+    "source": "giant-toad"
+  },
+  {
+    "slug": "crocodile",
+    "status": "imported",
+    "source": "crocodile"
+  },
+  {
+    "slug": "crocodile-geant",
+    "status": "imported",
+    "source": "giant-crocodile"
+  },
+  {
+    "slug": "dauphin",
+    "status": "not_mapped_or_not_in_srd"
+  },
+  {
+    "slug": "elan",
+    "status": "imported",
+    "source": "elk"
+  },
+  {
+    "slug": "elan-geant",
+    "status": "imported",
+    "source": "giant-elk"
+  },
+  {
+    "slug": "elephant",
+    "status": "imported",
+    "source": "elephant"
+  },
+  {
+    "slug": "epaulard",
+    "status": "imported",
+    "source": "killer-whale"
+  },
+  {
+    "slug": "faucon",
+    "status": "imported",
+    "source": "hawk"
+  },
+  {
+    "slug": "faucon-de-sang",
+    "status": "imported",
+    "source": "blood-hawk"
+  },
+  {
+    "slug": "grand-singe",
+    "status": "imported",
+    "source": "ape"
+  },
+  {
+    "slug": "grenouille",
+    "status": "imported",
+    "source": "frog"
+  },
+  {
+    "slug": "grenouille-geante",
+    "status": "imported",
+    "source": "giant-frog"
+  },
+  {
+    "slug": "guepe-geante",
+    "status": "imported",
+    "source": "giant-wasp"
+  },
+  {
+    "slug": "hippocampe",
+    "status": "imported",
+    "source": "sea-horse"
+  },
+  {
+    "slug": "hippocampe-geant",
+    "status": "imported",
+    "source": "giant-sea-horse"
+  },
+  {
+    "slug": "hyene",
+    "status": "imported",
+    "source": "hyena"
+  },
+  {
+    "slug": "hyene-geante",
+    "status": "imported",
+    "source": "giant-hyena"
+  },
+  {
+    "slug": "lezard",
+    "status": "imported",
+    "source": "lizard"
+  },
+  {
+    "slug": "lezard-geant",
+    "status": "imported",
+    "source": "giant-lizard"
+  },
+  {
+    "slug": "lievre",
+    "status": "not_mapped_or_not_in_srd"
+  },
+  {
+    "slug": "lion",
+    "status": "imported",
+    "source": "lion"
+  },
+  {
+    "slug": "loup",
+    "status": "imported",
+    "source": "wolf"
+  },
+  {
+    "slug": "loup-sanguinaire",
+    "status": "imported",
+    "source": "dire-wolf"
+  },
+  {
+    "slug": "mammouth",
+    "status": "imported",
+    "source": "mammoth"
+  },
+  {
+    "slug": "mille-pattes-geant",
+    "status": "imported",
+    "source": "giant-centipede"
+  },
+  {
+    "slug": "molosse",
+    "status": "imported",
+    "source": "mastiff"
+  },
+  {
+    "slug": "morse",
+    "status": "not_mapped_or_not_in_srd"
+  },
+  {
+    "slug": "morse-geant",
+    "status": "not_mapped_or_not_in_srd"
+  },
+  {
+    "slug": "mule",
+    "status": "imported",
+    "source": "mule"
+  },
+  {
+    "slug": "ours-brun",
+    "status": "imported",
+    "source": "brown-bear"
+  },
+  {
+    "slug": "ours-noir",
+    "status": "imported",
+    "source": "black-bear"
+  },
+  {
+    "slug": "ours-polaire",
+    "status": "imported",
+    "source": "polar-bear"
+  },
+  {
+    "slug": "panthere",
+    "status": "imported",
+    "source": "panther"
+  },
+  {
+    "slug": "phoque",
+    "status": "not_mapped_or_not_in_srd"
+  },
+  {
+    "slug": "pieuvre",
+    "status": "imported",
+    "source": "octopus"
+  },
+  {
+    "slug": "pieuvre-geante",
+    "status": "imported",
+    "source": "giant-octopus"
+  },
+  {
+    "slug": "piranha",
+    "status": "imported",
+    "source": "quipper"
+  },
+  {
+    "slug": "poney",
+    "status": "imported",
+    "source": "pony"
+  },
+  {
+    "slug": "rat",
+    "status": "imported",
+    "source": "rat"
+  },
+  {
+    "slug": "rat-geant",
+    "status": "imported",
+    "source": "giant-rat"
+  },
+  {
+    "slug": "renard",
+    "status": "not_mapped_or_not_in_srd"
+  },
+  {
+    "slug": "requin-chasseur",
+    "status": "imported",
+    "source": "hunter-shark"
+  },
+  {
+    "slug": "requin-de-recif",
+    "status": "imported",
+    "source": "reef-shark"
+  },
+  {
+    "slug": "requin-geant",
+    "status": "imported",
+    "source": "giant-shark"
+  },
+  {
+    "slug": "rhinoceros",
+    "status": "imported",
+    "source": "rhinoceros"
+  },
+  {
+    "slug": "rothe-des-profondeurs",
+    "status": "not_mapped_or_not_in_srd"
+  },
+  {
+    "slug": "sanglier",
+    "status": "imported",
+    "source": "boar"
+  },
+  {
+    "slug": "sanglier-geant",
+    "status": "imported",
+    "source": "giant-boar"
+  },
+  {
+    "slug": "scarabee-de-feu-geant",
+    "status": "imported",
+    "source": "giant-fire-beetle"
+  },
+  {
+    "slug": "scorpion",
+    "status": "imported",
+    "source": "scorpion"
+  },
+  {
+    "slug": "scorpion-geant",
+    "status": "imported",
+    "source": "giant-scorpion"
+  },
+  {
+    "slug": "serpent-constricteur",
+    "status": "imported",
+    "source": "constrictor-snake"
+  },
+  {
+    "slug": "serpent-constricteur-geant",
+    "status": "imported",
+    "source": "giant-constrictor-snake"
+  },
+  {
+    "slug": "serpent-venimeux",
+    "status": "imported",
+    "source": "poisonous-snake"
+  },
+  {
+    "slug": "serpent-venimeux-geant",
+    "status": "imported",
+    "source": "giant-poisonous-snake"
+  },
+  {
+    "slug": "serpent-volant",
+    "status": "imported",
+    "source": "flying-snake"
+  },
+  {
+    "slug": "singe-geant",
+    "status": "imported",
+    "source": "giant-ape"
+  },
+  {
+    "slug": "tigre",
+    "status": "imported",
+    "source": "tiger"
+  },
+  {
+    "slug": "tigre-a-dents-de-sabre",
+    "status": "imported",
+    "source": "saber-toothed-tiger"
+  },
+  {
+    "slug": "truite-tetevide",
+    "status": "not_mapped_or_not_in_srd"
+  },
+  {
+    "slug": "vautour",
+    "status": "imported",
+    "source": "vulture"
+  },
+  {
+    "slug": "vautour-geant",
+    "status": "imported",
+    "source": "giant-vulture"
+  }
+]

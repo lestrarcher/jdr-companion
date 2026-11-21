@@ -29,6 +29,9 @@ type RacialAbilityChoice = { grantId: number; featureName: string; spellName: st
 export class CharacterFeatures implements OnInit, OnChanges {
   private readonly http = inject(HttpClient);
   readonly accessToken = input('');
+  readonly beastId = input<number | null>(null);
+  protected readonly beastFeatures = signal<Array<{ id: number; name: string; description: string | null }>>([]);
+  protected readonly beastName = signal('Forme animale');
   readonly readonly = input(true);
   readonly abilityChanged = output<void>();
   protected readonly racialAbilities = signal<RacialAbilityChoice[]>([]);
@@ -39,9 +42,24 @@ export class CharacterFeatures implements OnInit, OnChanges {
   protected abilityLabel(value: string | null): string {
     return ({ intelligence: 'Intelligence', wisdom: 'Sagesse', charisma: 'Charisme' } as Record<string, string>)[value ?? ''] ?? 'À définir';
   }
-  ngOnInit(): void { this.loadRacialAbilities(); }
+  ngOnInit(): void { this.loadRacialAbilities(); this.loadBeastFeatures(); }
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['accessToken'] && !changes['accessToken'].firstChange) this.loadRacialAbilities();
+    if (changes['beastId'] || changes['accessToken']) this.loadBeastFeatures();
+  }
+  private loadBeastFeatures(): void {
+    if (!this.accessToken() || !this.beastId()) { this.beastFeatures.set([]); return; }
+    const requestedId = this.beastId();
+    this.http.get<{ beastId: number | null; beastName?: string; features: Array<{ id: number; name: string; description: string | null }> }>(
+      `/api/public/characters/${encodeURIComponent(this.accessToken())}/wild-shape/features`,
+    ).subscribe({
+      next: response => {
+        if (this.beastId() !== requestedId) return;
+        this.beastFeatures.set(Number(response.beastId) === requestedId ? response.features : []);
+        this.beastName.set(response.beastName || 'Forme animale');
+      },
+      error: () => this.beastFeatures.set([]),
+    });
   }
   private loadRacialAbilities(): void {
     if (!this.accessToken()) { this.racialAbilities.set([]); return; }
@@ -85,12 +103,16 @@ export class CharacterFeatures implements OnInit, OnChanges {
       counts.set(key, { label, count: (current?.count ?? 0) + 1 });
     }
 
+    if (this.beastFeatures().length > 0) {
+      counts.set('beast', { label: this.beastName(), count: this.beastFeatures().length });
+    }
+
     if (this.feats().length > 0) {
       counts.set('feat', { label: 'Don', count: this.feats().length });
     }
 
     return [
-      { key: 'all', label: 'Tous', count: this.features().length + this.feats().length },
+      { key: 'all', label: 'Tous', count: this.features().length + this.feats().length + this.beastFeatures().length },
       ...Array.from(counts, ([key, value]) => ({ key, ...value })),
     ];
   });
@@ -105,6 +127,16 @@ export class CharacterFeatures implements OnInit, OnChanges {
       level: feature.sourceType === 'progression' || feature.unlockLevel <= 0 ? null : feature.unlockLevel,
       activationType: feature.activationType,
       filterKey: this.featureFilterKey(feature),
+    })),
+    ...this.beastFeatures().map(feature => ({
+      key: `beast:${feature.id}`,
+      name: feature.name,
+      description: feature.description,
+      sourceName: this.beastName(),
+      sourceType: 'beast',
+      level: null,
+      activationType: null,
+      filterKey: 'beast',
     })),
     ...this.feats().map(feat => ({
       key: `feat:${feat.id}`,
@@ -152,7 +184,7 @@ export class CharacterFeatures implements OnInit, OnChanges {
   private sourceLabel(sourceType: string): string {
     const labels: Record<string, string> = {
       class: 'Classe', subclass: 'Sous-classe', race: 'Race',
-      ancestry: 'Ascendance', progression: 'Progression', feat: 'Don', character: 'Personnage',
+      ancestry: 'Ascendance', progression: 'Progression', feat: 'Don', character: 'Personnage', beast: 'Forme animale',
     };
     return labels[sourceType] ?? sourceType;
   }

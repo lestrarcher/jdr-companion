@@ -50,28 +50,12 @@
             </div>
           </header>
 
-          <nav class="portal-tabs" aria-label="Sections du personnage">
-            @if (desktopView()) {
-              <button type="button" [class.portal-tab--active]="activeTab() === 'overview'" [attr.aria-pressed]="activeTab() === 'overview'" (click)="selectTab('overview')">
-                <span class="portal-tab-symbol" aria-hidden="true">⌂</span><span><strong>Tableau de bord</strong><small>Vue d'ensemble</small></span>
-              </button>
-            }
-            <button type="button" [class.portal-tab--active]="activeTab() === 'status'" [attr.aria-pressed]="activeTab() === 'status'" (click)="selectTab('status')">
-              <span class="portal-tab-symbol" aria-hidden="true">✦</span><span><strong>État</strong><small>Santé et ressources</small></span>
-            </button>
-            <button type="button" [class.portal-tab--active]="activeTab() === 'statistics'" [attr.aria-pressed]="activeTab() === 'statistics'" (click)="selectTab('statistics')">
-              <span class="portal-tab-symbol" aria-hidden="true">◇</span><span><strong><span class="portal-label-desktop">Caractéristiques</span><span class="portal-label-mobile">Stats</span></strong><small>Attributs et valeurs</small></span>
-            </button>
-            <button type="button" [class.portal-tab--active]="activeTab() === 'features'" [attr.aria-pressed]="activeTab() === 'features'" (click)="selectTab('features')">
-              <span class="portal-tab-symbol" aria-hidden="true">✧</span><span><strong>Capacités</strong><small>Origines et descriptions</small></span>
-            </button>
-            <button type="button" [class.portal-tab--active]="activeTab() === 'spells'" [attr.aria-pressed]="activeTab() === 'spells'" (click)="selectTab('spells')">
-              <span class="portal-tab-symbol" aria-hidden="true">✧</span><span><strong>Sorts</strong><small>Grimoire et magie</small></span>
-            </button>
-            <button type="button" [class.portal-tab--active]="activeTab() === 'possessions'" [attr.aria-pressed]="activeTab() === 'possessions'" (click)="selectTab('possessions')">
-              <span class="portal-tab-symbol" aria-hidden="true">◈</span><span><strong>Inventaire</strong><small>Bourse et objets</small></span>
-            </button>
-          </nav>
+          <app-player-portal-tabs
+            [activeTab]="activeTab()"
+            [desktopView]="desktopView()"
+            [hasWildShapes]="druidLevel() > 0"
+            (tabSelected)="selectTab($event)"
+          />
 
           @if ((activeTab() === 'status' || activeTab() === 'overview') && canEdit() && levelUpAllowed()) {
             <section class="level-up-callout">
@@ -87,6 +71,9 @@
 
           <div class="portal-tab-content">
             @switch (activeTab()) {
+              @case ('wild-shapes') {
+                @if (druidLevel() > 0) { <app-druid-wild-shapes [token]="accessToken" [druidLevel]="druidLevel()" [moonCircle]="isMoonDruid()" (transformed)="refreshWildShapeSession()" /> }
+              }
               @case ('overview') {
                 <div class="overview-grid">
                   <section class="overview-panel overview-panel--state">
@@ -95,7 +82,7 @@
                       <button type="button" (click)="selectTab('status')" aria-label="Ouvrir l'état détaillé">Voir tout ↗</button>
                     </div>
                     <app-character-inspiration [active]="inspiration()" [readonly]="!canEdit()" [saving]="inspirationSaving() || saveStatus() === 'saving'" (spend)="spendInspiration()" />
-                    <app-character-vitals [readonly]="!canEdit()" [character]="currentCharacter" />
+                    <app-character-vitals [readonly]="!canEdit()" [character]="currentCharacter" [accessToken]="accessToken" [wildShapeRefreshVersion]="wildShapeRefreshVersion()" (stateChanged)="refreshWildShapeSession()" />
                     <app-character-exhaustion [level]="exhaustionLevel()" [readonly]="!canEdit()" [saving]="exhaustionSaving() || saveStatus() === 'saving' || saveStatus() === 'error'" (change)="changeExhaustion($event)" />
                   </section>
                   <section class="overview-panel overview-panel--statistics">
@@ -103,7 +90,7 @@
                       <h2>Caractéristiques</h2>
                       <button type="button" (click)="selectTab('statistics')" aria-label="Ouvrir les caractéristiques">Voir tout ↗</button>
                     </div>
-                    <app-character-statistics [movement]="effectiveMovement()" [armorClass]="armorClass()" [abilities]="abilities()" [training]="training()" [feats]="feats()" [features]="features()" [proficiencyBonus]="proficiencyBonus()" mode="summary" />
+                    <app-character-statistics [movement]="effectiveMovement()" [armorClass]="effectiveArmorClass()" [abilities]="effectiveAbilities()" [training]="training()" [beastProficiencies]="activeBeast()?.proficiencies" [feats]="feats()" [features]="features()" [proficiencyBonus]="proficiencyBonus()" mode="summary" />
                   </section>
                   @if (hasProgressions()) {
                     <div class="overview-progression">
@@ -132,7 +119,7 @@
               }
               @case ('statistics') {
                 <section class="overview-panel statistics-detail">
-                  <app-character-statistics [movement]="effectiveMovement()" [armorClass]="armorClass()" [abilities]="abilities()" [training]="training()" [feats]="feats()" [features]="features()" [proficiencyBonus]="proficiencyBonus()" mode="detail" />
+                  <app-character-statistics [movement]="effectiveMovement()" [armorClass]="effectiveArmorClass()" [abilities]="effectiveAbilities()" [training]="training()" [beastProficiencies]="activeBeast()?.proficiencies" [feats]="feats()" [features]="features()" [proficiencyBonus]="proficiencyBonus()" mode="detail" />
                 </section>
               }
               @case ('status') {
@@ -141,7 +128,7 @@
                 <div class="tracker-layout">
                   <div class="status-vitals-column">
                     <app-character-inspiration [active]="inspiration()" [readonly]="!canEdit()" [saving]="inspirationSaving() || saveStatus() === 'saving'" (spend)="spendInspiration()" />
-                    <app-character-vitals [readonly]="!canEdit()" [character]="currentCharacter" />
+                    <app-character-vitals [readonly]="!canEdit()" [character]="currentCharacter" [accessToken]="accessToken" [wildShapeRefreshVersion]="wildShapeRefreshVersion()" (stateChanged)="refreshWildShapeSession()" />
                     <app-character-exhaustion [level]="exhaustionLevel()" [readonly]="!canEdit()" [saving]="exhaustionSaving() || saveStatus() === 'saving' || saveStatus() === 'error'" (change)="changeExhaustion($event)" />
                     @if (hasProgressions()) {
                       <div class="status-personal-progressions">
@@ -161,11 +148,12 @@
                         <h2 id="magic-section-title">Emplacements &amp; sorts</h2>
                       </div>
                       <app-spell-slot-bar [groups]="spellSlotGroups()" [showCantrips]="true" [selectedPool]="selectedSpellPool()" (filterSelected)="toggleSpellPool($event)" />
-                      <app-spell-quick-list [spells]="playerSpells()" mode="play" [levelFilter]="spellLevelFilter()"
-                        [disabled]="!canEdit() || saveStatus() === 'saving' || saveStatus() === 'error' || !!pendingRestRequest() || preparationPending()"
+                      <app-spell-quick-list [spells]="activeBeast() ? [] : playerSpells()" mode="play" [levelFilter]="spellLevelFilter()"
+                        [lunarHealing]="!!activeBeast() && isMoonDruid()" (lunarSelected)="openLunarQuick()"
+                        [disabled]="!canEdit() || (!!activeBeast() && !isMoonDruid()) || saveStatus() === 'saving' || saveStatus() === 'error' || !!pendingRestRequest() || preparationPending()"
                         (selected)="openQuickSpell($event)" />
                     </section>
-                    <app-character-resources [readonly]="!canEdit()" [resources]="trackerResources()" [hasSupplement]="hasTinkering()" [tinkeringNotes]="tinkeringEditor">
+                    <app-character-resources [accessToken]="accessToken" [druidLevel]="druidLevel()" [moonCircle]="isMoonDruid()" [wildShapeRestRefresh]="wildShapeRestRefresh()" (wildShapeChanged)="refreshWildShapeSession()" [readonly]="!canEdit()" [resources]="trackerResources()" [hasSupplement]="hasTinkering()" [tinkeringNotes]="tinkeringEditor">
                       @if (hasTinkering() && !tinkeringResources().length) {
                         <app-magical-tinkering-notes [notes]="tinkeringNotes()" [token]="accessToken" [revision]="serverRevision"
                           [editable]="sessionStatus() === 'live'" [busy]="saveStatus() === 'saving'" (refreshed)="refreshTinkering()" />
@@ -173,7 +161,7 @@
                     </app-character-resources>
                     <section class="magic-section" aria-labelledby="weapons-section-title">
                       <div class="magic-section__heading"><h2 id="weapons-section-title">Armes</h2></div>
-                      <app-character-weapons [weapons]="weapons()" [accessToken]="accessToken" [readonly]="!canEdit()" (chargesChanged)="refreshSpells()" />
+                      <app-character-weapons [weapons]="effectiveWeapons()" [naturalForm]="!!activeBeast()" [accessToken]="accessToken" [readonly]="!canEdit()" (chargesChanged)="refreshSpells()" />
                     </section>
                     @if (hasInfusions()) {
                       <section class="magic-section" aria-labelledby="infusions-section-title">
@@ -264,7 +252,7 @@
               }
 
               @case ('features') {
-                <app-character-features [features]="visibleFeatures()" [feats]="feats()"
+                <app-character-features [features]="visibleFeatures()" [feats]="feats()" [beastId]="activeBeast()?.beastId ?? null"
                   [accessToken]="accessToken" [readonly]="!canEdit()" (abilityChanged)="refreshSpells()" />
               }
 
@@ -282,10 +270,10 @@
               <app-player-spells [spells]="playerSpells()" [accessToken]="accessToken" [revision]="serverRevision"
                 [resources]="characterState()?.resources ?? []"
                 [panelVisible]="activeTab() === 'spells'"
-                [quickSelection]="quickSpellSelection()" [levelFilter]="spellLevelFilter()"
+                [quickSelection]="quickSpellSelection()" [lunarQuickRequest]="lunarQuickRequest()" [levelFilter]="spellLevelFilter()"
                 [readonly]="!canEdit()" [prioritizePreparation]="activeTab() === 'spells'"
-                [castingBlocked]="saveStatus() === 'saving' || saveStatus() === 'error' || !!pendingRestRequest() || preparationPending()"
-                (casting)="spellCasting.set($event)" (castCompleted)="adoptSpellCast($event)" (changed)="refreshSpells()">
+                [wildShapeActive]="!!activeBeast()" [moonDruid]="isMoonDruid()" [castingBlocked]="!!activeBeast() || saveStatus() === 'saving' || saveStatus() === 'error' || !!pendingRestRequest() || preparationPending()"
+                (casting)="spellCasting.set($event)" (castCompleted)="adoptSpellCast($event)" (changed)="refreshWildShapeSession()">
                 @if (activeTab() === 'spells') {
                   <app-spell-slot-bar spell-slots [groups]="spellSlotGroups()" [showCantrips]="true" [selectedPool]="selectedSpellPool()" (filterSelected)="toggleSpellPool($event)" />
                 }

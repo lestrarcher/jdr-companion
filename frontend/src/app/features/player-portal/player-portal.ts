@@ -1,3 +1,5 @@
+import { PlayerPortalTabs, type PlayerPortalTab } from './components/player-portal-tabs/player-portal-tabs';
+import { DruidWildShapes } from './components/druid-wild-shapes/druid-wild-shapes';
 import { Component, DestroyRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -49,13 +51,6 @@ type SaveStatus =
   | 'saved'
   | 'error';
 
-type PlayerPortalTab =
-  | 'overview'
-  | 'status'
-  | 'statistics'
-  | 'features'
-  | 'spells'
-  | 'possessions';
 
 @Component({
   selector: 'app-player-portal',
@@ -69,6 +64,8 @@ type PlayerPortalTab =
     CharacterExhaustion,
     CharacterWalletComponent,
     CharacterMagicItems,
+    DruidWildShapes,
+    PlayerPortalTabs,
     RestControls,
     ActionPreparationModal,
     RouterLink,
@@ -107,6 +104,12 @@ export class PlayerPortal {
   protected readonly campaign = signal<CampaignConfig | null>(null);
   protected readonly character = signal<Character | null>(null);
   protected readonly playerSpells = signal<PlayerSpell[]>([]);
+  protected readonly druidLevel = computed(() => {
+    const match = this.character()?.className.match(/(?:^|\/)\s*(?:Druide|Druid)\s+(\d+)/i);
+    return match ? Number(match[1]) : 0;
+  });
+  protected readonly isMoonDruid = computed(() => /(?:cercle de la lune|circle of the moon)/i.test(this.character()?.className ?? ''));
+
   protected readonly sessionStatus = signal<SessionStatus | null>(null);
   protected readonly spellCasting = signal(false);
   protected readonly canEdit = computed(() => this.sessionStatus() === 'live' && !this.spellCasting());
@@ -123,9 +126,15 @@ export class PlayerPortal {
     ? 'spells' : typeof window !== 'undefined' && window.matchMedia('(min-width: 900px)').matches ? 'overview' : 'status');
   protected readonly spellsVisited = signal(this.activeTab() === 'spells');
   protected readonly quickSpellSelection = signal<PlayerSpell | null>(null);
+  protected readonly lunarQuickRequest = signal(0);
+  protected openLunarQuick(): void {
+    if (!this.activeBeast() || !this.isMoonDruid() || !this.canEdit()) return;
+    this.spellsVisited.set(true);
+    this.lunarQuickRequest.update(value => value + 1);
+  }
 
   protected openQuickSpell(spell: PlayerSpell): void {
-    if (!this.canEdit() || this.saveStatus() === 'saving' || this.saveStatus() === 'error'
+    if (!this.canEdit() || this.activeBeast() || this.saveStatus() === 'saving' || this.saveStatus() === 'error'
       || this.pendingRestRequest() || this.preparationPending()) return;
     // Mount the sole command owner without leaving the current tab.
     this.quickSpellSelection.set({ ...spell });
@@ -137,7 +146,12 @@ export class PlayerPortal {
   protected readonly movement = signal<import('@core/services/character-api.service').CharacterMovement | null>(null);
   // Permanent movement is server-calculated; session exhaustion is transient.
   protected readonly effectiveMovement = computed(() => {
-    const movement = this.movement();
+    const beast = this.activeBeast();
+    const movement = beast ? {
+      walkingSpeed: beast.speed?.['walk'] ?? null,
+      movementSpeeds: Object.fromEntries(Object.entries(beast.speed ?? {})
+        .filter(([mode]) => mode !== 'walk')),
+    } : this.movement();
     if (!movement) return null;
     const level = this.exhaustionLevel();
     if (level < 2) return movement;
@@ -210,6 +224,66 @@ export class PlayerPortal {
     if (pool !== 'cantrips' && !this.spellSlotGroups().some(group => group.id === pool && (group.current ?? 0) > 0 && group.level !== null)) return;
     this.selectedSpellPool.update(current => current === pool ? null : pool);
   }
+  protected readonly wildShapeUses = signal<number | null>(null);
+  protected readonly wildShapeRestRefresh = signal(0);
+  // Projection de session : aucune modification des caractéristiques permanentes.
+  protected readonly activeBeast = signal<null | {
+    beastId: number; beastName: string; armorClass: number;
+    abilities: Record<string, number>; speed: Record<string, number>;
+    actions: Array<{ name: string; description?: string; attackBonus?: number }>;
+    senses: unknown; proficiencies?: unknown;
+    naturalWeapons?: Array<{
+      id: number; name: string; attackType: string; attackBonus: number | null;
+      damageComponents: Array<{ dice: string; type: string | null }>;
+      description: string; sortOrder: number;
+    }>;
+  }>(null);
+  // Les attaques naturelles sont lues depuis la table dédiée : aucun parsing de texte,
+  // aucune recalcul des bonus avec les caractéristiques du personnage.
+  protected readonly effectiveWeapons = computed(() => {
+    const beast = this.activeBeast();
+    if (!beast) return this.weapons();
+    return (beast.naturalWeapons ?? []).map(weapon => ({
+      id: -weapon.id, name: weapon.name, equipped: true,
+      attackBonus: weapon.attackBonus,
+      damage: weapon.damageComponents.length
+        ? weapon.damageComponents.map(component =>
+            `${component.dice}${component.type ? ' ' + this.naturalDamageTypeLabel(component.type) : ''}`
+          ).join(' + ')
+        : null,
+      notes: weapon.description ? [weapon.description] : [],
+      complete: true,
+    }));
+  });
+
+  private naturalDamageTypeLabel(type: string): string {
+    const labels: Record<string, string> = {
+      piercing: 'perforants', slashing: 'tranchants', bludgeoning: 'contondants',
+      poison: 'poison', acid: 'acide', fire: 'feu', cold: 'froid',
+      lightning: 'foudre', thunder: 'tonnerre', necrotic: 'nécrotiques',
+      radiant: 'radiants', force: 'force', psychic: 'psychiques',
+    };
+    return labels[type.toLowerCase()] ?? type;
+  }
+
+  protected readonly effectiveAbilities = computed(() => {
+    const beast = this.activeBeast();
+    if (!beast) return this.abilities();
+    const keys: Record<string, string> = { strength: 'str', dexterity: 'dex', constitution: 'con' };
+    return this.abilities().map(ability => {
+      const score = beast.abilities?.[keys[ability.ability]];
+      if (!Number.isFinite(score)) return ability;
+      return { ...ability, effectiveValue: score, modifier: Math.floor((score - 10) / 2) };
+    });
+  });
+  protected readonly effectiveArmorClass = computed(() => {
+    const beast = this.activeBeast();
+    if (!beast) return this.armorClass();
+    return { value: beast.armorClass, complete: true, source: beast.beastName,
+      formula: null, reasons: [], contributions: [{ kind: 'base' as const, source: beast.beastName,
+        label: 'Armure naturelle', value: beast.armorClass }] };
+  });
+
   protected readonly trackerResources = computed(() => {
     const represented = new Set(this.spellSlotGroups().map(group => group.id));
     return this.sortedResources().filter(resource => !represented.has(resource.id)
@@ -603,6 +677,7 @@ export class PlayerPortal {
           this.remoteSynchronizationEnabled.set(true);
 
           this.loading.set(false);
+          this.refreshWildShapeUses();
           this.checkRestRequestOnActivation();
         },
 
@@ -708,6 +783,27 @@ export class PlayerPortal {
         ),
       )
       .subscribe();
+  }
+
+  protected readonly wildShapeRefreshVersion = signal(0);
+
+  protected refreshWildShapeSession(): void {
+    this.wildShapeRefreshVersion.update(version => version + 1);
+    this.loadCharacter(false);
+    this.refreshWildShapeUses();
+  }
+
+  private refreshWildShapeUses(): void {
+    if (this.druidLevel() < 2) return;
+    this.http.get<{ wildShape: { usesRemaining: number; active: any } }>(
+      `/api/public/characters/${encodeURIComponent(this.accessToken)}/wild-shape`,
+    ).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: response => {
+        this.wildShapeUses.set(response.wildShape?.usesRemaining ?? null);
+        this.activeBeast.set(response.wildShape?.active ?? null);
+      },
+      error: () => { this.wildShapeUses.set(null); this.activeBeast.set(null); },
+    });
   }
 
   private refreshCharacterIfChanged(): void {
@@ -843,6 +939,9 @@ export class PlayerPortal {
     );
 
     if (request.status === 'approved') {
+      // Rest restores Wild Shape uses on the server; refresh both consumers.
+      this.wildShapeRestRefresh.update(value => value + 1);
+      this.refreshWildShapeUses();
       if (request.type === 'long-rest' && this.hasInfusions()) {
         this.activeTab.set('status');
         this.infusionRefresh.update(value => value + 1);

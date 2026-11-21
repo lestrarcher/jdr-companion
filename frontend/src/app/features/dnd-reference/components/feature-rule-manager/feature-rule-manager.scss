@@ -91,6 +91,17 @@ h2 {
   gap: 1rem;
   margin-top: 1.25rem;
 }
+.rule-form fieldset { display:grid; gap:1.25rem; min-width:0; padding:0; margin:0; border:0; }
+.rule-form .field > span { line-height:1.5; margin-bottom:.5rem; }
+.rule-form .form-actions { justify-content:flex-end; flex-wrap:wrap; padding-top:1rem; border-top:1px solid rgba(202,165,86,.2); }
+.rule-form .inline-empty { grid-column:1 / -1; margin:0; line-height:1.6; }
+.rule-form .message { margin:0; line-height:1.6; overflow-wrap:anywhere; }
+@media(max-width:600px) {
+  .rule-manager { grid-template-columns:minmax(0,1fr); }
+  .rule-manager__editor,.rule-manager__list { padding:.85rem; }
+  .rule-form .compact-grid { grid-template-columns:minmax(0,1fr); }
+  .rule-form input,.rule-form select { min-width:0; font-size:1rem; }
+}
 
 .field {
   display: block;
@@ -402,3 +413,5 @@ select {
     justify-self: start;
   }
 }
+
+.beast-attributions { margin-top:1.5rem; } .beast-attributions > header { padding:1rem 0; }

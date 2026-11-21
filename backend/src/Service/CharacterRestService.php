@@ -31,6 +31,7 @@ final readonly class CharacterRestService
         private EntityManagerInterface $entityManager,
         private MagicItemRechargeService $itemRechargeService,
         private ItemInfusions $infusions,
+        private WildShapeSessionService $wildShape,
     ) {
     }
 
@@ -56,6 +57,7 @@ final readonly class CharacterRestService
             throw new \InvalidArgumentException(sprintf('Type de repos invalide : "%s".', $restType));
         }
 
+        $state = $this->wildShape->afterRest($state);
         $this->itemRechargeService->apply($character, $restType);
         $sessionState->setState($state);
     }

@@ -1,0 +1,650 @@
+[
+  {
+    "habitat": "aquatique",
+    "slug": "piranha"
+  },
+  {
+    "habitat": "aquatique",
+    "slug": "serpent-constricteur"
+  },
+  {
+    "habitat": "aquatique",
+    "slug": "hippocampe-geant"
+  },
+  {
+    "habitat": "aquatique",
+    "slug": "requin-de-recif"
+  },
+  {
+    "habitat": "aquatique",
+    "slug": "pieuvre-geante"
+  },
+  {
+    "habitat": "aquatique",
+    "slug": "serpent-constricteur-geant"
+  },
+  {
+    "habitat": "aquatique",
+    "slug": "requin-chasseur"
+  },
+  {
+    "habitat": "aquatique",
+    "slug": "epaulard"
+  },
+  {
+    "habitat": "aquatique",
+    "slug": "requin-geant"
+  },
+  {
+    "habitat": "arctique",
+    "slug": "chouette"
+  },
+  {
+    "habitat": "arctique",
+    "slug": "faucon-de-sang"
+  },
+  {
+    "habitat": "arctique",
+    "slug": "chouette-geante"
+  },
+  {
+    "habitat": "arctique",
+    "slug": "ours-brun"
+  },
+  {
+    "habitat": "arctique",
+    "slug": "ours-polaire"
+  },
+  {
+    "habitat": "arctique",
+    "slug": "tigre-a-dents-de-sabre"
+  },
+  {
+    "habitat": "arctique",
+    "slug": "mammouth"
+  },
+  {
+    "habitat": "collines",
+    "slug": "babouin"
+  },
+  {
+    "habitat": "collines",
+    "slug": "aigle"
+  },
+  {
+    "habitat": "collines",
+    "slug": "chevre"
+  },
+  {
+    "habitat": "collines",
+    "slug": "hyene"
+  },
+  {
+    "habitat": "collines",
+    "slug": "corbeau"
+  },
+  {
+    "habitat": "collines",
+    "slug": "vautour"
+  },
+  {
+    "habitat": "collines",
+    "slug": "faucon-de-sang"
+  },
+  {
+    "habitat": "collines",
+    "slug": "belette-geante"
+  },
+  {
+    "habitat": "collines",
+    "slug": "molosse"
+  },
+  {
+    "habitat": "collines",
+    "slug": "mule"
+  },
+  {
+    "habitat": "collines",
+    "slug": "serpent-venimeux"
+  },
+  {
+    "habitat": "collines",
+    "slug": "sanglier"
+  },
+  {
+    "habitat": "collines",
+    "slug": "elan"
+  },
+  {
+    "habitat": "collines",
+    "slug": "chouette-geante"
+  },
+  {
+    "habitat": "collines",
+    "slug": "araignee-loup-geante"
+  },
+  {
+    "habitat": "collines",
+    "slug": "panthere"
+  },
+  {
+    "habitat": "collines",
+    "slug": "loup"
+  },
+  {
+    "habitat": "collines",
+    "slug": "chevre-geante"
+  },
+  {
+    "habitat": "collines",
+    "slug": "ours-brun"
+  },
+  {
+    "habitat": "collines",
+    "slug": "loup-sanguinaire"
+  },
+  {
+    "habitat": "collines",
+    "slug": "aigle-geant"
+  },
+  {
+    "habitat": "collines",
+    "slug": "hyene-geante"
+  },
+  {
+    "habitat": "collines",
+    "slug": "lion"
+  },
+  {
+    "habitat": "collines",
+    "slug": "sanglier-geant"
+  },
+  {
+    "habitat": "collines",
+    "slug": "elan-geant"
+  },
+  {
+    "habitat": "desert",
+    "slug": "chat"
+  },
+  {
+    "habitat": "desert",
+    "slug": "hyene"
+  },
+  {
+    "habitat": "desert",
+    "slug": "chacal"
+  },
+  {
+    "habitat": "desert",
+    "slug": "scorpion"
+  },
+  {
+    "habitat": "desert",
+    "slug": "vautour"
+  },
+  {
+    "habitat": "desert",
+    "slug": "chameau"
+  },
+  {
+    "habitat": "desert",
+    "slug": "serpent-volant"
+  },
+  {
+    "habitat": "desert",
+    "slug": "mule"
+  },
+  {
+    "habitat": "desert",
+    "slug": "serpent-venimeux"
+  },
+  {
+    "habitat": "desert",
+    "slug": "serpent-constricteur"
+  },
+  {
+    "habitat": "desert",
+    "slug": "lezard-geant"
+  },
+  {
+    "habitat": "desert",
+    "slug": "serpent-venimeux-geant"
+  },
+  {
+    "habitat": "desert",
+    "slug": "araignee-loup-geante"
+  },
+  {
+    "habitat": "desert",
+    "slug": "araignee-geante"
+  },
+  {
+    "habitat": "desert",
+    "slug": "crapaud-geant"
+  },
+  {
+    "habitat": "desert",
+    "slug": "vautour-geant"
+  },
+  {
+    "habitat": "desert",
+    "slug": "lion"
+  },
+  {
+    "habitat": "desert",
+    "slug": "serpent-constricteur-geant"
+  },
+  {
+    "habitat": "desert",
+    "slug": "scorpion-geant"
+  },
+  {
+    "habitat": "foret",
+    "slug": "babouin"
+  },
+  {
+    "habitat": "foret",
+    "slug": "blaireau"
+  },
+  {
+    "habitat": "foret",
+    "slug": "chat"
+  },
+  {
+    "habitat": "foret",
+    "slug": "chevre"
+  },
+  {
+    "habitat": "foret",
+    "slug": "chouette"
+  },
+  {
+    "habitat": "foret",
+    "slug": "faucon-de-sang"
+  },
+  {
+    "habitat": "foret",
+    "slug": "serpent-volant"
+  },
+  {
+    "habitat": "foret",
+    "slug": "rat-geant"
+  },
+  {
+    "habitat": "foret",
+    "slug": "belette-geante"
+  },
+  {
+    "habitat": "foret",
+    "slug": "serpent-venimeux"
+  },
+  {
+    "habitat": "foret",
+    "slug": "molosse"
+  },
+  {
+    "habitat": "foret",
+    "slug": "sanglier"
+  },
+  {
+    "habitat": "foret",
+    "slug": "elan"
+  },
+  {
+    "habitat": "foret",
+    "slug": "blaireau-geant"
+  },
+  {
+    "habitat": "foret",
+    "slug": "chauve-souris-geante"
+  },
+  {
+    "habitat": "foret",
+    "slug": "grenouille-geante"
+  },
+  {
+    "habitat": "foret",
+    "slug": "lezard-geant"
+  },
+  {
+    "habitat": "foret",
+    "slug": "chouette-geante"
+  },
+  {
+    "habitat": "foret",
+    "slug": "serpent-venimeux-geant"
+  },
+  {
+    "habitat": "foret",
+    "slug": "araignee-loup-geante"
+  },
+  {
+    "habitat": "foret",
+    "slug": "panthere"
+  },
+  {
+    "habitat": "foret",
+    "slug": "loup"
+  },
+  {
+    "habitat": "foret",
+    "slug": "grand-singe"
+  },
+  {
+    "habitat": "foret",
+    "slug": "ours-noir"
+  },
+  {
+    "habitat": "foret",
+    "slug": "guepe-geante"
+  },
+  {
+    "habitat": "foret",
+    "slug": "ours-brun"
+  },
+  {
+    "habitat": "foret",
+    "slug": "loup-sanguinaire"
+  },
+  {
+    "habitat": "foret",
+    "slug": "hyene-geante"
+  },
+  {
+    "habitat": "foret",
+    "slug": "araignee-geante"
+  },
+  {
+    "habitat": "foret",
+    "slug": "crapaud-geant"
+  },
+  {
+    "habitat": "foret",
+    "slug": "tigre"
+  },
+  {
+    "habitat": "foret",
+    "slug": "sanglier-geant"
+  },
+  {
+    "habitat": "foret",
+    "slug": "serpent-constricteur-geant"
+  },
+  {
+    "habitat": "foret",
+    "slug": "elan-geant"
+  },
+  {
+    "habitat": "littoral",
+    "slug": "crabe"
+  },
+  {
+    "habitat": "littoral",
+    "slug": "aigle"
+  },
+  {
+    "habitat": "littoral",
+    "slug": "faucon-de-sang"
+  },
+  {
+    "habitat": "littoral",
+    "slug": "crabe-geant"
+  },
+  {
+    "habitat": "littoral",
+    "slug": "serpent-venimeux"
+  },
+  {
+    "habitat": "littoral",
+    "slug": "lezard-geant"
+  },
+  {
+    "habitat": "littoral",
+    "slug": "araignee-loup-geante"
+  },
+  {
+    "habitat": "littoral",
+    "slug": "aigle-geant"
+  },
+  {
+    "habitat": "littoral",
+    "slug": "crapaud-geant"
+  },
+  {
+    "habitat": "marais",
+    "slug": "rat"
+  },
+  {
+    "habitat": "marais",
+    "slug": "corbeau"
+  },
+  {
+    "habitat": "marais",
+    "slug": "rat-geant"
+  },
+  {
+    "habitat": "marais",
+    "slug": "serpent-venimeux"
+  },
+  {
+    "habitat": "marais",
+    "slug": "serpent-constricteur"
+  },
+  {
+    "habitat": "marais",
+    "slug": "grenouille-geante"
+  },
+  {
+    "habitat": "marais",
+    "slug": "lezard-geant"
+  },
+  {
+    "habitat": "marais",
+    "slug": "serpent-venimeux-geant"
+  },
+  {
+    "habitat": "marais",
+    "slug": "crocodile"
+  },
+  {
+    "habitat": "marais",
+    "slug": "araignee-geante"
+  },
+  {
+    "habitat": "marais",
+    "slug": "crapaud-geant"
+  },
+  {
+    "habitat": "marais",
+    "slug": "serpent-constricteur-geant"
+  },
+  {
+    "habitat": "marais",
+    "slug": "crocodile-geant"
+  },
+  {
+    "habitat": "montagne",
+    "slug": "aigle"
+  },
+  {
+    "habitat": "montagne",
+    "slug": "chevre"
+  },
+  {
+    "habitat": "montagne",
+    "slug": "faucon-de-sang"
+  },
+  {
+    "habitat": "montagne",
+    "slug": "chevre-geante"
+  },
+  {
+    "habitat": "montagne",
+    "slug": "aigle-geant"
+  },
+  {
+    "habitat": "montagne",
+    "slug": "lion"
+  },
+  {
+    "habitat": "montagne",
+    "slug": "elan-geant"
+  },
+  {
+    "habitat": "montagne",
+    "slug": "tigre-a-dents-de-sabre"
+  },
+  {
+    "habitat": "plaine",
+    "slug": "chat"
+  },
+  {
+    "habitat": "plaine",
+    "slug": "aigle"
+  },
+  {
+    "habitat": "plaine",
+    "slug": "chevre"
+  },
+  {
+    "habitat": "plaine",
+    "slug": "hyene"
+  },
+  {
+    "habitat": "plaine",
+    "slug": "chacal"
+  },
+  {
+    "habitat": "plaine",
+    "slug": "vautour"
+  },
+  {
+    "habitat": "plaine",
+    "slug": "faucon-de-sang"
+  },
+  {
+    "habitat": "plaine",
+    "slug": "serpent-volant"
+  },
+  {
+    "habitat": "plaine",
+    "slug": "belette-geante"
+  },
+  {
+    "habitat": "plaine",
+    "slug": "serpent-venimeux"
+  },
+  {
+    "habitat": "plaine",
+    "slug": "sanglier"
+  },
+  {
+    "habitat": "plaine",
+    "slug": "elan"
+  },
+  {
+    "habitat": "plaine",
+    "slug": "serpent-venimeux-geant"
+  },
+  {
+    "habitat": "plaine",
+    "slug": "araignee-loup-geante"
+  },
+  {
+    "habitat": "plaine",
+    "slug": "panthere"
+  },
+  {
+    "habitat": "plaine",
+    "slug": "cheval-de-selle"
+  },
+  {
+    "habitat": "plaine",
+    "slug": "loup"
+  },
+  {
+    "habitat": "plaine",
+    "slug": "chevre-geante"
+  },
+  {
+    "habitat": "plaine",
+    "slug": "guepe-geante"
+  },
+  {
+    "habitat": "plaine",
+    "slug": "aigle-geant"
+  },
+  {
+    "habitat": "plaine",
+    "slug": "hyene-geante"
+  },
+  {
+    "habitat": "plaine",
+    "slug": "vautour-geant"
+  },
+  {
+    "habitat": "plaine",
+    "slug": "lion"
+  },
+  {
+    "habitat": "plaine",
+    "slug": "tigre"
+  },
+  {
+    "habitat": "plaine",
+    "slug": "sanglier-geant"
+  },
+  {
+    "habitat": "plaine",
+    "slug": "elan-geant"
+  },
+  {
+    "habitat": "plaine",
+    "slug": "rhinoceros"
+  },
+  {
+    "habitat": "plaine",
+    "slug": "elephant"
+  },
+  {
+    "habitat": "outreterre",
+    "slug": "scarabee-de-feu-geant"
+  },
+  {
+    "habitat": "outreterre",
+    "slug": "rat-geant"
+  },
+  {
+    "habitat": "outreterre",
+    "slug": "chauve-souris-geante"
+  },
+  {
+    "habitat": "outreterre",
+    "slug": "mille-pattes-geant"
+  },
+  {
+    "habitat": "outreterre",
+    "slug": "lezard-geant"
+  },
+  {
+    "habitat": "outreterre",
+    "slug": "serpent-venimeux-geant"
+  },
+  {
+    "habitat": "outreterre",
+    "slug": "araignee-geante"
+  },
+  {
+    "habitat": "outreterre",
+    "slug": "crapaud-geant"
+  },
+  {
+    "habitat": "outreterre",
+    "slug": "serpent-constricteur-geant"
+  },
+  {
+    "habitat": "outreterre",
+    "slug": "ours-polaire"
+  }
+]

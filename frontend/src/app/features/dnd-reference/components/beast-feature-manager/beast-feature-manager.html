@@ -1,0 +1,60 @@
+<section class="beast-manager">
+  <aside class="beast-manager__sidebar">
+    <header class="panel-header">
+      <div><span class="eyebrow">Référentiel</span><h2>{{ mode() === 'catalog' ? 'Bêtes' : 'Attributions aux bêtes' }}</h2></div>
+      @if (mode() === 'catalog' && !readOnly && beastScope === 'custom') { <button type="button" class="icon-button" title="Créer une bête" aria-label="Créer une bête" (click)="newBeast()">+</button> }
+    </header>
+    <label class="field"><span>Rechercher une bête</span><input type="search" [ngModel]="filter()" (ngModelChange)="filter.set($event)" placeholder="Nom de la bête…" /></label>
+    <div class="beast-manager__beasts">
+      @for (beast of filteredBeasts(); track beast.id) {
+        <button type="button" class="beast-manager__beast" [class.beast-manager__beast--selected]="selectedBeast() === beast.id" (click)="selectBeast(beast.id)">
+          <strong>{{ beast.name }}</strong><small>{{ beast.slug }}</small>
+        </button>
+      } @empty { <p class="empty-state">Aucune bête trouvée.</p> }
+    </div>
+  </aside>
+  <div class="beast-manager__content">
+    @if (message()) { <p role="status" class="beast-manager__message">{{ message() }}</p> }
+    @if (selectedBeast() !== null || creating()) {
+      <header class="panel-header"><div><span class="eyebrow">Catalogue animal</span><h2>{{ creating() ? 'Nouvelle bête' : selectedBeastName() }}</h2></div></header>
+      <nav class="editor-tabs" aria-label="Sections de la fiche de bête">
+        @for (tab of tabs; track tab.id) {
+          <button type="button" class="editor-tab" [class.active]="activeTab() === tab.id" [attr.aria-pressed]="activeTab() === tab.id" (click)="activeTab.set(tab.id)">{{ tab.label }}</button>
+        }
+      </nav>
+    }
+    @if (creating()) {
+      <app-beast-profile-editor [beastId]="null" [activeTab]="activeTab()" [hidden]="activeTab() === 'traits'" (saved)="profileSaved($event)" />
+      @if (activeTab() === 'traits') { <p>Enregistrez la bête, puis gérez ses capacités dans Attributions → Bête.</p> }
+    }
+    @if (selectedBeast() !== null) {
+      @if (mode() === 'catalog') {
+        <app-beast-profile-editor [beastId]="selectedBeast()" [activeTab]="activeTab()" [hidden]="activeTab() === 'traits'" (saved)="profileSaved($event)" (deleted)="profileDeleted($event)" />
+        <section [hidden]="activeTab() !== 'stats'" class="beast-manager__image-editor" aria-label="Illustration de la bête">
+          @if (selectedImageUrl(); as imageUrl) {
+            <img [src]="imageUrl" alt="Illustration de {{ selectedBeastName() }}" loading="lazy" decoding="async" width="112" height="112" />
+          } @else { <span class="beast-manager__image-placeholder" aria-hidden="true">Aucune image</span> }
+          @if (!readOnly) {
+            <div class="beast-manager__image-actions">
+              <label class="action-button">{{ imageBusy() ? 'Envoi…' : 'Importer une image' }}
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" [disabled]="imageBusy()" (change)="uploadImage($event)" />
+              </label>
+              @if (selectedImageUrl()) { <button type="button" class="remove-button" [disabled]="imageBusy()" (click)="deleteImage()">Supprimer l’image</button> }
+              <small>JPEG, PNG, WebP ou GIF · 5 Mo maximum</small>
+            </div>
+          }
+        </section>
+      }
+      <section [hidden]="activeTab() !== 'traits'">
+      <p class="beast-manager__intro">Capacités associées à cette bête. Pour les attribuer ou les retirer, utilisez Attributions.</p>
+      <h3>Capacités associées ({{ assignedFeatures().length }})</h3>
+      <div class="beast-manager__assigned">
+        @for (feature of assignedFeatures(); track feature.id) {
+          <article class="beast-manager__feature"><div><strong>{{ feature.name }}</strong>@if (feature.description) { <p>{{ feature.description }}</p> }</div>
+          </article>
+        } @empty { <p class="empty-state">Aucune capacité associée.</p> }
+      </div>
+      </section>
+    } @else if (!creating()) { <p class="empty-state">Sélectionne une bête.</p> }
+  </div>
+</section>

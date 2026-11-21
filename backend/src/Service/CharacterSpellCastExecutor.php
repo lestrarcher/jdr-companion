@@ -60,6 +60,9 @@ final readonly class CharacterSpellCastExecutor
                         'replayed'=>true,
                     ];
                 }
+                if (is_array($state[WildShapeSessionService::KEY]['active'] ?? null)) {
+                    throw new UnprocessableEntityHttpException('wild_shape_spellcasting_blocked');
+                }
                 $revision = $command['revision'];
                 if ($session->getRevision() !== $revision) {
                     throw new ConflictHttpException('stale_revision');

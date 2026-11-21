@@ -59,6 +59,44 @@ export class PlayerSpells implements OnInit, OnChanges {
     this.confirmCast(choice);
   }
   readonly changed = output<void>();
+  // Action spéciale virtuelle : ce n'est pas un sort appris ou préparé.
+  readonly wildShapeActive = input(false);
+  readonly lunarQuickRequest = input(0);
+  readonly lunarDialogOpen = signal(false);
+  openLunarDialog(): void {
+    if (!this.wildShapeActive() || !this.moonDruid() || this.readonly() || this.lunarBusy()) return;
+    this.lunarError.set(''); this.lunarSuccess.set(''); this.lunarDialogOpen.set(true);
+  }
+  closeLunarDialog(): void { if (!this.lunarBusy()) this.lunarDialogOpen.set(false); }
+  readonly moonDruid = input(false);
+  readonly lunarLevel = signal(1);
+  readonly lunarBusy = signal(false);
+  readonly lunarError = signal('');
+  readonly lunarSuccess = signal('');
+  readonly lunarSlots = computed(() => this.resources()
+    .filter(resource => /^spell-slot-[1-9]$/.test(resource.id) && (resource.currentValue ?? 0) > 0)
+    .map(resource => ({ level: Number(resource.id.substring('spell-slot-'.length)), remaining: resource.currentValue ?? 0 }))
+    .sort((a, b) => a.level - b.level));
+  lunarSlotAvailable(): boolean { return this.lunarSlots().some(slot => slot.level === this.lunarLevel()); }
+  lunarHeal(levelOverride?: number): void {
+    if (!this.wildShapeActive() || !this.moonDruid() || this.readonly() || this.lunarBusy() || !this.accessToken()) return;
+    const level = Number(levelOverride ?? this.lunarLevel());
+    if (!this.lunarSlots().some(slot => slot.level === level)) return;
+    this.lunarBusy.set(true); this.lunarError.set(''); this.lunarSuccess.set(''); this.casting.emit(true);
+    this.http.post<{ wildShape: { active: { hitPoints: { current: number; maximum: number } } } }>(
+      `/api/public/characters/${encodeURIComponent(this.accessToken())}/wild-shape/lunar-heal`, { slotLevel: level },
+    ).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: response => {
+        this.lunarBusy.set(false); this.casting.emit(false);
+        this.lunarSuccess.set(`Emplacement de niveau ${level} consommé. Lancez ${level}d8, puis appliquez le total dans État → Soins.`);
+        this.changed.emit();
+      },
+      error: response => {
+        this.lunarBusy.set(false); this.casting.emit(false);
+        this.lunarError.set(response?.error?.message ?? 'Guérison lunaire impossible.');
+      },
+    });
+  }
   readonly castingBlocked = input(false);
   readonly castCompleted = output<SpellCastResponse>();
   readonly casting = output<boolean>();
@@ -138,6 +176,7 @@ export class PlayerSpells implements OnInit, OnChanges {
       },
     });
   }
+  private readonly http = inject(HttpClient);
   private readonly api = inject(PlayerSpellApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
@@ -209,6 +248,7 @@ export class PlayerSpells implements OnInit, OnChanges {
     if (this.accessToken()) this.reload();
   }
   ngOnChanges(changes?: SimpleChanges): void {
+    if (changes?.['lunarQuickRequest'] && this.lunarQuickRequest() > 0) this.openLunarDialog();
     if (changes?.['quickSelection'] && this.quickSelection()) {
       this.selection.set(this.quickSelection()); this.castChoice.set('');
       this.openCastDialog(this.quickSelection()!);

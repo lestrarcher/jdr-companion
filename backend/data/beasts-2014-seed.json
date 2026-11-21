@@ -1,0 +1,378 @@
+[
+  {
+    "slug": "aigle",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=aigle"
+  },
+  {
+    "slug": "aigle-geant",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=aigle-geant"
+  },
+  {
+    "slug": "araignee",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=araignee"
+  },
+  {
+    "slug": "araignee-geante",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=araignee-geante"
+  },
+  {
+    "slug": "araignee-loup-geante",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=araignee-loup-geante"
+  },
+  {
+    "slug": "auroch",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=auroch"
+  },
+  {
+    "slug": "babouin",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=babouin"
+  },
+  {
+    "slug": "bec-de-hache",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=bec-de-hache"
+  },
+  {
+    "slug": "belette",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=belette"
+  },
+  {
+    "slug": "belette-geante",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=belette-geante"
+  },
+  {
+    "slug": "blaireau",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=blaireau"
+  },
+  {
+    "slug": "blaireau-geant",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=blaireau-geant"
+  },
+  {
+    "slug": "boeuf",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=boeuf"
+  },
+  {
+    "slug": "cachalot",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=cachalot"
+  },
+  {
+    "slug": "cerf",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=cerf"
+  },
+  {
+    "slug": "chacal",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=chacal"
+  },
+  {
+    "slug": "chameau",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=chameau"
+  },
+  {
+    "slug": "chat",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=chat"
+  },
+  {
+    "slug": "chauve-souris",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=chauve-souris"
+  },
+  {
+    "slug": "chauve-souris-geante",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=chauve-souris-geante"
+  },
+  {
+    "slug": "cheval-de-guerre",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=cheval-de-guerre"
+  },
+  {
+    "slug": "cheval-de-selle",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=cheval-de-selle"
+  },
+  {
+    "slug": "cheval-de-trait",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=cheval-de-trait"
+  },
+  {
+    "slug": "chevre",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=chevre"
+  },
+  {
+    "slug": "chevre-de-montagne",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=chevre-de-montagne"
+  },
+  {
+    "slug": "chevre-geante",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=chevre-geante"
+  },
+  {
+    "slug": "chouette",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=chouette"
+  },
+  {
+    "slug": "chouette-geante",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=chouette-geante"
+  },
+  {
+    "slug": "corbeau",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=corbeau"
+  },
+  {
+    "slug": "crabe",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=crabe"
+  },
+  {
+    "slug": "crabe-geant",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=crabe-geant"
+  },
+  {
+    "slug": "crapaud-geant",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=crapaud-geant"
+  },
+  {
+    "slug": "crocodile",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=crocodile"
+  },
+  {
+    "slug": "crocodile-geant",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=crocodile-geant"
+  },
+  {
+    "slug": "dauphin",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=dauphin"
+  },
+  {
+    "slug": "elan",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=elan"
+  },
+  {
+    "slug": "elan-geant",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=elan-geant"
+  },
+  {
+    "slug": "elephant",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=elephant"
+  },
+  {
+    "slug": "epaulard",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=epaulard"
+  },
+  {
+    "slug": "faucon",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=faucon"
+  },
+  {
+    "slug": "faucon-de-sang",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=faucon-de-sang"
+  },
+  {
+    "slug": "grand-singe",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=grand-singe"
+  },
+  {
+    "slug": "grenouille",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=grenouille"
+  },
+  {
+    "slug": "grenouille-geante",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=grenouille-geante"
+  },
+  {
+    "slug": "guepe-geante",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=guepe-geante"
+  },
+  {
+    "slug": "hippocampe",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=hippocampe"
+  },
+  {
+    "slug": "hippocampe-geant",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=hippocampe-geant"
+  },
+  {
+    "slug": "hyene",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=hyene"
+  },
+  {
+    "slug": "hyene-geante",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=hyene-geante"
+  },
+  {
+    "slug": "lezard",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=lezard"
+  },
+  {
+    "slug": "lezard-geant",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=lezard-geant"
+  },
+  {
+    "slug": "lievre",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=lievre"
+  },
+  {
+    "slug": "lion",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=lion"
+  },
+  {
+    "slug": "loup",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=loup"
+  },
+  {
+    "slug": "loup-sanguinaire",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=loup-sanguinaire"
+  },
+  {
+    "slug": "mammouth",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=mammouth"
+  },
+  {
+    "slug": "mille-pattes-geant",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=mille-pattes-geant"
+  },
+  {
+    "slug": "molosse",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=molosse"
+  },
+  {
+    "slug": "morse",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=morse"
+  },
+  {
+    "slug": "morse-geant",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=morse-geant"
+  },
+  {
+    "slug": "mule",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=mule"
+  },
+  {
+    "slug": "ours-brun",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=ours-brun"
+  },
+  {
+    "slug": "ours-noir",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=ours-noir"
+  },
+  {
+    "slug": "ours-polaire",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=ours-polaire"
+  },
+  {
+    "slug": "panthere",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=panthere"
+  },
+  {
+    "slug": "phoque",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=phoque"
+  },
+  {
+    "slug": "pieuvre",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=pieuvre"
+  },
+  {
+    "slug": "pieuvre-geante",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=pieuvre-geante"
+  },
+  {
+    "slug": "piranha",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=piranha"
+  },
+  {
+    "slug": "poney",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=poney"
+  },
+  {
+    "slug": "rat",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=rat"
+  },
+  {
+    "slug": "rat-geant",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=rat-geant"
+  },
+  {
+    "slug": "renard",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=renard"
+  },
+  {
+    "slug": "requin-chasseur",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=requin-chasseur"
+  },
+  {
+    "slug": "requin-de-recif",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=requin-de-recif"
+  },
+  {
+    "slug": "requin-geant",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=requin-geant"
+  },
+  {
+    "slug": "rhinoceros",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=rhinoceros"
+  },
+  {
+    "slug": "rothe-des-profondeurs",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=rothe-des-profondeurs"
+  },
+  {
+    "slug": "sanglier",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=sanglier"
+  },
+  {
+    "slug": "sanglier-geant",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=sanglier-geant"
+  },
+  {
+    "slug": "scarabee-de-feu-geant",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=scarabee-de-feu-geant"
+  },
+  {
+    "slug": "scorpion",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=scorpion"
+  },
+  {
+    "slug": "scorpion-geant",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=scorpion-geant"
+  },
+  {
+    "slug": "serpent-constricteur",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=serpent-constricteur"
+  },
+  {
+    "slug": "serpent-constricteur-geant",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=serpent-constricteur-geant"
+  },
+  {
+    "slug": "serpent-venimeux",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=serpent-venimeux"
+  },
+  {
+    "slug": "serpent-venimeux-geant",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=serpent-venimeux-geant"
+  },
+  {
+    "slug": "serpent-volant",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=serpent-volant"
+  },
+  {
+    "slug": "singe-geant",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=singe-geant"
+  },
+  {
+    "slug": "tigre",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=tigre"
+  },
+  {
+    "slug": "tigre-a-dents-de-sabre",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=tigre-a-dents-de-sabre"
+  },
+  {
+    "slug": "truite-tetevide",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=truite-tetevide"
+  },
+  {
+    "slug": "vautour",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=vautour"
+  },
+  {
+    "slug": "vautour-geant",
+    "sourceUrl": "https://www.aidedd.org/dnd/monstres.php?vf=vautour-geant"
+  }
+]
