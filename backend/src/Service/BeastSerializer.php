@@ -7,7 +7,7 @@ final class BeastSerializer
 {
     public function catalogue(Beast $beast): array
     {
-        return ['id' => $beast->getId(), 'slug' => $beast->getSlug(), 'name' => $beast->getName(),
+        return ['id' => $beast->getId(), 'slug' => $beast->getSlug(), 'name' => $beast->getName(), 'origin' => $beast->getOrigin()->value, 'ownerId' => $beast->getOwner()?->getId(),
             'challengeRating' => $beast->getChallengeRating(), 'sourceUrl' => $beast->getSourceUrl(),
             'imageUrl' => $beast->getImageFilename() ? '/api/public/beasts/images/'.$beast->getImageFilename().'/thumbnail' : null,
             'statBlock' => $beast->getStatBlock(),

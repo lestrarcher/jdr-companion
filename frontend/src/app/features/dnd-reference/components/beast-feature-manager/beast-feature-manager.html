@@ -2,7 +2,7 @@
   <aside class="beast-manager__sidebar">
     <header class="panel-header">
       <div><span class="eyebrow">Référentiel</span><h2>{{ mode() === 'catalog' ? 'Bêtes' : 'Attributions aux bêtes' }}</h2></div>
-      @if (mode() === 'catalog' && !readOnly) { <button type="button" class="icon-button" title="Créer une bête" aria-label="Créer une bête" (click)="newBeast()">+</button> }
+      @if (mode() === 'catalog' && !readOnly && beastScope === 'custom') { <button type="button" class="icon-button" title="Créer une bête" aria-label="Créer une bête" (click)="newBeast()">+</button> }
     </header>
     <label class="field"><span>Rechercher une bête</span><input type="search" [ngModel]="filter()" (ngModelChange)="filter.set($event)" placeholder="Nom de la bête…" /></label>
     <div class="beast-manager__beasts">

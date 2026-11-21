@@ -3,11 +3,14 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Repository\BeastRepository;
+use App\Enum\ReferenceOrigin;
 use Doctrine\Common\Collections\{ArrayCollection, Collection};
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: BeastRepository::class)]
+#[ORM\HasLifecycleCallbacks]
 #[ORM\Table(name: 'beast')]
+#[ORM\Index(name: 'idx_beast_owner', columns: ['owner_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_beast_slug', columns: ['slug'])]
 class Beast
 {
@@ -27,6 +30,11 @@ class Beast
     private ?string $imageFilename = null;
     #[ORM\Column(options: ['default' => false])]
     private bool $customized = false;
+    #[ORM\Column(length: 16, enumType: ReferenceOrigin::class, options: ['default' => 'OFFICIAL'])]
+    private ReferenceOrigin $origin = ReferenceOrigin::Official;
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'RESTRICT')]
+    private ?User $owner = null;
     /** @var Collection<int, BeastNaturalWeapon> */
     #[ORM\OneToMany(mappedBy: 'beast', targetEntity: BeastNaturalWeapon::class, cascade: ['persist'], orphanRemoval: true)]
     #[ORM\OrderBy(['sortOrder' => 'ASC', 'id' => 'ASC'])]
@@ -55,6 +63,19 @@ class Beast
     public function getStatBlock(): ?array { return $this->statBlock; }
     public function getImageFilename(): ?string { return $this->imageFilename; }
     public function isCustomized(): bool { return $this->customized; }
+    public function getOrigin(): ReferenceOrigin { return $this->origin; }
+    public function getOwner(): ?User { return $this->owner; }
+    public function markCustom(User $owner): void { $this->origin = ReferenceOrigin::Custom; $this->owner = $owner; }
+    public function isAccessibleTo(?User $user): bool
+    {
+        return $this->origin === ReferenceOrigin::Official || ($user !== null && $this->owner !== null
+            && ($this->owner === $user || ($user->getId() !== null && $this->owner->getId() === $user->getId())));
+    }
+    #[ORM\PrePersist, ORM\PreUpdate]
+    public function validateReferenceOwnership(): void
+    {
+        if (($this->origin === ReferenceOrigin::Official) !== ($this->owner === null)) throw new \LogicException('Invalid beast origin/owner pair.');
+    }
     public function markCustomized(): void { $this->customized = true; }
     public function getNaturalWeapons(): Collection { return $this->naturalWeapons; }
     public function getHabitats(): Collection { return $this->habitats; }

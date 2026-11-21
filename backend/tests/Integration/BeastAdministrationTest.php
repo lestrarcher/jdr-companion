@@ -61,11 +61,20 @@ final class BeastAdministrationTest extends TestCase
     {
         $beast = new Beast('test-beast'); $this->editor->save($beast, $this->data()); return $beast;
     }
-    private function controller(bool $allowed = true, ?string $projectDir = null): BeastFeatureAdminController
+    private function owner(): User
+    {
+        $owner = $this->em->getRepository(User::class)->findOneBy(['email'=>'owner@example.invalid']);
+        if (!$owner) {
+            $owner = (new User())->setEmail('owner@example.invalid')->setPassword('unused');
+            $this->em->persist($owner); $this->em->flush();
+        }
+        return $owner;
+    }
+    private function controller(bool $allowed = true, ?string $projectDir = null, ?User $user = null): BeastFeatureAdminController
     {
         $controller = new BeastFeatureAdminController($this->em, $this->beasts, $this->editor, new BeastSerializer(), new MediaStorageService($projectDir ?? dirname(__DIR__,2)));
         $container = new Container();
-        $storage = new TokenStorage(); $storage->setToken(new UsernamePasswordToken(new User(), 'test', ['ROLE_USER']));
+        $storage = new TokenStorage(); $storage->setToken(new UsernamePasswordToken($user ?? $this->owner(), 'test', ['ROLE_USER']));
         $container->set('security.token_storage', $storage);
         $auth = $this->createMock(AuthorizationCheckerInterface::class);
         $auth->method('isGranted')->with('ROLE_REFERENCE_ADMIN')->willReturn($allowed);
@@ -110,6 +119,7 @@ final class BeastAdministrationTest extends TestCase
     public function testAssignmentsRemainAvailableToTheTransformedDruid(): void
     {
         $beast = $this->fixture();
+        $beast->markCustom($this->owner());
         $existing = new CharacterFeatureDefinition('existing-trait', 'Odorat');
         $added = new CharacterFeatureDefinition('added-trait', 'Tactique');
         foreach ([$existing, $added] as $feature) $this->em->persist($feature);
@@ -118,7 +128,7 @@ final class BeastAdministrationTest extends TestCase
         $id = $beast->getId();
         $ids = [$existing->getId(), $added->getId()];
         for ($attempt = 0; $attempt < 2; ++$attempt) {
-            $this->controller()->replace($id, Request::create('/', 'PUT', content: json_encode(['featureIds'=>$ids])));
+            $this->controller()->replace($id, Request::create('/', 'PUT', content: json_encode(['featureIds'=>$ids])), 'custom');
         }
         self::assertSame(2, (int) $this->db->fetchOne('SELECT count(*) FROM beast_feature WHERE beast_id = ?', [$id]));
         $row = (new BeastSerializer())->catalogue($beast);
@@ -141,10 +151,88 @@ final class BeastAdministrationTest extends TestCase
         $public->setContainer(new Container());
         $features = json_decode($public->features($sessionState->getAccessToken())->getContent(), true)['features'];
         self::assertEqualsCanonicalizing($ids, array_column($features, 'id'));
-        $this->controller()->replace($id, Request::create('/', 'PUT', content: json_encode(['featureIds'=>[$existing->getId()]])));
+        $this->controller()->replace($id, Request::create('/', 'PUT', content: json_encode(['featureIds'=>[$existing->getId()]])), 'custom');
         $features = json_decode($public->features($sessionState->getAccessToken())->getContent(), true)['features'];
         self::assertSame([$existing->getId()], array_column($features, 'id'));
         self::assertNotNull($this->em->find(CharacterFeatureDefinition::class, $added->getId()));
+    }
+    public function testCustomAssignmentScopeKeepsEditedOfficialBeastsProtected(): void
+    {
+        $official = $this->fixture(); // Editing an official beast does not change its origin.
+        $feature = new CharacterFeatureDefinition('official-trait', 'Trait officiel');
+        $this->em->persist($feature); $this->em->flush();
+        $this->editor->replaceFeatures($official, [$feature->getId()]);
+        $response = $this->controller()->create(Request::create('/', 'POST', content: json_encode($this->data('custom-created'))));
+        $custom = json_decode($response->getContent(), true)['beast'];
+        self::assertSame('CUSTOM', $custom['origin']);
+        $this->em->clear();
+        $list = json_decode($this->controller()->list('custom')->getContent(), true);
+        self::assertSame([$custom['id']], array_column($list['beasts'], 'id'));
+        $officialList = json_decode($this->controller()->list('official')->getContent(), true);
+        self::assertSame([$official->getId()], array_column($officialList['beasts'], 'id'));
+        try {
+            $this->controller()->replace($official->getId(), Request::create('/', 'PUT', content:'{"featureIds":[]}'), 'custom');
+            self::fail('Official attribution modified through custom scope');
+        } catch (AccessDeniedException) {}
+        self::assertSame(1, (int) $this->db->fetchOne('SELECT count(*) FROM beast_feature WHERE beast_id = ?', [$official->getId()]));
+        self::assertSame('OFFICIAL', $this->beasts->find($official->getId())->getOrigin()->value);
+    }
+
+    public function testOriginMigrationPreservesExistingAssignments(): void
+    {
+        $beast = $this->fixture();
+        $feature = new CharacterFeatureDefinition('migration-trait', 'Trait');
+        $this->em->persist($feature); $this->em->flush();
+        $this->editor->replaceFeatures($beast, [$feature->getId()]);
+        $before = $this->db->fetchAllAssociative('SELECT * FROM beast_feature');
+        $this->db->executeStatement("INSERT INTO beast (id,slug,customized) VALUES (104,'confirmed-custom-fixture',TRUE)");
+        $this->db->executeStatement('ALTER TABLE pg_temp.beast DROP COLUMN origin');
+        require_once dirname(__DIR__,2).'/migrations/Version20261122010000.php';
+        $migration = new \DoctrineMigrations\Version20261122010000($this->db, new \Psr\Log\NullLogger());
+        $migration->up(new \Doctrine\DBAL\Schema\Schema());
+        foreach ($migration->getSql() as $query) $this->db->executeStatement($query->getStatement());
+        self::assertSame('OFFICIAL', $this->db->fetchOne('SELECT origin FROM beast WHERE id = 1'));
+        self::assertSame('CUSTOM', $this->db->fetchOne('SELECT origin FROM beast WHERE id = 104'));
+        self::assertSame($before, $this->db->fetchAllAssociative('SELECT * FROM beast_feature'));
+    }
+    public function testCustomBeastsBelongToTheirCreatorAndRejectOtherUsers(): void
+    {
+        $response = $this->controller()->create(Request::create('/', 'POST', content:json_encode($this->data('owned-beast') + ['ownerId'=>999])));
+        $record = json_decode($response->getContent(), true)['beast'];
+        self::assertSame($this->owner()->getId(), $record['ownerId']);
+        $other = (new User())->setEmail('other@example.invalid')->setPassword('unused');
+        $this->em->persist($other); $this->em->flush();
+        $controller = $this->controller(true, null, $other);
+        self::assertSame([], json_decode($controller->list('custom')->getContent(), true)['beasts']);
+        foreach (['detail','replace','edit','uploadImage','deleteImage','delete'] as $action) {
+            try {
+                if ($action === 'replace') $controller->replace($record['id'], Request::create('/', 'PUT', content:'{"featureIds":[]}'), 'custom');
+                elseif ($action === 'edit') $controller->edit($record['id'], Request::create('/', 'PUT', content:json_encode($this->data('owned-beast'))));
+                elseif ($action === 'uploadImage') $controller->uploadImage($record['id'], Request::create('/', 'POST'));
+                else $controller->$action($record['id']);
+                self::fail('Another user accessed a private beast');
+            } catch (AccessDeniedException) {}
+        }
+        $this->em->clear();
+        self::assertSame($record['ownerId'], $this->beasts->find($record['id'])->getOwner()->getId());
+        self::assertSame([$record['id']], array_column(json_decode($this->controller()->list('custom')->getContent(), true)['beasts'], 'id'));
+        $this->controller()->delete($record['id']);
+        self::assertSame([], json_decode($this->controller()->list('custom')->getContent(), true)['beasts']);
+    }
+
+    public function testOwnershipMigrationEnforcesCustomOwnerInvariant(): void
+    {
+        $owner = $this->owner();
+        self::assertSame(1, $owner->getId());
+        $beast = $this->fixture(); $beast->markCustom($owner); $this->em->flush();
+        $this->db->executeStatement('ALTER TABLE pg_temp.beast DROP COLUMN owner_id CASCADE');
+        require_once dirname(__DIR__,2).'/migrations/Version20261122020000.php';
+        $migration = new \DoctrineMigrations\Version20261122020000($this->db, new \Psr\Log\NullLogger());
+        $migration->up(new \Doctrine\DBAL\Schema\Schema());
+        foreach ($migration->getSql() as $query) $this->db->executeStatement($query->getStatement());
+        self::assertSame(1, $this->db->fetchOne('SELECT owner_id FROM beast WHERE id = ?', [$beast->getId()]));
+        $this->expectException(\Doctrine\DBAL\Exception\DriverException::class);
+        $this->db->executeStatement('UPDATE beast SET owner_id = NULL WHERE id = ?', [$beast->getId()]);
     }
     public function testUnreferencedDeletionRemovesOnlyOwnedRelations(): void
     {

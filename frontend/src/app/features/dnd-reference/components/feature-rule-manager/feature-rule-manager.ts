@@ -1,5 +1,5 @@
 import { ReferencePicker } from '../reference-picker/reference-picker';
-import { REFERENCE_VIEW_ORIGIN, REFERENCE_READ_ONLY, matchesReferenceOrigin } from '@core/services/reference-editor-context';
+import { REFERENCE_EDITOR_SCOPE, REFERENCE_VIEW_ORIGIN, REFERENCE_READ_ONLY, matchesReferenceOrigin } from '@core/services/reference-editor-context';
 import { ReferenceFeatureEditorApiService } from '@core/services/reference-feature-editor-api.service';
 import { ReferenceCatalogueEditorApiService } from '@core/services/reference-catalogue-editor-api.service';
 import { Component, computed, inject, signal } from '@angular/core';
@@ -55,6 +55,7 @@ interface RuleForm {
 export class FeatureRuleManager {
   protected readonly contextReadOnly = inject(REFERENCE_READ_ONLY);
   protected readonly viewOrigin = inject(REFERENCE_VIEW_ORIGIN);
+  private readonly beastScope = this.viewOrigin === 'OFFICIAL' ? 'official' : inject(REFERENCE_EDITOR_SCOPE);
 
   private readonly http = inject(HttpClient);
   private readonly featureApi = inject(ReferenceFeatureEditorApiService);
@@ -81,7 +82,6 @@ export class FeatureRuleManager {
   protected readonly allRules = computed<DisplayAssignment[]>(() => [...this.rules(), ...this.beastAssignments()]);
 
   protected readonly selectedRuleId = signal<number | null>(null);
-  protected readonly featureSearch = signal('');
   protected readonly ruleSearch = signal('');
   protected readonly sourceTypeFilter =
     signal<AssignmentSource | 'all'>('all');
@@ -96,20 +96,6 @@ export class FeatureRuleManager {
   protected readonly selectedRule = computed(() => {
     const selectedId = this.selectedRuleId();
     return this.allRules().find(rule => rule.id === selectedId) ?? null;
-  });
-
-  protected readonly filteredFeatures = computed(() => {
-    const search = this.normalizeSearch(this.featureSearch());
-
-    if (!search) {
-      return this.features();
-    }
-
-    return this.features().filter(feature =>
-      this.normalizeSearch(
-        `${feature.name} ${feature.slug} ${feature.activationLabel}`,
-      ).includes(search),
-    );
   });
 
   protected readonly filteredRules = computed(() => {
@@ -203,14 +189,12 @@ export class FeatureRuleManager {
         rule.progressionThreshold ?? null,
       displayOrder: rule.displayOrder,
     };
-    this.featureSearch.set('');
     this.clearMessages();
   }
 
   protected startCreation(): void {
     this.selectedRuleId.set(null);
     this.form = this.emptyForm();
-    this.featureSearch.set('');
     this.clearMessages();
   }
 
@@ -348,11 +332,7 @@ export class FeatureRuleManager {
     this.sourceIdFilter.set(null);
   }
 
-  protected featureSelected(): void {
-    this.featureSearch.set('');
-  }
-
-  protected resetFilters(): void {
+protected resetFilters(): void {
     this.ruleSearch.set('');
     this.sourceTypeFilter.set('all');
     this.sourceIdFilter.set(null);
@@ -389,7 +369,7 @@ export class FeatureRuleManager {
       features: this.featureApi.getFeatures(),
       rules: this.featureApi.getRules(),
       progressions: this.referenceApi.getProgressions(),
-      beasts: this.http.get<BeastApiResponse>('/api/dnd/beast-features'),
+      beasts: this.http.get<BeastApiResponse>(`/api/dnd/beast-features/scope/${this.beastScope}`),
     }).subscribe({
       next: result => {
         this.classes.set(this.sortByName(result.reference.classes));
@@ -453,7 +433,7 @@ export class FeatureRuleManager {
   }
 
   private saveBeastLinks(beastId: number, featureIds: number[], message: string, selectedFeatureId?: number): void {
-    this.http.put<{beastId: number; featureIds: number[]}>(`/api/dnd/beast-features/${beastId}`, {featureIds}).subscribe({
+    this.http.put<{beastId: number; featureIds: number[]}>(`/api/dnd/beast-features/scope/${this.beastScope}/${beastId}`, {featureIds}).subscribe({
       next: response => {
         this.beastLinks.update(links => [
           ...links.filter(link => link.beastId !== beastId),

@@ -1,7 +1,7 @@
 import { Component, inject, signal, computed, OnInit, input } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
-import { REFERENCE_READ_ONLY } from '@core/services/reference-editor-context';
+import { REFERENCE_EDITOR_SCOPE, REFERENCE_READ_ONLY, REFERENCE_VIEW_ORIGIN } from '@core/services/reference-editor-context';
 import { BeastProfileEditor, BeastProfile } from './beast-profile-editor';
 
 type Beast = { id: number; name: string; slug: string; imageFilename: string | null };
@@ -19,6 +19,7 @@ export class BeastFeatureManager implements OnInit {
   readonly mode = input<'catalog' | 'assignments'>('catalog');
   private readonly http = inject(HttpClient);
   protected readonly readOnly = inject(REFERENCE_READ_ONLY);
+  protected readonly beastScope = inject(REFERENCE_VIEW_ORIGIN) === 'OFFICIAL' ? 'official' : inject(REFERENCE_EDITOR_SCOPE);
   protected readonly beasts = signal<Beast[]>([]);
   protected readonly features = signal<Feature[]>([]);
   protected readonly links = signal<Link[]>([]);
@@ -39,7 +40,7 @@ export class BeastFeatureManager implements OnInit {
   protected readonly assignedFeatures = computed(() => this.features().filter(f => this.selectedFeatures().includes(f.id)));
 
   ngOnInit(): void {
-    this.http.get<{beasts: Beast[]; features: Feature[]; links: Link[]}>('/api/dnd/beast-features').subscribe({
+    this.http.get<{beasts: Beast[]; features: Feature[]; links: Link[]}>(`/api/dnd/beast-features/scope/${this.beastScope}`).subscribe({
       next: result => {
         this.beasts.set((result.beasts ?? []).map(b => ({...b, id: Number(b.id), name: b.name ?? b.slug})));
         this.features.set((result.features ?? []).map(f => ({...f, id: Number(f.id)})));

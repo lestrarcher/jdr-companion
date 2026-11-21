@@ -22,7 +22,9 @@
   </nav>
 
   <nav class="manager-tabs" aria-label="Sections du référentiel">
+    <div class="manager-tabs__catalogue">
     @for (tab of tabs; track tab.section) {
+      @if (tab.section !== 'rules') {
       <button
         type="button"
         class="manager-tab"
@@ -33,7 +35,15 @@
         <strong>{{ tab.label }}</strong>
         <span>{{ tab.description }}</span>
       </button>
+      }
     }
+    </div>
+    <div class="manager-tabs__assignments">
+      <button type="button" class="manager-tab" [class.manager-tab--active]="activeSection() === 'rules'"
+        [attr.aria-selected]="activeSection() === 'rules'" (click)="selectSection('rules')">
+        <strong>Attributions</strong>
+      </button>
+    </div>
   </nav>
 
   <main class="manager-content">

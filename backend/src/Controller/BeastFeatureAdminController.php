@@ -27,15 +27,21 @@ final class BeastFeatureAdminController extends AbstractController
     ) {}
 
     #[Route('', name: 'list', methods: ['GET'])]
-    public function list(): JsonResponse
+    #[Route('/scope/{scope}', name: 'scoped_list', requirements: ['scope' => 'custom|official'], methods: ['GET'])]
+    public function list(string $scope = 'all'): JsonResponse
     {
-        $this->requireEditor();
+        if ($scope === 'all') $this->requireEditor();
+        elseif (!$this->getUser() instanceof User) throw $this->createAccessDeniedException();
         $beasts = $links = [];
         foreach ($this->beasts->catalogue() as $beast) {
-            $beasts[] = ['id' => $beast->getId(), 'slug' => $beast->getSlug(), 'name' => $beast->getName() ?? $beast->getSlug(), 'imageFilename' => $beast->getImageFilename()];
+            if (!$beast->isAccessibleTo($this->getUser())) continue;
+            if ($scope !== 'all' && $beast->getOrigin()->value !== strtoupper($scope)) continue;
+            $beasts[] = ['id' => $beast->getId(), 'slug' => $beast->getSlug(), 'name' => $beast->getName() ?? $beast->getSlug(), 'imageFilename' => $beast->getImageFilename(), 'origin' => $beast->getOrigin()->value];
             foreach ($beast->getFeatures() as $link) $links[] = ['beastId' => $beast->getId(), 'featureId' => $link->getDefinition()->getId()];
         }
-        $features = array_map(fn (CharacterFeatureDefinition $f) => ['id' => $f->getId(), 'name' => $f->getName(), 'description' => $f->getDescription()], $this->em->getRepository(CharacterFeatureDefinition::class)->findBy(['visible' => true], ['name' => 'ASC']));
+        $definitions = $this->em->getRepository(CharacterFeatureDefinition::class)->findBy(['visible' => true], ['name' => 'ASC']);
+        if ($scope !== 'all') $definitions = array_values(array_filter($definitions, fn ($f) => \App\Service\ReferenceVisibility::allows($f, $scope === 'custom' ? $this->getUser() : null)));
+        $features = array_map(fn (CharacterFeatureDefinition $f) => ['id' => $f->getId(), 'name' => $f->getName(), 'description' => $f->getDescription()], $definitions);
         return $this->json(['beasts' => $beasts, 'features' => $features, 'links' => $links, 'habitats' => BeastHabitat::VALUES]);
     }
 
@@ -52,6 +58,7 @@ final class BeastFeatureAdminController extends AbstractController
         $this->requireEditor();
         $data = $this->payload($request);
         $beast = new Beast('');
+        $beast->markCustom($this->getUser());
         try { $this->em->wrapInTransaction(fn () => $this->editor->save($beast, $data)); }
         catch (UniqueConstraintViolationException) { throw new ConflictHttpException('Ce slug existe déjà.'); }
         return $this->json(['beast' => $this->serializer->detail($beast)], 201);
@@ -73,13 +80,26 @@ final class BeastFeatureAdminController extends AbstractController
     }
 
     #[Route('/{beastId}', name: 'replace', requirements: ['beastId' => '\d+'], methods: ['PUT'])]
-    public function replace(int $beastId, Request $request): JsonResponse
+    #[Route('/scope/{scope}/{beastId}', name: 'scoped_replace', requirements: ['scope' => 'custom|official', 'beastId' => '\d+'], methods: ['PUT'])]
+    public function replace(int $beastId, Request $request, string $scope = 'official'): JsonResponse
     {
-        $this->requireEditor();
+        if ($scope === 'official') $this->requireEditor();
+        elseif (!$this->getUser() instanceof User) throw $this->createAccessDeniedException();
         $ids = $this->payload($request)['featureIds'] ?? null;
         $beast = $this->requireBeast($beastId);
-        $this->em->wrapInTransaction(function () use ($beast, $ids): void {
+        if ($beast->getOrigin()->value !== strtoupper($scope)) throw $this->createAccessDeniedException('Cette bête ne fait pas partie du référentiel sélectionné.');
+        $this->em->wrapInTransaction(function () use ($beast, $ids, $scope): void {
             $this->em->refresh($beast, LockMode::PESSIMISTIC_WRITE);
+            if (!$beast->isAccessibleTo($this->getUser())) throw $this->createAccessDeniedException();
+            if ($beast->getOrigin()->value !== strtoupper($scope)) throw $this->createAccessDeniedException('Cette bête ne fait pas partie du référentiel sélectionné.');
+            $existing = array_map(fn ($link) => $link->getDefinition()->getId(), $beast->getFeatures()->toArray());
+            foreach (is_array($ids) ? $ids : [] as $id) {
+                if (!is_int($id) || in_array($id, $existing, true)) continue;
+                $definition = $this->em->find(CharacterFeatureDefinition::class, $id);
+                if ($definition && !\App\Service\ReferenceVisibility::allows($definition, $scope === 'custom' ? $this->getUser() : null)) {
+                    throw $this->createAccessDeniedException('Capacité indisponible dans ce référentiel.');
+                }
+            }
             $this->editor->replaceFeatures($beast, $ids);
         });
         return $this->json(['beastId' => $beastId, 'featureIds' => $ids]);
@@ -132,7 +152,12 @@ final class BeastFeatureAdminController extends AbstractController
             return $old;
         });
     }
-    private function requireBeast(int $id): Beast { return $this->beasts->find($id) ?? throw new NotFoundHttpException('Bête inconnue.'); }
+    private function requireBeast(int $id): Beast
+    {
+        $beast = $this->beasts->find($id) ?? throw new NotFoundHttpException('Bête inconnue.');
+        if (!$beast->isAccessibleTo($this->getUser())) throw $this->createAccessDeniedException();
+        return $beast;
+    }
     private function payload(Request $request): array
     {
         try { $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR); }

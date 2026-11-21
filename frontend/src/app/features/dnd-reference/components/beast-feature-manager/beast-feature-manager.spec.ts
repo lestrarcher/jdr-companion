@@ -4,21 +4,31 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { BeastFeatureManager } from './beast-feature-manager';
 import { BeastProfileEditor } from './beast-profile-editor';
+import { REFERENCE_VIEW_ORIGIN } from '@core/services/reference-editor-context';
 
 describe('Beast administration', () => {
   let http: HttpTestingController;
+  let origin: 'CUSTOM' | 'OFFICIAL';
   beforeEach(() => {
-    TestBed.configureTestingModule({providers:[provideHttpClient(),provideHttpClientTesting()]});
+    origin = 'CUSTOM';
+    TestBed.configureTestingModule({providers:[provideHttpClient(),provideHttpClientTesting(), {provide:REFERENCE_VIEW_ORIGIN,useFactory:()=>origin}]});
     http = TestBed.inject(HttpTestingController);
   });
   afterEach(() => http.verify());
+  it('loads the official scope even when the editor scope defaults to custom', () => {
+    origin = 'OFFICIAL';
+    const fixture = TestBed.createComponent(BeastFeatureManager); fixture.detectChanges();
+    http.expectOne('/api/dnd/beast-features/scope/official').flush({beasts:[],features:[],links:[]});
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.icon-button')).toBeNull();
+  });
   it('preserves unsaved stats and weapons across tabs and resets tabs on selection and creation', async () => {
     const fixture = TestBed.createComponent(BeastFeatureManager); fixture.detectChanges();
     const root = fixture.nativeElement;
     const profile = {id:5,name:'Loup',slug:'loup',challengeRating:'1',sourceUrl:null,
       statBlock:{armorClass:14,hitPoints:37,abilities:{str:17,dex:15,con:15,int:3,wis:12,cha:7},speed:{walk:15}},
       habitats:['foret'],naturalWeapons:[{id:42,name:'Morsure',attackType:'melee',attackBonus:5,damageComponents:[],description:''}]};
-    http.expectOne('/api/dnd/beast-features').flush({beasts:[{id:5,name:'Loup',slug:'loup'},{id:6,name:'Ours',slug:'ours'}],features:[],links:[]});
+    http.expectOne('/api/dnd/beast-features/scope/custom').flush({beasts:[{id:5,name:'Loup',slug:'loup'},{id:6,name:'Ours',slug:'ours'}],features:[],links:[]});
     fixture.detectChanges(); http.expectOne('/api/dnd/beast-features/5').flush({beast:profile});
     fixture.detectChanges(); await fixture.whenStable();
     const form = root.querySelector('form');
@@ -56,10 +66,16 @@ describe('Beast administration', () => {
     create.flush({beast:{...create.request.body,id:7}}); fixture.detectChanges();
     http.expectOne('/api/dnd/beast-features/7').flush({beast:{...create.request.body,id:7}}); fixture.detectChanges();
     expect(root.querySelector('.editor-tab').getAttribute('aria-pressed')).toBe('true');
+    expect(root.querySelector('.beast-manager__beasts').textContent).toContain('Renard');
+    root.querySelector('button.delete').click(); fixture.detectChanges();
+    Array.from(root.querySelectorAll('button') as NodeListOf<HTMLButtonElement>).find((button: any) => button.textContent.includes('Confirmer la suppression'))!.dispatchEvent(new Event('click'));
+    http.expectOne({method:'DELETE',url:'/api/dnd/beast-features/7'}).flush({deleted:7}); fixture.detectChanges();
+    http.expectOne('/api/dnd/beast-features/5').flush({beast:profile}); fixture.detectChanges();
+    expect(root.querySelector('.beast-manager__beasts').textContent).not.toContain('Renard');
   });
   it('shows associated features without assignment controls in the catalogue', async () => {
     const fixture = TestBed.createComponent(BeastFeatureManager); fixture.detectChanges();
-    http.expectOne('/api/dnd/beast-features').flush({beasts:[{id:5,name:'Loup',slug:'loup'}],features:[{id:7,name:'Odorat',description:'Sens aiguisés'}],links:[{beastId:5,featureId:7}]});
+    http.expectOne('/api/dnd/beast-features/scope/custom').flush({beasts:[{id:5,name:'Loup',slug:'loup'}],features:[{id:7,name:'Odorat',description:'Sens aiguisés'}],links:[{beastId:5,featureId:7}]});
     fixture.detectChanges();
     http.expectOne('/api/dnd/beast-features/5').flush({beast:{id:5,name:'Loup',slug:'loup',statBlock:null,habitats:[],naturalWeapons:[]}});
     fixture.detectChanges(); await fixture.whenStable();
@@ -73,7 +89,7 @@ describe('Beast administration', () => {
   });
   it('keeps a fully loaded profile after native upload clicks, replacement and deletion without submitting', async () => {
     const fixture = TestBed.createComponent(BeastFeatureManager); fixture.detectChanges();
-    http.expectOne('/api/dnd/beast-features').flush({beasts:[{id:55,name:'Loup',slug:'loup',imageFilename:null},{id:4,name:'Araignée',slug:'araignee',imageFilename:null}],features:[],links:[]});
+    http.expectOne('/api/dnd/beast-features/scope/custom').flush({beasts:[{id:55,name:'Loup',slug:'loup',imageFilename:null},{id:4,name:'Araignée',slug:'araignee',imageFilename:null}],features:[],links:[]});
     fixture.detectChanges();
     http.expectOne('/api/dnd/beast-features/55').flush({beast:{id:55,name:'Loup',slug:'loup',challengeRating:'1',sourceUrl:null,
       statBlock:{armorClass:14,hitPoints:37,hitDice:'5d10+10',abilities:{str:17,dex:15,con:15,int:3,wis:12,cha:7},speed:{walk:15}},
@@ -134,7 +150,7 @@ describe('Beast administration', () => {
   it('renders imported beasts with null names and supports filtering', () => {
     const fixture = TestBed.createComponent(BeastFeatureManager);
     fixture.componentRef.setInput('mode','assignments'); fixture.detectChanges();
-    http.expectOne('/api/dnd/beast-features').flush({beasts:[{id:6,name:null,slug:'auroch',imageFilename:null},{id:55,name:'Loup sanguinaire',slug:'loup-sanguinaire'}],features:[],links:[]});
+    http.expectOne('/api/dnd/beast-features/scope/custom').flush({beasts:[{id:6,name:null,slug:'auroch',imageFilename:null},{id:55,name:'Loup sanguinaire',slug:'loup-sanguinaire'}],features:[],links:[]});
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelectorAll('.beast-manager__beast').length).toBe(2);
     expect(fixture.nativeElement.textContent).toContain('auroch');
@@ -144,7 +160,7 @@ describe('Beast administration', () => {
   });
   it('shows load failures even when no beast is selected', () => {
     const fixture = TestBed.createComponent(BeastFeatureManager); fixture.detectChanges();
-    http.expectOne('/api/dnd/beast-features').flush({}, {status:403,statusText:'Forbidden'}); fixture.detectChanges();
+    http.expectOne('/api/dnd/beast-features/scope/custom').flush({}, {status:403,statusText:'Forbidden'}); fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[role=status]').textContent).toContain('Impossible de charger');
   });
   it('preserves stats and weapon IDs without overwriting separately edited trait assignments', () => {
