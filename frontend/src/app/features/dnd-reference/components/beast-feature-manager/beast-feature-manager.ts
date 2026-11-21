@@ -24,8 +24,9 @@ export class BeastFeatureManager implements OnInit {
   protected readonly links = signal<Link[]>([]);
   protected readonly selectedBeast = signal<number | null>(null);
   protected readonly creating = signal(false);
+  protected readonly activeTab = signal<'stats' | 'weapons' | 'traits'>('stats');
+  protected readonly tabs = [{id:'stats',label:'Stats'}, {id:'weapons',label:'Armes'}, {id:'traits',label:'Traits'}] as const;
   protected readonly selectedFeatures = signal<number[]>([]);
-  protected readonly busy = signal(false);
   protected readonly imageBusy = signal(false);
   protected readonly selectedImageUrl = computed(() => {
     const filename = this.beasts().find(b => b.id === this.selectedBeast())?.imageFilename;
@@ -36,9 +37,6 @@ export class BeastFeatureManager implements OnInit {
   protected readonly filteredBeasts = computed(() => this.beasts().filter(b => b.name.toLocaleLowerCase('fr').includes(this.filter().toLocaleLowerCase('fr'))));
   protected readonly selectedBeastName = computed(() => this.beasts().find(b => b.id === this.selectedBeast())?.name ?? '');
   protected readonly assignedFeatures = computed(() => this.features().filter(f => this.selectedFeatures().includes(f.id)));
-  protected readonly availableFeatures = computed(() => this.features().filter(f => !this.selectedFeatures().includes(f.id) && f.name.toLocaleLowerCase('fr').includes(this.featureSearch().toLocaleLowerCase('fr'))));
-  protected readonly featureSearch = signal('');
-  protected readonly featureToAdd = signal<number | null>(null);
 
   ngOnInit(): void {
     this.http.get<{beasts: Beast[]; features: Feature[]; links: Link[]}>('/api/dnd/beast-features').subscribe({
@@ -53,6 +51,7 @@ export class BeastFeatureManager implements OnInit {
   }
 
   protected selectBeast(id: number): void {
+    if (this.selectedBeast() !== id) this.activeTab.set('stats');
     this.creating.set(false);
     this.selectedBeast.set(id);
     this.selectedFeatures.set(this.links().filter(l => Number(l.beastId) === id).map(l => Number(l.featureId)));
@@ -60,6 +59,7 @@ export class BeastFeatureManager implements OnInit {
   }
 
   protected newBeast(): void {
+    this.activeTab.set('stats');
     this.creating.set(true); this.selectedBeast.set(null); this.selectedFeatures.set([]); this.message.set('');
   }
   protected profileSaved(beast: BeastProfile): void {
@@ -105,28 +105,4 @@ export class BeastFeatureManager implements OnInit {
     });
   }
 
-  protected addFeature(): void {
-    const id = this.featureToAdd();
-    if (id === null || this.selectedFeatures().includes(id)) return;
-    this.selectedFeatures.update(current => [...current, id]);
-    this.featureToAdd.set(null);
-  }
-
-  protected removeFeature(id: number): void {
-    this.selectedFeatures.update(current => current.filter(value => value !== id));
-  }
-
-  protected save(): void {
-    const id = this.selectedBeast();
-    if (id === null || this.busy() || this.readOnly) return;
-    this.busy.set(true);
-    this.http.put<{beastId: number; featureIds: number[]}>(`/api/dnd/beast-features/${id}`, {featureIds: this.selectedFeatures()}).subscribe({
-      next: result => {
-        this.links.update(old => [...old.filter(link => Number(link.beastId) !== id), ...result.featureIds.map(featureId => ({beastId: id, featureId}))]);
-        this.busy.set(false);
-        this.message.set('Capacités de la bête enregistrées.');
-      },
-      error: e => { this.busy.set(false); this.message.set(e.error?.message ?? 'Enregistrement impossible.'); },
-    });
-  }
 }

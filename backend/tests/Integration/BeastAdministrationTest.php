@@ -107,6 +107,45 @@ final class BeastAdministrationTest extends TestCase
         try { $this->controller()->delete($id); self::fail('Observed beast deleted'); }
         catch (ConflictHttpException) { self::assertSame(1, (int) $this->db->fetchOne('SELECT count(*) FROM beast')); }
     }
+    public function testAssignmentsRemainAvailableToTheTransformedDruid(): void
+    {
+        $beast = $this->fixture();
+        $existing = new CharacterFeatureDefinition('existing-trait', 'Odorat');
+        $added = new CharacterFeatureDefinition('added-trait', 'Tactique');
+        foreach ([$existing, $added] as $feature) $this->em->persist($feature);
+        $this->em->flush();
+        $this->editor->replaceFeatures($beast, [$existing->getId()]);
+        $id = $beast->getId();
+        $ids = [$existing->getId(), $added->getId()];
+        for ($attempt = 0; $attempt < 2; ++$attempt) {
+            $this->controller()->replace($id, Request::create('/', 'PUT', content: json_encode(['featureIds'=>$ids])));
+        }
+        self::assertSame(2, (int) $this->db->fetchOne('SELECT count(*) FROM beast_feature WHERE beast_id = ?', [$id]));
+        $row = (new BeastSerializer())->catalogue($beast);
+        self::assertEqualsCanonicalizing($ids, array_column($row['features'], 'id'));
+        $rules = new WildShapeRules2014();
+        $service = new WildShapeSessionService($rules);
+        $state = $service->transform(['hitPoints'=>['current'=>20]], $row, 2, true, true, 'merge');
+        $user = (new User())->setEmail('assignments@example.invalid')->setPassword('unused');
+        $campaign = new \App\Entity\Campaign($user, 'assignments', 'Test');
+        $character = new \App\Entity\Character($campaign, 'druid', 'Druide', 'player');
+        $session = new \App\Entity\GameSession($campaign, 'session', 'Test');
+        $sessionState = new \App\Entity\CharacterSessionState($session, $character, $state);
+        foreach ([$user,$campaign,$character,$session,$sessionState] as $entity) $this->em->persist($entity);
+        $this->em->flush();
+        $public = new \App\Controller\PublicWildShapeController(
+            new \App\Service\PlayerCharacterAccess($this->em->getRepository(\App\Entity\CharacterSessionState::class)),
+            $service, $rules, $this->em, $this->db,
+            new \App\Service\BeastNaturalWeaponCatalogue($this->beasts), $this->beasts, new BeastSerializer(),
+        );
+        $public->setContainer(new Container());
+        $features = json_decode($public->features($sessionState->getAccessToken())->getContent(), true)['features'];
+        self::assertEqualsCanonicalizing($ids, array_column($features, 'id'));
+        $this->controller()->replace($id, Request::create('/', 'PUT', content: json_encode(['featureIds'=>[$existing->getId()]])));
+        $features = json_decode($public->features($sessionState->getAccessToken())->getContent(), true)['features'];
+        self::assertSame([$existing->getId()], array_column($features, 'id'));
+        self::assertNotNull($this->em->find(CharacterFeatureDefinition::class, $added->getId()));
+    }
     public function testUnreferencedDeletionRemovesOnlyOwnedRelations(): void
     {
         $beast = $this->fixture(); $id = $beast->getId();

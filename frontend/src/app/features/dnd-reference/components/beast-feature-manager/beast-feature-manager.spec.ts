@@ -12,6 +12,65 @@ describe('Beast administration', () => {
     http = TestBed.inject(HttpTestingController);
   });
   afterEach(() => http.verify());
+  it('preserves unsaved stats and weapons across tabs and resets tabs on selection and creation', async () => {
+    const fixture = TestBed.createComponent(BeastFeatureManager); fixture.detectChanges();
+    const root = fixture.nativeElement;
+    const profile = {id:5,name:'Loup',slug:'loup',challengeRating:'1',sourceUrl:null,
+      statBlock:{armorClass:14,hitPoints:37,abilities:{str:17,dex:15,con:15,int:3,wis:12,cha:7},speed:{walk:15}},
+      habitats:['foret'],naturalWeapons:[{id:42,name:'Morsure',attackType:'melee',attackBonus:5,damageComponents:[],description:''}]};
+    http.expectOne('/api/dnd/beast-features').flush({beasts:[{id:5,name:'Loup',slug:'loup'},{id:6,name:'Ours',slug:'ours'}],features:[],links:[]});
+    fixture.detectChanges(); http.expectOne('/api/dnd/beast-features/5').flush({beast:profile});
+    fixture.detectChanges(); await fixture.whenStable();
+    const form = root.querySelector('form');
+    const tabs = root.querySelectorAll('.editor-tab');
+    expect(tabs[0].getAttribute('aria-pressed')).toBe('true');
+    const hp = root.querySelector('[name=hp]'); hp.value='45'; hp.dispatchEvent(new Event('input'));
+    tabs[1].click(); fixture.detectChanges(); await fixture.whenStable();
+    const weapon = root.querySelector('article input'); weapon.value='Morsure modifiée'; weapon.dispatchEvent(new Event('input'));
+    tabs[2].click(); fixture.detectChanges();
+    expect(root.querySelector('app-beast-profile-editor').hidden).toBe(true);
+    expect(root.querySelector('.beast-manager__assigned button')).toBeNull();
+    tabs[0].click(); fixture.detectChanges();
+    expect(root.querySelector('form')).toBe(form);
+    expect(hp.value).toBe('45'); expect(weapon.value).toBe('Morsure modifiée');
+    http.expectNone(request=>request.method==='GET');
+    tabs[1].click(); fixture.detectChanges();
+    form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
+    const save = http.expectOne('/api/dnd/beast-features/5/profile');
+    expect(save.request.body.statBlock.hitPoints).toBe(45);
+    expect(save.request.body.naturalWeapons[0].name).toBe('Morsure modifiée');
+    save.flush({beast:{...save.request.body,id:5}}); fixture.detectChanges();
+    expect(tabs[1].getAttribute('aria-pressed')).toBe('true');
+    root.querySelectorAll('.beast-manager__beast')[1].click(); fixture.detectChanges();
+    http.expectOne('/api/dnd/beast-features/6').flush({beast:{...profile,id:6,name:'Ours',slug:'ours'}});
+    fixture.detectChanges(); expect(tabs[0].getAttribute('aria-pressed')).toBe('true');
+    tabs[1].click(); fixture.detectChanges();
+    root.querySelector('[aria-label="Créer une bête"]').click(); fixture.detectChanges(); await fixture.whenStable();
+    expect(root.querySelector('.editor-tab').getAttribute('aria-pressed')).toBe('true');
+    const name = root.querySelector('[name=name]'); name.value='Renard'; name.dispatchEvent(new Event('input'));
+    const slug = root.querySelector('[name=slug]'); slug.value='renard'; slug.dispatchEvent(new Event('input'));
+    root.querySelectorAll('.editor-tab')[1].click(); fixture.detectChanges();
+    root.querySelector('form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
+    const create = http.expectOne('/api/dnd/beast-features');
+    expect(create.request.method).toBe('POST'); expect(create.request.body.name).toBe('Renard');
+    create.flush({beast:{...create.request.body,id:7}}); fixture.detectChanges();
+    http.expectOne('/api/dnd/beast-features/7').flush({beast:{...create.request.body,id:7}}); fixture.detectChanges();
+    expect(root.querySelector('.editor-tab').getAttribute('aria-pressed')).toBe('true');
+  });
+  it('shows associated features without assignment controls in the catalogue', async () => {
+    const fixture = TestBed.createComponent(BeastFeatureManager); fixture.detectChanges();
+    http.expectOne('/api/dnd/beast-features').flush({beasts:[{id:5,name:'Loup',slug:'loup'}],features:[{id:7,name:'Odorat',description:'Sens aiguisés'}],links:[{beastId:5,featureId:7}]});
+    fixture.detectChanges();
+    http.expectOne('/api/dnd/beast-features/5').flush({beast:{id:5,name:'Loup',slug:'loup',statBlock:null,habitats:[],naturalWeapons:[]}});
+    fixture.detectChanges(); await fixture.whenStable();
+    const root = fixture.nativeElement;
+    expect(root.querySelector('.beast-manager__assigned').textContent).toContain('Odorat');
+    expect(root.querySelector('.beast-manager__assigned button')).toBeNull();
+    expect(root.querySelector('.beast-manager__add')).toBeNull();
+    expect(root.querySelector('.beast-manager__save')).toBeNull();
+    expect(root.textContent).toContain('utilisez Attributions');
+    http.expectNone(request=>request.method==='PUT');
+  });
   it('keeps a fully loaded profile after native upload clicks, replacement and deletion without submitting', async () => {
     const fixture = TestBed.createComponent(BeastFeatureManager); fixture.detectChanges();
     http.expectOne('/api/dnd/beast-features').flush({beasts:[{id:55,name:'Loup',slug:'loup',imageFilename:null},{id:4,name:'Araignée',slug:'araignee',imageFilename:null}],features:[],links:[]});

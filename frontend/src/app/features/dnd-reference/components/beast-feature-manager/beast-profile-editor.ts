@@ -24,6 +24,7 @@ export interface BeastProfile {
 })
 export class BeastProfileEditor {
   readonly beastId = input<number | null>(null);
+  readonly activeTab = input<'stats' | 'weapons' | 'traits'>('stats');
   readonly saved = output<BeastProfile>();
   readonly deleted = output<number>();
   private readonly http = inject(HttpClient);
