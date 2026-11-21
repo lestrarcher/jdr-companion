@@ -47,7 +47,7 @@ final readonly class CharacterProfileSerializer
             $armorEffects[] = ['identity' => 'feature:'.$feature->getSlug(), 'source' => $feature->getName(), 'effects' => $feature->getArmorClassEffects()];
         }
 
-        $training = $this->trainingPresenter->resolved($character, includeManualGrantDetails: false);
+        $training = $this->trainingPresenter->resolved($character, includeManualGrantDetails: false, progressionValues: $progressionValues);
         return [
             'id' => $character->getId(),
             'campaignId' => $character->getCampaign()->getId(),

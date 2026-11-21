@@ -122,7 +122,7 @@ export interface CharacterFeatureSummary {
   activationType: string;
   visible: boolean;
   custom: boolean;
-  sourceType: 'class' | 'subclass' | 'race' | 'feat' | 'progression';
+  sourceType: 'class' | 'subclass' | 'race' | 'feat' | 'progression' | 'character';
   sourceId: number;
   sourceName: string;
   unlockLevel: number;

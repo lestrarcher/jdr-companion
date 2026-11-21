@@ -8,9 +8,9 @@ final readonly class CharacterTrainingPresenter
 {
     public function __construct(private CharacterTrainingReferences $references, private CharacterTrainingResolver $resolver, private CharacterProficiencyResolver $proficiencies) {}
     /** Public profiles omit the GM audit log, while retaining effective manual grants. */
-    public function resolved(Character $character, bool $includeManualGrantDetails = true): array
+    public function resolved(Character $character, bool $includeManualGrantDetails = true, array $progressionValues = []): array
     {
-        $resolved = $this->resolver->resolve($character);
+        $resolved = $this->resolver->resolve($character, progressionValues: $progressionValues);
         $output = [];
         foreach ($resolved as $kind => $entries) {
             $output[$kind] = [];

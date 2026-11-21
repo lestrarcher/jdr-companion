@@ -11,7 +11,7 @@ final readonly class CharacterFeatureSpellAbilityChoice
 {
     public function __construct(private Connection $db, private CharacterFeatureSpellCastingResolver $resolver) {}
 
-    public function list(Character $character): array
+    public function list(Character $character, array $progressionValues = []): array
     {
         $rows=$this->db->fetchAllAssociative("SELECT g.id AS grant_id, d.name AS feature_name, s.name AS spell_name, g.casting_ability, a.ability AS chosen_ability
             FROM character_feature_spell c
@@ -23,32 +23,32 @@ final readonly class CharacterFeatureSpellAbilityChoice
             ORDER BY g.id", [$character->getId()]);
         $out=[];
         foreach ($rows as $row) {
-            $resolved=$this->resolver->resolve($character, (int)$row['grant_id']);
-            if (!in_array($resolved['provenance']['type'] ?? null, ['race', 'character'], true)) continue;
+            $resolved=$this->resolver->resolve($character, (int)$row['grant_id'], $progressionValues);
+            if (!in_array($resolved['provenance']['type'] ?? null, ['race', 'character', 'progression'], true)) continue;
             $out[]=['grantId'=>(int)$row['grant_id'],'featureName'=>$row['feature_name'],'spellName'=>$row['spell_name'],
-                'chosenAbility'=>$row['chosen_ability'],'allowedAbilities'=>['intelligence','wisdom','charisma']];
+                'chosenAbility'=>$row['chosen_ability'] ?? $resolved['castingAbility'],'allowedAbilities'=>['intelligence','wisdom','charisma']];
         }
         return $out;
     }
 
-    public function choose(Character $character, int $grantId, mixed $ability): array
+    public function choose(Character $character, int $grantId, mixed $ability, array $progressionValues = []): array
     {
         if (!is_string($ability) || !in_array($ability, ['intelligence','wisdom','charisma'], true))
             throw new BadRequestHttpException('Choisissez Intelligence, Sagesse ou Charisme.');
-        return $this->db->transactional(function () use ($character,$grantId,$ability) {
+        return $this->db->transactional(function () use ($character,$grantId,$ability,$progressionValues) {
             $this->db->fetchOne('SELECT id FROM character WHERE id=? FOR UPDATE', [$character->getId()]);
-            $resolution=$this->resolver->resolve($character,$grantId);
+            $resolution=$this->resolver->resolve($character,$grantId,$progressionValues);
             $choiceGrant = $this->db->fetchOne("SELECT 1 FROM character_feature_spell c
                 JOIN feature_spell_grant g ON g.id=c.grant_id
                 WHERE c.character_id=? AND c.grant_id=? AND c.active=true
                   AND g.enabled=true AND g.casting_ability='CHOICE'", [$character->getId(), $grantId]);
             if ($choiceGrant === false
-                || !in_array($resolution['provenance']['type'] ?? null, ['race', 'character'], true)
+                || !in_array($resolution['provenance']['type'] ?? null, ['race', 'character', 'progression'], true)
                 || !in_array($resolution['abilityReason'], ['ability_choice_missing', null], true)) {
                 throw new BadRequestHttpException('Ce sort ne propose pas de choix de caractéristique pour cette capacité.');
             }
             $this->db->executeStatement('INSERT INTO character_spell_grant_ability_choice (character_id,grant_id,ability) VALUES (?,?,?) ON CONFLICT (character_id,grant_id) DO UPDATE SET ability=EXCLUDED.ability', [$character->getId(),$grantId,$ability]);
-            return $this->list($character);
+            return $this->list($character, $progressionValues);
         });
     }
 }
