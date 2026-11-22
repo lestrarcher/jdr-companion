@@ -175,15 +175,17 @@ final readonly class CharacterSessionStateSynchronizer
      *
      * @return array{
      *     hitPoints: int|null,
+     *     hitPointFeatureBonus: int,
      *     hitDice: array<string, int>,
      *     resources: array<string, int>
      * }
      */
     public function snapshot(Character $character, array $progressionValues = [], array $state = []): array
     {
-        $hitPoints = $this->hitPointCalculator->calculate($character);
+        $hitPoints = $this->hitPointCalculator->calculate($character, $progressionValues);
 
         return [
+            'hitPointFeatureBonus' => $hitPoints->featureBonus,
             'hitPoints' => $hitPoints->isComplete()
                 ? $hitPoints->maximumValue
                 : null,
@@ -196,7 +198,7 @@ final readonly class CharacterSessionStateSynchronizer
      * Capture each session's explicit progression context before changing the character.
      *
      * @return list<array{sessionState: CharacterSessionState, before: array{
-     *     hitPoints: int|null, hitDice: array<string, int>, resources: array<string, int>
+     *     hitPoints: int|null, hitPointFeatureBonus: int, hitDice: array<string, int>, resources: array<string, int>
      * }}>
      */
     public function snapshotForLevelUp(Character $character): array
@@ -219,6 +221,7 @@ final readonly class CharacterSessionStateSynchronizer
      *
      * @param list<array{sessionState: CharacterSessionState, before: array{
      *     hitPoints: int|null,
+     *     hitPointFeatureBonus: int,
      *     hitDice: array<string, int>,
      *     resources: array<string, int>
      * }}> $snapshots
@@ -259,11 +262,14 @@ final readonly class CharacterSessionStateSynchronizer
             $state = $sessionState->getState();
             $after = $this->snapshot($character, $this->extractProgressionValues($state), $state);
 
+            // Complete histories use after-minus-before. For incomplete histories,
+            // add the independently known feature change to the existing raw/CON delta.
             $state = $this->applyHitPointDelta(
                 $state,
                 $before['hitPoints'],
                 $after['hitPoints'],
-                $hitPointDelta,
+                $hitPointDelta === null ? null : $hitPointDelta
+                    + $after['hitPointFeatureBonus'] - $before['hitPointFeatureBonus'],
             );
 
             $state['hitDice'] = $this->applyPoolDeltas(
