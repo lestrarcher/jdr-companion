@@ -13,7 +13,7 @@ use Symfony\Component\HttpKernel\Exception\{BadRequestHttpException, ConflictHtt
 /** Personal feature definitions only. Assignments and runtime remain separate. */
 final class CustomReferenceFeatureService
 {
-    private const FIELDS = ['name' => 'name', 'description' => 'description', 'resourceDefinitionId' => 'resource_definition_id'];
+    private const FIELDS = ['name' => 'name', 'description' => 'description', 'resourceDefinitionId' => 'resource_definition_id', 'attackEffects' => 'attack_effects'];
 
     public function __construct(private readonly Connection $db) {}
 
@@ -57,6 +57,7 @@ final class CustomReferenceFeatureService
             if (!is_string($activation) || FeatureActivationType::tryFrom($activation)===null || !is_bool($visible)) throw new BadRequestHttpException('Activation ou visibilité invalide.');
             unset($payload['activationType'],$payload['visible']);
             $current=['name'=>$row['name']??'','description'=>$row['description']??null,'resourceDefinitionId'=>isset($row['resource_definition_id'])?(int)$row['resource_definition_id']:null];
+            $current['attackEffects'] = $this->attackEffects($row ?? []);
             $data=$this->validate($payload,$current);
             if (
                 $row
@@ -69,6 +70,7 @@ final class CustomReferenceFeatureService
             $this->validateResource($data['resourceDefinitionId'],$actor);
             if ($official && $data['resourceDefinitionId']!==null && !$this->db->fetchOne("SELECT 1 FROM trackable_resource_definition WHERE id=? AND origin='OFFICIAL' AND owner_id IS NULL",[$data['resourceDefinitionId']])) throw new BadRequestHttpException('Une capacité officielle exige une ressource officielle.');
             $columns=['name'=>$data['name'],'description'=>$data['description'],'resource_definition_id'=>$data['resourceDefinitionId'],'activation_type'=>$activation,'visible'=>$visible?'true':'false','updated_at'=>$this->now()];
+            $columns['attack_effects'] = $data['attackEffects'] === null ? null : json_encode($data['attackEffects'], JSON_THROW_ON_ERROR);
             try {
                 if ($row) $this->db->update('character_feature_definition',$columns,['id'=>$id]);
                 else {
@@ -102,11 +104,11 @@ final class CustomReferenceFeatureService
                 $this->validateResource($data['resourceDefinitionId'], $owner);
                 $id = $this->db->fetchOne(
                     'INSERT INTO character_feature_definition
-                     (slug, name, description, activation_type, visible, custom, origin, owner_id, resource_definition_id, created_at, updated_at)
-                     VALUES (?, ?, ?, ?, true, true, ?, ?, ?, ?, ?) RETURNING id',
+                     (slug, name, description, activation_type, visible, custom, origin, owner_id, resource_definition_id, created_at, updated_at, attack_effects)
+                     VALUES (?, ?, ?, ?, true, true, ?, ?, ?, ?, ?, ?) RETURNING id',
                     ['custom-'.bin2hex(random_bytes(16)), $data['name'], $data['description'],
                         FeatureActivationType::Passive->value, 'CUSTOM', $owner->getId(),
-                        $data['resourceDefinitionId'], $this->now(), $this->now()],
+                        $data['resourceDefinitionId'], $this->now(), $this->now(), $data['attackEffects'] === null ? null : json_encode($data['attackEffects'], JSON_THROW_ON_ERROR)],
                 );
                 return $this->get((int) $id, $owner);
             });
@@ -123,6 +125,7 @@ final class CustomReferenceFeatureService
             $row = $this->owned($id, $owner);
             $current = [
                 'name' => $row['name'], 'description' => $row['description'],
+                'attackEffects' => $this->attackEffects($row),
                 'resourceDefinitionId' => $row['resource_definition_id'] === null ? null : (int) $row['resource_definition_id'],
             ];
             $data = $this->validate($payload, $current);
@@ -136,6 +139,7 @@ final class CustomReferenceFeatureService
             $this->validateResource($data['resourceDefinitionId'], $owner);
             $this->db->update('character_feature_definition', [
                 'name' => $data['name'], 'description' => $data['description'],
+                'attack_effects' => $data['attackEffects'] === null ? null : json_encode($data['attackEffects'], JSON_THROW_ON_ERROR),
                 'resource_definition_id' => $data['resourceDefinitionId'], 'updated_at' => $this->now(),
             ], ['id' => $id]);
             return $this->get($id, $owner);
@@ -207,7 +211,12 @@ final class CustomReferenceFeatureService
         if (array_diff(array_keys($payload), array_keys(self::FIELDS)) !== []) {
             throw new BadRequestHttpException('Le payload contient un champ inconnu ou interdit.');
         }
-        $data = array_replace($current, $payload);
+        $data = array_replace(['attackEffects' => null], $current, $payload);
+        try {
+            if ($data['attackEffects'] !== null) $data['attackEffects'] = FeatureAttackEffectSchema::validate($data['attackEffects']);
+        } catch (\InvalidArgumentException $error) {
+            throw new BadRequestHttpException($error->getMessage(), $error);
+        }
         if (!is_string($data['name']) || trim($data['name']) === '' || mb_strlen(trim($data['name'])) > 150
             || str_contains($data['name'], "\0")) {
             throw new BadRequestHttpException('Le nom doit contenir entre 1 et 150 caractères valides.');
@@ -231,11 +240,17 @@ final class CustomReferenceFeatureService
     {
         return [
             'id' => (int) $row['id'], 'name' => $row['name'], 'description' => $row['description'], 'slug' => $row['slug'],
+            'attackEffects' => $this->attackEffects($row),
             'resourceDefinition' => $row['linked_id'] === null ? null : [
                 'id' => (int) $row['linked_id'], 'name' => $row['linked_name'],
                 'slug' => $row['linked_slug'], 'origin' => $row['linked_origin'],
             ],
         ];
+    }
+
+    private function attackEffects(array $row): ?array
+    {
+        return isset($row['attack_effects']) ? json_decode($row['attack_effects'], true, 512, JSON_THROW_ON_ERROR) : null;
     }
 
     private function now(): string

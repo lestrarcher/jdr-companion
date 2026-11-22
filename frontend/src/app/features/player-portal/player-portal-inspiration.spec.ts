@@ -35,11 +35,19 @@ function portal() {
   });
   component.canEdit = computed(() => component.sessionStatus() === 'live');
   component.characterStateService.applyServerState = vi.fn();
-  for (const name of ['abilities', 'training', 'proficiencyBonus', 'features', 'feats', 'actions', 'characterActions']) component[name] = signal(null);
+  for (const name of ['abilities', 'training', 'proficiencyBonus', 'features', 'feats', 'actions', 'characterActions', 'weapons', 'movement', 'armorClass']) component[name] = signal(null);
   return { component, response };
 }
 
 describe('Player inspiration and refresh ordering', () => {
+  it('refreshes calculated attacks when character data changes without a state revision', () => {
+    const {component, response} = portal();
+    const weapons = [{id:'attack:unarmed',name:'Attaque à mains nues',attackBonus:7,damage:'1d6+4 contondant'}];
+    component.refreshCharacterIfChanged();
+    response.next({...snapshot(), character:{...snapshot().character, weapons}, revision:4, session:{status:'draft'}, levelUpAllowed:false});
+    expect(component.weapons()).toEqual(weapons);
+    expect(component.characterStateService.applyServerState).not.toHaveBeenCalled();
+  });
   it('cancels a pending debounce across CLOSED and a quick reopen; only fresh LIVE edits are sent', () => {
     vi.useFakeTimers();
     try {

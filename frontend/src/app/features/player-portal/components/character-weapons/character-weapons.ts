@@ -18,12 +18,12 @@ export class CharacterWeapons {
   private readonly api = inject(PublicCharacterMagicItemApiService);
   private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('weaponDialog');
   protected readonly selectedWeapon = computed(() => this.weapons().find(weapon => weapon.id === this.expandedId()) ?? null);
-  protected readonly expandedId = signal<number | null>(null);
+  protected readonly expandedId = signal<number | string | null>(null);
   protected readonly inventory = signal<CharacterMagicItemResponse[]>([]);
   protected readonly loading = signal(false);
   protected readonly updatingId = signal<number | null>(null);
   protected readonly error = signal<string | null>(null);
-  protected readonly itemsById = computed(() => new Map(this.inventory().map(item => [item.id, item])));
+  protected readonly itemsById = computed(() => new Map<number | string, CharacterMagicItemResponse>(this.inventory().map(item => [item.id, item])));
 
   protected visibleNotes(notes: string[]): string[] {
     return notes
@@ -31,12 +31,12 @@ export class CharacterWeapons {
       .filter(Boolean);
   }
 
-  protected toggleDetails(id: number): void {
+  protected toggleDetails(id: number | string): void {
     this.expandedId.set(id);
     this.error.set(null);
     const dialog = this.dialog().nativeElement;
     if (!dialog.open) dialog.showModal();
-    if (!this.naturalForm()) this.loadInventory();
+    if (!this.naturalForm() && typeof id === 'number') this.loadInventory();
   }
 
   protected closeDetails(): void {

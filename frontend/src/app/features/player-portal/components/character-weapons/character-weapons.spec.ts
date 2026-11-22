@@ -59,4 +59,23 @@ describe('Character weapons details', () => {
     f.componentRef.setInput('weapons', []); f.detectChanges();
     expect(f.nativeElement.textContent).toContain('Aucune arme identifiée');
   });
+  it('shows innate attacks without inventory calls and updates the open attack after a profile refresh', () => {
+    const f = setup();
+    const unarmed = {id:'attack:unarmed',name:'Attaque à mains nues',equipped:false,attackBonus:4,damage:'1+2 contondant',notes:[],complete:true};
+    const improvised = {...unarmed,id:'attack:improvised',name:'Attaque à l’arme improvisée',attackBonus:2,damage:'1d4+2 (type au choix du MJ)'};
+    const claws = {...unarmed,id:'feature:dragon-hide:claws',name:'Griffes',damage:'1d4+2 tranchant',notes:['Griffes rétractiles']};
+    f.componentRef.setInput('weapons', [unarmed, improvised, claws]); f.detectChanges();
+    expect(f.nativeElement.querySelectorAll('tbody tr')).toHaveLength(3);
+    f.nativeElement.querySelector('.details-toggle').click(); f.detectChanges();
+    expect(api.list).not.toHaveBeenCalled();
+    expect(f.nativeElement.querySelector('.weapon-charges')).toBeNull();
+    f.componentRef.setInput('weapons', [{...unarmed, attackBonus:7, damage:'1d6+4 contondant'}, improvised, claws]); f.detectChanges();
+    expect(f.nativeElement.querySelector('dialog').textContent).toContain('1d6+4 contondant');
+    expect(f.nativeElement.querySelector('dialog').textContent).toContain('+7');
+    f.nativeElement.querySelectorAll('.details-toggle')[2].click(); f.detectChanges();
+    expect(f.nativeElement.querySelector('dialog').textContent).toContain('Griffes rétractiles');
+    expect(api.list).not.toHaveBeenCalled();
+    f.componentRef.setInput('weapons', [unarmed, improvised]); f.detectChanges();
+    expect(f.nativeElement.textContent).not.toContain('Griffes');
+  });
 });
