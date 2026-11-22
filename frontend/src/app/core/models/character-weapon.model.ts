@@ -1,5 +1,5 @@
 export interface CharacterWeapon {
-  id: number;
+  id: number | string;
   name: string;
   equipped: boolean;
   attackBonus: number | null;

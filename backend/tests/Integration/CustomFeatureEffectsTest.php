@@ -76,6 +76,54 @@ final class CustomFeatureEffectsTest extends TestCase
         (new \ReflectionProperty($reference, 'owner'))->setValue($reference, $this->character->getCampaign()->getOwner());
     }
 
+    public function testNaturalAttacksFollowProgressionAndPersistThroughFeatureEditor(): void
+    {
+        $editor = $this->service(\App\Service\CustomReferenceFeatureService::class);
+        $effects = [['key'=>'claws', 'type'=>'natural-attack', 'name'=>'Griffes narratives', 'dice'=>'1d6', 'damageType'=>'slashing', 'attackBonus'=>2]];
+        $saved = $editor->patch($this->feature->getId(), ['attackEffects'=>$effects], $this->character->getCampaign()->getOwner());
+        self::assertSame($effects, $saved['attackEffects']);
+        $editor->patch($this->feature->getId(), ['description'=>'Updated description'], $this->character->getCampaign()->getOwner());
+        $this->em->refresh($this->feature);
+        self::assertSame($effects, $this->feature->getAttackEffects());
+        $serializer = $this->service(CharacterProfileSerializer::class);
+        foreach ([[], ['story'=>1]] as $context) {
+            self::assertCount(2, $serializer->serialize($this->character, $context)['weapons']);
+        }
+        foreach ([2, 3] as $value) {
+            $rows = $serializer->serialize($this->character, ['story'=>$value])['weapons'];
+            self::assertCount(3, $rows);
+            self::assertSame('feature:gift:claws', $rows[2]['id']);
+            self::assertSame(4, $rows[2]['attackBonus']);
+            self::assertSame('1d6 tranchant', $rows[2]['damage']);
+        }
+        self::assertCount(2, $serializer->serialize($this->character, ['story'=>0])['weapons']);
+        self::assertCount(0, $this->character->getMagicItems());
+        $this->feature->setActivationType(\App\Enum\FeatureActivationType::Action);
+        self::assertCount(2, $serializer->serialize($this->character, ['story'=>3])['weapons']);
+    }
+
+    public function testAttackMigrationSeedsOnlyOfficialDragonHideAndPreservesOtherFeatures(): void
+    {
+        $dragon = new CharacterFeatureDefinition('dragon-hide', 'Cuir du dragon');
+        $this->em->persist($dragon); $this->em->flush();
+        $before = $this->db->fetchAllAssociative('SELECT id, slug, description, armor_class_effects FROM character_feature_definition ORDER BY id');
+        $this->db->executeStatement('ALTER TABLE character_feature_definition DROP COLUMN attack_effects');
+        require_once dirname(__DIR__, 2).'/migrations/Version20261122030000.php';
+        $migration = new \DoctrineMigrations\Version20261122030000($this->db, new \Psr\Log\NullLogger());
+        $migration->up(new \Doctrine\DBAL\Schema\Schema());
+        foreach ($migration->getSql() as $query) $this->db->executeStatement($query->getStatement());
+        self::assertSame($before, $this->db->fetchAllAssociative('SELECT id, slug, description, armor_class_effects FROM character_feature_definition ORDER BY id'));
+        $this->em->refresh($dragon);
+        self::assertSame('1d4', $dragon->getAttackEffects()[0]['dice']);
+        self::assertSame('slashing', $dragon->getAttackEffects()[0]['damageType']);
+        self::assertTrue($dragon->getAttackEffects()[0]['unarmed']);
+        self::assertNull($this->db->fetchOne('SELECT attack_effects FROM character_feature_definition WHERE id=?', [$this->feature->getId()]));
+        $this->character->getAbilityScore(\App\Enum\Ability::Strength)->setBaseValue(16);
+        $rows = $this->service(\App\Service\CharacterWeaponCalculator::class)->calculate($this->character, [], [], [CharacterFeatureRule::forCharacter($dragon, $this->character)]);
+        self::assertSame(5, $rows[2]['attackBonus']);
+        self::assertSame('1d4+3 tranchant', $rows[2]['damage']);
+    }
+
     protected function tearDown(): void
     {
         while ($this->db->isTransactionActive()) $this->db->rollBack();

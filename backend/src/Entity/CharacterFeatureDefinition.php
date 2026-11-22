@@ -17,6 +17,18 @@ use Doctrine\ORM\Mapping as ORM;
 class CharacterFeatureDefinition
 {
     #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $attackEffects = null;
+
+    public function getAttackEffects(): ?array { return $this->attackEffects; }
+
+    public function configureAttackEffects(?array $effects): static
+    {
+        $this->attackEffects = $effects === null ? null : \App\Service\FeatureAttackEffectSchema::validate($effects);
+        $this->touch();
+        return $this;
+    }
+
+    #[ORM\Column(type: 'json', nullable: true)]
     private ?array $armorClassEffects = null;
 
     public function getArmorClassEffects(): ?array { return $this->armorClassEffects; }

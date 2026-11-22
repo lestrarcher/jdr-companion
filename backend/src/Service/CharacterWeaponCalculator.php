@@ -6,10 +6,10 @@ use App\Enum\Ability;
 
 final readonly class CharacterWeaponCalculator
 {
-    public function __construct(private CharacterAbilityCalculator $abilities) {}
+    public function __construct(private CharacterAbilityCalculator $abilities, private CharacterNaturalAttackCalculator $naturalAttacks = new CharacterNaturalAttackCalculator()) {}
 
     /** Pure read model; unequipped weapons show their theoretical use, not global bonuses. */
-    public function calculate(Character $character, array $training, array $infusions = []): array
+    public function calculate(Character $character, array $training, array $infusions = [], array $features = []): array
     {
         $scores = [];
         foreach ($character->getAbilityScores() as $score) {
@@ -82,7 +82,7 @@ final readonly class CharacterWeaponCalculator
             if (!empty($p['notes'])) $row['notes'][] = $p['notes'];
             $result[] = $row;
         }
-        return $result;
+        return [...$result, ...$this->naturalAttacks->calculate($character, $scores, $features, $training)];
     }
     private static function signed(int $value, bool $omitZero = false): string { return $value === 0 && $omitZero ? '' : ($value >= 0 ? '+' : '').$value; }
 }

@@ -23,8 +23,8 @@ final class CharacterWeaponCalculatorTest extends TestCase
         $custom->classify('gear',false,false); $custom->setReferenceDetails('Staff',null,null);
         $character->addMagicItem(new CharacterMagicItem($character,$custom));
         $rows = (new CharacterWeaponCalculator(new CharacterAbilityCalculator()))->calculate($character, ['proficiencies'=>[['type'=>'WEAPON','slug'=>'quarterstaff']]]);
-        self::assertCount(2,$rows);
-        foreach ($rows as $row) {
+        self::assertCount(4,$rows);
+        foreach (array_slice($rows, 0, 2) as $row) {
             self::assertSame(5,$row['attackBonus']); self::assertSame('1d6+3 contondant',$row['damage']);
             self::assertContains('Polyvalente (1d8+3)',$row['notes']);
         }

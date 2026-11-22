@@ -828,6 +828,8 @@ export class PlayerPortal {
       this.setSessionStatus(response.session.status);
       this.levelUpAllowed.set(response.levelUpAllowed);
       this.playerSpells.set(response.spells ?? []);
+      // Equipment, abilities and feature definitions can change without a state revision.
+      this.weapons.set(response.character.weapons ?? []);
       if (!statusChanged && response.revision === this.serverRevision) return;
       this.tinkeringNotes.set(response.state.magicalTinkeringNotes ?? '');
 
