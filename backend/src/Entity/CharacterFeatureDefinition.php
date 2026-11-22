@@ -29,6 +29,18 @@ class CharacterFeatureDefinition
     }
 
     #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $hitPointEffects = null;
+
+    public function getHitPointEffects(): ?array { return $this->hitPointEffects; }
+
+    public function configureHitPointEffects(?array $effects): static
+    {
+        $this->hitPointEffects = $effects === null ? null : \App\Service\HitPointEffectSchema::validate($effects);
+        $this->touch();
+        return $this;
+    }
+
+    #[ORM\Column(type: 'json', nullable: true)]
     private ?array $armorClassEffects = null;
 
     public function getArmorClassEffects(): ?array { return $this->armorClassEffects; }

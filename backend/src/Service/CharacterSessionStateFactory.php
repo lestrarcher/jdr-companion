@@ -23,7 +23,9 @@ final readonly class CharacterSessionStateFactory
      */
     public function create(Character $character): array
     {
-        $hitPoints = $this->hitPointCalculator->calculate($character);
+        $progressions = $this->createProgressions($character);
+        $progressionValues = CharacterSessionStateSynchronizer::extractProgressionValues(['progressions' => $progressions]);
+        $hitPoints = $this->hitPointCalculator->calculate($character, $progressionValues);
 
         if (!$hitPoints->isComplete() || $hitPoints->maximumValue === null) {
             throw new \DomainException(sprintf(
@@ -36,13 +38,6 @@ final readonly class CharacterSessionStateFactory
         $aidAmount = $this->activeEffectRepository->findEffectFor($character, CharacterActiveEffect::TYPE_AID)?->getAmount() ?? 0;
         $heroesFeastAmount = $this->activeEffectRepository->findEffectFor($character, CharacterActiveEffect::TYPE_HEROES_FEAST)?->getAmount() ?? 0;
         $maximumAdjustment = $aidAmount + $heroesFeastAmount;
-
-        $progressions = $this->createProgressions($character);
-        $progressionValues = [];
-
-        foreach ($progressions as $progression) {
-            $progressionValues[$progression['id']] = $progression['currentValue'];
-        }
 
         return [
             'inspiration' => $character->hasInspiration(),

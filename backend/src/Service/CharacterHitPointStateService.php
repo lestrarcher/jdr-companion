@@ -13,9 +13,10 @@ final readonly class CharacterHitPointStateService
     ) {
     }
 
-    public function baseMaximum(Character $character): ?int
+    /** @param array<string, int> $progressionValues */
+    public function baseMaximum(Character $character, array $progressionValues = []): ?int
     {
-        $hitPoints = $this->hitPointCalculator->calculate($character);
+        $hitPoints = $this->hitPointCalculator->calculate($character, $progressionValues);
 
         return $hitPoints->isComplete()
             ? $hitPoints->maximumValue
@@ -37,7 +38,7 @@ final readonly class CharacterHitPointStateService
         Character $character,
         array $state,
     ): ?int {
-        $baseMaximum = $this->baseMaximum($character);
+        $baseMaximum = $this->baseMaximum($character, CharacterSessionStateSynchronizer::extractProgressionValues($state));
 
         if ($baseMaximum === null) {
             return null;
@@ -66,7 +67,7 @@ final readonly class CharacterHitPointStateService
             return $state;
         }
 
-        $baseMaximum = $this->baseMaximum($character);
+        $baseMaximum = $this->baseMaximum($character, CharacterSessionStateSynchronizer::extractProgressionValues($state));
 
         if ($baseMaximum === null) {
             throw new \DomainException(

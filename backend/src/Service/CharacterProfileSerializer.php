@@ -71,7 +71,7 @@ final readonly class CharacterProfileSerializer
             'armorClass' => $this->armorClassCalculator->calculate($character, $armorEffects),
             'training' => $training,
             'weapons' => $this->weaponCalculator->calculate($character, $training, $this->infusionArmorEffects->itemProperties($character, true), $features),
-            'hitPoints' => $this->hitPointCalculator->calculate($character)->toArray(),
+            'hitPoints' => $this->hitPointCalculator->calculate($character, $progressionValues)->toArray(),
             'classLevels' => array_map(
                 $this->serializeClassLevel(...),
                 $character->getClassLevels()->toArray(),

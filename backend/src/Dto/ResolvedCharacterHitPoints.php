@@ -8,6 +8,7 @@ final readonly class ResolvedCharacterHitPoints
 {
     /**
      * @param list<int> $missingLevelPositions
+     * @param list<array{featureSlug: string, key: string, label: string, value: int}> $featureContributions
      */
     public function __construct(
         public ?int $maximumValue,
@@ -15,6 +16,8 @@ final readonly class ResolvedCharacterHitPoints
         public int $constitutionModifier,
         public int $constitutionBonus,
         public array $missingLevelPositions,
+        public int $featureBonus = 0,
+        public array $featureContributions = [],
     ) {
     }
 
@@ -35,6 +38,8 @@ final readonly class ResolvedCharacterHitPoints
             'constitutionBonus' => $this->constitutionBonus,
             'complete' => $this->isComplete(),
             'missingLevelPositions' => $this->missingLevelPositions,
+            'featureBonus' => $this->featureBonus,
+            'featureContributions' => $this->featureContributions,
         ];
     }
 }
