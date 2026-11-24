@@ -109,6 +109,12 @@ export class CharacterHitPointHistory implements OnInit {
     );
   }
 
+  protected minimumCorrection(): number {
+    const hp = this.character().hitPoints;
+    return this.projectedMaximumValue() - this.totalBaseValue()
+      - hp.constitutionModifier * this.entries.length - (hp.featureBonus ?? 0);
+  }
+
   protected projectedMaximumValue(): number {
     const character = this.character();
 

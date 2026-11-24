@@ -26,7 +26,6 @@ import { CharacterResources } from './components/character-resources/character-r
 import { MagicalTinkeringNotes } from './components/magical-tinkering-notes/magical-tinkering-notes';
 import { CharacterStoredValues } from './components/character-stored-values/character-stored-values';
 import { CharacterVitals } from './components/character-vitals/character-vitals';
-import { HitPointBreakdown } from './components/hit-point-breakdown/hit-point-breakdown';
 import { CharacterHitPoints } from '@core/services/character-api.service';
 import { CharacterInspiration } from './components/character-inspiration/character-inspiration';
 import { CharacterExhaustion } from './components/character-exhaustion/character-exhaustion';
@@ -62,7 +61,6 @@ type SaveStatus =
     CharacterResources,
     CharacterStoredValues,
     CharacterVitals,
-    HitPointBreakdown,
     CharacterInspiration,
     CharacterExhaustion,
     CharacterWalletComponent,

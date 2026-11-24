@@ -64,6 +64,9 @@ final readonly class CharacterHitPointCalculator
                     'key' => $effect['key'],
                     'label' => $effect['label'],
                     'value' => $value,
+                    'type' => $effect['type'],
+                    'unitValue' => $effect['value'],
+                    'classSlug' => $effect['classSlug'] ?? null,
                 ];
             }
         }

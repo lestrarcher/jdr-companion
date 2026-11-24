@@ -8,7 +8,7 @@ final readonly class ResolvedCharacterHitPoints
 {
     /**
      * @param list<int> $missingLevelPositions
-     * @param list<array{featureSlug: string, key: string, label: string, value: int}> $featureContributions
+     * @param list<array{featureSlug: string, key: string, label: string, value: int, type?: string, unitValue?: int, classSlug?: string|null}> $featureContributions
      */
     public function __construct(
         public ?int $maximumValue,

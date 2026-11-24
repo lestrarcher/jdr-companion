@@ -4,6 +4,7 @@ import { of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HitPointBreakdown } from './player-portal/components/hit-point-breakdown/hit-point-breakdown';
 import { CharacterHitPointHistory } from './campaign-characters/components/character-hit-point-history/character-hit-point-history';
+import { CharacterLevelUp } from './campaign-characters/components/character-level-up/character-level-up';
 import { InitiativeControl } from './control-dashboard/components/initiative-control/initiative-control';
 
 afterEach(() => TestBed.resetTestingModule());
@@ -39,6 +40,28 @@ describe('Affichage des PV', () => {
     history.character = () => ({ totalLevel: 2, hitPoints: { constitutionModifier: -2, featureBonus: 2 } });
     history.entries = [{ gain: 8 }, { gain: 1 }];
     expect(history.projectedMaximumValue()).toBe(9); // 6 + 1 + 2, pas max(2, 9 - 4) + 2.
+  });
+
+  it('prévoit uniquement les bonus acquis applicables à la classe choisie', () => {
+    const level = Object.create(CharacterLevelUp.prototype) as any;
+    level.form = { hitPointMethod: 'average' };
+    level.character = () => ({ hitPoints: { maximumValue: 109, constitutionModifier: 3,
+      featureContributions: [{ featureSlug: 'dragon', key: 'hp', label: 'Résistance draconique',
+        type: 'per-class-level', classSlug: 'sorcerer', unitValue: 1, value: 11 }] } });
+    expect(level.hitPointPreview({ slug: 'sorcerer', hitDie: 6, averageHitPointGain: 4 }).maximum).toBe(117);
+    expect(level.hitPointPreview({ slug: 'warlock', hitDie: 8, averageHitPointGain: 5 }).maximum).toBe(117);
+    expect(level.hitPointPreview({ slug: 'warlock', hitDie: 8, averageHitPointGain: 5 }).bonuses).toEqual([]);
+    const sorcerer = { slug: 'sorcerer', hitDie: 6, averageHitPointGain: 4 };
+    level.form = { hitPointMethod: 'rolled', hitPointGain: null };
+    expect(level.hitPointPreview(sorcerer)).toMatchObject({ raw: null, constitution: 3, gain: null, maximum: null, bonuses: [{ gain: 1 }] });
+    for (const roll of [1, 5, 6]) {
+      level.form.hitPointGain = roll;
+      expect(level.hitPointPreview(sorcerer)).toMatchObject({ raw: roll, gain: roll + 4, maximum: 113 + roll });
+    }
+    for (const roll of [0, 7, 2.5]) {
+      level.form.hitPointGain = roll;
+      expect(level.hitPointPreview(sorcerer)).toMatchObject({ raw: null, gain: null, maximum: null });
+    }
   });
 
   it.each([20, 0, null])('utilise le maximum effectif %s pour l’initiative', maximum => {
