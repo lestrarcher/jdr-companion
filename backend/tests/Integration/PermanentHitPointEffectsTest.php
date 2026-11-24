@@ -371,6 +371,116 @@ final class PermanentHitPointEffectsTest extends TestCase
         self::assertSame(1, $calc->calculate($this->character, Ability::Dexterity)->effectiveValue);
     }
 
+    public function testLevelUpUsesEffectiveMaximumIncludingManualAdjustment(): void
+    {
+        for ($i = 0; $i < 11; ++$i) $this->addLevel($this->warlock);
+        $session = $this->session();
+        $session->setState(['hitPoints' => ['current' => 70, 'temporary' => 8, 'maximumAdjustment' => 10]]);
+        $this->em->flush();
+        $hp = $this->service(CharacterHitPointStateService::class);
+        self::assertSame(90, $hp->effectiveMaximum($this->character, $session->getState()));
+        $this->service(CharacterLevelUpService::class)->levelUp($this->character, $this->warlock);
+        self::assertSame(97, $hp->effectiveMaximum($this->character, $session->getState()));
+        self::assertSame(['current' => 77, 'temporary' => 8, 'maximumAdjustment' => 10], $session->getState()['hitPoints']);
+    }
+
+    public function testExhaustedLevelUpUsesHalvedMaximumDelta(): void
+    {
+        foreach ([8, 6, 5, 5] as $gain) $this->addLevel($this->warlock, $gain);
+        $session = $this->session();
+        $session->setState(['exhaustionLevel' => 4, 'hitPoints' => ['current' => 16, 'temporary' => 7]]);
+        $this->em->flush();
+        $hp = $this->service(CharacterHitPointStateService::class);
+        self::assertSame(32, $hp->baseMaximum($this->character));
+        self::assertSame(16, $hp->effectiveMaximum($this->character, $session->getState()));
+        $this->service(CharacterLevelUpService::class)->levelUp($this->character, $this->warlock,
+            hitPointGainMethod: HitPointGainMethod::Rolled, hitPointGain: 4);
+        self::assertSame(38, $hp->baseMaximum($this->character));
+        self::assertSame(19, $hp->effectiveMaximum($this->character, $session->getState()));
+        self::assertSame(['current' => 19, 'temporary' => 7], $session->getState()['hitPoints']);
+    }
+
+    public function testOutsideLevelUpConstitutionAndHistoryOnlyClamp(): void
+    {
+        $levels = [];
+        for ($i = 0; $i < 13; ++$i) $levels[] = $this->addLevel($this->warlock);
+        $this->character->getAbilityScore(Ability::Constitution)->setBaseValue(16);
+        $session = $this->session();
+        $session->setState(['hitPoints' => ['current' => 107, 'temporary' => 6]]);
+        $sync = $this->service(CharacterSessionStateSynchronizer::class);
+        $this->character->getAbilityScore(Ability::Constitution)->setBaseValue(18);
+        $sync->synchronizeHitPointsForCharacter($this->character);
+        self::assertSame(107, $session->getState()['hitPoints']['current']);
+        $this->character->getAbilityScore(Ability::Constitution)->setBaseValue(14);
+        $sync->synchronizeHitPointsForCharacter($this->character);
+        self::assertSame(94, $session->getState()['hitPoints']['current']);
+        $levels[1]->setHitPointGain(1, HitPointGainMethod::Rolled);
+        $sync->synchronizeHitPointsForCharacter($this->character);
+        self::assertSame(['current' => 90, 'temporary' => 6], $session->getState()['hitPoints']);
+        $levels[1]->setHitPointGain(5, HitPointGainMethod::Average);
+        $sync->synchronizeHitPointsForCharacter($this->character);
+        self::assertSame(90, $session->getState()['hitPoints']['current']);
+        $this->em->flush();
+        $this->em->refresh($session);
+        self::assertSame(90, $session->getState()['hitPoints']['current']);
+    }
+
+    public function testExhaustionAndManualAdjustmentNeverHeal(): void
+    {
+        foreach ([8, 6, 5, 5] as $gain) $this->addLevel($this->warlock, $gain);
+        $session = $this->session();
+        $session->setState(['hitPoints' => ['current' => 32, 'temporary' => 9]]);
+        $updater = $this->service(\App\Service\PlayerCharacterStateUpdater::class);
+        $state = $updater->merge($session, ['exhaustionLevel' => 4]);
+        self::assertSame(16, $state['hitPoints']['current']);
+        $session->setState($state);
+        $state = $updater->merge($session, ['exhaustionLevel' => 0]);
+        self::assertSame(16, $state['hitPoints']['current']);
+        $hp = $this->service(CharacterHitPointStateService::class);
+        $state = $hp->adjustMaximum($this->character, $state, 10);
+        self::assertSame(42, $hp->effectiveMaximum($this->character, $state));
+        self::assertSame(16, $state['hitPoints']['current']);
+        $state = $hp->adjustMaximum($this->character, $state, -30);
+        self::assertSame(12, $state['hitPoints']['current']);
+        $state['exhaustionLevel'] = 4;
+        $state = $this->service(CharacterSessionStateSynchronizer::class)->synchronize($this->character, $state);
+        self::assertSame(['current' => 6, 'temporary' => 9, 'maximumAdjustment' => -20], $state['hitPoints']);
+    }
+
+    public function testFeatureAndEquipmentLossClampWithoutHealingOnReturn(): void
+    {
+        $this->addLevel($this->warlock);
+        $feature = (new CharacterFeatureDefinition('hp-state-gift', 'Gift'))->configureHitPointEffects([
+            ['key' => 'hp', 'label' => 'HP', 'type' => 'fixed', 'value' => 5],
+        ]);
+        $this->persist($feature, CharacterFeatureRule::forClass($feature, $this->warlock, 1));
+        $session = $this->session();
+        $session->setState(['hitPoints' => ['current' => 15, 'temporary' => 4]]);
+        $sync = $this->service(CharacterSessionStateSynchronizer::class);
+        $feature->configureHitPointEffects(null);
+        $sync->synchronizeHitPointsForCharacter($this->character);
+        self::assertSame(10, $session->getState()['hitPoints']['current']);
+        $item = new \App\Entity\MagicItem(null, 'Constitution item', null, $this->character->getCampaign()->getOwner());
+        $item->classify('other', true, true);
+        $item->addAbilityEffect(new \App\Entity\MagicItemAbilityEffect($item, Ability::Constitution, \App\Enum\AbilityEffectOperation::Bonus, 2));
+        $owned = new \App\Entity\CharacterMagicItem($this->character, $item);
+        $this->character->addMagicItem($owned);
+        $owned->setEquipped(true);
+        $sync->synchronizeHitPointsForCharacter($this->character);
+        self::assertSame(10, $session->getState()['hitPoints']['current']);
+        $session->setState(['hitPoints' => ['current' => 11, 'temporary' => 4]]);
+        $owned->setEquipped(false);
+        $sync->synchronizeHitPointsForCharacter($this->character);
+        self::assertSame(['current' => 10, 'temporary' => 4], $session->getState()['hitPoints']);
+    }
+
+    public function testUnknownMaximumPreservesStateOutsideLevelUp(): void
+    {
+        $this->addLevel($this->warlock, missing: true);
+        $state = ['exhaustionLevel' => 4, 'hitPoints' => ['current' => 99, 'temporary' => 7, 'maximumAdjustment' => -20]];
+        self::assertSame($state['hitPoints'], $this->service(CharacterSessionStateSynchronizer::class)->synchronize($this->character, $state)['hitPoints']);
+    }
+
     public function testMigrationOnlyConfiguresOfficialEffectsAndPreservesHistoryAndState(): void
     {
         $this->addLevel($this->sorcerer);

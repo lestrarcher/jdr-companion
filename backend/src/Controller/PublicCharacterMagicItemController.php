@@ -27,7 +27,7 @@ final class PublicCharacterMagicItemController extends AbstractController
 {
     private const ATTUNEMENT_LIMIT = 3;
 
-    public function __construct(private readonly SpellbookLibrary $spellbookLibrary, private readonly PactTomeLibrary $pactTomes, private readonly \App\Service\CharacterEquipmentService $equipment, private readonly \App\Service\ItemInfusionArmorEffects $infusionEffects) {}
+    public function __construct(private readonly SpellbookLibrary $spellbookLibrary, private readonly PactTomeLibrary $pactTomes, private readonly \App\Service\CharacterEquipmentService $equipment, private readonly \App\Service\ItemInfusionArmorEffects $infusionEffects, private readonly \App\Service\CharacterSessionStateSynchronizer $states) {}
 
     #[Route(
         '/public/characters/{accessToken}/magic-items',
@@ -271,6 +271,7 @@ final class PublicCharacterMagicItemController extends AbstractController
                         $entityManager->remove($ownedItem);
                     }
                 }
+                $this->states->synchronizeHitPointsForCharacter($character);
                 $entityManager->flush();
                 return $this->json([
                     'ownedItem' => null,
@@ -291,6 +292,7 @@ final class PublicCharacterMagicItemController extends AbstractController
                     $character->removeMagicItem($ownedItem);
                     $entityManager->remove($ownedItem);
                 }
+                $this->states->synchronizeHitPointsForCharacter($character);
                 $entityManager->flush();
                 return $this->json([
                     'ownedItem' => null,
@@ -308,6 +310,7 @@ final class PublicCharacterMagicItemController extends AbstractController
                 throw new \Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException($exception->getMessage(), $exception);
             }
 
+            $this->states->synchronizeHitPointsForCharacter($character);
             $entityManager->flush();
 
             return $this->json([

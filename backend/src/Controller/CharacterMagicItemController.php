@@ -24,6 +24,8 @@ use Symfony\Component\Routing\Attribute\Route;
 final class CharacterMagicItemController
     extends AbstractController
 {
+    public function __construct(private readonly \App\Service\CharacterSessionStateSynchronizer $states) {}
+
     #[Route('/characters/{characterId}/magic-items/{ownedItemId}/equipment', name: 'api_character_item_equipment', requirements: ['characterId' => '\d+', 'ownedItemId' => '\d+'], methods: ['PATCH'])]
     public function equip(int $characterId, int $ownedItemId, Request $request, CharacterRepository $characters, EntityManagerInterface $em, \App\Service\CharacterEquipmentService $equipment, CharacterAbilityCalculator $abilities): JsonResponse
     {
@@ -48,6 +50,7 @@ final class CharacterMagicItemController
             catch (\InvalidArgumentException $error) {
                 throw new \Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException($error->getMessage(), $error);
             }
+            $this->states->synchronizeHitPointsForCharacter($character);
             $em->flush();
             return $this->serializeInventory($character, $abilities);
         });
@@ -235,6 +238,7 @@ public function assign(
                 } else {
                     $ownedItem->setQuantity($ownedItem->getQuantity() - $quantity);
                 }
+                $this->states->synchronizeHitPointsForCharacter($character);
             });
         } catch (\InvalidArgumentException $exception) {
             return $this->json(['message' => $exception->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);

@@ -38,8 +38,11 @@ final readonly class CharacterHitPointStateService
         Character $character,
         array $state,
     ): ?int {
-        $baseMaximum = $this->baseMaximum($character, CharacterSessionStateSynchronizer::extractProgressionValues($state));
+        return $this->effectiveMaximumFromBase($this->baseMaximum($character, CharacterSessionStateSynchronizer::extractProgressionValues($state)), $state);
+    }
 
+    public function effectiveMaximumFromBase(?int $baseMaximum, array $state): ?int
+    {
         if ($baseMaximum === null) {
             return null;
         }
@@ -51,6 +54,17 @@ final readonly class CharacterHitPointStateService
         return ($state['exhaustionLevel'] ?? 0) >= 4
             ? intdiv($maximum, 2)
             : $maximum;
+    }
+
+    /** Clamp only: changing a maximum outside level-up never heals. */
+    public function synchronize(Character $character, array $state): array
+    {
+        if (!isset($state['hitPoints']['current'])) return $state;
+        $maximum = $this->effectiveMaximum($character, $state);
+        if ($maximum !== null && $state['hitPoints']['current'] > $maximum) {
+            $state['hitPoints']['current'] = $maximum;
+        }
+        return $state;
     }
 
     /**
@@ -87,13 +101,6 @@ final readonly class CharacterHitPointStateService
 
         $state['hitPoints']['maximumAdjustment'] = $newAdjustment;
 
-        $current = (int) ($state['hitPoints']['current'] ?? 0);
-
-        $effectiveMaximum = $this->effectiveMaximum($character, $state);
-        if ($effectiveMaximum !== null && $current > $effectiveMaximum) {
-            $state['hitPoints']['current'] = $effectiveMaximum;
-        }
-
-        return $state;
+        return $this->synchronize($character, $state);
     }
 }
