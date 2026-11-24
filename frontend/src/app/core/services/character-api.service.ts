@@ -56,6 +56,8 @@ export interface CharacterHitPoints {
   baseValue: number;
   constitutionModifier: number;
   constitutionBonus: number;
+  featureBonus?: number;
+  featureContributions?: Array<{ featureSlug: string; key: string; label: string; value: number }>;
   complete: boolean;
   missingLevelPositions: number[];
 }

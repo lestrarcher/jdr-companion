@@ -112,10 +112,9 @@ export class CharacterHitPointHistory implements OnInit {
   protected projectedMaximumValue(): number {
     const character = this.character();
 
-    return Math.max(
-      character.totalLevel,
-      this.totalBaseValue()
-        + character.hitPoints.constitutionModifier * character.totalLevel,
+    return this.entries.reduce(
+      (total, entry) => total + Math.max(1, (entry.gain ?? 0) + character.hitPoints.constitutionModifier),
+      character.hitPoints.featureBonus ?? 0,
     );
   }
 
