@@ -26,7 +26,7 @@ final readonly class CharacterHitPointCalculator
         $total = 0;
         $missingLevelPositions = [];
         $constitutionModifier = $this->abilityCalculator
-            ->calculate($character, Ability::Constitution)
+            ->calculate($character, Ability::Constitution, progressionValues: $progressionValues)
             ->modifier();
 
         foreach ($character->getClassLevels() as $level) {

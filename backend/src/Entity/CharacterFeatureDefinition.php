@@ -17,6 +17,18 @@ use Doctrine\ORM\Mapping as ORM;
 class CharacterFeatureDefinition
 {
     #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $abilityScoreEffects = null;
+
+    public function getAbilityScoreEffects(): ?array { return $this->abilityScoreEffects; }
+
+    public function configureAbilityScoreEffects(?array $effects): static
+    {
+        $this->abilityScoreEffects = $effects === null ? null : \App\Service\AbilityScoreEffectSchema::validate($effects);
+        $this->touch();
+        return $this;
+    }
+
+    #[ORM\Column(type: 'json', nullable: true)]
     private ?array $attackEffects = null;
 
     public function getAttackEffects(): ?array { return $this->attackEffects; }

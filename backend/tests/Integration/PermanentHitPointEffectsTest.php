@@ -283,6 +283,94 @@ final class PermanentHitPointEffectsTest extends TestCase
         self::assertSame(34, $this->service(CharacterHitPointCalculator::class)->calculate($this->character)->maximumValue);
     }
 
+    public function testAbilityProgressionRecalculatesThirteenLevelsWithoutChangingCurrentHp(): void
+    {
+        $this->character->getAbilityScore(Ability::Constitution)->setBaseValue(16);
+        for ($i = 0; $i < 13; ++$i) $this->addLevel($this->warlock);
+        $progression = new ProgressionDefinition('ability-story', 'Ability story');
+        $assignment = new CharacterProgression($this->character, $progression);
+        $this->character->addProgression($assignment);
+        $feature = (new CharacterFeatureDefinition('constitution-gift', 'Constitution gift'))->configureAbilityScoreEffects([
+            ['key' => 'con', 'label' => 'Constitution', 'ability' => 'constitution', 'value' => 2],
+        ]);
+        $this->persist($progression, $assignment, $feature,
+            CharacterFeatureRule::forProgression($feature, $progression, 3),
+            CharacterFeatureRule::forProgression($feature, $progression, 5));
+        $session = $this->session();
+        $beforeState = $session->getState();
+        $beforeScores = $this->db->fetchAllAssociative('SELECT * FROM character_ability_score ORDER BY id');
+        $beforeLevels = $this->db->fetchAllAssociative('SELECT * FROM character_class_level ORDER BY id');
+        $hp = $this->service(CharacterHitPointCalculator::class);
+        $abilities = $this->service(\App\Service\CharacterAbilityCalculator::class);
+        self::assertSame(107, $hp->calculate($this->character)->maximumValue);
+        foreach ([2 => 16, 3 => 18, 5 => 18, 1 => 16] as $stage => $expected) {
+            $context = ['ability-story' => $stage];
+            $state = array_replace($beforeState, ['progressions' => [['id' => 'ability-story', 'currentValue' => $stage]]]);
+            for ($repeat = 0; $repeat < 3; ++$repeat) {
+                self::assertSame($expected, $abilities->calculate($this->character, Ability::Constitution, progressionValues: $context)->effectiveValue);
+                self::assertSame($expected === 18 ? 120 : 107, $hp->calculate($this->character, $context)->maximumValue);
+                self::assertSame(($expected === 18 ? 120 : 107) + 9,
+                    $this->service(CharacterHitPointStateService::class)->effectiveMaximum($this->character, $state));
+                self::assertSame($beforeState['hitPoints'], $this->service(CharacterSessionStateSynchronizer::class)->synchronize($this->character, $state)['hitPoints']);
+            }
+        }
+        $this->em->flush();
+        self::assertSame($beforeState, $session->getState());
+        self::assertSame($beforeScores, $this->db->fetchAllAssociative('SELECT * FROM character_ability_score ORDER BY id'));
+        self::assertSame($beforeLevels, $this->db->fetchAllAssociative('SELECT * FROM character_class_level ORDER BY id'));
+    }
+
+    public function testAcquiredAbilityEffectsRespectCapsAndCanBeRemoved(): void
+    {
+        $this->addLevel($this->warlock);
+        $effects = [];
+        foreach (Ability::cases() as $ability) {
+            $this->character->getAbilityScore($ability)->setBaseValue(19);
+            $effects[] = ['key' => $ability->value, 'label' => $ability->value, 'ability' => $ability->value, 'value' => 4];
+        }
+        $feature = (new CharacterFeatureDefinition('all-abilities', 'All abilities'))->configureAbilityScoreEffects($effects);
+        $this->persist($feature);
+        $calc = $this->service(\App\Service\CharacterAbilityCalculator::class);
+        self::assertSame(19, $calc->calculate($this->character, Ability::Strength)->effectiveValue);
+        $assignment = new CharacterFeatureAssignment($this->character, $feature);
+        $this->persist($assignment, CharacterFeatureRule::forClass($feature, $this->warlock, 1));
+        foreach ($calc->calculateAll($this->character) as $score) {
+            self::assertSame(19, $score->baseValue);
+            self::assertSame(20, $score->effectiveValue);
+        }
+        $this->character->getAbilityScore(Ability::Strength)->setMaximumValue(24);
+        // Both a rule and a direct assignment must still apply this +4 only once.
+        self::assertSame(23, $calc->calculate($this->character, Ability::Strength)->effectiveValue);
+        $effects[0]['scoreCap'] = 21;
+        $feature->configureAbilityScoreEffects($effects);
+        self::assertSame(21, $calc->calculate($this->character, Ability::Strength)->effectiveValue);
+        $effects[0]['scoreCap'] = 18;
+        $feature->configureAbilityScoreEffects($effects);
+        self::assertSame(19, $calc->calculate($this->character, Ability::Strength)->effectiveValue);
+        $feature->setActivationType(FeatureActivationType::Action);
+        self::assertSame(19, $calc->calculate($this->character, Ability::Constitution)->effectiveValue);
+        $feature->setActivationType(FeatureActivationType::Passive)->configureAbilityScoreEffects(null);
+        self::assertSame(19, $calc->calculate($this->character, Ability::Strength)->effectiveValue);
+        self::assertSame(19, $this->character->getAbilityScore(Ability::Strength)->getBaseValue());
+    }
+
+    public function testAbilityPenaltiesRespectMinimumAndBonusesIgnoreDisplayOrder(): void
+    {
+        $this->addLevel($this->warlock);
+        $this->character->getAbilityScore(Ability::Strength)->setBaseValue(16);
+        $low = (new CharacterFeatureDefinition('low-cap', 'Z'))->configureAbilityScoreEffects([
+            ['key' => 'str', 'label' => 'Strength', 'ability' => 'strength', 'value' => 2, 'scoreCap' => 18],
+            ['key' => 'dex', 'label' => 'Dexterity', 'ability' => 'dexterity', 'value' => -30],
+        ]);
+        $high = (new CharacterFeatureDefinition('high-cap', 'A'))->configureAbilityScoreEffects([
+            ['key' => 'str', 'label' => 'Strength', 'ability' => 'strength', 'value' => 2],
+        ]);
+        $this->persist($low, $high, CharacterFeatureRule::forClass($low, $this->warlock, 1), CharacterFeatureRule::forClass($high, $this->warlock, 1));
+        $calc = $this->service(\App\Service\CharacterAbilityCalculator::class);
+        self::assertSame(20, $calc->calculate($this->character, Ability::Strength)->effectiveValue);
+        self::assertSame(1, $calc->calculate($this->character, Ability::Dexterity)->effectiveValue);
+    }
+
     public function testMigrationOnlyConfiguresOfficialEffectsAndPreservesHistoryAndState(): void
     {
         $this->addLevel($this->sorcerer);
