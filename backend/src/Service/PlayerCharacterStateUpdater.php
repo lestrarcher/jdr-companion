@@ -179,7 +179,7 @@ final readonly class PlayerCharacterStateUpdater
             $state['inspiration'] = $patch['inspiration'];
         }
 
-        return $state;
+        return $this->hitPointStateService->synchronize($character, $state);
     }
 
     private function keys(array $value, array $allowed): void

@@ -20,6 +20,8 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/reference/features/{featureId}/assignments', requirements: ['featureId' => '\d+'])]
 final class CharacterFeatureAssignmentController extends AbstractController
 {
+    public function __construct(private readonly \App\Service\CharacterSessionStateSynchronizer $states) {}
+
     #[Route('', methods: ['GET'])]
     public function list(int $featureId, EntityManagerInterface $em): JsonResponse
     {
@@ -65,6 +67,8 @@ final class CharacterFeatureAssignmentController extends AbstractController
         $assignment = $em->getRepository(CharacterFeatureAssignment::class)->findOneBy(['character' => $character, 'featureDefinition' => $feature]);
         if (!$assignment) throw $this->createNotFoundException();
         $em->remove($assignment);
+        $em->flush();
+        $this->states->synchronizeHitPointsForCharacter($character);
         $em->flush();
         $spells->synchronize($character);
         return new JsonResponse(null, 204);

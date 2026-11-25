@@ -55,7 +55,12 @@ final readonly class WildShapeSessionService
     {
         $active = $state[self::KEY]['active'] ?? null;
         if (!is_array($active)) throw new \DomainException('Aucune forme sauvage active.');
-        $result = $this->rules->damage($active, $amount);
+        $temporary = max(0, (int) ($state['hitPoints']['temporary'] ?? 0));
+        $absorbed = min(max(0, $amount), $temporary);
+        $result = $this->rules->damage($active, $amount - $absorbed);
+        if ($absorbed > 0) {
+            $state['hitPoints']['temporary'] = $temporary - $absorbed;
+        }
         $state[self::KEY]['active'] = $result['form'];
         if ($result['overflow'] > 0) {
             $state['hitPoints']['current'] = max(0, (int) ($state['hitPoints']['current'] ?? 0) - $result['overflow']);

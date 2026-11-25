@@ -79,7 +79,7 @@ final readonly class CharacterProfileSerializer
             'classSummary' => $this->serializeClassSummary($character),
             'abilities' => array_map(
                 fn (Ability $ability): array =>
-                    $this->abilityCalculator->calculate($character, $ability)->toArray(),
+                    $this->abilityCalculator->calculate($character, $ability, progressionValues: $progressionValues)->toArray(),
                 Ability::cases(),
             ),
             'feats' => array_map(

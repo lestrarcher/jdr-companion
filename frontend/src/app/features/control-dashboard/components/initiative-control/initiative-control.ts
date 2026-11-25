@@ -148,7 +148,9 @@ export class InitiativeControl {
               state.state.hitPoints.current;
 
             const maximumHitPoints =
-              state.character.hitPoints.maximumValue;
+              state.state.hitPoints.effectiveMaximum !== undefined
+                ? state.state.hitPoints.effectiveMaximum
+                : state.character.hitPoints.maximumValue;
 
             const bloodied =
               maximumHitPoints !== null

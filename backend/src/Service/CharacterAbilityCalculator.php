@@ -17,6 +17,8 @@ final class CharacterAbilityCalculator
     private const ABSOLUTE_MINIMUM = 1;
     private const ABSOLUTE_MAXIMUM = 30;
 
+    public function __construct(private ?CharacterFeatureResolver $featureResolver = null) {}
+
     /** Statistics for a spell's own casting ability, independent of class policy. */
     public function spellStatistics(Character $character, Ability $ability): array
     {
@@ -33,24 +35,26 @@ final class CharacterAbilityCalculator
     /**
      * @return array<string, EffectiveAbilityScore>
      */
-    public function calculateAll(Character $character): array
+    public function calculateAll(Character $character, array $progressionValues = []): array
     {
         $results = [];
 
         foreach (Ability::cases() as $ability) {
-            $results[$ability->value] = $this->calculate($character, $ability);
+            $results[$ability->value] = $this->calculate($character, $ability, progressionValues: $progressionValues);
         }
 
         return $results;
     }
 
-    public function calculate(Character $character, Ability $ability, ?LevelAdvancementSelection $advancement = null): EffectiveAbilityScore
+    /** @param array<string, int> $progressionValues Explicit session context. */
+    public function calculate(Character $character, Ability $ability, ?LevelAdvancementSelection $advancement = null, array $progressionValues = []): EffectiveAbilityScore
     {
         $abilityScore = $character->getAbilityScore($ability);
 
         $baseValue = $abilityScore->getBaseValue();
 
         $effectiveValue = $this->calculatePermanentValue($character, $ability, $advancement);
+        $effectiveValue = $this->applyFeatureEffects($character, $ability, $effectiveValue, $progressionValues);
         $minimumValue = null;
 
         foreach ($character->getMagicItems() as $ownedItem) {
@@ -157,6 +161,33 @@ final class CharacterAbilityCalculator
         }
 
         return $effectiveValue;
+    }
+
+    private function applyFeatureEffects(Character $character, Ability $ability, int $value, array $progressionValues): int
+    {
+        $bonuses = [];
+        $penalty = 0;
+        $maximum = min(self::ABSOLUTE_MAXIMUM, $character->getAbilityScore($ability)->getMaximumValue());
+        foreach ($this->featureResolver?->resolve($character, $progressionValues) ?? [] as $rule) {
+            $feature = $rule->getFeatureDefinition();
+            if ($feature->getActivationType() !== \App\Enum\FeatureActivationType::Passive) continue;
+            foreach ($feature->getAbilityScoreEffects() ?? [] as $effect) {
+                if ($effect['ability'] !== $ability->value) continue;
+                if ($effect['value'] < 0) {
+                    $penalty += $effect['value'];
+                } else {
+                    $cap = min($maximum, $effect['scoreCap'] ?? $maximum);
+                    $bonuses[$cap] = ($bonuses[$cap] ?? 0) + $effect['value'];
+                }
+            }
+        }
+        $value += $penalty;
+        // Lowest caps first: results must not depend on feature display order.
+        ksort($bonuses);
+        foreach ($bonuses as $cap => $bonus) {
+            $value += min($bonus, max(0, $cap - $value));
+        }
+        return $value;
     }
 
     private function applyBonus(

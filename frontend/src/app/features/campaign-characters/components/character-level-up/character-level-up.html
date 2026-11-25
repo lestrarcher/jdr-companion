@@ -328,22 +328,26 @@
           </label>
         </div>
 
-        @if (character().hitPoints.maximumValue !== null) {
-          <p class="hit-point-preview">
-            Maximum actuel :
-            <strong>{{ character().hitPoints.maximumValue }} PV</strong>
-
-            · Gain avec Constitution :
-            <strong>
-              {{
-                (form.hitPointMethod === 'average'
-                  ? classOption.averageHitPointGain
-                  : form.hitPointGain ?? 0)
-                + character().hitPoints.constitutionModifier
-              }}
-              PV
-            </strong>
-          </p>
+        @if (hitPointPreview(classOption); as preview) {
+          <div class="hit-point-preview">
+            <div>Gain brut : <strong>{{ preview.raw === null ? "—" : preview.raw + " PV" }}</strong></div>
+            <div>Constitution : <strong>{{ preview.constitution >= 0 ? '+' : '' }}{{ preview.constitution }} PV</strong></div>
+            @if (preview.minimum) {
+              <div>Minimum de 1 PV : <strong>+{{ preview.minimum }} PV</strong></div>
+            }
+            @for (bonus of preview.bonuses; track bonus.featureSlug + ':' + bonus.key) {
+              <div>{{ bonus.label }} : <strong>{{ bonus.gain >= 0 ? '+' : '' }}{{ bonus.gain }} PV</strong></div>
+            }
+            @if (preview.gain !== null) {
+              <div>Gain estimé : <strong>{{ preview.gain >= 0 ? '+' : '' }}{{ preview.gain }} PV</strong></div>
+            } @else {
+              <small>Saisissez un résultat valide pour calculer le gain total.</small>
+            }
+            @if (preview.maximum !== null) {
+              <div>Maximum estimé : <strong>{{ character().hitPoints.maximumValue }} → {{ preview.maximum }} PV</strong></div>
+            }
+            <small>Estimation avec la Constitution et les capacités déjà acquises, hors nouveaux choix du niveau.</small>
+          </div>
         }
       </section>
 

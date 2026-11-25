@@ -398,6 +398,21 @@ protected spellLabel(spellId: number): string {
     this.form.featAbility = null;
   }
 
+  protected hitPointPreview(classOption: LevelUpClassOption) {
+    const hp = this.character().hitPoints;
+    const raw = this.form.hitPointMethod === 'average'
+      ? classOption.averageHitPointGain : this.form.hitPointGain;
+    const validRaw = raw !== null && Number.isInteger(raw) && raw >= 1 && raw <= classOption.hitDie ? raw : null;
+    const bonuses = (hp.featureContributions ?? [])
+      .filter(effect => effect.type === 'per-total-level'
+        || (effect.type === 'per-class-level' && effect.classSlug === classOption.slug))
+      .map(effect => ({ ...effect, gain: effect.unitValue ?? 0 }));
+    const minimum = validRaw === null ? 0 : Math.max(0, 1 - validRaw - hp.constitutionModifier);
+    const gain = validRaw === null ? null : validRaw + hp.constitutionModifier + minimum + bonuses.reduce((sum, bonus) => sum + bonus.gain, 0);
+    return { raw: validRaw, constitution: hp.constitutionModifier, minimum, bonuses, gain,
+      maximum: hp.maximumValue === null || gain === null ? null : hp.maximumValue + gain };
+  }
+
   protected hitPointMethodChanged(): void {
     this.form.hitPointGain = this.form.hitPointMethod === 'average'
       ? this.selectedClassOption()?.averageHitPointGain ?? null

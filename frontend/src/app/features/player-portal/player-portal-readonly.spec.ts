@@ -31,7 +31,7 @@ function snapshot(status: string, artificer: boolean): any {
   };
 }
 
-async function setup(status: string, artificer: boolean, desktop = false, infusionClasses: string[] = []) {
+async function setup(status: string, artificer: boolean, desktop = false, infusionClasses: string[] = [], withProgression = false) {
   vi.stubGlobal('matchMedia', vi.fn(() => ({matches:desktop,addEventListener:vi.fn(),removeEventListener:vi.fn()})));
   TestBed.configureTestingModule({providers:[provideHttpClient(),provideHttpClientTesting(),provideRouter([]),
     {provide:ActivatedRoute,useValue:{snapshot:{paramMap:convertToParamMap({campaignId:'2',sessionId:'3',accessToken:'test'})}}},
@@ -41,6 +41,10 @@ async function setup(status: string, artificer: boolean, desktop = false, infusi
   const fixture=TestBed.createComponent(PlayerPortal);
   const http=TestBed.inject(HttpTestingController);
   const response = snapshot(status,artificer);
+  if (withProgression) {
+    response.character.progressions = [{id: 1, definitionId: 1, slug: 'story', name: 'Story', description: null, minimumValue: 0, maximumValue: 5, accentColor: null, gainLabel: null, spendLabel: null, bulkAdjustmentEnabled: false, stages: []}];
+    response.state.progressions = [{id: 'story', currentValue: 2}];
+  }
   if (infusionClasses.length) {
     response.character.features.push({slug:'infusions-known',name:'Imprégnations connues',visible:true,sourceType:'class',sourceName:'Artificier'});
     response.character.classLevels = infusionClasses.map((slug, index) => ({position:index+1,characterClass:{slug,name:slug}}));
@@ -51,9 +55,78 @@ async function setup(status: string, artificer: boolean, desktop = false, infusi
   return {fixture,http,component:fixture.componentInstance as any};
 }
 
+function flushWildShapeRequests(http: HttpTestingController): void {
+  for (const request of http.match(r => r.method === 'GET' && r.url === '/api/public/characters/test/wild-shape')) {
+    if (!request.cancelled) request.flush({wildShape:{usesRemaining:0,active:null}});
+  }
+}
+
 afterEach(()=> { TestBed.resetTestingModule(); vi.unstubAllGlobals(); });
 
 describe('One player sheet, read-only outside LIVE',()=> {
+  it('refreshes HP and abilities after history changes even with the same state revision', async () => {
+    const {fixture,http,component} = await setup('live', false);
+    for (const request of http.match('/api/public/characters/test')) request.flush(snapshot('live', false));
+    component.refreshCharacterIfChanged();
+    const response = snapshot('live', false);
+    response.character.hitPoints = {maximumValue: 23, baseValue: 12, constitutionModifier: 4, constitutionBonus: 8,
+      featureBonus: 3, featureContributions: [], complete: true, missingLevelPositions: []};
+    response.character.abilities = [{ability:'constitution',effectiveValue:18,modifier:4}];
+    response.state.hitPoints.effectiveMaximum = 11;
+    response.state.hitPoints.maximumAdjustment = -1;
+    http.expectOne('/api/public/characters/test').flush(response);
+    await fixture.whenStable();
+    expect(component.characterState().hitPoints.maximum).toBe(11);
+    expect(component.characterState().hitPoints.current).toBe(8);
+    expect(component.abilities()[0].effectiveValue).toBe(18);
+    expect(component.hitPointCalculation().maximumValue).toBe(23);
+    expect(component.hitPointAdjustment()).toBe(-1);
+    http.expectNone(r => r.method !== 'GET');
+    flushWildShapeRequests(http);
+    fixture.destroy(); http.verify({ignoreCancelled:true});
+  });
+
+  it('refreshes the full profile after equipment changes', async () => {
+    const {fixture,http,component} = await setup('live', false);
+    for (const request of http.match('/api/public/characters/test')) request.flush(snapshot('live', false));
+    component.refreshSpells(); // Existing equipmentChanged output.
+    const response = snapshot('live', false);
+    response.character.hitPoints.maximumValue = 19;
+    response.character.abilities = [{ability:'constitution',effectiveValue:18,modifier:4}];
+    http.expectOne('/api/public/characters/test').flush(response);
+    await fixture.whenStable();
+    expect(component.characterState().hitPoints.maximum).toBe(19);
+    expect(component.abilities()[0].modifier).toBe(4);
+    flushWildShapeRequests(http);
+    fixture.destroy(); http.verify({ignoreCancelled:true});
+  });
+
+  it('adopts recalculated HP and Constitution from the progression save response', async () => {
+    const {fixture,http,component} = await setup('live', false);
+    for (const request of http.match('/api/public/characters/test')) request.flush(snapshot('live', false));
+    component.refreshSpells();
+    const response = snapshot('live', false);
+    response.character.progressions = [{slug:'story',name:'Story',minimumValue:0,maximumValue:5,stages:[]}];
+    response.state.progressions = [{id:'story',currentValue:2}];
+    http.expectOne('/api/public/characters/test').flush(response);
+    await fixture.whenStable();
+    component.handleProgressionChange({progressionId:'story',change:1});
+    await fixture.whenStable();
+    await vi.waitFor(() => {
+      const request = http.expectOne(r => r.method === 'PATCH' && r.url === '/api/public/characters/test');
+      response.revision = 5;
+      response.state.progressions = [{id:'story',currentValue:3}];
+      response.character.hitPoints.maximumValue = 23;
+      response.character.abilities = [{ability:'constitution',effectiveValue:18,modifier:4}];
+      request.flush(response);
+    });
+    await fixture.whenStable();
+    expect(component.characterState().hitPoints.maximum).toBe(23);
+    expect(component.characterState().hitPoints.current).toBe(8);
+    expect(component.abilities()[0].effectiveValue).toBe(18);
+    flushWildShapeRequests(http);
+    fixture.destroy(); http.verify({ignoreCancelled:true});
+  });
   it.each([false, true])('offers infusion preparation after approved long rest only when eligible (%s)', async eligible => {
     const {fixture,http,component} = await setup('live', true, false, eligible ? ['fighter','artificer','artificer'] : []);
     const url = '/api/public/characters/test/infusions';
@@ -76,6 +149,7 @@ describe('One player sheet, read-only outside LIVE',()=> {
     } else {
       expect(component.activeTab()).toBe('statistics'); http.expectNone(url);
     }
+    flushWildShapeRequests(http);
     fixture.destroy(); http.verify({ignoreCancelled:true});
   });
   it.each([['artificer','artificer'], ['fighter','artificer','artificer']])('shows infusion management in State with acquired capability (%j)', async (...classes) => {
@@ -103,6 +177,7 @@ describe('One player sheet, read-only outside LIVE',()=> {
     expect(fixture.nativeElement.textContent).toContain('Imprégnations connues');
     http.expectNone(url);
     for (const request of http.match('/api/public/characters/test/spells')) request.flush({spells:[],preparations:[]});
+    flushWildShapeRequests(http);
     fixture.destroy(); http.verify({ignoreCancelled:true});
   });
 
@@ -136,11 +211,12 @@ describe('One player sheet, read-only outside LIVE',()=> {
     expect(component.armorClass().value).toBe(response.character.armorClass.value);
     if (equipped) expect(fixture.nativeElement.textContent).not.toContain('Bonus magiques non calculés.');
     for (const request of http.match('/api/public/characters/test/spells')) request.flush({ spells: [], preparations: [] });
+    flushWildShapeRequests(http);
     fixture.destroy(); http.verify({ignoreCancelled:true});
   });
 
   it.each([['live',true],['closed',true],['live',false],['closed',false]])('renders the same sections: %s artificer=%s',async(status,artificer)=> {
-    const {fixture,http,component}=await setup(status as string,artificer as boolean);
+    const {fixture,http,component}=await setup(status as string,artificer as boolean, false, [], true);
     const closed=status==='closed';
     expect(fixture.nativeElement.querySelector('.character-dashboard')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.portal-message')).toBeNull();
@@ -184,6 +260,7 @@ describe('One player sheet, read-only outside LIVE',()=> {
     // The spells tab loads its own directory; complete that GET before verifying the test backend.
     for (const request of http.match('/api/public/characters/test/spells')) request.flush({ spells: [], preparations: [] });
     for (const request of http.match('/api/public/characters/test/spells/ability-choices')) request.flush({ choices: [] });
+    flushWildShapeRequests(http);
     fixture.destroy(); http.verify({ignoreCancelled:true});
   });
 
@@ -202,6 +279,7 @@ describe('One player sheet, read-only outside LIVE',()=> {
       expect(fixture.debugElement.query(By.directive(CharacterVitals)).componentInstance.readonly()).toBe(status==='closed');
       http.expectNone(request=>request.method!=='GET');
     }
+    flushWildShapeRequests(http);
     fixture.destroy(); http.verify({ignoreCancelled:true});
   });
 

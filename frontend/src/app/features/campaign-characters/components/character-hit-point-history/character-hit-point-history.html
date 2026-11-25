@@ -82,6 +82,21 @@
       </small>
     </div>
 
+    @if (character().hitPoints.featureBonus) {
+      <div>
+        <span>Bonus de capacités</span>
+        <strong>{{ character().hitPoints.featureBonus }} PV</strong>
+        @for (bonus of character().hitPoints.featureContributions ?? []; track bonus.featureSlug + ':' + bonus.key) {
+          <small>{{ bonus.label }} : {{ bonus.value > 0 ? '+' : '' }}{{ bonus.value }} PV</small>
+        }
+      </div>
+    }
+    @if (minimumCorrection()) {
+      <div>
+        <span>Minimum de 1 PV par niveau</span>
+        <strong>+{{ minimumCorrection() }} PV</strong>
+      </div>
+    }
     <div class="projected-total">
       <span>Nouveau maximum</span>
       <strong>{{ projectedMaximumValue() }} PV</strong>

@@ -26,6 +26,7 @@ import { CharacterResources } from './components/character-resources/character-r
 import { MagicalTinkeringNotes } from './components/magical-tinkering-notes/magical-tinkering-notes';
 import { CharacterStoredValues } from './components/character-stored-values/character-stored-values';
 import { CharacterVitals } from './components/character-vitals/character-vitals';
+import { CharacterHitPoints } from '@core/services/character-api.service';
 import { CharacterInspiration } from './components/character-inspiration/character-inspiration';
 import { CharacterExhaustion } from './components/character-exhaustion/character-exhaustion';
 import { RestControls } from './components/rest-controls/rest-controls';
@@ -121,6 +122,8 @@ export class PlayerPortal {
   protected readonly inspiration = signal(false);
   protected readonly inspirationSaving = signal(false);
   protected readonly exhaustionLevel = signal(0);
+  protected readonly hitPointCalculation = signal<CharacterHitPoints | null>(null);
+  protected readonly hitPointAdjustment = signal(0);
   protected readonly exhaustionSaving = signal(false);
   protected readonly activeTab = signal<PlayerPortalTab>(this.route.snapshot.queryParamMap?.get('tab') === 'spells'
     ? 'spells' : typeof window !== 'undefined' && window.matchMedia('(min-width: 900px)').matches ? 'overview' : 'status');
@@ -343,6 +346,8 @@ export class PlayerPortal {
     this.exhaustionLevel.set(response.state.exhaustionLevel ?? 0);
     this.tinkeringNotes.set(response.state.magicalTinkeringNotes ?? '');
     this.abilities.set(response.character.abilities);
+    this.hitPointCalculation.set(response.character.hitPoints);
+    this.hitPointAdjustment.set(response.state.hitPoints.maximumAdjustment ?? 0);
     this.movement.set(response.character.movement ?? null);
     this.armorClass.set(response.character.armorClass ?? null);
     this.training.set(response.character.training ?? null);
@@ -650,6 +655,8 @@ export class PlayerPortal {
           this.character.set(loadedCharacter);
           this.playerSpells.set(response.spells ?? []);
           this.abilities.set(response.character.abilities);
+          this.hitPointCalculation.set(response.character.hitPoints);
+          this.hitPointAdjustment.set(response.state.hitPoints.maximumAdjustment ?? 0);
     this.movement.set(response.character.movement ?? null);
           this.armorClass.set(response.character.armorClass ?? null);
           this.training.set(response.character.training ?? null);
@@ -740,6 +747,8 @@ export class PlayerPortal {
                 this.characterStateService.applyServerState(character);
                 this.character.set(character);
                 this.abilities.set(response.character.abilities);
+                this.hitPointCalculation.set(response.character.hitPoints);
+                this.hitPointAdjustment.set(response.state.hitPoints.maximumAdjustment ?? 0);
     this.movement.set(response.character.movement ?? null);
                 this.armorClass.set(response.character.armorClass ?? null);
                 this.training.set(response.character.training ?? null);
@@ -821,7 +830,6 @@ export class PlayerPortal {
     ).subscribe(response => {
       if (!response || this.pendingRestRequest() || generation !== this.loadGeneration || revision !== this.serverRevision
         || response.revision < this.serverRevision) return;
-      const statusChanged = response.session.status !== this.sessionStatus();
       if (response.session.status !== 'closed' && (localRevision !== this.characterStateService.revision() || this.saveStatus() === 'saving')) return;
 
       // Session status is independent of the character state's revision.
@@ -830,7 +838,7 @@ export class PlayerPortal {
       this.playerSpells.set(response.spells ?? []);
       // Equipment, abilities and feature definitions can change without a state revision.
       this.weapons.set(response.character.weapons ?? []);
-      if (!statusChanged && response.revision === this.serverRevision) return;
+      // Derived profile values can change independently of the session revision.
       this.tinkeringNotes.set(response.state.magicalTinkeringNotes ?? '');
 
       this.serverRevision = response.revision;
@@ -844,6 +852,8 @@ export class PlayerPortal {
       this.lastQueuedRevision = this.characterStateService.revision();
       this.character.set(character);
       this.abilities.set(response.character.abilities);
+      this.hitPointCalculation.set(response.character.hitPoints);
+      this.hitPointAdjustment.set(response.state.hitPoints.maximumAdjustment ?? 0);
     this.movement.set(response.character.movement ?? null);
       this.armorClass.set(response.character.armorClass ?? null);
       this.training.set(response.character.training ?? null);

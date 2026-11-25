@@ -37,6 +37,7 @@ final class CharacterHitPointController extends AbstractController
         CharacterRepository $characterRepository,
         EntityManagerInterface $entityManager,
         CharacterProfileSerializer $serializer,
+        \App\Service\CharacterSessionStateSynchronizer $states,
     ): JsonResponse {
         $this->denyAccessUnlessGranted(CampaignVoter::MANAGE, $campaign);
 
@@ -73,7 +74,7 @@ final class CharacterHitPointController extends AbstractController
             $updates = $this->resolveUpdates($character, $levelsPayload);
 
             $entityManager->wrapInTransaction(
-                function () use ($updates, $entityManager): void {
+                function () use ($updates, $entityManager, $states, $character): void {
                     foreach ($updates as $update) {
                         $update['level']->setHitPointGain(
                             $update['gain'],
@@ -81,6 +82,7 @@ final class CharacterHitPointController extends AbstractController
                         );
                     }
 
+                    $states->synchronizeHitPointsForCharacter($character);
                     $entityManager->flush();
                 },
             );

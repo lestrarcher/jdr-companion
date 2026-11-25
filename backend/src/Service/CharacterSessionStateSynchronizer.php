@@ -24,7 +24,7 @@ final readonly class CharacterSessionStateSynchronizer
      * Synchronisation complète, avec initialisation des progressions manquantes.
      *
      * Elle ajoute les ressources nouvellement disponibles et conserve
-     * les valeurs courantes existantes.
+     * les valeurs courantes existantes, en plafonnant les PV au maximum effectif.
      *
      * @param array<string, mixed> $state
      *
@@ -87,7 +87,17 @@ final readonly class CharacterSessionStateSynchronizer
 
         $state['resources'] = $resources;
 
-        return $state;
+        return $this->hitPointStateService->synchronize($character, $state);
+    }
+
+    /** Only HP: callers persist these changes in their mutation transaction. */
+    public function synchronizeHitPointsForCharacter(Character $character): void
+    {
+        foreach ($this->sessionStateRepository->findBy(['character' => $character]) as $session) {
+            $state = $session->getState();
+            $updated = $this->hitPointStateService->synchronize($character, $state);
+            if ($updated !== $state) $session->setState($updated);
+        }
     }
 
     /**
@@ -163,7 +173,7 @@ final readonly class CharacterSessionStateSynchronizer
                     $state['resources'][] = $resourceState;
                 }
             }
-            $sessionState->setState($state);
+            $sessionState->setState($this->hitPointStateService->synchronize($character, $state));
         }
     }
 
@@ -171,7 +181,7 @@ final readonly class CharacterSessionStateSynchronizer
      * Photographie les maximums dérivés du personnage avant une modification.
      *
      * @param array<string, int> $progressionValues Valeurs explicites de la session.
-     * @param array<string, mixed> $state Contexte explicite des bonus temporaires d'emplacements.
+     * @param array<string, mixed> $state Contexte explicite des ajustements PV, de l'épuisement et des emplacements.
      *
      * @return array{
      *     hitPoints: int|null,
@@ -186,9 +196,7 @@ final readonly class CharacterSessionStateSynchronizer
 
         return [
             'hitPointFeatureBonus' => $hitPoints->featureBonus,
-            'hitPoints' => $hitPoints->isComplete()
-                ? $hitPoints->maximumValue
-                : null,
+            'hitPoints' => $this->hitPointStateService->effectiveMaximumFromBase($hitPoints->maximumValue, $state),
             'hitDice' => $this->hitDiceMaximums($character),
             'resources' => $this->resourceMaximums($character, $progressionValues, $state),
         ];
@@ -312,17 +320,7 @@ final readonly class CharacterSessionStateSynchronizer
         $current = (int) ($state['hitPoints']['current'] ?? 0);
         $delta = $afterMaximum - $beforeMaximum;
 
-        $maximumAdjustment =
-            $this->hitPointStateService->maximumAdjustment($state);
-
-        $effectiveAfterMaximum = max(
-            0,
-            $afterMaximum + $maximumAdjustment,
-        );
-
-        $state['hitPoints']['current'] = $delta >= 0
-            ? min($effectiveAfterMaximum, $current + $delta)
-            : min($current, $effectiveAfterMaximum);
+        $state['hitPoints']['current'] = min($afterMaximum, $current + max(0, $delta));
 
         return $state;
     }

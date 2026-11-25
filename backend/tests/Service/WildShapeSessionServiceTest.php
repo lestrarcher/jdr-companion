@@ -44,6 +44,29 @@ final class WildShapeSessionServiceTest extends TestCase
         $state = $service->afterRest($state);
         self::assertSame(2, $state['wildShape']['usesRemaining']);
     }
+    public function testTemporaryHitPointsAbsorbDamageBeforeWildShape(): void
+    {
+        $service = $this->service();
+        foreach ([
+            [5, 3, 11, 2, 19],
+            [5, 5, 11, 0, 19],
+            [5, 8, 8, 0, 19],
+            [0, 3, 8, 0, 19],
+            [5, 16, null, 0, 19],
+            [5, 19, null, 0, 16],
+        ] as [$temporary, $damage, $formHp, $remainingTemporary, $normalHp]) {
+            $state = $service->transform(['hitPoints'=>['current'=>19, 'temporary'=>$temporary]], $this->beast(), 2, false, true, 'merge');
+            $state = $service->damage($state, $damage);
+            self::assertSame($remainingTemporary, $state['hitPoints']['temporary']);
+            self::assertSame($normalHp, $state['hitPoints']['current']);
+            if ($formHp === null) {
+                self::assertNull($state['wildShape']['active']);
+            } else {
+                self::assertSame($formHp, $state['wildShape']['active']['hitPoints']['current']);
+            }
+        }
+    }
+
     public function testVoluntaryRevertPreservesNormalHp(): void
     {
         $service = $this->service();
