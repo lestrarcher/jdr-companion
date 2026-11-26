@@ -35,12 +35,18 @@ export class PlayerSpells implements OnInit, OnChanges {
   readonly detailSpell = input<PlayerSpell | null>(null);
   readonly quickSelection = input<PlayerSpell | null>(null);
   readonly panelVisible = input(true);
+  readonly quickCombat = input(false);
+  readonly dialogCombat = signal(false);
   readonly dialogSpell = signal<PlayerSpell | null>(null);
   readonly dialogOpen = signal(false);
-  readonly dialogSources = computed(() => this.displayed().filter(spell => spell.spellId === this.dialogSpell()?.spellId));
-  openCastDialog(spell: PlayerSpell): void {
+  readonly dialogSources = computed(() => this.displayed().filter(spell => spell.spellId === this.dialogSpell()?.spellId)
+    .map(spell => this.dialogCombat() && spell.castingAvailability ? { ...spell, castingAvailability: {
+      ...spell.castingAvailability, methods: spell.castingAvailability.methods.filter(method => method.kind !== 'ritual'),
+    } } : spell));
+  openCastDialog(spell: PlayerSpell, combat = false): void {
     if (this.mode() !== 'portal' || !this.accessToken() || this.readonly()) return;
     if (!this.pendingCast()) {
+      this.dialogCombat.set(combat);
       this.dialogSpell.set(spell); this.castError.set(''); this.castSuccess.set('');
     }
     this.dialogOpen.set(true);
@@ -251,7 +257,7 @@ export class PlayerSpells implements OnInit, OnChanges {
     if (changes?.['lunarQuickRequest'] && this.lunarQuickRequest() > 0) this.openLunarDialog();
     if (changes?.['quickSelection'] && this.quickSelection()) {
       this.selection.set(this.quickSelection()); this.castChoice.set('');
-      this.openCastDialog(this.quickSelection()!);
+      this.openCastDialog(this.quickSelection()!, this.quickCombat());
     }
     if (this.accessToken() && this.view() && this.revision() > this.view()!.revision && !this.busy()) this.reload();
     if (this.prioritizePreparation() && this.mode() === 'portal' && this.view()?.editable && !this.readonly() && this.preparationAvailable() && !this.skipPreparationRedirect && !this.pendingCast()) {

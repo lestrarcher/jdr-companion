@@ -1,3 +1,4 @@
+import { PlayerTurn } from './components/player-turn/player-turn';
 import { PlayerPortalTabs, type PlayerPortalTab } from './components/player-portal-tabs/player-portal-tabs';
 import { DruidWildShapes } from './components/druid-wild-shapes/druid-wild-shapes';
 import { Component, DestroyRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
@@ -10,7 +11,7 @@ import { CharacterMagicItems } from './components/character-magic-items/characte
 import { EMPTY, Subject, catchError, concatMap, map, takeUntil, exhaustMap, finalize, of, switchMap, tap, timer } from 'rxjs';
 
 import { Character } from '@core/models/character.model';
-import { CharacterArmorClass, CharacterAbilityScore, CharacterTraining, CharacterActionSummary, CharacterFeatSummary, CharacterFeatureSummary } from '@core/services/character-api.service';
+import { CharacterClassSummary, CharacterArmorClass, CharacterAbilityScore, CharacterTraining, CharacterActionSummary, CharacterFeatSummary, CharacterFeatureSummary } from '@core/services/character-api.service';
 
 import { CharacterActionsState, CharacterSessionStatePayload, characterProfileToCharacter, toCharacterSessionStatePayload } from '@core/mappers/character-api.mapper';
 import { ActionPreparationModal } from './components/action-preparation-modal/action-preparation-modal';
@@ -67,6 +68,7 @@ type SaveStatus =
     CharacterMagicItems,
     DruidWildShapes,
     PlayerPortalTabs,
+    PlayerTurn,
     RestControls,
     ActionPreparationModal,
     RouterLink,
@@ -175,6 +177,7 @@ export class PlayerPortal {
   });
   protected readonly hasProgressions = computed(() => (this.characterState()?.progressions?.length ?? 0) > 0);
   protected readonly desktopView = signal(typeof window !== 'undefined' && window.matchMedia('(min-width: 900px)').matches);
+  protected readonly classSummary = signal<CharacterClassSummary[]>([]);
   protected readonly features = signal<CharacterFeatureSummary[]>([]);
   protected readonly feats = signal<CharacterFeatSummary[]>([]);
   protected readonly visibleFeatures = computed(() => this.features().filter(feature => feature.visible));
@@ -353,7 +356,7 @@ export class PlayerPortal {
     this.training.set(response.character.training ?? null);
     this.weapons.set(response.character.weapons ?? []);
     this.proficiencyBonus.set(response.character.proficiencyBonus);
-    this.features.set(response.character.features);
+    this.classSummary.set(response.character.classSummary ?? []);    this.features.set(response.character.features);
     this.feats.set(response.character.feats);
     this.actions.set(response.character.actions ?? []);
     this.characterActions.set(response.state.characterActions ?? null);
@@ -662,7 +665,7 @@ export class PlayerPortal {
           this.training.set(response.character.training ?? null);
           this.weapons.set(response.character.weapons ?? []);
           this.proficiencyBonus.set(response.character.proficiencyBonus);
-          this.features.set(response.character.features);
+          this.classSummary.set(response.character.classSummary ?? []);          this.features.set(response.character.features);
           this.feats.set(response.character.feats);
 
           this.actions.set(response.character.actions ?? []);
@@ -754,7 +757,7 @@ export class PlayerPortal {
                 this.training.set(response.character.training ?? null);
                 this.weapons.set(response.character.weapons ?? []);
                 this.proficiencyBonus.set(response.character.proficiencyBonus);
-                this.features.set(response.character.features);
+                this.classSummary.set(response.character.classSummary ?? []);                this.features.set(response.character.features);
                 this.feats.set(response.character.feats);
                 this.training.set(response.character.training ?? null);
                 this.proficiencyBonus.set(response.character.proficiencyBonus);
@@ -859,7 +862,7 @@ export class PlayerPortal {
       this.training.set(response.character.training ?? null);
       this.weapons.set(response.character.weapons ?? []);
       this.proficiencyBonus.set(response.character.proficiencyBonus);
-      this.features.set(response.character.features);
+      this.classSummary.set(response.character.classSummary ?? []);      this.features.set(response.character.features);
       this.training.set(response.character.training ?? null);
       this.proficiencyBonus.set(response.character.proficiencyBonus);
       this.actions.set(response.character.actions ?? []);

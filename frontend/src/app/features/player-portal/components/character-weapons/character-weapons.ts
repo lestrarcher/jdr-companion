@@ -10,6 +10,8 @@ import {
 export class CharacterWeapons {
   readonly weapons = input.required<CharacterWeapon[]>();
   readonly accessToken = input('');
+  readonly includeManeuvers = input(false);
+  protected isManeuver(id: number | string): boolean { return this.includeManeuvers() && (id === 'turn-grapple' || id === 'turn-shove'); }
   readonly naturalForm = input(false);
   readonly readonly = input(false);
   readonly refreshRevision = input(0);

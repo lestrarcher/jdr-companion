@@ -7,6 +7,9 @@
             <button [attr.aria-label]="'État'" title="État" type="button" [class.portal-tab--active]="activeTab() === 'status'" [attr.aria-pressed]="activeTab() === 'status'" (click)="tabSelected.emit('status')">
               <span class="portal-tab-symbol" aria-hidden="true"><i class="bi bi-heart-pulse"></i></span><span><strong>État</strong><small>Santé et ressources</small></span>
             </button>
+            <button aria-label="À mon tour" title="À mon tour" type="button" [class.portal-tab--active]="activeTab() === 'player-turn'" [attr.aria-pressed]="activeTab() === 'player-turn'" (click)="tabSelected.emit('player-turn')">
+              <span class="portal-tab-symbol" aria-hidden="true"><i class="bi bi-lightning-charge"></i></span><span><strong>À mon tour</strong><small>Actions et déplacement</small></span>
+            </button>
             <button [attr.aria-label]="'Caractéristiques'" title="Caractéristiques" type="button" [class.portal-tab--active]="activeTab() === 'statistics'" [attr.aria-pressed]="activeTab() === 'statistics'" (click)="tabSelected.emit('statistics')">
               <span class="portal-tab-symbol" aria-hidden="true"><i class="bi bi-activity"></i></span><span><strong><span class="portal-label-desktop">Caractéristiques</span><span class="portal-label-mobile">Stats</span></strong><small>Attributs et valeurs</small></span>
             </button>
