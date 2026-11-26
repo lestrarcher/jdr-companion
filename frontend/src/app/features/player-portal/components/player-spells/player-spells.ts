@@ -1,3 +1,4 @@
+import { isDivineSmite, divineSmiteDice } from './divine-smite';
 import { Component, DestroyRef, HostListener, OnChanges, OnInit, SimpleChanges, computed, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -25,6 +26,8 @@ export class PlayerSpells implements OnInit, OnChanges {
   readonly otherChoices = computed(() => (this.view()?.choices ?? []).filter(choice => choice.kind !== 'class'));
   historicalSaved(): void { this.reload(); this.changed.emit(); }
   readonly spells = input.required<PlayerSpell[]>();
+  readonly smiteSpell = input<PlayerSpell | null>(null);
+  readonly isDivineSmite = isDivineSmite;
   readonly levelFilter = input<number | null>(null);
   readonly accessToken = input('');
   readonly readonly = input(true);
@@ -35,12 +38,18 @@ export class PlayerSpells implements OnInit, OnChanges {
   readonly detailSpell = input<PlayerSpell | null>(null);
   readonly quickSelection = input<PlayerSpell | null>(null);
   readonly panelVisible = input(true);
+  readonly quickCombat = input(false);
+  readonly dialogCombat = signal(false);
   readonly dialogSpell = signal<PlayerSpell | null>(null);
   readonly dialogOpen = signal(false);
-  readonly dialogSources = computed(() => this.displayed().filter(spell => spell.spellId === this.dialogSpell()?.spellId));
-  openCastDialog(spell: PlayerSpell): void {
+  readonly dialogSources = computed(() => this.displayed().filter(spell => spell.spellId === this.dialogSpell()?.spellId)
+    .map(spell => this.dialogCombat() && spell.castingAvailability ? { ...spell, castingAvailability: {
+      ...spell.castingAvailability, methods: spell.castingAvailability.methods.filter(method => method.kind !== 'ritual'),
+    } } : spell));
+  openCastDialog(spell: PlayerSpell, combat = false): void {
     if (this.mode() !== 'portal' || !this.accessToken() || this.readonly()) return;
     if (!this.pendingCast()) {
+      this.dialogCombat.set(combat);
       this.dialogSpell.set(spell); this.castError.set(''); this.castSuccess.set('');
     }
     this.dialogOpen.set(true);
@@ -54,9 +63,22 @@ export class PlayerSpells implements OnInit, OnChanges {
     if (!this.dialogOpen() || this.pendingCast() || this.castSuccess()) return;
     const source = this.dialogSources().find(spell => spell.key === choice.sourceKey);
     if (!source) return;
+    if (isDivineSmite(source)) { this.spendDivineSmite(source, choice); return; }
     this.selection.set(source);
     this.castChoice.set(this.castMethodKey({ kind: choice.method, castingLevel: choice.castingLevel }));
     this.confirmCast(choice);
+  }
+  private spendDivineSmite(source: PlayerSpell, choice: SpellCastSelection): void {
+    if (this.readonly() || this.castingBlocked() || this.busy() || this.castSaving() || this.castSuccess() || !this.accessToken()) return;
+    const method = availableSpellCastMethods(source).find(m => m.kind === choice.method && m.castingLevel === choice.castingLevel);
+    if (!method?.poolSlug) return;
+    const dice = divineSmiteDice(method.castingLevel);
+    this.castSaving.set(true); this.casting.emit(true); this.castError.set('');
+    this.http.post(`/api/public/characters/${encodeURIComponent(this.accessToken())}/divine-smite`, { resourceId: method.poolSlug })
+      .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: () => { this.castSuccess.set(`Emplacement consommé. ${dice}d8 radiants (${dice + 1}d8 contre un fiélon ou mort-vivant).`); this.changed.emit(); this.castSaving.set(false); this.casting.emit(false); },
+        error: response => { this.castError.set(response?.error?.message ?? 'Résultat incertain : vérifiez les emplacements avant de réessayer.'); this.changed.emit(); this.castSaving.set(false); this.casting.emit(false); },
+      });
   }
   readonly changed = output<void>();
   // Action spéciale virtuelle : ce n'est pas un sort appris ou préparé.
@@ -121,7 +143,7 @@ export class PlayerSpells implements OnInit, OnChanges {
   castMethodKey(method: { kind: string; castingLevel: number | null }): string { return `${method.kind}:${method.castingLevel}`; }
   confirmCast(selection?: SpellCastSelection): void {
     const method = this.chosenCastMethod(); const spell = this.castingSpell();
-    if (!this.canCast() || !spell?.key || !method) return;
+    if (!this.canCast() || !spell?.key || !method || isDivineSmite(spell)) return;
     const effect = spellHitPointEffect(spell);
     if (selection?.metamagic && !method.metamagics?.some(option => option.key === selection.metamagic && option.status === 'available')) return;
     if (selection?.metamagics?.some(key => !method.metamagics?.some(option => option.key === key && option.status === 'available'))) return;
@@ -199,7 +221,8 @@ export class PlayerSpells implements OnInit, OnChanges {
     const view = this.view();
     const spells = view && view.revision > this.revision() ? view.spells : this.spells();
     const visible = this.showInactiveItemSpells() ? spells : spells.filter(spell => spell.itemGrant?.active !== false);
-    return this.mode() === 'spellbook' ? visible.filter(spell => spell.inSpellbook) : visible;
+    const smite = this.smiteSpell();
+    return this.mode() === 'spellbook' ? visible.filter(spell => spell.inSpellbook) : this.mode() === 'portal' && smite ? [...visible, smite] : visible;
   });
   private readonly selection = signal<PlayerSpell | null>(null);
   readonly selectedSpell = computed(() => {
@@ -251,7 +274,7 @@ export class PlayerSpells implements OnInit, OnChanges {
     if (changes?.['lunarQuickRequest'] && this.lunarQuickRequest() > 0) this.openLunarDialog();
     if (changes?.['quickSelection'] && this.quickSelection()) {
       this.selection.set(this.quickSelection()); this.castChoice.set('');
-      this.openCastDialog(this.quickSelection()!);
+      this.openCastDialog(this.quickSelection()!, this.quickCombat());
     }
     if (this.accessToken() && this.view() && this.revision() > this.view()!.revision && !this.busy()) this.reload();
     if (this.prioritizePreparation() && this.mode() === 'portal' && this.view()?.editable && !this.readonly() && this.preparationAvailable() && !this.skipPreparationRedirect && !this.pendingCast()) {

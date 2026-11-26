@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 
-export type PlayerPortalTab = 'overview' | 'status' | 'statistics' | 'features' | 'spells' | 'possessions' | 'wild-shapes';
+export type PlayerPortalTab = 'overview' | 'status' | 'player-turn' | 'statistics' | 'features' | 'spells' | 'possessions' | 'wild-shapes';
 
 @Component({
   selector: 'app-player-portal-tabs',

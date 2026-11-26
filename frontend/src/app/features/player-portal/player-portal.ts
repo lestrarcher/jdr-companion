@@ -1,6 +1,9 @@
+import { divineSmiteSpell } from './components/player-spells/divine-smite';
+import { PlayerTurn } from './components/player-turn/player-turn';
 import { PlayerPortalTabs, type PlayerPortalTab } from './components/player-portal-tabs/player-portal-tabs';
 import { DruidWildShapes } from './components/druid-wild-shapes/druid-wild-shapes';
 import { Component, DestroyRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
+import { Title } from '@angular/platform-browser';
 import { HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -10,7 +13,7 @@ import { CharacterMagicItems } from './components/character-magic-items/characte
 import { EMPTY, Subject, catchError, concatMap, map, takeUntil, exhaustMap, finalize, of, switchMap, tap, timer } from 'rxjs';
 
 import { Character } from '@core/models/character.model';
-import { CharacterArmorClass, CharacterAbilityScore, CharacterTraining, CharacterActionSummary, CharacterFeatSummary, CharacterFeatureSummary } from '@core/services/character-api.service';
+import { CharacterClassSummary, CharacterArmorClass, CharacterAbilityScore, CharacterTraining, CharacterActionSummary, CharacterFeatSummary, CharacterFeatureSummary } from '@core/services/character-api.service';
 
 import { CharacterActionsState, CharacterSessionStatePayload, characterProfileToCharacter, toCharacterSessionStatePayload } from '@core/mappers/character-api.mapper';
 import { ActionPreparationModal } from './components/action-preparation-modal/action-preparation-modal';
@@ -67,6 +70,7 @@ type SaveStatus =
     CharacterMagicItems,
     DruidWildShapes,
     PlayerPortalTabs,
+    PlayerTurn,
     RestControls,
     ActionPreparationModal,
     RouterLink,
@@ -88,6 +92,7 @@ export class PlayerPortal {
   private readonly spellPanel = viewChild(PlayerSpells);
   canLeavePreparation(): boolean { return this.spellPanel()?.canLeavePreparation() ?? true; }
   // Dependencies and route context
+  private readonly title = inject(Title);
   private readonly http = inject(HttpClient);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
@@ -175,8 +180,11 @@ export class PlayerPortal {
   });
   protected readonly hasProgressions = computed(() => (this.characterState()?.progressions?.length ?? 0) > 0);
   protected readonly desktopView = signal(typeof window !== 'undefined' && window.matchMedia('(min-width: 900px)').matches);
+  protected readonly classSummary = signal<CharacterClassSummary[]>([]);
   protected readonly features = signal<CharacterFeatureSummary[]>([]);
   protected readonly feats = signal<CharacterFeatSummary[]>([]);
+  protected readonly hasWarCaster = computed(() => this.feats().some(feat =>
+    [feat.slug, feat.name].some(value => /^(war[- ]caster|mage[- ]de[- ]guerre)$/i.test(value.trim()))));
   protected readonly visibleFeatures = computed(() => this.features().filter(feature => feature.visible));
   protected readonly hasInfusions = computed(() => this.features().some(feature => feature.slug === 'infusions-known'));
   protected readonly infusionRefresh = signal(0);
@@ -214,6 +222,8 @@ export class PlayerPortal {
   });
   protected readonly storedValueResources = computed(() => this.sortedResources().filter(resource => resource.storedValuesConfig !== undefined));
   protected readonly spellSlotGroups = computed(() => spellSlotGroups(this.sortedResources()));
+  protected readonly smiteSpell = computed(() => this.classSummary().filter(c => (c.classSlug || c.className).toLowerCase() === 'paladin').reduce((n,c) => n + c.level, 0) >= 2 ? divineSmiteSpell(this.spellSlotGroups()) : null);
+  protected readonly combatSpellEntries = computed(() => { const smite = this.smiteSpell(); return smite ? [...this.playerSpells(), smite] : this.playerSpells(); });
   protected readonly selectedSpellPool = signal<string | null>(null);
   protected readonly spellLevelFilter = computed(() => this.selectedSpellPool() === 'cantrips' ? 0
     : this.spellSlotGroups().find(group => group.id === this.selectedSpellPool())?.level ?? null);
@@ -353,7 +363,7 @@ export class PlayerPortal {
     this.training.set(response.character.training ?? null);
     this.weapons.set(response.character.weapons ?? []);
     this.proficiencyBonus.set(response.character.proficiencyBonus);
-    this.features.set(response.character.features);
+    this.classSummary.set(response.character.classSummary ?? []);    this.features.set(response.character.features);
     this.feats.set(response.character.feats);
     this.actions.set(response.character.actions ?? []);
     this.characterActions.set(response.state.characterActions ?? null);
@@ -384,6 +394,16 @@ export class PlayerPortal {
   }
 
   constructor() {
+    const labels: Record<PlayerPortalTab, string> = {
+      overview: 'Tableau de bord', status: 'État', 'player-turn': 'À mon tour',
+      statistics: 'Caractéristiques', features: 'Capacités', spells: 'Sorts',
+      possessions: 'Inventaire', 'wild-shapes': 'Formes sauvages',
+    };
+    effect(() => {
+      const name = this.character()?.name;
+      this.title.setTitle(name ? `${name} - ${labels[this.activeTab()]}` : 'JdR Companion');
+    });
+    this.destroyRef.onDestroy(() => this.title.setTitle('JdR Companion'));
     if (
       !this.campaignId ||
       !this.sessionId ||
@@ -662,7 +682,7 @@ export class PlayerPortal {
           this.training.set(response.character.training ?? null);
           this.weapons.set(response.character.weapons ?? []);
           this.proficiencyBonus.set(response.character.proficiencyBonus);
-          this.features.set(response.character.features);
+          this.classSummary.set(response.character.classSummary ?? []);          this.features.set(response.character.features);
           this.feats.set(response.character.feats);
 
           this.actions.set(response.character.actions ?? []);
@@ -754,7 +774,7 @@ export class PlayerPortal {
                 this.training.set(response.character.training ?? null);
                 this.weapons.set(response.character.weapons ?? []);
                 this.proficiencyBonus.set(response.character.proficiencyBonus);
-                this.features.set(response.character.features);
+                this.classSummary.set(response.character.classSummary ?? []);                this.features.set(response.character.features);
                 this.feats.set(response.character.feats);
                 this.training.set(response.character.training ?? null);
                 this.proficiencyBonus.set(response.character.proficiencyBonus);
@@ -859,7 +879,7 @@ export class PlayerPortal {
       this.training.set(response.character.training ?? null);
       this.weapons.set(response.character.weapons ?? []);
       this.proficiencyBonus.set(response.character.proficiencyBonus);
-      this.features.set(response.character.features);
+      this.classSummary.set(response.character.classSummary ?? []);      this.features.set(response.character.features);
       this.training.set(response.character.training ?? null);
       this.proficiencyBonus.set(response.character.proficiencyBonus);
       this.actions.set(response.character.actions ?? []);

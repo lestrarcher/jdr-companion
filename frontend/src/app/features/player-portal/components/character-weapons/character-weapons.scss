@@ -79,3 +79,6 @@ button:focus-visible { outline: 2px solid #e5c78e; outline-offset: 3px; }
 .charge-content { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .75rem; }
 .recharge { color: #b9b5c1; font-size: .75rem; }
 .weapon-error { color: #f1b5ac; }
+
+.skill-label { display: block; font-size: .7rem; font-weight: 400; }
+@media (max-width: 650px) { .weapons-table .attack.maneuver::before { content: none; } }

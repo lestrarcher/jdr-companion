@@ -71,6 +71,16 @@
 
           <div class="portal-tab-content">
             @switch (activeTab()) {
+              @case ('player-turn') {
+                <app-player-turn [abilities]="effectiveAbilities()" [movement]="effectiveMovement()"
+                  [features]="visibleFeatures()" [resources]="currentCharacter.resources"
+                  [training]="training()" [proficiencyBonus]="proficiencyBonus()" [beastProficiencies]="activeBeast()?.proficiencies"
+                  [classSummary]="classSummary()" [weapons]="effectiveWeapons()" [accessToken]="accessToken" [readonly]="!canEdit()" (chargesChanged)="refreshSpells()"
+                  [spells]="playerSpells()" [wildShapeActive]="!!activeBeast()" [moonDruid]="isMoonDruid()" [warCaster]="hasWarCaster()"
+                  [lunarHealing]="!!activeBeast() && isMoonDruid()" [lunarDisabled]="!canEdit() || saveStatus() === 'saving' || saveStatus() === 'error' || !!pendingRestRequest() || preparationPending()" (lunarSelected)="openLunarQuick()"
+                  [castingDisabled]="!canEdit() || !!activeBeast() || saveStatus() === 'saving' || saveStatus() === 'error' || !!pendingRestRequest() || preparationPending()"
+                  (spellSelected)="openQuickSpell($event)" />
+              }
               @case ('wild-shapes') {
                 @if (druidLevel() > 0) { <app-druid-wild-shapes [token]="accessToken" [druidLevel]="druidLevel()" [moonCircle]="isMoonDruid()" (transformed)="refreshWildShapeSession()" /> }
               }
@@ -148,7 +158,7 @@
                         <h2 id="magic-section-title">Emplacements &amp; sorts</h2>
                       </div>
                       <app-spell-slot-bar [groups]="spellSlotGroups()" [showCantrips]="true" [selectedPool]="selectedSpellPool()" (filterSelected)="toggleSpellPool($event)" />
-                      <app-spell-quick-list [spells]="activeBeast() ? [] : playerSpells()" mode="play" [levelFilter]="spellLevelFilter()"
+                      <app-spell-quick-list [spells]="activeBeast() ? [] : combatSpellEntries()" mode="play" [levelFilter]="spellLevelFilter()"
                         [lunarHealing]="!!activeBeast() && isMoonDruid()" (lunarSelected)="openLunarQuick()"
                         [disabled]="!canEdit() || (!!activeBeast() && !isMoonDruid()) || saveStatus() === 'saving' || saveStatus() === 'error' || !!pendingRestRequest() || preparationPending()"
                         (selected)="openQuickSpell($event)" />
@@ -267,10 +277,10 @@
               }
             }
             @if (spellsVisited()) {
-              <app-player-spells [spells]="playerSpells()" [accessToken]="accessToken" [revision]="serverRevision"
+              <app-player-spells [smiteSpell]="smiteSpell()" [spells]="playerSpells()" [accessToken]="accessToken" [revision]="serverRevision"
                 [resources]="characterState()?.resources ?? []"
                 [panelVisible]="activeTab() === 'spells'"
-                [quickSelection]="quickSpellSelection()" [lunarQuickRequest]="lunarQuickRequest()" [levelFilter]="spellLevelFilter()"
+                [quickCombat]="activeTab() === 'player-turn'" [quickSelection]="quickSpellSelection()" [lunarQuickRequest]="lunarQuickRequest()" [levelFilter]="spellLevelFilter()"
                 [readonly]="!canEdit()" [prioritizePreparation]="activeTab() === 'spells'"
                 [wildShapeActive]="!!activeBeast()" [moonDruid]="isMoonDruid()" [castingBlocked]="!!activeBeast() || saveStatus() === 'saving' || saveStatus() === 'error' || !!pendingRestRequest() || preparationPending()"
                 (casting)="spellCasting.set($event)" (castCompleted)="adoptSpellCast($event)" (changed)="refreshWildShapeSession()">

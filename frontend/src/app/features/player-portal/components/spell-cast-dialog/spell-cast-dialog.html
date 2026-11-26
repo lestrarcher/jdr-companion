@@ -31,18 +31,20 @@
   </footer>
   } @else {
   <header>
-    <div><small>Incantation · {{ spell().level === 0 ? 'Tour de magie' : 'Niveau ' + (spell().level ?? '?') }}</small>
+    <div><small>{{ divineSmite() ? 'Capacité de paladin' : 'Incantation' }} · {{ spell().level === 0 ? 'Tour de magie' : 'Niveau ' + (spell().level ?? '?') }}</small>
       <h2 id="spell-cast-title">{{ spell().name }}</h2>
       <p class="spell-meta">@if (spell().school) { <span>{{ school() }}</span> }
         @if (spell().details?.castingTime) { <span>{{ spell().details!.castingTime }}</span> }</p>
     </div>
     <button type="button" class="close" aria-label="Fermer le lancement" [disabled]="saving()" (click)="close()">×</button>
   </header>
+  @if (!divineSmite()) {
   @if (castingStats(); as stats) {
     <dl class="casting-stats" aria-label="Statistiques d'incantation">
       <div><dt>DD de sauvegarde</dt><dd>{{ stats.spellSaveDc ?? '—' }}</dd></div>
       <div><dt>Attaque magique</dt><dd>{{ signedSpellAttackBonus(stats.spellAttackBonus) }}</dd></div>
     </dl>
+  }
   }
   @if (pending(); as cast) {
     <p class="pending">{{ cast.name }} · {{ cast.source }} · {{ methodLabel(cast.command.method) }} · niveau {{ cast.command.castingLevel }}</p>
@@ -130,7 +132,9 @@
     }
     @if (selected(); as option) {
       <p class="cast-cost">{{ option.method.kind === 'arcanum' ? 'Consommer ' + costLabel(option) + '.' : isItemOption(option) ? 'Consommer ' + costLabel(option) + ', sans emplacement de sort.' : option.method.kind === 'resource' ? 'Consommer ' + costLabel(option) + ', sans emplacement.' : option.method.cost === 0 ? 'Aucun emplacement consommé.' : 'Consommer ' + option.method.cost + ' emplacement de ' + (option.method.kind === 'pact-slot' ? 'pacte de ' : '') + 'niveau ' + option.method.castingLevel + '.' }}</p>
-      @if (upcasting()) {
+      @if (divineSmite()) {
+        <p class="cast-cost"><strong>{{ smiteDice(option.method.castingLevel ?? 1) }}d8 radiants</strong> · {{ smiteDice(option.method.castingLevel ?? 1) + 1 }}d8 contre un fiélon ou mort-vivant.</p>
+      } @else if (upcasting()) {
         <section class="higher-levels"><h3>À plus haut niveau · {{ levelLabel(option.method.castingLevel) }}</h3>
           <p id="spell-cast-higher-level-text" class="higher-level-preview">{{ higherLevelExpanded() ? higherLevelText() : higherLevelPreview() }}</p>
           @if (higherLevelText().length > 180) {
@@ -168,7 +172,7 @@
         <button type="button" (click)="refreshed.emit()">Actualiser la fiche</button>
       }
     } @else if (!success()) {
-      <button type="button" class="cast-confirm" [disabled]="!canConfirm()" (click)="confirm()">Confirmer le lancement</button>
+      <button type="button" class="cast-confirm" [disabled]="!canConfirm()" (click)="confirm()">{{ divineSmite() ? 'Dépenser l’emplacement' : 'Confirmer le lancement' }}</button>
     }
   </footer>
   }

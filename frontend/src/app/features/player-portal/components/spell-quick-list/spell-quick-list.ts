@@ -67,8 +67,8 @@ export function spellArtwork(spell: Pick<PlayerSpell, 'spellId' | 'school'>): st
   `,
   styles: `
     :host { display: block; min-width: 0; color: var(--text-primary, #ece8df); }
-    .quickbar { display: flex; flex-wrap: wrap; gap: .65rem; padding: .75rem .2rem .55rem; }
-    .quick-spell { box-sizing: border-box; position: relative; flex: 0 0 5rem; width: 5rem; min-height: 6.4rem;
+    .quickbar { display: flex; flex-wrap: wrap; gap: var(--quickbar-gap, .65rem); padding: var(--quickbar-padding, .75rem .2rem .55rem); }
+    .quick-spell { box-sizing: border-box; position: relative; flex: 0 0 var(--quick-card-width, 5rem); width: var(--quick-card-width, 5rem); min-height: var(--quick-card-height, 6.4rem);
       display: flex; flex-direction: column; align-items: center; gap: .35rem; padding: .45rem .3rem;
       border: 1px solid #716b8066; border-radius: .65rem; background: #232837; color: inherit; font: inherit; cursor: pointer; }
     .quick-spell:hover:not(:disabled) { background: #32384a; }
@@ -85,7 +85,7 @@ export function spellArtwork(spell: Pick<PlayerSpell, 'spellId' | 'school'>): st
     [data-school=necromancy] .spell-icon { color: #a6cc9a; }
     [data-school=divination] .spell-icon { color: #e8cf91; }
     .spell-level { position: absolute; top: .2rem; right: .35rem; color: #e7d6b5; font-size: .7rem; }
-    .quick-name { font-size: .68rem; line-height: 1.25; overflow-wrap: anywhere; }
+    .quick-name { font-size: .68rem; line-height: 1.25; overflow-wrap: var(--quick-name-wrap, anywhere); text-align: center; max-width: 100%; }
     .item-grant-label { font-size: .57rem; color: #dfbf80; text-align: center; }
     .prepared-dot { position: absolute; left: .4rem; top: .4rem; width: .4rem; height: .4rem; border-radius: 50%; background: #9ed4b9; }
   `,
@@ -113,6 +113,7 @@ export class SpellQuickList {
   readonly hideUnavailable = input(false);
   readonly showInactiveItemSpells = input(false);
   readonly disabled = input(false);
+  readonly combatOnly = input(false);
   readonly selectedKey = input<string | null>(null);
   readonly selected = output<PlayerSpell>();
   readonly entries = computed(() => this.spells()
@@ -124,7 +125,7 @@ export class SpellQuickList {
     .sort((a, b) => (a.level ?? Infinity) - (b.level ?? Infinity) || a.name.localeCompare(b.name, 'fr')));
   key(spell: PlayerSpell): string { return spell.key ?? `${spell.sourceType}:${spell.source}:${spell.spellId}`; }
   available(spell: PlayerSpell): boolean {
-    return availableSpellCastMethods(spell).length > 0;
+    return availableSpellCastMethods(spell).some(method => !this.combatOnly() || method.kind !== 'ritual');
   }
   choose(spell: PlayerSpell): void {
     if (!this.disabled() && this.available(spell)) this.selected.emit(spell);

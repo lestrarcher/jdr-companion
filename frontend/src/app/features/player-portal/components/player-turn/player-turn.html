@@ -1,0 +1,101 @@
+<section class="turn-panel" aria-label="À mon tour">
+  <h2>À mon tour</h2>
+  @if (wildShapeActive()) { <p>Forme sauvage active : vérifiez que votre forme physique permet chaque action et capacité. Vous ne pouvez parler que si la forme en est capable.</p> }
+  @for (section of sections; track section.id) {
+    @if (section.id === 'reaction') { <h2>Hors tour</h2> }
+    @if ((section.id !== 'free' && section.id !== 'special') || featuresBySection()[section.id]?.length) {
+      <details class="turn-section" [attr.data-kind]="section.id" open>
+        <summary class="turn-heading"><i class="bi" [class]="section.icon" aria-hidden="true"></i> {{ section.name }}</summary>
+        <div class="turn-content">
+          @if (section.id === 'movement') {
+            <div class="speed-list">
+              @for (speed of speeds(); track speed.mode) {
+                <span>{{ speed.label }} <strong>{{ format(speed.speed) }}</strong>&nbsp;<small>({{ format(speed.speed * 2) }} avec Foncer)</small></span>
+              } @empty { <span>Aucune vitesse renseignée.</span> }
+            </div>
+          }
+          <div class="turn-cards">
+            @for (rule of section.rules; track rule.id) {
+              @if (rule.id !== 'cast' && rule.id !== 'grapple' && rule.id !== 'shove' && rule.id !== 'bonus-rule' && (!wildShapeActive() || rule.id !== 'two-weapons')) {
+                <button type="button" class="turn-card" (click)="openRule(rule, section.id, detail)"><i class="bi" [class]="ruleIcon(rule.id)" aria-hidden="true"></i><span>{{ rule.name }}</span></button>
+              }
+            }
+            @if (section.id === 'movement') {
+              <button type="button" class="turn-card" (click)="openRule(jumpRule, section.id, detail)"><i class="bi bi-arrow-up-right" aria-hidden="true"></i><span>Sauter</span></button>
+              @for (rule of movementRules; track rule.id) {
+                <button type="button" class="turn-card" (click)="openRule(rule, section.id, detail)"><i class="bi" [class]="ruleIcon(rule.id)" aria-hidden="true"></i><span>{{ rule.name }}</span></button>
+              }
+            }
+            @if (section.id === 'bonus' && wildShapeActive()) {
+              <button type="button" class="turn-card" (click)="openRule(revertRule, section.id, detail)"><i class="bi bi-arrow-return-left" aria-hidden="true"></i><span>{{ revertRule.name }}</span></button>
+            }
+            @for (feature of featuresBySection()[section.id] ?? []; track feature.id) {
+              <button type="button" class="turn-card" (click)="openFeature(feature, section.id, detail)">
+                @if (resourceFor(feature); as resource) { <small class="turn-counter">{{ resource.currentValue }} / {{ resource.maximumValue }}</small> }
+                <i class="bi bi-stars" aria-hidden="true"></i><span>{{ feature.name }}</span>
+              </button>
+            }
+          </div>
+          @if (spellsBySection()[section.id]; as spells) {
+            @if (!wildShapeActive() && spells.length) {
+              <h4>Lancer un sort</h4>
+              <app-spell-quick-list class="turn-spells" [spells]="spells" [disabled]="castingDisabled()" [combatOnly]="true" (selected)="spellSelected.emit($event)" />
+            }
+          }
+          @if (section.id === 'bonus' && lunarHealing()) {
+            <app-spell-quick-list class="turn-spells" [spells]="[]" [lunarHealing]="true" [disabled]="lunarDisabled()" (lunarSelected)="lunarSelected.emit()" />
+          }
+        </div>
+      </details>
+    }
+  }
+</section>
+<dialog #detail class="turn-dialog" [attr.data-kind]="selected()?.kind" [class.attack-dialog]="selected()?.rule?.id === 'attack'" aria-labelledby="turn-detail-title" (close)="selected.set(null)" (click)="$event.target === detail && detail.close()">
+  <div class="dialog-body">
+    <button type="button" class="close-button" aria-label="Fermer" (click)="detail.close()">×</button>
+    @if (selected()?.rule; as rule) {
+      <h2 id="turn-detail-title">{{ rule.name }}</h2>
+      @if (rule.id !== 'attack') { <p>{{ rule.description }}</p> }
+      @if (rule.id === 'attack') {
+        @if (wildShapeActive()) {
+          <p>Attaques de la forme : consulter les règles propres à la bête (Attaques multiples distinctes de l’action Attaquer).</p>
+        } @else {
+          <p class="attack-count">Nombre d’attaques : <strong>{{ attackCount() }}</strong></p>
+          @if (pactAttack() && attackCount() < 2) { <p>2 attaques avec l’arme de pacte (Lame assoiffée).</p> }
+        }
+        <h3>{{ wildShapeActive() ? 'Attaques naturelles' : 'Armes' }}</h3>
+        <app-character-weapons [weapons]="attackRows()" [includeManeuvers]="true" [naturalForm]="wildShapeActive()" [accessToken]="accessToken()" [readonly]="readonly()" (chargesChanged)="chargesChanged.emit()" />
+      }
+      @if ((rule.id === 'opportunity' || rule.id === 'attack') && divineSmite()) {
+        <h3>Châtiment divin</h3>
+        <p>Lorsque vous touchez avec une attaque d’arme de corps à corps, vous pouvez dépenser un emplacement de sort pour infliger les dégâts radiants supplémentaires de votre Châtiment divin, même hors de votre tour.</p>
+        <app-spell-quick-list class="turn-spells" [spells]="smiteEntries()" [disabled]="castingDisabled()" (selected)="detail.close(); spellSelected.emit($event)" />
+      }
+      @if (rule.id === 'opportunity' && sneakAttackDice() > 0) {
+        <h3>Attaque sournoise — {{ sneakAttackDice() }}d6</h3>
+        <p>Une fois par tour, vous pouvez ajouter ces dégâts à une attaque réussie avec une arme de finesse ou à distance, si vous avez l’avantage ou si un autre ennemi de la cible se trouve à 1,5 m d’elle et n’est pas neutralisé, sans que vous ayez le désavantage. Une attaque d’opportunité ordinaire doit rester une attaque de corps à corps.</p>
+        <p>Vous pouvez donc utiliser cette capacité pendant le tour d’une autre créature, même si vous l’avez déjà utilisée pendant votre propre tour.</p>
+      }
+      @if (rule.id === 'opportunity' && warCaster() && !wildShapeActive()) {
+        <h3>Mage de guerre</h3>
+        <p>Vous pouvez lancer un sort d’une action à la place de cette attaque. Tous ses projectiles et cibles doivent viser uniquement la créature qui provoque l’attaque. Vérifiez la portée et les conditions du sort.</p>
+        <p>Les attaques de sort à distance ont normalement le désavantage si un ennemi visible et non neutralisé se trouve à 1,5 m de vous.</p>
+        @if (opportunitySpells().length) {
+          <app-spell-quick-list class="turn-spells" [spells]="opportunitySpells()" [disabled]="castingDisabled()" [combatOnly]="true" (selected)="detail.close(); spellSelected.emit($event)" />
+        } @else { <p>Aucun sort compatible identifié.</p> }
+      }
+      @if (rule.id === 'jump') {
+        @if (jumps(); as jump) {
+          <h3>Saut en longueur</h3><div class="turn-grid"><div class="turn-value"><small>Avec élan</small><strong>{{ format(jump.longRunning) }}</strong></div><div class="turn-value"><small>Sans élan</small><strong>{{ format(jump.longStanding) }}</strong></div></div>
+          <h3>Saut en hauteur</h3><div class="turn-grid"><div class="turn-value"><small>Avec élan</small><strong>{{ format(jump.highRunning) }}</strong></div><div class="turn-value"><small>Sans élan</small><strong>{{ format(jump.highStanding) }}</strong></div></div>
+        } @else { <p>Force non renseignée.</p> }
+      }
+      @if (selected()?.kind === 'reaction') { <p>Une réaction peut aussi intervenir pendant son propre tour. Elle est récupérée au début du prochain tour.</p> }
+    } @else if (selectedFeature(); as feature) {
+      <h2 id="turn-detail-title">{{ feature.name }}</h2><small>{{ feature.sourceName || feature.sourceType }}</small>
+      @if (resourceFor(feature); as resource) { <p>{{ resource.currentValue }} / {{ resource.maximumValue }}</p> }
+      @else if (feature.resource) { <p>{{ feature.resource.name }} : compteur non disponible.</p> }
+      <p class="feature-description">{{ feature.description || 'Aucune description renseignée.' }}</p>
+    }
+  </div>
+</dialog>

@@ -53,7 +53,7 @@
         <div class="spell-summary">
         <header class="detail-heading">
           <span class="detail-icon" aria-hidden="true">{{ schoolIcon(spell.school) }}</span>
-          <div><span class="eyebrow">{{ schoolLabel(spell.school) }} · {{ spell.level === 0 ? 'Tour de magie' : 'Niveau ' + (spell.level ?? '?') }}</span>
+          <div><span class="eyebrow">{{ isDivineSmite(spell) ? 'Capacité de paladin' : schoolLabel(spell.school) }} · {{ spell.level === 0 ? 'Tour de magie' : 'Niveau ' + (spell.level ?? '?') }}</span>
             <h3>{{ spell.name }}</h3><p>{{ spell.source }}</p>
           </div>
         </header>
@@ -75,7 +75,7 @@
           }
         </dl>
         @if (mode() === 'portal' && !readonly()) {
-          <button type="button" class="cast-open" [disabled]="castingBlocked() || castSaving()" (click)="openCastDialog(spell)">Lancer ce sort</button>
+          <button type="button" class="cast-open" [disabled]="castingBlocked() || castSaving()" (click)="openCastDialog(spell)">{{ isDivineSmite(spell) ? 'Utiliser Châtiment divin' : 'Lancer ce sort' }}</button>
         }
         </div>
         @if (spell.details; as details) {
