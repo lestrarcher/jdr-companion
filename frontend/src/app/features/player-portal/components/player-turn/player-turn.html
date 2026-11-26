@@ -1,5 +1,6 @@
 <section class="turn-panel" aria-label="À mon tour">
   <h2>À mon tour</h2>
+  @if (wildShapeActive()) { <p>Forme sauvage active : vérifiez que votre forme physique permet chaque action et capacité. Vous ne pouvez parler que si la forme en est capable.</p> }
   @for (section of sections; track section.id) {
     @if (section.id === 'reaction') { <h2>Hors tour</h2> }
     @if ((section.id !== 'free' && section.id !== 'special') || featuresBySection()[section.id]?.length) {
@@ -13,10 +14,9 @@
               } @empty { <span>Aucune vitesse renseignée.</span> }
             </div>
           }
-          @if (wildShapeActive() && featuresBySection()[section.id]?.length) { <p>Vérifier que la forme permet d’utiliser chaque capacité.</p> }
           <div class="turn-cards">
             @for (rule of section.rules; track rule.id) {
-              @if (rule.id !== 'cast' && rule.id !== 'grapple' && rule.id !== 'shove') {
+              @if (rule.id !== 'cast' && rule.id !== 'grapple' && rule.id !== 'shove' && rule.id !== 'bonus-rule' && (!wildShapeActive() || rule.id !== 'two-weapons')) {
                 <button type="button" class="turn-card" (click)="openRule(rule, section.id, detail)"><i class="bi" [class]="ruleIcon(rule.id)" aria-hidden="true"></i><span>{{ rule.name }}</span></button>
               }
             }
@@ -26,6 +26,9 @@
                 <button type="button" class="turn-card" (click)="openRule(rule, section.id, detail)"><i class="bi" [class]="ruleIcon(rule.id)" aria-hidden="true"></i><span>{{ rule.name }}</span></button>
               }
             }
+            @if (section.id === 'bonus' && wildShapeActive()) {
+              <button type="button" class="turn-card" (click)="openRule(revertRule, section.id, detail)"><i class="bi bi-arrow-return-left" aria-hidden="true"></i><span>{{ revertRule.name }}</span></button>
+            }
             @for (feature of featuresBySection()[section.id] ?? []; track feature.id) {
               <button type="button" class="turn-card" (click)="openFeature(feature, section.id, detail)">
                 @if (resourceFor(feature); as resource) { <small class="turn-counter">{{ resource.currentValue }} / {{ resource.maximumValue }}</small> }
@@ -34,11 +37,13 @@
             }
           </div>
           @if (spellsBySection()[section.id]; as spells) {
-            @if (spells.length) {
+            @if (!wildShapeActive() && spells.length) {
               <h4>Lancer un sort</h4>
-              @if (wildShapeActive()) { <p>Le lancement de sorts est indisponible en forme sauvage.</p> }
               <app-spell-quick-list class="turn-spells" [spells]="spells" [disabled]="castingDisabled()" [combatOnly]="true" (selected)="spellSelected.emit($event)" />
             }
+          }
+          @if (section.id === 'bonus' && lunarHealing()) {
+            <app-spell-quick-list class="turn-spells" [spells]="[]" [lunarHealing]="true" [disabled]="lunarDisabled()" (lunarSelected)="lunarSelected.emit()" />
           }
         </div>
       </details>
@@ -60,6 +65,24 @@
         }
         <h3>{{ wildShapeActive() ? 'Attaques naturelles' : 'Armes' }}</h3>
         <app-character-weapons [weapons]="attackRows()" [includeManeuvers]="true" [naturalForm]="wildShapeActive()" [accessToken]="accessToken()" [readonly]="readonly()" (chargesChanged)="chargesChanged.emit()" />
+      }
+      @if ((rule.id === 'opportunity' || rule.id === 'attack') && divineSmite()) {
+        <h3>Châtiment divin</h3>
+        <p>Lorsque vous touchez avec une attaque d’arme de corps à corps, vous pouvez dépenser un emplacement de sort pour infliger les dégâts radiants supplémentaires de votre Châtiment divin, même hors de votre tour.</p>
+        <app-spell-quick-list class="turn-spells" [spells]="smiteEntries()" [disabled]="castingDisabled()" (selected)="detail.close(); spellSelected.emit($event)" />
+      }
+      @if (rule.id === 'opportunity' && sneakAttackDice() > 0) {
+        <h3>Attaque sournoise — {{ sneakAttackDice() }}d6</h3>
+        <p>Une fois par tour, vous pouvez ajouter ces dégâts à une attaque réussie avec une arme de finesse ou à distance, si vous avez l’avantage ou si un autre ennemi de la cible se trouve à 1,5 m d’elle et n’est pas neutralisé, sans que vous ayez le désavantage. Une attaque d’opportunité ordinaire doit rester une attaque de corps à corps.</p>
+        <p>Vous pouvez donc utiliser cette capacité pendant le tour d’une autre créature, même si vous l’avez déjà utilisée pendant votre propre tour.</p>
+      }
+      @if (rule.id === 'opportunity' && warCaster() && !wildShapeActive()) {
+        <h3>Mage de guerre</h3>
+        <p>Vous pouvez lancer un sort d’une action à la place de cette attaque. Tous ses projectiles et cibles doivent viser uniquement la créature qui provoque l’attaque. Vérifiez la portée et les conditions du sort.</p>
+        <p>Les attaques de sort à distance ont normalement le désavantage si un ennemi visible et non neutralisé se trouve à 1,5 m de vous.</p>
+        @if (opportunitySpells().length) {
+          <app-spell-quick-list class="turn-spells" [spells]="opportunitySpells()" [disabled]="castingDisabled()" [combatOnly]="true" (selected)="detail.close(); spellSelected.emit($event)" />
+        } @else { <p>Aucun sort compatible identifié.</p> }
       }
       @if (rule.id === 'jump') {
         @if (jumps(); as jump) {

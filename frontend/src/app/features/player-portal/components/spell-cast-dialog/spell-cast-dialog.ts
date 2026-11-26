@@ -1,3 +1,4 @@
+import { isDivineSmite, divineSmiteDice } from '../player-spells/divine-smite';
 import { AfterViewInit, Component, ElementRef, OnDestroy, computed, input, linkedSignal, output, signal, viewChild } from '@angular/core';
 import { PlayerSpell } from '@core/services/character-session-state-api.service';
 import { SpellCastCommand, SpellCastingAvailability, SpellMetamagic, availableSpellCastMethods, metamagicReasonLabel, spellHitPointEffect } from '@core/models/spell-cast.model';
@@ -15,6 +16,8 @@ type CastOption = { source: PlayerSpell; method: SpellCastingAvailability['metho
 })
 export class SpellCastDialog implements AfterViewInit, OnDestroy {
   readonly spell = input.required<PlayerSpell>();
+  readonly divineSmite = computed(() => isDivineSmite(this.spell()));
+  readonly smiteDice = divineSmiteDice;
   readonly lunarHealing = input(false);
   readonly lunarSlots = input<readonly { level: number; remaining: number }[]>([]);
   readonly lunarBusy = input(false);
@@ -97,7 +100,7 @@ export class SpellCastDialog implements AfterViewInit, OnDestroy {
   readonly standardOptions = computed(() => this.visibleOptions().filter(option => option.method.kind === 'standard-slot'));
   readonly otherOptions = computed(() => this.visibleOptions().filter(option => option.method.kind !== 'standard-slot'));
   readonly selected = computed(() => this.choice() === null
-    ? (this.options().length === 1 ? this.options()[0] : undefined)
+    ? (this.divineSmite() ? this.options().find(o => o.method.kind === 'standard-slot' && o.method.castingLevel === 1) ?? this.options()[0] : this.options().length === 1 ? this.options()[0] : undefined)
     : this.options().find(option => option.key === this.choice()));
   readonly locked = computed(() => this.saving() || this.blocked() || !!this.pending() || !!this.success());
   readonly hasMetamagics = computed(() => !!this.selectedMetamagic() || this.sources().some(source => source.castingAvailability?.methods.some(method => method.metamagics?.length)));

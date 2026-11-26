@@ -1,3 +1,5 @@
+import { divineSmiteSpell } from '../player-spells/divine-smite';
+import { spellSlotGroups } from '../spell-slot-bar/spell-slot-bar';
 import { athleticsBonus } from '../character-statistics/skill-bonus';
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import type { CharacterAbilityScore, CharacterMovement, CharacterFeatureSummary, CharacterClassSummary, CharacterTraining } from '@core/services/character-api.service';
@@ -8,7 +10,7 @@ import { attackCount, hasThirstingBlade } from './attack-count';
 import { SpellQuickList } from '../spell-quick-list/spell-quick-list';
 import type { CharacterResource } from '@core/models/character.model';
 import { groupTurnFeatures } from './turn-features';
-import { groupTurnSpells } from './turn-spells';
+import { groupTurnSpells, warCasterSpells } from './turn-spells';
 import { calculateJumps } from './jump';
 import { TURN_SECTIONS, MOVEMENT_RULES, TurnRule } from './turn-rules';
 
@@ -22,6 +24,12 @@ import { TURN_SECTIONS, MOVEMENT_RULES, TurnRule } from './turn-rules';
 })
 export class PlayerTurn {
   readonly classSummary = input<CharacterClassSummary[]>([]);
+  private classLevel(...names: string[]): number {
+    return this.classSummary().filter(c => names.includes((c.classSlug || c.className).toLowerCase())).reduce((total, c) => total + c.level, 0);
+  }
+  readonly smiteEntries = computed(() => [divineSmiteSpell(spellSlotGroups(this.resources()))]);
+  readonly divineSmite = computed(() => this.classLevel('paladin') >= 2);
+  readonly sneakAttackDice = computed(() => Math.ceil(this.classLevel('rogue', 'roublard') / 2));
   readonly weapons = input<CharacterWeapon[]>([]);
   readonly accessToken = input('');
   readonly readonly = input(true);
@@ -32,13 +40,27 @@ export class PlayerTurn {
   readonly movement = input.required<CharacterMovement | null>();
   readonly features = input<CharacterFeatureSummary[]>([]);
   readonly resources = input<readonly CharacterResource[]>([]);
-  readonly featuresBySection = computed(() => groupTurnFeatures(this.features()));
+  readonly moonDruid = input(false);
+  readonly warCaster = input(false);
+  readonly opportunitySpells = computed(() => this.warCaster() && !this.wildShapeActive() ? warCasterSpells(this.spells()) : []);
+  readonly featuresBySection = computed(() => {
+    const groups = groupTurnFeatures(this.features());
+    if (this.moonDruid()) {
+      const wild = groups['action'].filter(f => /^(wild.shape|forme.sauvage)$/i.test(f.slug) || /^(forme sauvage|wild shape)$/i.test(f.name));
+      groups['bonus'] = [...groups['bonus'], ...wild];
+    }
+    return groups;
+  });
   resourceFor(feature: CharacterFeatureSummary): CharacterResource | undefined {
     return this.resources().find(resource => resource.id === feature.resource?.slug);
   }
   readonly spells = input<PlayerSpell[]>([]);
   readonly castingDisabled = input(true);
   readonly wildShapeActive = input(false);
+  readonly lunarHealing = input(false);
+  readonly lunarDisabled = input(true);
+  readonly lunarSelected = output<void>();
+  readonly revertRule: TurnRule = { id: 'revert', name: 'Reprendre sa forme normale', description: 'Vous pouvez mettre fin volontairement à votre forme sauvage en utilisant une action bonus.' };
   readonly spellSelected = output<PlayerSpell>();
   readonly spellsBySection = computed<Record<string, PlayerSpell[]>>(() => ({
     action: groupTurnSpells(this.spells(), 'action'),

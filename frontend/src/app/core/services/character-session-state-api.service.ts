@@ -58,6 +58,10 @@ export interface PlayerSpell {
   alwaysPrepared?: boolean;
   details?: {
     importKey?: string | null;
+    targetType?: 'self' | 'creature' | 'object' | 'area' | 'special' | null;
+    multipleTargets?: boolean;
+    multipleTargetsProgression?: 'slot' | 'character' | null;
+    multipleTargetsThreshold?: number | null;
     description: string; higherLevels: string | null; castingTime: string; range: string; duration: string;
     verbal: boolean; somatic: boolean; material: boolean; materialDescription: string | null;
     concentration: boolean; ritual: boolean;

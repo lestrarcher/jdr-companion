@@ -22,3 +22,12 @@ export function groupTurnSpells(spells: readonly PlayerSpell[], category: TurnSp
   }
   return [...groups.values()].sort((a,b) => (a.level ?? 99) - (b.level ?? 99) || a.name.localeCompare(b.name, 'fr'));
 }
+
+export function warCasterSpells(spells: readonly PlayerSpell[]): PlayerSpell[] {
+  // Multiple rays or upcasting do not disqualify a spell if all targets can be the same creature.
+  // Mixed targeting requires individual review; these named exceptions have a single-creature mode.
+  const mixed = new Set(['decharge occulte', 'eldritch blast', 'projectile magique', 'magic missile', 'rayon ardent', 'scorching ray', 'trait de feu', 'fire bolt']);
+  const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+  return groupTurnSpells(spells.filter(spell => spell.details?.targetType === 'creature' ||
+    (spell.details?.targetType === 'special' && mixed.has(normalize(spell.name)))), 'action');
+}
