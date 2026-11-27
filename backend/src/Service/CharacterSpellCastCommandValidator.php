@@ -52,6 +52,15 @@ final readonly class CharacterSpellCastCommandValidator
         if ($method['status'] !== 'available') {
             return array_replace($result, ['status'=>$method['status'], 'reason'=>$method['reason'] ?? 'method_not_available']);
         }
+        if ($command['method'] === 'progression') {
+            $variable = $method['costMode'] === 'variable';
+            if ($variable !== isset($command['progressionCost'])) return array_replace($result,['reason'=>'invalid_progression_cost']);
+            $cost = $variable ? $command['progressionCost'] : $method['cost'];
+            if (!$method['allowOverdraft'] && $cost > $method['remaining'] - $method['minimum']) return array_replace($result,['reason'=>'insufficient_resource']);
+            $method['cost'] = min($cost, $method['remaining'] - $method['minimum']);
+            $result['progressionSlug'] = $method['progressionSlug'];
+            $result['progressionMinimum'] = $method['minimum'];
+        }
         $selected = $command['metamagics'] ?? (isset($command['metamagic']) ? [$command['metamagic']] : []);
         $metamagics = [];
         foreach ($selected as $key) {

@@ -94,7 +94,27 @@ final readonly class CharacterSpellAvailabilityContext
                 $resource !== null ? true : ($definition !== null ? false : null),
                 $resource?->getMaximum(), $index[$slug] ?? [], $globalIssues);
         }
-        return ['standardSlots' => $standard, 'pactSlots' => $pact, 'resources' => $resourcePools, 'issues' => $globalIssues];
+         $progressions = [];
+        foreach ($character->getProgressions() as $assignment) {
+            $definition = $assignment->getProgressionDefinition();
+            $slug = $definition->getSlug();
+            $rows = $state['progressions'] ?? [];
+            $matches = is_array($rows) ? array_values(array_filter($rows, static fn($row): bool => is_array($row) && ($row['id'] ?? null) === $slug)) : [];
+            $value = count($matches) === 1 ? ($matches[0]['currentValue'] ?? null) : null;
+            $minimum = $definition->getMinimumValue();
+            $maximum = $definition->getMaximumValue();
+            $progressions[] = [
+                'definitionId' => $definition->getId(),
+                'slug' => $slug,
+                'minimum' => $minimum,
+                'remaining' => is_int($value)
+                    && $value >= $minimum
+                    && ($maximum === null || $value <= $maximum)
+                        ? $value
+                        : null,
+            ];
+        }
+        return ['progressions'=>$progressions, 'standardSlots' => $standard, 'pactSlots' => $pact, 'resources' => $resourcePools, 'issues' => $globalIssues];
     }
 
     private function pool(string $slug, ?int $definitionId, ?int $level, ?bool $applicable, ?int $maximum, array $rows, array $issues): array

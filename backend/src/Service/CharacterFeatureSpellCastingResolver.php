@@ -50,10 +50,12 @@ final readonly class CharacterFeatureSpellCastingResolver
         }
         $result['provenance']=$origin;
         $progressionAbility = null;
+        $progressionSlug = null;
         if ($origin['type'] === 'progression') {
             foreach ($character->getProgressions() as $assignment) {
                 if ($assignment->getProgressionDefinition()->getId() === $origin['id']) {
                     $progressionAbility = $assignment->getProgressionDefinition()->getDefaultCastingAbility();
+                    $progressionSlug = $assignment->getProgressionDefinition()->getSlug();
                 }
             }
         }
@@ -78,7 +80,13 @@ final readonly class CharacterFeatureSpellCastingResolver
             $rules=$grant['casting_rules']===null ? null : json_decode($grant['casting_rules'],true,512,JSON_THROW_ON_ERROR);
             $resourceId=$grant['resource_definition_id']===null?null:(int)$grant['resource_definition_id'];
             $rules=FeatureSpellCastingRules::validate($rules,$resourceId,(int)$grant['acquired_level']);
-            if ($rules===null) return array_replace($result,['reason'=>'casting_rules_missing']);
+            if ($rules===null) {
+                if ($grant['casting_rules']!==null || (int)$grant['acquired_level']!==0) {
+                    return array_replace($result,['reason'=>'casting_rules_missing']);
+                }
+                // An unrestricted acquired cantrip needs no resource or slot.
+                $rules=['version'=>1,'methods'=>[['kind'=>'cantrip']]];
+            }
             $result['configurationVersion']=$rules['version'];
             if ($resourceId!==null) {
                 $resource=$this->db->fetchAssociative('SELECT origin,owner_id FROM trackable_resource_definition WHERE id=?',[$resourceId]);
@@ -94,9 +102,13 @@ final readonly class CharacterFeatureSpellCastingResolver
         $result['requiresRestrictionReview']=$result['restrictions']!==null;
         if ($ability===null) return array_replace($result,['reason'=>$abilityReason]);
         foreach ($rules['methods'] as $method) {
-            $result['methods'][]=$method['kind']==='resource'
-                ? ['kind'=>'resource','resourceDefinitionId'=>$resourceId,'cost'=>$method['cost'],'castingLevel'=>$method['castingLevel']]
-                : ['kind'=>'standard-slot','minimumCastingLevel'=>(int)$grant['acquired_level']];
+            if ($method['kind'] === 'progression' && $progressionSlug === null) return array_replace($result,['reason'=>'progression_not_resolved','methods'=>[]]);
+            $result['methods'][]=match ($method['kind']) {
+                'cantrip'=>['kind'=>'cantrip'],
+                'progression'=>$method + ['progressionDefinitionId'=>$origin['id'],'progressionSlug'=>$progressionSlug],
+                'resource'=>['kind'=>'resource','resourceDefinitionId'=>$resourceId,'cost'=>$method['cost'],'castingLevel'=>$method['castingLevel']],
+                'standard-slot'=>['kind'=>'standard-slot','minimumCastingLevel'=>(int)$grant['acquired_level']],
+            };
         }
         return array_replace($result,['status'=>'resolved','reason'=>null]);
     }

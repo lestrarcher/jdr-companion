@@ -369,6 +369,19 @@
                     <label>Récupération<select name="freeRecharge" [(ngModel)]="freeRecharge"><option value="long-rest">Repos long</option><option value="short-rest">Repos court ou long</option></select></label>
                     <label>Niveau gratuit (vide : niveau de base du sort)<input type="number" name="freeLevel" min="0" max="9" step="1" [(ngModel)]="freeLevel" /></label>
                   }
+                  @if (!choiceAllowed() || progressionCasting) {
+                    <label><input type="checkbox" name="progressionCasting" [(ngModel)]="progressionCasting" />Consommer les charges de la progression</label>
+                    @if (progressionCasting) {
+                      <label>Coût<select name="progressionCostMode" [(ngModel)]="progressionCostMode"><option value="variable">Variable (saisie joueur)</option><option value="fixed">Fixe</option></select></label>
+                      @if (progressionCostMode === 'fixed') {
+                        <label>Charges consommées<input type="number" name="progressionCost" min="1" step="1" [(ngModel)]="progressionCost" /></label>
+                      } @else {
+                        <label>Libellé de saisie<input name="progressionInputLabel" maxlength="200" [(ngModel)]="progressionInputLabel" /></label>
+                      }
+                      <label>Niveau de lancement (vide : niveau du sort)<input type="number" name="progressionLevel" min="0" max="9" step="1" [(ngModel)]="progressionLevel" /></label>
+                      <label><input type="checkbox" name="progressionOverdraft" [(ngModel)]="progressionOverdraft" />Autoriser un coût supérieur au solde (plafonné au minimum)</label>
+                    }
+                  }
                   <label><input type="checkbox" name="standardCasting" [(ngModel)]="standardCasting" />Lancement avec emplacement classique</label>
                   <p>Chaque nouvel octroi dispose de son propre compteur. Désactiver puis réactiver conserve les utilisations restantes.</p>
                 }

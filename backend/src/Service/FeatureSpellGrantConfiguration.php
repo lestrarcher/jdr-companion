@@ -21,7 +21,7 @@ final readonly class FeatureSpellGrantConfiguration
 
     public function configure(array $feature, array $grant, mixed $casting, int $baseLevel): array
     {
-        if (!is_array($casting) || array_is_list($casting) || array_diff(array_keys($casting), ['freeUses','rechargeType','castingLevel','standardSlot'])
+        if (!is_array($casting) || array_is_list($casting) || array_diff(array_keys($casting), ['freeUses','rechargeType','castingLevel','standardSlot','progression'])
             || !is_int($casting['freeUses'] ?? null) || $casting['freeUses'] < 0 || $casting['freeUses'] > 1000
             || !is_bool($casting['standardSlot'] ?? null)) throw new BadRequestHttpException('Méthodes de lancement invalides.');
         $uses = $casting['freeUses']; $managedId = $grant['managed_resource_id'] ?? null;
@@ -61,6 +61,17 @@ final readonly class FeatureSpellGrantConfiguration
                 $resourceId = (int)$managedId;
             }
             $methods[] = ['kind'=>'resource','cost'=>$cost,'castingLevel'=>$level];
+        }
+        $progression = $casting['progression'] ?? null;
+        if (!array_key_exists('progression', $casting)) {
+            foreach ($existingRules['methods'] ?? [] as $method) if ($method['kind'] === 'progression') $progression = $method;
+        }
+        if ($progression !== null) {
+            if (!is_array($progression) || ($progression['kind'] ?? null) !== 'progression'
+                || !$this->db->fetchOne('SELECT 1 FROM character_feature_rule WHERE feature_definition_id=? AND progression_definition_id IS NOT NULL', [$feature['id']])) {
+                throw new BadRequestHttpException('Cette capacité doit être liée à une progression.');
+            }
+            $methods[] = $progression;
         }
         if ($casting['standardSlot']) $methods[] = ['kind'=>'standard-slot'];
         $rules = ['version'=>1,'methods'=>$methods];

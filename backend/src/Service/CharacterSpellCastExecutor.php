@@ -20,6 +20,7 @@ final readonly class CharacterSpellCastExecutor
         private EntityManagerInterface $em,
         private CharacterSpellCastCommandValidator $validator,
         private CharacterSpellHitPointEffects $effects,
+        private CharacterSessionStateSynchronizer $synchronizer,
     ) {}
 
     /**
@@ -114,6 +115,20 @@ final readonly class CharacterSpellCastExecutor
                     $remaining = $state['resources'][$index]['currentValue'] ?? null;
                     if (!is_int($remaining) || $remaining < $cost) throw new UnprocessableEntityHttpException('invalid_counter');
                     $state['resources'][$index]['currentValue'] = $remaining - $cost;
+                } elseif ($method === 'progression') {
+                    $indices = [];
+                    foreach ($state['progressions'] ?? [] as $index=>$row) if (is_array($row) && ($row['id']??null)===$validation['progressionSlug']) $indices[]=$index;
+                    if (count($indices)!==1 || ($validation['source']['sourceType']??null)!=='feature') throw new UnprocessableEntityHttpException('invalid_counter');
+                    $index=$indices[0]; $remaining=$state['progressions'][$index]['currentValue']??null;
+                    if (!is_int($remaining)
+                        || !is_int($validation['cost'])
+                        || $validation['cost'] < 0
+                        || $remaining - $validation['progressionMinimum'] < $validation['cost']
+                    ) {
+                        throw new UnprocessableEntityHttpException('invalid_counter');
+                    }
+                    $state['progressions'][$index]['currentValue']=$remaining-$validation['cost'];
+                    $state=$this->synchronizer->synchronizeResources($session->getCharacter(),$state);
                 } elseif ($method === 'scroll') {
                     if (($validation['source']['sourceType'] ?? null) !== 'item'
                         || $validation['poolSlug'] !== null || $validation['cost'] !== 1
