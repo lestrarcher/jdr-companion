@@ -167,7 +167,7 @@ export class FeatureDefinitionManager {
       next: ({ choices, rules }) => {
         if (this.selectedFeatureId() !== id) return;
         this.choiceRows.set(choices.choices);
-        this.choiceRules.set(rules.rules.filter(r => r.feature.id === id && (r.origin === 'CUSTOM' || r.origin === 'OFFICIAL') && (r.sourceType === 'class' || r.sourceType === 'subclass' || r.sourceType === 'race')).map(r => ({ id: r.id, sourceName: r.sourceName, unlockLevel: r.unlockLevel })));
+        this.choiceRules.set(rules.rules.filter(r => r.feature.id === id && (r.origin === 'CUSTOM' || r.origin === 'OFFICIAL') && (r.sourceType === 'class' || r.sourceType === 'subclass' || r.sourceType === 'race' || r.sourceType === 'feat')).map(r => ({ id: r.id, sourceName: r.sourceName, unlockLevel: r.unlockLevel })));
         this.choiceBusy.set(false);
         this.loadChoiceRow(this.choiceRows()[0] ?? null);
       },
