@@ -464,12 +464,12 @@
     } @else {
       <section class="feature-choice-editor" aria-label="Configuration des choix">
         <h3>Capacités proposées</h3>
-        <p>La capacité mère doit être attribuée à une classe ou sous-classe dans l'onglet « Attributions » avant de configurer ses choix.</p>
+        <p>La capacité mère doit être rattachée à une classe, une sous-classe, une race ou un don avant de configurer ses choix.</p>
         @if (choiceError()) { <p class="message message--error" role="alert">{{ choiceError() }}</p> }
         @if (choiceSuccess()) { <p class="message message--success">{{ choiceSuccess() }}</p> }
         @if (choiceBusy()) { <p>Chargement…</p> }
         @if (!choiceRules().length && !choiceBusy()) {
-          <p>Aucune attribution de classe, sous-classe ou race trouvée pour cette capacité.</p>
+          <p>Aucune attribution de classe, de sous-classe, de race ou de don trouvée pour cette capacité.</p>
         } @else {
           <div class="form-grid">
             <label class="field field--wide"><span>Attribution de la capacité mère</span>

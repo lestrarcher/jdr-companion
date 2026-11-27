@@ -47,8 +47,8 @@ final readonly class CustomFeatureChoiceEditorService
         }
         return $this->db->transactional(function () use ($featureId, $owner, $ruleId, $count, $name, $uniqueness, $replacement, $options): array {
             $rule = $this->db->fetchAssociative('SELECT * FROM character_feature_rule WHERE id=? FOR UPDATE', [$ruleId]);
-            if (!$rule || (int)$rule['feature_definition_id'] !== $featureId || !($rule['origin'] === 'OFFICIAL' && $rule['owner_id'] === null || $rule['origin'] === 'CUSTOM' && (int)$rule['owner_id'] === $owner->getId()) || ($rule['character_class_id'] === null && $rule['character_subclass_id'] === null && $rule['character_race_id'] === null)) {
-                throw new BadRequestHttpException('Une attribution de classe, sous-classe ou race accessible est requise.');
+            if (!$rule || (int)$rule['feature_definition_id'] !== $featureId || !($rule['origin'] === 'OFFICIAL' && $rule['owner_id'] === null || $rule['origin'] === 'CUSTOM' && (int)$rule['owner_id'] === $owner->getId()) || ($rule['character_class_id'] === null && $rule['character_subclass_id'] === null && $rule['character_race_id'] === null && $rule['feat_id'] === null)) {
+                throw new BadRequestHttpException('Une attribution de classe, de sous-classe, de race ou de don accessible est requise.');
             }
             $existing = $this->db->fetchAssociative('SELECT a.*, g.owner_id FROM feature_choice_grant a JOIN feature_choice_group g ON g.key=a.group_key WHERE a.rule_id=? FOR UPDATE OF a', [$ruleId]);
             if ($existing && (int)$existing['owner_id'] !== $owner->getId()) throw new ConflictHttpException('Cette attribution possède déjà un groupe officiel ou inaccessible. Impossible de le remplacer.');
