@@ -71,10 +71,12 @@
         <p>Lorsque vous touchez avec une attaque d’arme de corps à corps, vous pouvez dépenser un emplacement de sort pour infliger les dégâts radiants supplémentaires de votre Châtiment divin, même hors de votre tour.</p>
         <app-spell-quick-list class="turn-spells" [spells]="smiteEntries()" [disabled]="castingDisabled()" (selected)="detail.close(); spellSelected.emit($event)" />
       }
-      @if (rule.id === 'opportunity' && sneakAttackDice() > 0) {
+      @if ((rule.id === 'opportunity' || rule.id === 'attack') && sneakAttackDice() > 0) {
         <h3>Attaque sournoise — {{ sneakAttackDice() }}d6</h3>
-        <p>Une fois par tour, vous pouvez ajouter ces dégâts à une attaque réussie avec une arme de finesse ou à distance, si vous avez l’avantage ou si un autre ennemi de la cible se trouve à 1,5 m d’elle et n’est pas neutralisé, sans que vous ayez le désavantage. Une attaque d’opportunité ordinaire doit rester une attaque de corps à corps.</p>
-        <p>Vous pouvez donc utiliser cette capacité pendant le tour d’une autre créature, même si vous l’avez déjà utilisée pendant votre propre tour.</p>
+        <p>Une fois par tour, vous pouvez ajouter ces dégâts à une attaque réussie avec une arme de finesse ou à distance, si vous avez l’avantage ou si un autre ennemi de la cible se trouve à 1,5 m d’elle et n’est pas neutralisé, sans que vous ayez le désavantage.</p>
+        @if (rule.id === 'opportunity') {
+          <p>Une attaque d’opportunité ordinaire doit rester une attaque de corps à corps. Vous pouvez utiliser cette capacité pendant le tour d’une autre créature, même si vous l’avez déjà utilisée pendant votre propre tour.</p>
+        }
       }
       @if (rule.id === 'opportunity' && warCaster() && !wildShapeActive()) {
         <h3>Mage de guerre</h3>
