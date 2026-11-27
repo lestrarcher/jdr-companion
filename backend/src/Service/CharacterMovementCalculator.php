@@ -7,7 +7,7 @@ namespace App\Service;
 use App\Entity\Character;
 use App\Enum\Ability;
 
-/** Permanent movement modifiers from D&D 2014; no spells or temporary conditions. */
+/** Movement modifiers from D&D 2014, including manually activated items. */
 final readonly class CharacterMovementCalculator
 {
     public function __construct(
@@ -70,6 +70,31 @@ final readonly class CharacterMovementCalculator
         // Do not create movement modes the character does not possess.
         foreach ($movement['movementSpeeds'] ?? [] as $mode => $speed) {
             $movement['movementSpeeds'][$mode] = max(0, $speed - $heavyArmorPenalty);
+        }
+        $passive = [];
+        foreach ($character->getMagicItems() as $item) {
+            if (!$item->isEffectActive()) continue;
+            foreach ($item->getMagicItem()->getMovementEffects() ?? [] as $effect) {
+                $passive[] = $effect;
+            }
+        }
+        // Walking minimums precede effects derived from walking speed.
+        foreach ($passive as $effect) {
+            if ($effect['mode'] === 'walk' && $effect['operation'] === 'minimum') {
+                $movement['walkingSpeed'] = max($movement['walkingSpeed'] + (($effect['ignoreArmorPenalty'] ?? false) ? $heavyArmorPenalty : 0), $effect['value']);
+                if ($effect['ignoreArmorPenalty'] ?? false) break;
+            }
+        }
+        $multiplier = 1;
+        foreach ($passive as $effect) {
+            if ($effect['mode'] === 'walk' && $effect['operation'] === 'multiply') $multiplier = max($multiplier, $effect['value']);
+        }
+        $movement['walkingSpeed'] *= $multiplier;
+        foreach ($passive as $effect) {
+            $mode = $effect['mode'];
+            if ($mode === 'walk') continue;
+            $speed = $effect['operation'] === 'walking' ? $movement['walkingSpeed'] : max(0, $effect['value'] - $heavyArmorPenalty);
+            $movement['movementSpeeds'][$mode] = max($movement['movementSpeeds'][$mode] ?? 0, $speed);
         }
         return $movement;
     }
