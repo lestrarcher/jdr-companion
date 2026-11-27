@@ -57,13 +57,14 @@ export class ReferenceFeatureEditorApiService {
   deleteResourceRule(id: number) { return this.http.delete<void>(`${this.url('resource-rules')}/${id}`); }
 }
 
+export type ProgressionCastingMethod = { kind: 'progression'; costMode: 'fixed' | 'variable'; cost?: number; castingLevel: number; allowOverdraft: boolean; inputLabel?: string };
 export interface FeatureSpellGrant {
   enabled?: boolean;
   managedResourceId?: number | null;
   resourceDefinitionId?: number | null;
   freeUses?: number;
   rechargeType?: string;
-  castingRules?: { version: number; methods: ({ kind: 'resource'; cost: number; castingLevel: number } | { kind: 'standard-slot' })[] } | null;
+  castingRules?: { version: number; methods: ({ kind: 'resource'; cost: number; castingLevel: number } | { kind: 'standard-slot' } | ProgressionCastingMethod)[] } | null;
   id: number;
   mode: 'fixed' | 'choice';
   spellId: number | null;
@@ -80,6 +81,7 @@ export interface GrantCastingConfiguration {
   rechargeType: 'short-rest' | 'long-rest';
   castingLevel: number;
   standardSlot: boolean;
+  progression?: ProgressionCastingMethod | null;
 }
 export type FeatureSpellGrantPayload = (
   | { mode: 'fixed'; spellId: number; unlockLevel: number; castingAbility: string | null }

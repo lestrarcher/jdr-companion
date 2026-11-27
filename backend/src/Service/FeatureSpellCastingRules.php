@@ -26,10 +26,18 @@ final class FeatureSpellCastingRules
         foreach ($rules['methods'] as $method) {
             if (!is_array($method) || array_is_list($method)) $fail();
             $kind = $method['kind'] ?? null;
-            if (!is_string($kind) || !in_array($kind, ['resource','standard-slot'], true) || isset($seen[$kind])) $fail();
+            if (!is_string($kind) || !in_array($kind, ['resource','standard-slot','progression'], true) || isset($seen[$kind])) $fail();
             $seen[$kind] = true;
             if ($kind === 'standard-slot') {
                 if (array_keys($method) !== ['kind'] || $baseLevel === 0) $fail();
+            } elseif ($kind === 'progression') {
+                if (array_diff(array_keys($method), ['kind','costMode','cost','castingLevel','allowOverdraft','inputLabel'])
+                    || !in_array($method['costMode'] ?? null, ['fixed','variable'], true)
+                    || !is_bool($method['allowOverdraft'] ?? null)
+                    || !is_int($method['castingLevel'] ?? null) || $method['castingLevel'] < $baseLevel || $method['castingLevel'] > 9
+                    || ($baseLevel === 0 && $method['castingLevel'] !== 0)
+                    || (isset($method['inputLabel']) && (!is_string($method['inputLabel']) || trim($method['inputLabel']) === '' || strlen($method['inputLabel']) > 200))
+                    || ($method['costMode'] === 'fixed' ? (!is_int($method['cost'] ?? null) || $method['cost'] < 1 || $method['cost'] > 2147483647) : array_key_exists('cost', $method))) $fail();
             } else {
                 if (array_diff(array_keys($method), ['kind','cost','castingLevel'])
                     || !is_int($method['cost'] ?? null) || $method['cost'] < 1 || $method['cost'] > 2147483647

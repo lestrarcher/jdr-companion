@@ -1,7 +1,7 @@
 import type { HttpErrorResponse } from '@angular/common/http';
 import type { CharacterSessionStateApiResponse, PlayerSpell } from '../services/character-session-state-api.service';
 
-export type SpellCastMethod = 'standard-slot' | 'pact-slot' | 'cantrip' | 'ritual' | 'resource' | 'arcanum' | 'item-charges' | 'item-limited';
+export type SpellCastMethod = 'standard-slot' | 'pact-slot' | 'cantrip' | 'ritual' | 'resource' | 'progression' | 'arcanum' | 'item-charges' | 'item-limited';
 export interface SpellCastingAvailability {
   sourceKey: string | null;
   policyId: number | null;
@@ -14,6 +14,12 @@ export interface SpellCastingAvailability {
     cost: number;
     status: 'available' | 'unavailable' | 'unknown';
     reason: string | null;
+    progressionSlug?: string;
+    remaining?: number | null;
+    minimum?: number | null;
+    costMode?: 'fixed' | 'variable';
+    allowOverdraft?: boolean;
+    inputLabel?: string;
     metamagics?: SpellMetamagic[];
   }>;
 }
@@ -55,6 +61,7 @@ export interface SpellCastCommand {
   readonly castingLevel: number;
   readonly targetCharacterIds?: readonly number[];
   readonly hitPointRoll?: number;
+  readonly progressionCost?: number;
   readonly metamagic?: string;
   readonly metamagics?: readonly string[];
 }
@@ -121,6 +128,7 @@ export function createSpellCastCommand(intent: Omit<SpellCastCommand, 'requestId
     method: intent.method,
     castingLevel: intent.castingLevel,
     ...(intent.targetCharacterIds !== undefined ? { targetCharacterIds: Object.freeze([...intent.targetCharacterIds]) } : {}),
+    ...(intent.progressionCost !== undefined ? { progressionCost: intent.progressionCost } : {}),
     ...(intent.hitPointRoll !== undefined ? { hitPointRoll: intent.hitPointRoll } : {}),
     ...(intent.metamagic !== undefined ? { metamagic: intent.metamagic } : {}),
     ...(intent.metamagics !== undefined ? { metamagics: Object.freeze([...intent.metamagics]) } : {}),

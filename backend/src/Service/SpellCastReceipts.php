@@ -25,15 +25,19 @@ final class SpellCastReceipts
     {
         $required = ['revision','requestId','sourceKey','method','castingLevel'];
         if (array_diff($required, array_keys($command))
-            || array_diff(array_keys($command), [...$required, 'targetCharacterIds', 'hitPointRoll', 'metamagic', 'metamagics'])
+            || array_diff(array_keys($command), [...$required, 'targetCharacterIds', 'hitPointRoll', 'metamagic', 'metamagics', 'progressionCost'])
             || !is_int($command['revision']) || $command['revision'] < 1
             || !is_string($command['sourceKey']) || $command['sourceKey'] === '' || strlen($command['sourceKey']) > 255
-            || !in_array($command['method'], ['standard-slot','pact-slot','cantrip','ritual','resource','arcanum','item-charges','item-limited','scroll'], true)
+            || !in_array($command['method'], ['standard-slot','pact-slot','cantrip','ritual','resource','arcanum','item-charges','item-limited','scroll','progression'], true)
             || !is_int($command['castingLevel']) || $command['castingLevel'] < 0 || $command['castingLevel'] > 9) {
             throw new \InvalidArgumentException('invalid_command');
         }
         $normalized = ['revision'=>$command['revision'], 'requestId'=>self::normalizeUuid($command['requestId']),
             'sourceKey'=>$command['sourceKey'], 'method'=>$command['method'], 'castingLevel'=>$command['castingLevel']];
+        if (array_key_exists('progressionCost', $command)) {
+            if ($command['method'] !== 'progression' || !is_int($command['progressionCost']) || $command['progressionCost'] < 1 || $command['progressionCost'] > 2147483647) throw new \InvalidArgumentException('invalid_progression_cost');
+            $normalized['progressionCost']=$command['progressionCost'];
+        }
         if (array_key_exists('targetCharacterIds', $command)) {
             $ids = $command['targetCharacterIds'];
             if (!is_array($ids) || !array_is_list($ids) || count($ids) < 1 || count($ids) > 12) {
@@ -79,7 +83,7 @@ final class SpellCastReceipts
     {
         $command = self::normalizeCommand($command);
         $id = $command['requestId']; unset($command['requestId']);
-        $receipt = ['version'=>isset($command['metamagics']) ? 4 : (isset($command['metamagic']) ? 3 : (isset($command['targetCharacterIds']) ? 2 : 1)), 'command'=>$command, 'cast'=>$cast];
+        $receipt = ['version'=>$command['method']==='progression' ? 5 : (isset($command['metamagics']) ? 4 : (isset($command['metamagic']) ? 3 : (isset($command['targetCharacterIds']) ? 2 : 1))), 'command'=>$command, 'cast'=>$cast];
         self::validateState([self::STATE_KEY=>[$id=>$receipt]]);
         return $receipt;
     }
@@ -94,23 +98,24 @@ final class SpellCastReceipts
             try {
                 if (self::normalizeUuid($id) !== $id || !is_array($receipt)
                     || !self::keys($receipt, ['version','command','cast'])) throw new \InvalidArgumentException();
-                if (!in_array($receipt['version'], [1, 2, 3, 4], true)) throw new \UnexpectedValueException('unsupported_spell_cast_receipt_version');
+                if (!in_array($receipt['version'], [1, 2, 3, 4, 5], true)) throw new \UnexpectedValueException('unsupported_spell_cast_receipt_version');
                 if (!is_array($receipt['command']) || array_key_exists('requestId', $receipt['command'])) throw new \InvalidArgumentException();
                 if ($receipt['version'] === 1 && !self::keys($receipt['command'], ['revision','sourceKey','method','castingLevel'])) throw new \InvalidArgumentException();
                 if ($receipt['version'] === 2 && !array_key_exists('targetCharacterIds', $receipt['command'])) throw new \InvalidArgumentException();
-                if (($receipt['version'] === 3) !== array_key_exists('metamagic', $receipt['command'])) throw new \InvalidArgumentException();
-                if (($receipt['version'] === 4) !== array_key_exists('metamagics', $receipt['command'])) throw new \InvalidArgumentException();
+                if ($receipt['version'] !== 5 && ($receipt['version'] === 3) !== array_key_exists('metamagic', $receipt['command'])) throw new \InvalidArgumentException();
+                if ($receipt['version'] !== 5 && ($receipt['version'] === 4) !== array_key_exists('metamagics', $receipt['command'])) throw new \InvalidArgumentException();
                 $command = self::normalizeCommand($receipt['command'] + ['requestId'=>$id]);
                 if ($receipt['version'] === 4 && !isset($command['metamagics'])) throw new \InvalidArgumentException();
+                if (($receipt['version']===5) !== ($command['method']==='progression')) throw new \InvalidArgumentException();
                 $cast = $receipt['cast'];
-                if (!is_array($cast) || !self::keys($cast, ['source','method','castingLevel','poolSlug','cost', ...($receipt['version'] === 4 ? ['metamagics'] : ($receipt['version'] === 3 ? ['metamagic'] : []))])
+                if (!is_array($cast) || !self::keys($cast, ['source','method','castingLevel','poolSlug','cost', ...(isset($command['metamagics']) ? ['metamagics'] : (isset($command['metamagic']) ? ['metamagic'] : []))])
                     || !is_array($cast['source']) || !self::keys($cast['source'], ['key','spellId','policyId','sourceType'])
                     || $cast['source']['key'] !== $command['sourceKey']
                     || !is_int($cast['source']['spellId']) || $cast['source']['spellId'] < 1
                     || ($cast['source']['policyId'] !== null && (!is_int($cast['source']['policyId']) || $cast['source']['policyId'] < 1))
                     || !in_array($cast['source']['sourceType'], ['class','subclass','feature','item'], true)
                     || $cast['method'] !== $command['method'] || $cast['castingLevel'] !== $command['castingLevel']) throw new \InvalidArgumentException();
-                $metas = $receipt['version'] === 4 ? $cast['metamagics'] : ($receipt['version'] === 3 ? [$cast['metamagic']] : []);
+                $metas = isset($command['metamagics']) ? $cast['metamagics'] : (isset($command['metamagic']) ? [$cast['metamagic']] : []);
                 $keys = $command['metamagics'] ?? (isset($command['metamagic']) ? [$command['metamagic']] : []);
                 if (!is_array($metas) || !array_is_list($metas) || count($metas) !== count($keys)) throw new \InvalidArgumentException();
                 foreach ($metas as $index => $meta) {
@@ -125,6 +130,10 @@ final class SpellCastReceipts
                         || !is_int($cast['cost']) || $cast['cost'] < 1 || $level < 0 || $level > 9) {
                         throw new \InvalidArgumentException();
                     }
+                    continue;
+                }
+                if ($method === 'progression') {
+                    if ($cast['source']['sourceType']!=='feature' || $cast['poolSlug']!==null || !is_int($cast['cost']) || $cast['cost']<1 || $cast['cost']>2147483647 || (isset($command['progressionCost']) && $cast['cost']>$command['progressionCost'])) throw new \InvalidArgumentException();
                     continue;
                 }
                 if ($method === 'resource') {

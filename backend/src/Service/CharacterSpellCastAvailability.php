@@ -28,9 +28,23 @@ final readonly class CharacterSpellCastAvailability
         $methods=[]; $seen=[];
         foreach ($configured as $method) {
             $kind=is_array($method)?($method['kind']??null):null;
-            if (!is_string($kind) || isset($seen[$kind]) || !in_array($kind,['resource','standard-slot'],true)) return array_replace($result,['reason'=>'invalid_resolved_methods']);
+            if (!is_string($kind) || isset($seen[$kind]) || !in_array($kind,['resource','standard-slot','cantrip','progression'],true)) return array_replace($result,['reason'=>'invalid_resolved_methods']);
             $seen[$kind]=true;
-            if ($kind==='standard-slot') {
+            if ($kind==='cantrip') {
+                if (array_keys($method)!==['kind'] || count($configured)!==1) return array_replace($result,['reason'=>'invalid_resolved_methods']);
+                $methods[]=$this->method('cantrip',null,0,0,'available',null);
+            } elseif ($kind==='progression') {
+                $pools=array_values(array_filter($context['progressions']??[],static fn(array $pool): bool => $pool['definitionId']===($method['progressionDefinitionId']??null) && $pool['slug']===($method['progressionSlug']??null)));
+                $pool=count($pools)===1 ? $pools[0] : [];
+                $remaining=$pool['remaining']??null; $minimum=$pool['minimum']??null;
+                $cost=$method['cost']??1;
+                $status = match (true) {
+                    !is_int($remaining) || !is_int($minimum) => 'unknown',
+                    $method['allowOverdraft'] => 'available',
+                    $remaining - $minimum >= $cost => 'available',
+                    default => 'unavailable',
+                };                $methods[]=$this->method('progression',null,$method['castingLevel'],$cost,$status,$status==='available'?null:($status==='unknown'?'invalid_counter':'insufficient_resource')) + ['progressionSlug'=>$method['progressionSlug'],'remaining'=>$remaining,'minimum'=>$minimum,'costMode'=>$method['costMode'],'allowOverdraft'=>$method['allowOverdraft'],'inputLabel'=>$method['inputLabel']??'Coût'];
+            } elseif ($kind==='standard-slot') {
                 $minimum=$method['minimumCastingLevel']??null;
                 if (!is_int($minimum) || $minimum<1 || $minimum>9) return array_replace($result,['reason'=>'invalid_resolved_methods']);
                 foreach (range($minimum,9) as $level) {

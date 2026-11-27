@@ -147,6 +147,10 @@ export class PlayerSpells implements OnInit, OnChanges {
     const effect = spellHitPointEffect(spell);
     if (selection?.metamagic && !method.metamagics?.some(option => option.key === selection.metamagic && option.status === 'available')) return;
     if (selection?.metamagics?.some(key => !method.metamagics?.some(option => option.key === key && option.status === 'available'))) return;
+    if (method.kind === 'progression' && method.costMode === 'variable') {
+      const cost = selection?.progressionCost;
+      if (cost === undefined || !Number.isInteger(cost) || cost < 1 || cost > 2147483647) return;
+    }
     const targets = selection?.targetCharacterIds;
     const roll = selection?.hitPointRoll;
     if (effect && (!targets || targets.length < 1 || targets.length > (effect === 'aid' ? 3 : 12)
@@ -156,6 +160,9 @@ export class PlayerSpells implements OnInit, OnChanges {
     this.pendingCast.set({ command: createSpellCastCommand({ revision: Math.max(this.revision(), this.view()?.revision ?? 0),
       sourceKey: spell.key, method: method.kind, castingLevel: method.castingLevel,
       ...(effect ? { targetCharacterIds: targets } : {}),
+      ...(method.kind === 'progression' && method.costMode === 'variable'
+        ? { progressionCost: selection?.progressionCost }
+        : {}),
       ...(effect === 'feast' ? { hitPointRoll: roll } : {}),
       ...(selection?.metamagic ? { metamagic: selection.metamagic } : {}),
       ...(selection?.metamagics ? { metamagics: selection.metamagics } : {}),

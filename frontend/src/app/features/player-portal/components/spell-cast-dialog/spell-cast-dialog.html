@@ -50,6 +50,7 @@
     <p class="pending">{{ cast.name }} · {{ cast.source }} · {{ methodLabel(cast.command.method) }} · niveau {{ cast.command.castingLevel }}</p>
     @if (cast.command.targetCharacterIds; as targets) {
       <p>{{ targets.length }} participant(s) sélectionné(s).
+        @if (cast.command.progressionCost !== undefined) { Coût demandé : {{ cast.command.progressionCost }}. }
         @if (cast.command.hitPointRoll !== undefined) { Résultat des 2d10 : {{ cast.command.hitPointRoll }}. }
         Les paramètres de ce lancement sont conservés.</p>
     }
@@ -89,10 +90,11 @@
               [attr.aria-pressed]="selected()?.key === option.key" [attr.aria-label]="optionLabel(option)" [title]="optionLabel(option)"
               (click)="select(option.key)">
               <span>{{ methodLabel(option.method.kind) }} @if (option.method.castingLevel) { · {{ levelLabel(option.method.castingLevel) }} }</span>
-              <small>@if (option.method.kind === 'resource' || isItemOption(option)) { Coût : {{ costLabel(option) }} · }
+              <small>@if (option.method.kind === 'resource' || option.method.kind === 'progression' || isItemOption(option)) { Coût : {{ costLabel(option) }} · }
                 @if (isItemOption(option)) { {{ itemRemaining(option) ?? '?' }} rest.
                   @if (option.method.status !== 'available') { · {{ unavailableLabel(option) }} }
                 }
+                @else if (option.method.kind === 'progression') { {{ option.method.remaining ?? '?' }} rest. @if (option.method.status !== 'available') { · {{ unavailableLabel(option) }} } }
                 @else if (option.method.poolSlug) { {{ remaining(option) ?? '?' }} rest.
                   @if (option.method.status !== 'available') { · {{ unavailableLabel(option) }} }
                 }
@@ -145,6 +147,22 @@
           }
         </section>
       }
+    }
+  }
+  @if (progressionMethod(); as method) {
+    @if (!pending() && !success()) {
+      <section>
+        <p>{{ method.progressionSlug }} · {{ method.remaining ?? '?' }} charges disponibles</p>
+        @if (method.costMode === 'variable') {
+          <label class="roll-input" for="spell-progression-cost">{{ method.inputLabel || 'Coût' }}
+            <input id="spell-progression-cost" type="number" min="1" max="2147483647" step="1" inputmode="numeric"
+              [disabled]="locked()" [value]="progressionCost() ?? ''" (input)="updateProgressionCost($any($event.target).value)" />
+          </label>
+        }
+        @if (progressionAfter() !== null) {
+          <p>Charges restantes après lancement : {{ progressionAfter() }}</p>
+        }
+      </section>
     }
   }
   @if (hitPointEffect() && !pending() && !success()) {

@@ -28,6 +28,7 @@ export class PlayerSpellApiService {
     return this.http.post<SpellCastResponse>(`${this.base(token)}/cast`, {
       revision, requestId, sourceKey, method, castingLevel,
       ...(command.targetCharacterIds !== undefined ? { targetCharacterIds: [...command.targetCharacterIds] } : {}),
+      ...(command.progressionCost !== undefined ? { progressionCost: command.progressionCost } : {}),
       ...(command.hitPointRoll !== undefined ? { hitPointRoll: command.hitPointRoll } : {}),
       ...(command.metamagic !== undefined ? { metamagic: command.metamagic } : {}),
       ...(command.metamagics !== undefined ? { metamagics: [...command.metamagics] } : {}),

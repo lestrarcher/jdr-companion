@@ -5,7 +5,7 @@ import { SpellCastCommand, SpellCastingAvailability, SpellMetamagic, availableSp
 import { CharacterResource } from '@core/models/character.model';
 import { SpellTargetPicker } from '../spell-target-picker/spell-target-picker';
 
-export type SpellCastSelection = Pick<SpellCastCommand, 'sourceKey' | 'method' | 'castingLevel' | 'targetCharacterIds' | 'hitPointRoll' | 'metamagic' | 'metamagics'>;
+export type SpellCastSelection = Pick<SpellCastCommand, 'sourceKey' | 'method' | 'castingLevel' | 'targetCharacterIds' | 'hitPointRoll' | 'progressionCost' | 'metamagic' | 'metamagics'>;
 type CastOption = { source: PlayerSpell; method: SpellCastingAvailability['methods'][number]; key: string };
 
 @Component({
@@ -60,9 +60,32 @@ export class SpellCastDialog implements AfterViewInit, OnDestroy {
     const roll = this.hitPointRoll();
     return roll !== null && Number.isInteger(roll) && roll >= 2 && roll <= 20;
   });
+  readonly progressionCost = linkedSignal({ source: () => this.selected()?.key, computation: (): number | null => null });
+  readonly progressionMethod = computed(() => {
+    const method = this.selected()?.method;
+    return method?.kind === 'progression' ? method : undefined;
+  });
+  readonly progressionRequested = computed(() => this.progressionMethod()?.costMode === 'variable'
+    ? this.progressionCost() : this.progressionMethod()?.cost ?? null);
+  readonly validProgression = computed(() => {
+    const method = this.progressionMethod();
+    if (!method) return true;
+    const cost = this.progressionRequested();
+    return cost !== null && Number.isInteger(cost) && cost >= 1 && cost <= 2147483647
+      && typeof method.remaining === 'number' && typeof method.minimum === 'number'
+      && method.remaining > method.minimum && (method.allowOverdraft === true || cost <= method.remaining - method.minimum);
+  });
+  readonly progressionAfter = computed(() => {
+    const method = this.progressionMethod(); const cost = this.progressionRequested();
+    return this.validProgression() && method && cost !== null && typeof method.remaining === 'number' && typeof method.minimum === 'number'
+      ? Math.max(method.minimum, method.remaining - cost) : null;
+  });
+  updateProgressionCost(value: string): void {
+    if (!this.locked()) this.progressionCost.set(value.trim() === '' ? null : Number(value));
+  }
   readonly canConfirm = computed(() => !this.locked() && !!this.selected()
     && this.selectedMetamagics().every(selected => this.metamagics().some(option => option.key === selected.key && option.status === 'available'))
-    && this.combinedAffordable()
+    && this.combinedAffordable() && this.validProgression()
     && (!this.hitPointEffect() || this.targetIds().length >= 1 && this.targetIds().length <= this.maximumTargets()
       && (this.hitPointEffect() !== 'feast' || this.validRoll())));
   updateTargets(ids: number[]): void { if (!this.locked()) this.targetIds.set([...ids]); }
@@ -172,6 +195,7 @@ export class SpellCastDialog implements AfterViewInit, OnDestroy {
     const option = this.selected();
     if (this.canConfirm() && option && option.method.kind !== 'normal' && option.method.castingLevel !== null) this.confirmed.emit({ sourceKey: option.source.key!,
       method: option.method.kind, castingLevel: option.method.castingLevel,
+      ...(this.progressionMethod()?.costMode === 'variable' ? { progressionCost: this.progressionCost()! } : {}),
       ...(this.hitPointEffect() ? { targetCharacterIds: [...this.targetIds()] } : {}),
       ...(this.hitPointEffect() === 'feast' ? { hitPointRoll: this.hitPointRoll()! } : {}),
       ...(this.selectedMetamagics().length === 2 ? { metamagics: this.selectedMetamagics().map(option => option.key) }
@@ -200,6 +224,7 @@ export class SpellCastDialog implements AfterViewInit, OnDestroy {
     return option.method.reason === 'exhausted' ? 'Épuisé' : 'Indisponible';
   }
   costLabel(option: CastOption): string {
+    if (option.method.kind === 'progression') return option.method.costMode === 'variable' ? 'variable' : `${option.method.cost} charge(s)`;
     if (option.method.kind === 'item-charges') return `${option.method.cost} charge(s) de l’objet`;
     if (option.method.kind === 'item-limited') return `${option.method.cost} utilisation(s) de l’objet`;
     if (option.method.kind === 'arcanum') return '1 utilisation d’Arcanum (sans emplacement)';
@@ -214,6 +239,6 @@ export class SpellCastDialog implements AfterViewInit, OnDestroy {
       + (option.method.status === 'available' ? '' : ` · ${this.unavailableLabel(option)}`);
   }
   methodLabel(kind: string): string {
-    return ({ arcanum: 'Arcanum mystique (sans emplacement)', resource: 'Utilisation de capacité (sans emplacement)', cantrip: 'Tour de magie', ritual: 'Rituel', 'standard-slot': 'Emplacement standard', 'pact-slot': 'Magie de pacte', 'item-charges': 'Charges d’objet', 'item-limited': 'Utilisations d’objet' } as Record<string, string>)[kind] ?? kind;
+    return ({ arcanum: 'Arcanum mystique (sans emplacement)', progression: 'Charges de progression', resource: 'Utilisation de capacité (sans emplacement)', cantrip: 'Tour de magie', ritual: 'Rituel', 'standard-slot': 'Emplacement standard', 'pact-slot': 'Magie de pacte', 'item-charges': 'Charges d’objet', 'item-limited': 'Utilisations d’objet' } as Record<string, string>)[kind] ?? kind;
   }
 }

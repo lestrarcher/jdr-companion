@@ -314,6 +314,12 @@ export class FeatureDefinitionManager {
   protected freeRecharge: 'short-rest' | 'long-rest' = 'long-rest';
   protected freeLevel: number | null = null;
   protected standardCasting = true;
+  protected progressionCasting = false;
+  protected progressionCostMode: 'fixed' | 'variable' = 'variable';
+  protected progressionCost = 1;
+  protected progressionLevel: number | null = null;
+  protected progressionOverdraft = false;
+  protected progressionInputLabel = 'Résultat des dés de dégâts';
 
   protected startSpellGrant(): void {
     this.editedGrant = null;
@@ -321,6 +327,8 @@ export class FeatureDefinitionManager {
     this.grantSpellLevel = 0; this.grantClassId = null; this.grantSchool = '';
     this.editingGrantId = null; this.configureCasting = true;
     this.freeCasting = false; this.freeUses = 1; this.freeRecharge = 'long-rest';
+    this.progressionCasting = false; this.progressionCostMode = 'variable'; this.progressionCost = 1;
+    this.progressionLevel = null; this.progressionOverdraft = false; this.progressionInputLabel = 'Résultat des dés de dégâts';
     this.freeLevel = null; this.standardCasting = true; this.grantCastingAbility = '';
     this.spellGrantEditing.set(true);
   }
@@ -332,6 +340,13 @@ export class FeatureDefinitionManager {
     this.grantClassId = grant.classId; this.grantSchool = grant.schools?.[0] ?? '';
     this.grantUnlockLevel = grant.unlockLevel; this.grantCastingAbility = grant.castingAbility ?? '';
     const free = grant.castingRules?.methods.find(method => method.kind === 'resource');
+    const progression = grant.castingRules?.methods.find(method => method.kind === 'progression');
+    this.progressionCasting = !!progression;
+    this.progressionCostMode = progression?.costMode ?? 'variable';
+    this.progressionCost = progression?.cost ?? 1;
+    this.progressionLevel = progression?.castingLevel ?? null;
+    this.progressionOverdraft = progression?.allowOverdraft ?? false;
+    this.progressionInputLabel = progression?.inputLabel ?? 'Résultat des dés de dégâts';
     this.configureCasting = Array.isArray(grant.castingRules?.methods) && grant.castingRules.methods.length > 0;
     this.freeCasting = !!free; this.freeUses = grant.freeUses ?? 1;
     this.freeRecharge = grant.rechargeType === 'short-rest' ? 'short-rest' : 'long-rest';
@@ -384,7 +399,15 @@ export class FeatureDefinitionManager {
       freeUses: this.freeCasting ? Number(this.freeUses) : 0, rechargeType: this.freeRecharge,
       castingLevel: this.freeLevel === null ? (this.grantMode === 'fixed' ? this.grantSpells().find(spell => spell.id === this.grantSpellId)?.level ?? 0 : this.grantSpellLevel) : Number(this.freeLevel),
       standardSlot: this.standardCasting,
+      ...(this.progressionCasting ? { progression: {
+        kind: 'progression' as const, costMode: this.progressionCostMode,
+        ...(this.progressionCostMode === 'fixed' ? { cost: Number(this.progressionCost) } : {}),
+        castingLevel: this.progressionLevel ?? (this.grantSpells().find(spell => spell.id === Number(this.grantSpellId))?.level ?? this.grantSpellLevel),
+        allowOverdraft: this.progressionOverdraft, inputLabel: this.progressionInputLabel.trim() || 'Coût',
+      } } : this.editedGrant?.castingRules?.methods.some(method => method.kind === 'progression') ? { progression: null } : {}),
     } : undefined;
+    console.log('Progression casting:', this.progressionCasting);
+console.log('Casting payload:', casting);
     const request = this.editingGrantId === null
       ? this.api.addFeatureSpellGrant(featureId, { ...payload, ...(casting ? { casting } : {}) })
       : this.api.configureFeatureSpellGrant(featureId, this.editingGrantId, { ...Object.fromEntries(Object.entries(payload).filter(([key]) => key !== 'mode')), ...(casting ? { casting } : {}) });
