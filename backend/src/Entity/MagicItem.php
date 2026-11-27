@@ -78,6 +78,11 @@ class MagicItem
     #[ORM\Column(type: 'json', nullable: true)]
     private ?array $weaponProfile = null;
 
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $movementEffects = null;
+
+    public function getMovementEffects(): ?array { return $this->movementEffects; }
+
     public function getWeaponProfile(): ?array { return $this->weaponProfile; }
     public function configureWeaponProfile(?array $profile): void
     {
