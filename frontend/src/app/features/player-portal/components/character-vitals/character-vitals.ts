@@ -20,6 +20,7 @@ import { CharacterStateService } from '@core/services/character-state.service';
 })
 export class CharacterVitals {
   readonly accessToken = input('');
+  readonly druidLevel = input(0);
   readonly wildShapeRefreshVersion = input(0);
   readonly stateChanged = output<void>();
   protected readonly wildShape = signal<{active: null | {beastName: string; armorClass: number; hitPoints: {current: number; maximum: number}}} | null>(null);
@@ -35,7 +36,11 @@ export class CharacterVitals {
   }
   private wildUrl(): string { return `/api/public/characters/${encodeURIComponent(this.accessToken())}/wild-shape`; }
   private refreshWildShape(): void {
-    if (!this.accessToken()) return;
+    if (this.druidLevel() < 2 || !this.accessToken()) {
+        this.wildShape.set(null);
+        this.wildShapeError.set('');
+        return;
+    }
     this.http.get<{wildShape: {active: any}}>(this.wildUrl()).subscribe({
       next: response => this.wildShape.set(response.wildShape),
       error: () => this.wildShapeError.set('État de la forme sauvage indisponible.'),

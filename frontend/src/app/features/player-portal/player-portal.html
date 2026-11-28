@@ -92,7 +92,14 @@
                       <button type="button" (click)="selectTab('status')" aria-label="Ouvrir l'état détaillé">Voir tout ↗</button>
                     </div>
                     <app-character-inspiration [active]="inspiration()" [readonly]="!canEdit()" [saving]="inspirationSaving() || saveStatus() === 'saving'" (spend)="spendInspiration()" />
-                    <app-character-vitals [readonly]="!canEdit()" [character]="currentCharacter" [accessToken]="accessToken" [wildShapeRefreshVersion]="wildShapeRefreshVersion()" (stateChanged)="refreshWildShapeSession()" />
+                    <app-character-vitals
+                        [readonly]="!canEdit()"
+                        [character]="currentCharacter"
+                        [accessToken]="accessToken"
+                        [druidLevel]="druidLevel()"
+                        [wildShapeRefreshVersion]="wildShapeRefreshVersion()"
+                        (stateChanged)="refreshWildShapeSession()"
+                    />
                     <app-character-exhaustion [level]="exhaustionLevel()" [readonly]="!canEdit()" [saving]="exhaustionSaving() || saveStatus() === 'saving' || saveStatus() === 'error'" (change)="changeExhaustion($event)" />
                   </section>
                   <section class="overview-panel overview-panel--statistics">
@@ -138,7 +145,14 @@
                 <div class="tracker-layout">
                   <div class="status-vitals-column">
                     <app-character-inspiration [active]="inspiration()" [readonly]="!canEdit()" [saving]="inspirationSaving() || saveStatus() === 'saving'" (spend)="spendInspiration()" />
-                    <app-character-vitals [readonly]="!canEdit()" [character]="currentCharacter" [accessToken]="accessToken" [wildShapeRefreshVersion]="wildShapeRefreshVersion()" (stateChanged)="refreshWildShapeSession()" />
+                    <app-character-vitals
+                        [readonly]="!canEdit()"
+                        [character]="currentCharacter"
+                        [accessToken]="accessToken"
+                        [druidLevel]="druidLevel()"
+                        [wildShapeRefreshVersion]="wildShapeRefreshVersion()"
+                        (stateChanged)="refreshWildShapeSession()"
+                    />
                     <app-character-exhaustion [level]="exhaustionLevel()" [readonly]="!canEdit()" [saving]="exhaustionSaving() || saveStatus() === 'saving' || saveStatus() === 'error'" (change)="changeExhaustion($event)" />
                     @if (hasProgressions()) {
                       <div class="status-personal-progressions">
