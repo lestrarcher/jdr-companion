@@ -889,11 +889,18 @@ export class PlayerPortal {
   }
   // Character synchronization remains independent of rest requests.
   private initializeRestRequestPolling(): void {
-    timer(0, 5000)
+    const refreshVisibleCharacter = () => {
+      if ((typeof document === 'undefined' || !document.hidden) && !this.pendingRestRequest()) {
+        this.refreshCharacterIfChanged();
+      }
+    };
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', refreshVisibleCharacter);
+      this.destroyRef.onDestroy(() => document.removeEventListener('visibilitychange', refreshVisibleCharacter));
+    }
+    timer(0, 30000)
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        if (!this.pendingRestRequest()) this.refreshCharacterIfChanged();
-      });
+      .subscribe(refreshVisibleCharacter);
 
     // Poll for a decision only while this player has a pending request.
     timer(5000, 5000)
