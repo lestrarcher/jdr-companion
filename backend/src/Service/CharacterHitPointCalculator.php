@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Dto\ResolvedCharacterHitPoints;
+use App\Dto\CharacterFeatureReadContext;
 use App\Entity\Character;
 use App\Entity\CharacterClassLevel;
 use App\Enum\Ability;
@@ -20,13 +21,13 @@ final readonly class CharacterHitPointCalculator
     }
 
     /** @param array<string, int> $progressionValues Explicit session context, never looked up here. */
-    public function calculate(Character $character, array $progressionValues = []): ResolvedCharacterHitPoints
+    public function calculate(Character $character, array $progressionValues = [], ?CharacterFeatureReadContext $featureContext = null): ResolvedCharacterHitPoints
     {
         $baseValue = 0;
         $total = 0;
         $missingLevelPositions = [];
         $constitutionModifier = $this->abilityCalculator
-            ->calculate($character, Ability::Constitution, progressionValues: $progressionValues)
+            ->calculate($character, Ability::Constitution, progressionValues: $progressionValues, featureContext: $featureContext)
             ->modifier();
 
         foreach ($character->getClassLevels() as $level) {
@@ -45,7 +46,7 @@ final readonly class CharacterHitPointCalculator
         $featureBonus = 0;
         $contributions = [];
         // resolve() returns one acquired rule per feature, including selected options.
-        foreach ($this->featureResolver?->resolve($character, $progressionValues) ?? [] as $rule) {
+        foreach ($featureContext?->rulesFor($character, $progressionValues) ?? $this->featureResolver?->resolve($character, $progressionValues) ?? [] as $rule) {
             $feature = $rule->getFeatureDefinition();
             if ($feature->getActivationType() !== FeatureActivationType::Passive) {
                 continue;

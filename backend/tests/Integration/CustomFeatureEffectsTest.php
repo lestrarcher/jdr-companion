@@ -76,6 +76,80 @@ final class CustomFeatureEffectsTest extends TestCase
         (new \ReflectionProperty($reference, 'owner'))->setValue($reference, $this->character->getCampaign()->getOwner());
     }
 
+    public function testFeatureReadContextIsIsolatedClosedAndFresh(): void
+    {
+        $resolver = $this->service(\App\Service\CharacterFeatureResolver::class);
+        $retained = null;
+        $values = ['story'=>2, 'other'=>0];
+        \App\Dto\CharacterFeatureReadContext::read($this->character, $values, $resolver,
+            function ($context) use ($resolver, &$retained, &$values): array {
+                $retained = $context;
+                $values['story'] = 1;
+                self::assertArrayHasKey('gift', $context->rulesFor($this->character, ['other'=>0, 'story'=>2]));
+                self::assertNull($context->rulesFor($this->character, $values));
+                self::assertNull($context->rulesFor($this->character, []));
+                self::assertNull($context->rulesFor(clone $this->character, ['story'=>2, 'other'=>0]));
+                $campaign = $this->character->getCampaign();
+                $owner = $campaign->getOwner();
+                $property = new \ReflectionProperty($campaign, 'owner');
+                try {
+                    $property->setValue($campaign, new User());
+                    self::assertNull($context->rulesFor($this->character, ['story'=>2, 'other'=>0]));
+                } finally { $property->setValue($campaign, $owner); }
+                \App\Dto\CharacterFeatureReadContext::read($this->character, ['story'=>1], $resolver,
+                    function ($nested) use ($resolver): array {
+                        self::assertArrayNotHasKey('gift', $nested->rulesFor($this->character, ['story'=>1]));
+                        // Historical ownership remains independent of runtime activation.
+                        self::assertContains($this->feature, array_map(static fn ($r) => $r->getFeatureDefinition(), $resolver->acquisitionRules($this->character)));
+                        return [];
+                    });
+                self::assertArrayHasKey('gift', $context->rulesFor($this->character, ['story'=>2, 'other'=>0]));
+                return [];
+            });
+        self::assertNull($retained->rulesFor($this->character, ['story'=>2, 'other'=>0]));
+        // Same character and service, same HTTP-like lifetime, but a later read after mutation.
+        $this->character->removeProgression($this->assignment);
+        \App\Dto\CharacterFeatureReadContext::read($this->character, ['story'=>2], $resolver,
+            function ($context): array {
+                self::assertArrayNotHasKey('gift', $context->rulesFor($this->character, ['story'=>2]));
+                return [];
+            });
+    }
+
+    public function testFeatureReadContextClosesOnException(): void
+    {
+        $retained = null;
+        try {
+            \App\Dto\CharacterFeatureReadContext::read($this->character, ['story'=>2], $this->service(\App\Service\CharacterFeatureResolver::class),
+                static function ($context) use (&$retained): array {
+                    $retained = $context;
+                    throw new \RuntimeException('projection failed');
+                });
+            self::fail('Exception expected');
+        } catch (\RuntimeException $e) { self::assertSame('projection failed', $e->getMessage()); }
+        self::assertNull($retained->rulesFor($this->character, ['story'=>2]));
+    }
+
+    public function testProfileReadRefreshesEffectsAndProgressionsAfterMutation(): void
+    {
+        $this->character->getAbilityScore(\App\Enum\Ability::Constitution)->setBaseValue(14);
+        $this->feature->setActivationType(\App\Enum\FeatureActivationType::Passive)->configureAbilityScoreEffects([
+            ['key'=>'con', 'label'=>'Constitution', 'ability'=>'constitution', 'value'=>2],
+        ]);
+        $serializer = $this->service(CharacterProfileSerializer::class);
+        foreach ([1=>14, 2=>16, 3=>16, 0=>14] as $value=>$expected) {
+            $profile = $serializer->serialize($this->character, ['story'=>$value]);
+            self::assertSame($expected, array_column($profile['abilities'], 'effectiveValue', 'ability')['constitution']);
+            self::assertSame((int) floor(($expected-10)/2), $profile['hitPoints']['constitutionModifier']);
+        }
+        $this->character->removeProgression($this->assignment);
+        self::assertSame(14, array_column($serializer->serialize($this->character, ['story'=>2])['abilities'], 'effectiveValue', 'ability')['constitution']);
+        $this->character->addProgression($this->assignment);
+        self::assertSame(16, array_column($serializer->serialize($this->character, ['story'=>2])['abilities'], 'effectiveValue', 'ability')['constitution']);
+        $this->feature->setActivationType(\App\Enum\FeatureActivationType::Action);
+        self::assertSame(14, array_column($serializer->serialize($this->character, ['story'=>2])['abilities'], 'effectiveValue', 'ability')['constitution']);
+    }
+
     public function testNaturalAttacksFollowProgressionAndPersistThroughFeatureEditor(): void
     {
         $editor = $this->service(\App\Service\CustomReferenceFeatureService::class);

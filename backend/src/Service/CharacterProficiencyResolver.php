@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Dto\CharacterFeatureReadContext;
+
 use App\Entity\Character;
 use App\Entity\ProficiencyDefinition;
 use App\Entity\ProficiencyGrantRule;
@@ -25,9 +27,9 @@ final readonly class CharacterProficiencyResolver
      * No stacking, substitution or persistence is performed here.
      * @return array<string, array{definition: ProficiencyDefinition, grants: list<ProficiencyGrantRule>}>
      */
-    public function resolve(Character $character, array $progressionValues = []): array
+    public function resolve(Character $character, array $progressionValues = [], ?CharacterFeatureReadContext $featureContext = null): array
     {
-        $result = $this->resolveBase($character, $progressionValues);
+        $result = $this->resolveBase($character, $progressionValues, $featureContext);
         $seen = [];
         foreach ($character->getProficiencySubstitutions() as $substitution) {
             $rule = $substitution->getGrantRule();
@@ -54,7 +56,7 @@ final readonly class CharacterProficiencyResolver
     }
 
     /** Grants before explicit background substitutions or manual grants. */
-    public function resolveBase(Character $character, array $progressionValues = []): array
+    public function resolveBase(Character $character, array $progressionValues = [], ?CharacterFeatureReadContext $featureContext = null): array
     {
         $result = [];
         $owner = $character->getCampaign()->getOwner();
@@ -63,7 +65,7 @@ final readonly class CharacterProficiencyResolver
                 continue;
             }
             $rule->validateRule();
-            if (!$this->isApplicable($character, $rule, progressionValues: $progressionValues)) {
+            if (!$this->isApplicable($character, $rule, progressionValues: $progressionValues, featureContext: $featureContext)) {
                 continue;
             }
 
@@ -95,7 +97,7 @@ final readonly class CharacterProficiencyResolver
         return $result;
     }
 
-    public function isApplicable(Character $character, ProficiencyGrantRule $rule, array $previewFeatureIds = [], array $progressionValues = []): bool
+    public function isApplicable(Character $character, ProficiencyGrantRule $rule, array $previewFeatureIds = [], array $progressionValues = [], ?CharacterFeatureReadContext $featureContext = null): bool
     {
         if (($feature = $rule->getCharacterFeatureDefinition()) !== null) {
             // The common resolver covers direct, progression and selected-option grants.
@@ -103,7 +105,7 @@ final readonly class CharacterProficiencyResolver
             if ($character->getId() === null) {
                 return in_array($feature->getId(), $previewFeatureIds, true);
             }
-            foreach ($this->features->resolve($character, $progressionValues) as $featureRule) {
+            foreach ($featureContext?->rulesFor($character, $progressionValues) ?? $this->features->resolve($character, $progressionValues) as $featureRule) {
                 if ($featureRule->getFeatureDefinition()->getId() === $feature->getId()) return true;
             }
             return false;

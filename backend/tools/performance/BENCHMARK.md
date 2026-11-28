@@ -244,7 +244,11 @@ Les IDs des états restent visibles, car ils sont les identifiants du scénario.
 Une différence métier ou de données bloque la conclusion « optimisation
 équivalente ». Examiner la cause avant d'accepter une nouvelle référence.
 
-## Proposition de lot 1A — à valider, non implémentée
+## Plan du lot 1A — validé, implémentation ciblée
+
+Le périmètre livré et ses mesures figurent dans [LOT1A.md](LOT1A.md).
+Le partage reste limité à une projection de profil ; les lectures de session
+et de sorts situées hors de cette projection restent indépendantes.
 
 Périmètre : partager les capacités résolues dans **une lecture cohérente**. Pas de
 cache persistant, pas de modification du polling, des index, des règles de choix,

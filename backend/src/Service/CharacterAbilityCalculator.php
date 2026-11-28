@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Dto\EffectiveAbilityScore;
+use App\Dto\CharacterFeatureReadContext;
 use App\Dto\LevelAdvancementSelection;
 use App\Entity\Character;
 use App\Entity\MagicItemAbilityEffect;
@@ -47,14 +48,14 @@ final class CharacterAbilityCalculator
     }
 
     /** @param array<string, int> $progressionValues Explicit session context. */
-    public function calculate(Character $character, Ability $ability, ?LevelAdvancementSelection $advancement = null, array $progressionValues = []): EffectiveAbilityScore
+    public function calculate(Character $character, Ability $ability, ?LevelAdvancementSelection $advancement = null, array $progressionValues = [], ?CharacterFeatureReadContext $featureContext = null): EffectiveAbilityScore
     {
         $abilityScore = $character->getAbilityScore($ability);
 
         $baseValue = $abilityScore->getBaseValue();
 
         $effectiveValue = $this->calculatePermanentValue($character, $ability, $advancement);
-        $effectiveValue = $this->applyFeatureEffects($character, $ability, $effectiveValue, $progressionValues);
+        $effectiveValue = $this->applyFeatureEffects($character, $ability, $effectiveValue, $progressionValues, $advancement === null ? $featureContext : null);
         $minimumValue = null;
 
         foreach ($character->getMagicItems() as $ownedItem) {
@@ -163,12 +164,12 @@ final class CharacterAbilityCalculator
         return $effectiveValue;
     }
 
-    private function applyFeatureEffects(Character $character, Ability $ability, int $value, array $progressionValues): int
+    private function applyFeatureEffects(Character $character, Ability $ability, int $value, array $progressionValues, ?CharacterFeatureReadContext $featureContext): int
     {
         $bonuses = [];
         $penalty = 0;
         $maximum = min(self::ABSOLUTE_MAXIMUM, $character->getAbilityScore($ability)->getMaximumValue());
-        foreach ($this->featureResolver?->resolve($character, $progressionValues) ?? [] as $rule) {
+        foreach ($featureContext?->rulesFor($character, $progressionValues) ?? $this->featureResolver?->resolve($character, $progressionValues) ?? [] as $rule) {
             $feature = $rule->getFeatureDefinition();
             if ($feature->getActivationType() !== \App\Enum\FeatureActivationType::Passive) continue;
             foreach ($feature->getAbilityScoreEffects() ?? [] as $effect) {

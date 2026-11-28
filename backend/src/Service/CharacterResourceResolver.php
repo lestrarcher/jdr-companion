@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Dto\ResolvedCharacterResource;
+use App\Dto\CharacterFeatureReadContext;
 use App\Entity\Character;
 use App\Entity\CharacterRace;
 use App\Entity\TrackableResourceDefinition;
@@ -30,7 +31,10 @@ final readonly class CharacterResourceResolver
     public function resolve(
         Character $character,
         array $progressionValues = [],
+        ?CharacterFeatureReadContext $featureContext = null,
     ): array {
+        $features = $featureContext?->rulesFor($character, $progressionValues)
+            ?? $this->featureResolver->resolve($character, $progressionValues);
         /** @var array<string, TrackableResourceDefinition> $definitions */
         $definitions = [];
 
@@ -47,7 +51,7 @@ final readonly class CharacterResourceResolver
          * Exemple : Conscience magique, dont le maximum est égal
          * au bonus de maîtrise.
          */
-        foreach ($this->featureResolver->resolve($character, $progressionValues) as $featureRule) {
+        foreach ($features as $featureRule) {
             $definition = $featureRule
                 ->getFeatureDefinition()
                 ->getResourceDefinition();
@@ -86,7 +90,7 @@ final readonly class CharacterResourceResolver
         // Existing external pools keep their original attribution rules.
         if ($this->entityManager !== null) {
             $featureIds = array_map(static fn($rule) => $rule->getFeatureDefinition()->getId(),
-                array_values($this->featureResolver->resolve($character, $progressionValues)));
+                array_values($features));
             if ($featureIds !== []) {
                 $ids = $this->entityManager->getConnection()->fetchFirstColumn(
                     'SELECT g.managed_resource_id FROM feature_spell_grant g JOIN character_feature_spell a ON a.grant_id=g.id WHERE a.character_id=? AND a.active=true AND g.enabled=true AND g.unlock_level<=? AND g.resource_definition_id=g.managed_resource_id AND g.feature_id IN ('.implode(',', array_fill(0, count($featureIds), '?')).')',

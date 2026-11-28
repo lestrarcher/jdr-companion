@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Dto\CharacterFeatureReadContext;
+
 use App\Entity\Character;
 use App\Entity\CharacterClassLevel;
 use App\Entity\CharacterFeatureRule;
@@ -38,8 +40,14 @@ final readonly class CharacterProfileSerializer
         Character $character,
         array $progressionValues = [],
     ): array {
-        $resources = $this->serializeResources($character, $progressionValues);
-        $features = $this->featureResolver->resolve($character, $progressionValues);
+        return CharacterFeatureReadContext::read($character, $progressionValues, $this->featureResolver,
+            fn (CharacterFeatureReadContext $context): array => $this->serializeInContext($character, $progressionValues, $context));
+    }
+
+    private function serializeInContext(Character $character, array $progressionValues, CharacterFeatureReadContext $featureContext): array
+    {
+        $resources = $this->serializeResources($character, $progressionValues, $featureContext);
+        $features = $featureContext->rulesFor($character, $progressionValues);
         $armorEffects = $this->infusionArmorEffects->resolve($character);
         foreach ($features as $rule) {
             $feature = $rule->getFeatureDefinition();
@@ -47,7 +55,7 @@ final readonly class CharacterProfileSerializer
             $armorEffects[] = ['identity' => 'feature:'.$feature->getSlug(), 'source' => $feature->getName(), 'effects' => $feature->getArmorClassEffects()];
         }
 
-        $training = $this->trainingPresenter->resolved($character, includeManualGrantDetails: false, progressionValues: $progressionValues);
+        $training = $this->trainingPresenter->resolved($character, includeManualGrantDetails: false, progressionValues: $progressionValues, featureContext: $featureContext);
         return [
             'id' => $character->getId(),
             'campaignId' => $character->getCampaign()->getId(),
@@ -71,7 +79,7 @@ final readonly class CharacterProfileSerializer
             'armorClass' => $this->armorClassCalculator->calculate($character, $armorEffects),
             'training' => $training,
             'weapons' => $this->weaponCalculator->calculate($character, $training, $this->infusionArmorEffects->itemProperties($character, true), $features),
-            'hitPoints' => $this->hitPointCalculator->calculate($character, $progressionValues)->toArray(),
+            'hitPoints' => $this->hitPointCalculator->calculate($character, $progressionValues, $featureContext)->toArray(),
             'classLevels' => array_map(
                 $this->serializeClassLevel(...),
                 $character->getClassLevels()->toArray(),
@@ -79,7 +87,7 @@ final readonly class CharacterProfileSerializer
             'classSummary' => $this->serializeClassSummary($character),
             'abilities' => array_map(
                 fn (Ability $ability): array =>
-                    $this->abilityCalculator->calculate($character, $ability, progressionValues: $progressionValues)->toArray(),
+                    $this->abilityCalculator->calculate($character, $ability, progressionValues: $progressionValues, featureContext: $featureContext)->toArray(),
                 Ability::cases(),
             ),
             'feats' => array_map(
@@ -264,10 +272,11 @@ final readonly class CharacterProfileSerializer
     private function serializeResources(
         Character $character,
         array $progressionValues,
+        CharacterFeatureReadContext $featureContext,
     ): array {
         $resources = [];
 
-        foreach ($this->resourceResolver->resolve($character, $progressionValues) as $resource) {
+        foreach ($this->resourceResolver->resolve($character, $progressionValues, $featureContext) as $resource) {
             $resources[$resource->getSlug()] = [
                 'slug' => $resource->getSlug(),
                 'name' => $resource->getName(),
